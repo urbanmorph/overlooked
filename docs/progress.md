@@ -19,6 +19,9 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Runs are now idempotent and incremental (see plan section 7): rebuild with the same inputs skipped (tested), R2 uploads resume and skip identical files (tested), month skipped if GBIF reports no change. Health check of 12 sources at every refresh: all working on 16 October.
+- Fixed: locally, inherited shell variables from another project overrode this project's R2 keys. `.env` now takes priority (GitHub Actions was not affected).
+- iNaturalist reaches us through GBIF (1.71 million India records, updated weekly), but about 0.8 million research-grade observations without an open licence and about 3 million awaiting identification do not. The India Biodiversity Portal's GBIF dataset stops in 2024. Options put to the owner: direct iNaturalist check for quiet species; ask the Portal to republish; bring module 5 (identification backlog) forward.
 - End-to-end test passed on both Kerala downloads (doi:10.15468/dl.6mfzfh, doi:10.15468/dl.v7fx5r): full monthly build in 11 s; all 9,243 species named; page data and district map written; both pages work on it with no errors. Pages now show a plain message if data fails to load.
 - Owner approved a real snapshot in R2 and production deploys. All-India run `2026-10` started on Actions: ledger download `0030725-260928105237408` submitted 13:21 UTC; species history follows when it finishes.
 - Decision: for BSI and ZSI we rely on the web-policy clause that allows free reproduction with prominent acknowledgement. No permission request. Every page that uses their data credits them by name.

@@ -100,3 +100,22 @@ def test_names_from_history(tmp_path):
     names.load_history(con, tsv)
     assert con.sql("SELECT name FROM species").fetchall() == [("Anthus nilghiriensis",)]
     assert con.sql("SELECT sum(n_records) FROM species_decade").fetchone()[0] == 9
+
+
+def test_inputs_fingerprint_is_stable_and_sensitive():
+    from pipeline.run import inputs_fingerprint
+    state = {"downloads": {"species_history": {"key": "b"}, "ledger_cube": {"key": "a"}}}
+    same = {"downloads": {"ledger_cube": {"key": "a"}, "species_history": {"key": "b"}}}
+    other = {"downloads": {"ledger_cube": {"key": "a2"}, "species_history": {"key": "b"}}}
+    bnd = {"sha256": "x" * 64}
+    assert inputs_fingerprint(state, bnd) == inputs_fingerprint(same, bnd)
+    assert inputs_fingerprint(state, bnd) != inputs_fingerprint(other, bnd)
+    assert inputs_fingerprint(state, bnd) != inputs_fingerprint(state, {"sha256": "y" * 64})
+
+
+def test_health_changed():
+    from pipeline.health import changed
+    now = {"sources": {"kew": {"fingerprint": {"ETag": "1"}}}}
+    assert changed(now, None, "kew")
+    assert not changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "1"}}}}, "kew")
+    assert changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "0"}}}}, "kew")

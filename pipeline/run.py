@@ -24,7 +24,9 @@ import duckdb
 from concurrent.futures import ThreadPoolExecutor
 
 from pipeline import boundaries as boundary_map
-from pipeline import checks, districts, gbif, ledger, names, site_data
+import hashlib
+
+from pipeline import checks, districts, gbif, health, ledger, names, site_data
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
@@ -85,16 +87,58 @@ def submit_next(http, state):
     return False
 
 
+def check_sources(state):
+    """Check every source; stop on a critical failure. The report is kept in the run state."""
+    report = health.check_all()
+    state.setdefault("health", []).append(report)
+    state["health"] = state["health"][-5:]
+    for name in report["warnings"]:
+        print(f"warning: {name} did not answer correctly; it keeps last month's data")
+    if report["critical_failures"]:
+        state["status_note"] = f"stopped: {report['critical_failures']} not working"
+        save(state)
+        sys.exit(f"run {state['run_id']}: critical sources not working: {report['critical_failures']}")
+    return report
+
+
+def previous_published():
+    runs = sorted((json.loads(p.read_text()) for p in RUNS.glob("*.json")), key=lambda r: r.get("requested", ""))
+    pubs = [r for r in runs if r.get("status") == "published" and not r.get("region")]
+    return pubs[-1] if pubs else None
+
+
+def gbif_unchanged_since(http, when):
+    """True if GBIF reports no India record added, changed or re-processed since `when`."""
+    r = http.get("https://api.gbif.org/v1/occurrence/search", timeout=60, params={
+        "country": "IN", "hasCoordinate": "true", "limit": 0, "lastInterpreted": f"{when[:10]},*"})
+    r.raise_for_status()
+    return r.json()["count"] == 0
+
+
 def request(args):
     run_id = args.run_id or default_run_id(args.state)
     if load(run_id):
         print(f"run {run_id} already requested; nothing to do")
         return
-    http = gbif.session()
     state = {"run_id": run_id, "region": args.state, "status": "requested", "requested": now(),
              "downloads": {name: {"status": "WAITING"} for name in QUERIES}}
+    check_sources(state)
+    http = gbif.session()
+    prev = None if args.state else previous_published()
+    if prev and gbif_unchanged_since(http, prev["requested"]):
+        state.update(status="unchanged", note=f"GBIF reports no change since run {prev['run_id']}; nothing to download")
+        save(state)
+        print(state["note"])
+        return
     submit_next(http, state)
     save(state)
+
+
+def inputs_fingerprint(state, boundaries):
+    """What a snapshot is built from. Same inputs give the same snapshot, so a rerun is a no-op."""
+    keys = {n: d["key"] for n, d in sorted(state["downloads"].items())}
+    blob = json.dumps({"downloads": keys, "boundaries": boundaries["sha256"]}, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
 def build(args):
@@ -103,9 +147,10 @@ def build(args):
     if not state:
         print(f"no run {run_id}; nothing to do")
         return
-    if state["status"] in ("published", "built", "failed"):
+    if state["status"] in ("published", "failed", "unchanged") or (state["status"] == "built" and not args.publish):
         print(f"run {run_id} is {state['status']}; nothing to do")
         return
+    check_sources(state)
 
     http = gbif.session()
     metas = {}
@@ -130,13 +175,24 @@ def build(args):
         return
 
     for name, meta in metas.items():
-        if not (gbif.RAW / f"{meta['key']}.zip").exists():
+        z = gbif.RAW / f"{meta['key']}.zip"
+        if not (z.exists() and (not meta.get("size") or z.stat().st_size == meta["size"])):
             gbif.fetch(http, meta)
         state["downloads"][name]["doi"] = meta["doi"]
 
     out = SNAPSHOTS / run_id
     ua = http.headers["User-Agent"]
     boundaries = districts.ensure(ua)
+    fingerprint = inputs_fingerprint(state, boundaries)
+    publish = args.publish and not state["region"]
+    built = out / "manifest.json"
+    if built.exists() and json.loads(built.read_text()).get("inputs") == fingerprint:
+        print(f"run {run_id}: already built from the same inputs ({fingerprint}); not rebuilding")
+        manifest = json.loads(built.read_text())
+        summary = json.loads((out / "summary.json").read_text())
+        bpath = manifest["district_map"]
+        bfile = SNAPSHOTS / "_shared" / bpath
+        return finish(args, state, out, manifest, summary, bpath, bfile, publish)
     con = duckdb.connect()
     ledger.load_cube(con, ledger.unpack(state["downloads"]["ledger_cube"]["key"]))
     stats = ledger.build(con, out, f"GBIF download {state['downloads']['ledger_cube']['key']}", districts.PATH)
@@ -175,11 +231,16 @@ def build(args):
         "stats": stats,
         "files": {p.name: p.stat().st_size for p in sorted(out.iterdir()) if p.suffix in (".parquet",)},
         "district_map": bpath,
+        "inputs": fingerprint,
+        "health": state.get("health", [{}])[-1],
         "licence": "Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences; cite the DOIs.",
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
+    return finish(args, state, out, manifest, summary, bpath, bfile, publish)
 
-    publish = args.publish and not state["region"]
+
+def finish(args, state, out, manifest, summary, bpath, bfile, publish):
+    run_id = state["run_id"]
     previous = None
     s3 = None
     if publish:
@@ -197,18 +258,21 @@ def build(args):
 
     if publish:
         prefix = f"snapshots/{run_id}"
-        if r2.exists(s3, f"{prefix}/manifest.json"):
-            sys.exit(f"{prefix} already exists in R2; snapshots are never overwritten")
-        if not r2.exists(s3, bpath):
-            r2.put_file(s3, bfile, bpath)
-        files = [p for p in sorted(out.rglob("*")) if p.suffix in (".parquet", ".json") and p.name != "manifest.json"]
-        with ThreadPoolExecutor(8) as pool:
-            list(pool.map(lambda p: r2.put_file(s3, p, f"{prefix}/{p.relative_to(out).as_posix()}"), files))
-        # The manifest goes last: its presence marks a complete snapshot.
-        r2.put_file(s3, out / "manifest.json", f"{prefix}/manifest.json")
+        remote = r2.get_json(s3, f"{prefix}/manifest.json")
+        if remote and remote.get("inputs") != manifest["inputs"]:
+            sys.exit(f"{prefix} already exists in R2 from other inputs; snapshots are never overwritten")
+        if not remote:
+            r2.sync_file(s3, bfile, bpath)
+            files = [p for p in sorted(out.rglob("*")) if p.suffix in (".parquet", ".json") and p.name != "manifest.json"]
+            with ThreadPoolExecutor(8) as pool:
+                sent = sum(pool.map(lambda p: r2.sync_file(s3, p, f"{prefix}/{p.relative_to(out).as_posix()}"), files))
+            print(f"uploaded {sent} of {len(files)} files (the rest were already in R2)")
+            # The manifest goes last: its presence marks a complete snapshot.
+            r2.sync_file(s3, out / "manifest.json", f"{prefix}/manifest.json")
         latest = {"run_id": run_id, "built": summary["built"], "base": f"{prefix}/",
                   "manifest": f"{prefix}/manifest.json", "summary": f"{prefix}/summary.json", "boundaries": bpath}
-        r2.put_json(s3, latest, "latest.json")
+        if r2.get_json(s3, "latest.json") != latest:
+            r2.put_json(s3, latest, "latest.json")
         SITE_DATA.mkdir(parents=True, exist_ok=True)
         (SITE_DATA / "latest.json").write_text(json.dumps(latest, indent=1) + "\n")
         state["status"] = "published"
