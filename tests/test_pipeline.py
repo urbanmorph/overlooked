@@ -1,3 +1,5 @@
+import json
+
 import duckdb
 import pytest
 
@@ -65,3 +67,36 @@ def test_checks_flag_big_change():
 def test_checks_need_doi():
     summary = {"ledger_rows": 1, "districts": 1, "species": 1}
     assert checks.run(summary, {"downloads": [{"key": "k", "doi": None}]})
+
+
+def test_unsurveyed_groups_are_not_counted_as_quiet(tmp_path):
+    from pipeline import site_data
+    con = duckdb.connect()
+    # District 101: one fern recorded in 1950 only, ferns never recorded there since 1980 (unsurveyed);
+    # one orchid last seen 1950 while another orchid was seen in 2020 (quiet, counted).
+    con.sql("""CREATE TABLE ledger AS SELECT * FROM (VALUES
+        ('F1', 101, 32, 1950, 1950, 1), ('O1', 101, 32, 1950, 1950, 1), ('O2', 101, 32, 2020, 2020, 1))
+        t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""")
+    con.sql("""CREATE TABLE species AS SELECT * FROM (VALUES
+        ('F1', 'Fern one', 'Plantae', 'Tracheophyta', 'Polypodiopsida', 'Polypodiales', 'Pteridaceae'),
+        ('O1', 'Orchid one', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae'),
+        ('O2', 'Orchid two', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae'))
+        t(species_key, name, kingdom, phylum, class, "order", family)""")
+    con.sql("CREATE TABLE districts AS SELECT 101 AS dist_lgd")
+    summary = site_data.build(con, tmp_path, {"run_id": "t"})
+    d = json.loads((tmp_path / "map_stats.json").read_text())["districts"]["101"]
+    assert d["q"][0][0] == 1   # only the orchid counts as quiet since 1980
+    assert d["u"][0][0] == 1   # the fern is set apart
+    assert summary["districts_with_quiet"]["1980"] == 1
+
+
+def test_names_from_history(tmp_path):
+    from pipeline import names
+    tsv = tmp_path / "h.tsv"
+    tsv.write_text("specieskey\tkingdom\tphylum\tclass\torder\tfamily\tgenus\tspecies\tdecade\tbasisofrecord\tn_records\n"
+                   "5VKF2\tAnimalia\tChordata\tAves\tPasseriformes\tMotacillidae\tAnthus\tAnthus nilghiriensis\t2010\tHUMAN_OBSERVATION\t7\n"
+                   "5VKF2\tAnimalia\tChordata\tAves\tPasseriformes\tMotacillidae\tAnthus\tAnthus nilghiriensis\t1990\tPRESERVED_SPECIMEN\t2\n")
+    con = duckdb.connect()
+    names.load_history(con, tsv)
+    assert con.sql("SELECT name FROM species").fetchall() == [("Anthus nilghiriensis",)]
+    assert con.sql("SELECT sum(n_records) FROM species_decade").fetchone()[0] == 9

@@ -30,7 +30,7 @@ permissions:
 jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v7

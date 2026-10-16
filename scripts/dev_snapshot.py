@@ -50,7 +50,7 @@ def main():
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "dev": True,
         "taxon_ids": "gbif",
-        "dev_note": "Development data: fnf download of 13 October 2026. Birds and mammals are not included.",
+        "dev_note": "This page uses test data: the fnf download of 13 October 2026. The data does not include birds and mammals.",
         "dois": ["10.15468/dl.w34hz8"],
         "gbif_snapshot": "2026-10-13",
         "col_release": "COL26.9 XR (25 September 2026)",

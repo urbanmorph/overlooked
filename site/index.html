@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overlooked: gaps in India's public biodiversity data</title>
-<meta name="description" content="A monthly monitor of which species in India have no public record, and where. Every figure links to its source.">
+<meta name="description" content="Overlooked shows the species in India that have no public record, and where. It updates each month. Each figure shows its source.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@
     <div class="grow">
       <p class="eyebrow">A monthly monitor of public biodiversity data</p>
       <h1>Which species in India have no public record, and where?</h1>
-      <p class="lede">Overlooked rebuilds itself each month from public data. It shows the latest public record of each species in each district, and which species have none since a given year.</p>
+      <p class="lede">Overlooked uses public data and updates each month. For each species in each district, it shows the year of the latest public record. It also shows the species that have no public record after a year that you select.</p>
     </div>
     <aside class="side card pad snap" id="snap" aria-label="This snapshot">
       <b>This snapshot</b>
@@ -48,9 +48,9 @@
 
   <section aria-label="Key figures" class="kpis" id="kpis">
     <a class="card kpi" href="/ledger.html"><b style="color:var(--quiet)">–</b><span>species with no public record in India since 1980</span></a>
-    <a class="card kpi" href="/ledger.html"><b>–</b><span>districts with at least one species quiet since 1980</span></a>
+    <a class="card kpi" href="/ledger.html"><b>–</b><span>districts with one or more species with no public record since 1980</span></a>
     <a class="card kpi" href="/ledger.html"><b>–</b><span>species with a public record in India</span></a>
-    <a class="card kpi" href="/ledger.html"><b>–</b><span>public records placed in a district</span></a>
+    <a class="card kpi" href="/ledger.html"><b>–</b><span>public records with a known district</span></a>
   </section>
 
   <section class="row">
@@ -61,33 +61,33 @@
           <select id="group" style="width:auto"><option value="-1">All groups</option></select>
         </label>
       </div>
-      <p class="note">Species with public records in the district, but none since 1980. Select a district to open its ledger.</p>
+      <p class="note">The map shows the species that have public records in a district, but no record since 1980. If a group has no record in a district since 1980, Overlooked does not count that group there. Possibly nobody surveyed the group in that district. Select a district to open its ledger.</p>
       <div class="map" id="map"><p class="loading">Loading map…</p></div>
       <div class="legend" id="legend"></div>
     </div>
     <div class="side card pad">
       <h2>Quiet species by group</h2>
-      <p class="note">The 12 groups with the highest share of species with no public record in India since 1980 (groups of 100 species or more)</p>
+      <p class="note">These are the 12 groups with the highest percentage of species that have no public record in India since 1980. Each group has 100 species or more.</p>
       <div class="gbars" id="gbars" style="margin-top:16px"></div>
       <h2 style="margin-top:28px">This month</h2>
-      <p class="note">The change feed starts after the second monthly run, when there is a previous month to compare with.</p>
+      <p class="note">The change feed starts after the second monthly update. Then Overlooked can compare two months.</p>
     </div>
   </section>
 
   <section>
-    <h2>What you can ask here</h2>
-    <p class="note" style="font-size:16px">Each module answers one question across the whole country. Every figure carries its date and source.</p>
+    <h2>Questions that Overlooked answers</h2>
+    <p class="note" style="font-size:16px">Each module answers one question for all of India. Each figure shows its date and its source.</p>
     <div class="mods">
       <a class="card mod" href="/ledger.html"><span class="mono">01</span><b>Last-seen ledger</b><span>For each species and district, when was the latest public record? Which species have no public record since 1980?</span></a>
-      <div class="card mod later"><span class="tag">Coming</span><b>Change feed</b><span>Quiet species recorded again. First records in a state. Groups that get quieter.</span></div>
-      <div class="card mod later"><span class="tag">Coming</span><b>Follow-up on new species</b><span>Species described from India since 2015. Has anyone recorded them since?</span></div>
+      <div class="card mod later"><span class="tag">Later</span><b>Change feed</b><span>Species with a new record after a long time. The first record of a species in a state. Groups with more species that have no recent record.</span></div>
+      <div class="card mod later"><span class="tag">Later</span><b>Follow-up on new species</b><span>Scientists described these species from India after 2014. Is there a public record of each species after its description?</span></div>
     </div>
   </section>
 
   <section class="act">
     <div style="flex:999 1 420px">
-      <h2>Seen one of these species?</h2>
-      <p>Overlooked takes no records. Add yours where others can check and use it.</p>
+      <h2>Did you see one of these species?</h2>
+      <p>Overlooked does not collect records. Send your record to one of these sites. Then other people can check it and use it.</p>
     </div>
     <div class="links">
       <a class="primary" href="https://www.inaturalist.org/observations/new">Record on iNaturalist</a>

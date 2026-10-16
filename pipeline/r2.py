@@ -7,10 +7,9 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 
-CACHE = {
-    ".json": "public, max-age=300",
-    ".parquet": "public, max-age=31536000, immutable",
-}
+# Snapshot files never change once written; only latest.json moves.
+IMMUTABLE = "public, max-age=31536000, immutable"
+SHORT = "public, max-age=300"
 TYPES = {".json": "application/json", ".parquet": "application/vnd.apache.parquet"}
 
 
@@ -47,13 +46,13 @@ def get_json(s3, key):
         raise
 
 
-def put_file(s3, path: Path, key):
+def put_file(s3, path: Path, key, immutable=True):
     s3.upload_file(str(path), bucket(), key, ExtraArgs={
         "ContentType": TYPES.get(path.suffix, "application/octet-stream"),
-        "CacheControl": CACHE.get(path.suffix, "public, max-age=300"),
+        "CacheControl": IMMUTABLE if immutable else SHORT,
     })
 
 
 def put_json(s3, obj, key):
     s3.put_object(Bucket=bucket(), Key=key, Body=json.dumps(obj, indent=1).encode(),
-                  ContentType="application/json", CacheControl=CACHE[".json"])
+                  ContentType="application/json", CacheControl=SHORT)

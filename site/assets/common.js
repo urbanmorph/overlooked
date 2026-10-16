@@ -39,7 +39,7 @@ export function showDevBanner(summary) {
   if (!summary.dev) return;
   const div = document.createElement('div');
   div.className = 'dev';
-  div.innerHTML = `<div class="wrap"><b>Development preview.</b> ${esc(summary.dev_note)} Figures are not for citation.</div>`;
+  div.innerHTML = `<div class="wrap"><b>Development preview.</b> ${esc(summary.dev_note)} Do not cite these figures.</div>`;
   document.body.appendChild(div);
   document.body.style.paddingBottom = '64px';
 }

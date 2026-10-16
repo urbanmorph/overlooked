@@ -26,6 +26,7 @@ const st = {
   since: years.includes(+url.get('since')) ? +url.get('since') : years[0],
   q: url.get('q') || '',
   all: url.get('all') === '1',
+  unsurv: url.get('unsurveyed') === '1',
   sort: 'last', dir: 1, page: 0,
 };
 if (st.district != null && byId.has(st.district)) st.state = byId.get(st.district).state_lgd;
@@ -47,6 +48,7 @@ function fillDistricts() {
 
 function syncControls() {
   fGroup.value = st.group; fState.value = st.state ?? ''; fSince.value = st.since; fQ.value = st.q; fAll.checked = st.all;
+  $('#f-unsurv').checked = st.unsurv;
   fillDistricts();
   $('#all-wrap').hidden = st.district == null;
 }
@@ -58,6 +60,7 @@ function syncURL() {
   if (st.since !== years[0]) p.set('since', st.since);
   if (st.q) p.set('q', st.q);
   if (st.all && st.district != null) p.set('all', '1');
+  if (st.unsurv) p.set('unsurveyed', '1');
   history.replaceState(null, '', p.toString() ? `?${p}` : location.pathname);
 }
 
@@ -99,12 +102,22 @@ async function loadRows() {
   return data.scope;
 }
 
+// Effort for the current area: species of each group recorded since each year. A group with none is
+// treated as unsurveyed there: its old records are shown apart, not counted as quiet.
+function area() {
+  if (st.district != null) return stats.districts[st.district] || { s: [], a: years.map(() => []) };
+  if (st.state != null) return stats.states[st.state] || { s: [], a: years.map(() => []) };
+  return stats.india;
+}
+const isOld = r => r.last != null && r.last < st.since;
+function surveyed(r) { return (area().a[years.indexOf(st.since)][r.gi + 1] || 0) > 0; }
+
 const KEYS = { name: r => r.name, gi: r => groups[r.gi], family: r => r.family, first: r => r.first ?? 9999, last: r => r.last ?? 9999, n: r => r.n };
 
 function filter() {
   const q = st.q.toLowerCase();
   const allMode = st.all && st.district != null;
-  view = rows.filter(r => (allMode || (r.last != null && r.last < st.since))
+  view = rows.filter(r => (allMode || (isOld(r) && (surveyed(r) || st.unsurv)))
     && (st.group < 0 || r.gi === st.group)
     && (!q || r.name.toLowerCase().includes(q) || r.family.toLowerCase().includes(q)));
   const key = KEYS[st.sort], dir = st.dir;
@@ -119,9 +132,10 @@ function areaLabel() {
 
 function renderAside() {
   const gi = st.group + 1, yi = years.indexOf(st.since);
-  const src = st.district != null ? stats.districts[st.district] : st.state != null ? stats.states[st.state] : null;
-  const total = src ? src.s[gi] : (st.group < 0 ? summary.species : summary.group_species[st.group]);
-  const quiet = rows.filter(r => r.last != null && r.last < st.since && (st.group < 0 || r.gi === st.group));
+  const total = area().s[gi];
+  const old = rows.filter(r => isOld(r) && (st.group < 0 || r.gi === st.group));
+  const quiet = old.filter(surveyed);
+  const unsurveyed = old.length - quiet.length;
   const before1950 = quiet.filter(r => r.last < 1950).length;
   const counts = new Map();
   for (const r of quiet) counts.set(r.gi, (counts.get(r.gi) || 0) + 1);
@@ -134,12 +148,13 @@ function renderAside() {
       <dt>Species with public records</dt><dd>${fmt(total ?? 0)}</dd>
       <dt>No public record since ${st.since}</dt><dd class="q">${fmt(quiet.length)}</dd>
       <dt>Latest record before 1950</dt><dd>${fmt(before1950)}</dd>
+      <dt>Not counted: no record of the group here since ${st.since}</dt><dd>${fmt(unsurveyed)}</dd>
     </dl>
     ${top.length && st.group < 0 ? `<div style="border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px">
       <div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px">Quiet species by group</div>
       <div class="gbars">${top.map(([g, c]) => `<div><span>${esc(groups[g])}</span><span class="bar"><i style="width:${(100 * c / max).toFixed(1)}%"></i></span><span>${fmt(c)}</span></div>`).join('')}</div>
     </div>` : ''}
-    ${st.district != null || st.state != null ? '<button class="b" type="button" id="clear" style="margin-top:16px">Back to all of India</button>' : ''}`;
+    ${st.district != null || st.state != null ? '<button class="b" type="button" id="clear" style="margin-top:16px">Show all of India</button>' : ''}`;
   const c = $('#clear');
   if (c) c.addEventListener('click', () => { st.district = null; st.state = null; update(); });
 }
@@ -149,20 +164,23 @@ function renderTable() {
   $('#count').innerHTML = allMode
     ? `${fmt(view.length)} species in ${esc(areaLabel())}`
     : `${fmt(view.length)} species with no public record since ${st.since} in ${esc(areaLabel())}`;
-  $('#scope').textContent = st.district == null
-    ? 'Select a district to see every species recorded there, not only quiet ones.'
-    : '';
+  const parts = [];
+  if (st.district == null) parts.push('To see all the species with records in an area, select a district.');
+  if (!allMode) parts.push(st.unsurv
+    ? `This list includes groups with no record here since ${st.since}. A label shows these species.`
+    : `This list does not include groups with no record here since ${st.since}. Possibly nobody surveyed these groups here.`);
+  $('#scope').textContent = parts.join(' ');
   const pages = Math.max(1, Math.ceil(view.length / PAGE));
   st.page = Math.min(st.page, pages - 1);
   const slice = view.slice(st.page * PAGE, st.page * PAGE + PAGE);
   $('#rows').innerHTML = slice.length ? slice.map(r => `<tr>
       <td class="sp"><a href="${taxonURL(r.key)}">${esc(r.name)}</a></td>
-      <td>${esc(groups[r.gi])}</td>
+      <td>${esc(groups[r.gi])}${!allMode && !surveyed(r) ? '<br><span class="tagu">no record of the group here since ' + st.since + '</span>' : ''}</td>
       <td class="muted">${esc(r.family)}</td>
       <td class="n"><span class="yr">${r.first ?? '<span class="muted">unknown</span>'}</span></td>
       <td class="n"><span class="yr${r.last != null && r.last < st.since ? ' q' : ''}">${r.last ?? '<span class="muted">unknown</span>'}</span></td>
       <td class="n mono">${fmt(r.n)}</td></tr>`).join('')
-    : `<tr><td colspan="6" class="muted" style="padding:28px 14px">No species match these filters.</td></tr>`;
+    : `<tr><td colspan="6" class="muted" style="padding:28px 14px">There are no species for these filters.</td></tr>`;
   $('#pinfo').textContent = view.length ? `Showing ${fmt(st.page * PAGE + 1)} to ${fmt(st.page * PAGE + slice.length)} of ${fmt(view.length)}` : '';
   $('#prev').disabled = st.page === 0; $('#next').disabled = st.page >= pages - 1;
   for (const b of document.querySelectorAll('th button')) {
@@ -187,6 +205,7 @@ fSince.addEventListener('change', () => { st.since = +fSince.value; st.page = 0;
 fState.addEventListener('change', () => { st.state = fState.value === '' ? null : +fState.value; st.district = null; update(); });
 fDist.addEventListener('change', () => { st.district = fDist.value === '' ? null : +fDist.value; if (st.district != null) st.state = byId.get(st.district).state_lgd; update(); });
 fAll.addEventListener('change', () => { st.all = fAll.checked; st.page = 0; syncURL(); refresh(); });
+$('#f-unsurv').addEventListener('change', e => { st.unsurv = e.target.checked; st.page = 0; syncURL(); refresh(); });
 let qt;
 fQ.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { st.q = fQ.value.trim(); st.page = 0; syncURL(); refresh(); }, 150); });
 $('#prev').addEventListener('click', () => { st.page--; renderTable(); });

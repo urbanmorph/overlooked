@@ -21,15 +21,19 @@ from pathlib import Path
 
 import duckdb
 
-from pipeline import checks, districts, gbif, ledger
+from concurrent.futures import ThreadPoolExecutor
+
+from pipeline import boundaries as boundary_map
+from pipeline import checks, districts, gbif, ledger, names, site_data
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 SNAPSHOTS = ROOT / "data" / "snapshots"
 SITE_DATA = ROOT / "site" / "data"
 
-# Queries B to D join this list as they are written (docs/plan.md, section 3).
-QUERIES = ["ledger_cube"]
+# Query A (ledger) and C (species history and names). B and D were dropped: effort comes from the
+# ledger itself, and names come with query C (docs/plan.md, section 3).
+QUERIES = ["ledger_cube", "species_history"]
 DONE = "SUCCEEDED"
 FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
@@ -117,18 +121,28 @@ def build(args):
     ledger.load_cube(con, ledger.unpack(state["downloads"]["ledger_cube"]["key"]))
     stats = ledger.build(con, out, f"GBIF download {state['downloads']['ledger_cube']['key']}", districts.PATH)
 
-    summary = {
+    names.load_history(con, ledger.unpack(state["downloads"]["species_history"]["key"]))
+    con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+    con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+
+    # The district map depends only on the boundary file, so it is stored once per boundary version.
+    bpath = f"boundaries/lgd-{boundaries['sha256'][:12]}/districts_map.json"
+    bfile = SNAPSHOTS / "_shared" / bpath
+    if not bfile.exists():
+        bfile.parent.mkdir(parents=True, exist_ok=True)
+        bfile.write_text(json.dumps(boundary_map.build(districts.PATH), separators=(",", ":")))
+
+    meta = {
         "run_id": run_id,
         "built": now(),
         "taxon_ids": "col",
-        "species": stats["species"],
-        "records": stats["records"],
-        "districts": stats["districts"],
-        "ledger_rows": stats["ledger_rows"],
-        "species_quiet_since_1980": con.sql("""
-            SELECT count(*) FROM (SELECT species_key FROM ledger GROUP BY species_key HAVING max(last_year) < 1980)
-        """).fetchone()[0],
+        "dois": [metas[n]["doi"] for n in QUERIES],
+        "gbif_snapshot": metas["ledger_cube"].get("created", "")[:10],
+        "region": state["region"],
     }
+    summary = site_data.build(con, out, meta)
+    summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"]})
+    (out / "summary.json").write_text(json.dumps(summary, separators=(",", ":")))
     manifest = {
         "run_id": run_id,
         "region": state["region"],
@@ -140,9 +154,9 @@ def build(args):
         "placement": "coordinates rounded to 3 decimals; points within 5 km of a district take the nearest one",
         "stats": stats,
         "files": {p.name: p.stat().st_size for p in sorted(out.iterdir()) if p.suffix in (".parquet",)},
+        "district_map": bpath,
         "licence": "Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences; cite the DOIs.",
     }
-    (out / "summary.json").write_text(json.dumps(summary, indent=1))
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
 
     publish = args.publish and not state["region"]
@@ -165,11 +179,15 @@ def build(args):
         prefix = f"snapshots/{run_id}"
         if r2.exists(s3, f"{prefix}/manifest.json"):
             sys.exit(f"{prefix} already exists in R2; snapshots are never overwritten")
-        for p in sorted(out.iterdir()):
-            if p.suffix in (".parquet", ".json"):
-                r2.put_file(s3, p, f"{prefix}/{p.name}")
-        latest = {"run_id": run_id, "built": summary["built"], "manifest": f"{prefix}/manifest.json",
-                  "summary": f"{prefix}/summary.json"}
+        if not r2.exists(s3, bpath):
+            r2.put_file(s3, bfile, bpath)
+        files = [p for p in sorted(out.rglob("*")) if p.suffix in (".parquet", ".json") and p.name != "manifest.json"]
+        with ThreadPoolExecutor(8) as pool:
+            list(pool.map(lambda p: r2.put_file(s3, p, f"{prefix}/{p.relative_to(out).as_posix()}"), files))
+        # The manifest goes last: its presence marks a complete snapshot.
+        r2.put_file(s3, out / "manifest.json", f"{prefix}/manifest.json")
+        latest = {"run_id": run_id, "built": summary["built"], "base": f"{prefix}/",
+                  "manifest": f"{prefix}/manifest.json", "summary": f"{prefix}/summary.json", "boundaries": bpath}
         r2.put_json(s3, latest, "latest.json")
         SITE_DATA.mkdir(parents=True, exist_ok=True)
         (SITE_DATA / "latest.json").write_text(json.dumps(latest, indent=1) + "\n")
@@ -177,7 +195,7 @@ def build(args):
     else:
         state["status"] = "built"
     state["finished"] = now()
-    state["summary"] = summary
+    state["summary"] = {k: summary[k] for k in ("species", "records", "districts", "ledger_rows", "quiet_species")}
     save(state)
     print(json.dumps(summary, indent=1))
 
