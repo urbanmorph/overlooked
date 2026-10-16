@@ -20,6 +20,8 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- All-India run: species history ready at 20:23 IST (146,689 rows); query U submitted (`0030871-260928105237408`). GBIF and GitHub work went on while the laptop slept; only local helpers paused.
+- Module 5 checked in the browser on test data: 2,955,818 iNaturalist observations from India wait for a name (54% of verifiable ones; 76% added before 2026). Fungi: 95% waiting, 865 identifiers in 12 months. Ledger notes work; the iNaturalist request budget stops cleanly and continues next run.
 - All-India run `2026-10`: ledger download ready at 19:44 (11.8 million rows, 311 MB, key `0030725-260928105237408`). Build on Actions passed the health check and submitted species history (`0030812-260928105237408`); query U follows.
 - Module 5 brought forward. The India Biodiversity Portal is not contacted; its GBIF dataset is used as it is.
 - iNaturalist layer: all 36 states mapped to iNaturalist places (two manual matches: Ladakh; Dadra, Nagar Haveli, Daman & Diu). Backlog by state, group and year; identifiers per group; direct check of quiet species with a 9,000-request daily budget that continues next day. Stored apart from the GBIF snapshot, with its own date. First sample: of 10 fish quiet in Kerala since 1980, 7 have recent research-grade iNaturalist observations in India, several without an open licence.
