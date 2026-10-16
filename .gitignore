@@ -9,3 +9,8 @@ data/
 *.parquet
 node_modules/
 .wrangler/
+.env.*
+!.env.example
+*.pem
+*.key
+.dev.vars
