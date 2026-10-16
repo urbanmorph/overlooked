@@ -20,7 +20,7 @@ Newest first. Updated as work happens.
 ### 16 October 2026
 
 - End-to-end test passed on both Kerala downloads (doi:10.15468/dl.6mfzfh, doi:10.15468/dl.v7fx5r): full monthly build in 11 s; all 9,243 species named; page data and district map written; both pages work on it with no errors. Pages now show a plain message if data fails to load.
-- Owner approved a real snapshot in R2 and production deploys. All-India run starting.
+- Owner approved a real snapshot in R2 and production deploys. All-India run `2026-10` started on Actions: ledger download `0030725-260928105237408` submitted 13:21 UTC; species history follows when it finishes.
 - Decision: for BSI and ZSI we rely on the web-policy clause that allows free reproduction with prominent acknowledgement. No permission request. Every page that uses their data credits them by name.
 - Cloudflare Pages project `overlooked-india` created (GitHub `main`, output `site/`, R2 bound as `DATA`, rebuilds only for `site/` and `functions/`). Production deploys off until a real snapshot is published.
 - Source limits documented in `docs/sources.md` (GBIF, COL, Kew, IPNI, Index Fungorum, MycoBank, ZooBank, Plazi, BSI, iNaturalist, IUCN, bharatlas, Cloudflare, GitHub, data.gov.in).
