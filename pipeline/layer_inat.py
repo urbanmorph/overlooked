@@ -46,8 +46,9 @@ def main():
     client = inat.Client(a.budget)
     s3 = None
     if a.publish:
-        from pipeline import gbif, r2
-        gbif.session()  # loads .env locally
+        from dotenv import load_dotenv
+        from pipeline import r2
+        load_dotenv(ROOT / ".env", override=True)  # local runs; in Actions the secrets are set directly
         s3 = r2.client()
         sync_cache(s3, "down")
 
