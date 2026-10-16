@@ -1,12 +1,12 @@
 name: iNaturalist layer
 
 # Module 5: identification backlog and a direct check of quiet species on iNaturalist.
-# Daily on days 2 to 15 (it continues within iNaturalist's daily limit until the month is done),
+# Daily: it continues within iNaturalist's daily limit until the month is done, then does nothing;
 # and by hand. Scheduled runs need the repository variable PIPELINE_ENABLED = true.
 
 on:
   schedule:
-    - cron: "23 5 2-15 * *"
+    - cron: "23 5 * * *"
   workflow_dispatch:
     inputs:
       budget:

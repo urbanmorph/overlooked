@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sources and method · Overlooked</title>
+<meta name="description" content="How Overlooked builds each monthly snapshot, the sources it uses, their terms, and how to download the data.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<script type="module" src="/assets/method.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Overview</a>
+      <a href="/ledger">Last seen</a>
+      <a href="/backlog">Waiting for a name</a>
+      <span>Changes<small>soon</small></span>
+      <span>New species<small>soon</small></span>
+      <a href="/method" aria-current="page">Sources and method</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <h1 class="page">Sources and method</h1>
+    <p class="lede">Each month a scheduled job takes fresh data from the sources, computes every figure again, and publishes the result as a dated snapshot. Nobody edits the figures by hand. A snapshot never changes after it is published.</p>
+  </section>
+
+  <section>
+    <h2>The monthly run</h2>
+    <ol class="steps">
+      <li class="card"><span class="mono">01</span><b>Check the sources</b><span>One request to each source. If GBIF or the data store does not answer, the run stops.</span></li>
+      <li class="card"><span class="mono">02</span><b>Download</b><span>Three GBIF downloads, one after another. Each has its own DOI.</span></li>
+      <li class="card"><span class="mono">03</span><b>Place</b><span>Each record goes to its LGD district by its coordinates.</span></li>
+      <li class="card"><span class="mono">04</span><b>Compute</b><span>The ledger, the groups, and the records with no species name.</span></li>
+      <li class="card"><span class="mono">05</span><b>Check</b><span>Every download has a DOI. Large changes from last month stop the run.</span></li>
+      <li class="card"><span class="mono">06</span><b>Publish</b><span>The files go to the data store. The site reads them in your browser.</span></li>
+    </ol>
+    <p class="note">The job can run again safely. It does not repeat finished steps, and it does not send a file again if the data store already has the same file. If GBIF reports no change since the last run, the month downloads nothing.</p>
+  </section>
+
+  <section class="row">
+    <div class="grow card pad">
+      <h2>What the words mean</h2>
+      <dl class="defs">
+        <dt>Public record</dt><dd>A record in GBIF with a place in India and a date. Specimens, observations and records from papers all count.</dd>
+        <dt>No public record since 1980</dt><dd>GBIF has no record of the species in the area after 1980. It does not mean that the species is not there now. Records can exist that nobody has published.</dd>
+        <dt>Quiet</dt><dd>A species with records in an area, but no record after the year that you select. The default year is 1980.</dd>
+        <dt>Group not recorded since the year</dt><dd>If a group has no record in an area after the year, Overlooked does not count that group as quiet there. Possibly nobody surveyed the group.</dd>
+        <dt>District</dt><dd>LGD district boundaries. A record goes to a district by its coordinates, rounded to 3 decimals (about 110 m). A point less than 5 km from land goes to the nearest district. A point farther out is offshore and is not in the ledger.</dd>
+        <dt>Waiting for a name</dt><dd>An iNaturalist observation that does not have an agreed species name yet, or a GBIF record that has only a genus, family or higher name.</dd>
+      </dl>
+    </div>
+    <div class="side card pad">
+      <h2>Records used</h2>
+      <ul class="plain">
+        <li>Country: India, with coordinates and no known problem with the place</li>
+        <li>Status: present</li>
+        <li>Uncertainty of the place: 25 km or less</li>
+        <li>No fossils, and no living specimens in zoos or gardens</li>
+        <li>Some datasets are not used, for example gene-bank and compiled crop data</li>
+      </ul>
+      <p class="note">Names follow the Catalogue of Life, as GBIF uses it. Species links go to the Catalogue of Life.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="bar-head"><h2 style="font-size:20px" id="snaph">This snapshot</h2></div>
+    <div class="tablebox">
+      <table style="min-width:720px">
+        <thead><tr><th>Download</th><th>DOI</th><th>Created</th><th class="n">Rows</th></tr></thead>
+        <tbody id="downloads"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note" style="padding:0 18px 18px" id="snapmeta"></p>
+  </section>
+
+  <section class="card">
+    <div class="bar-head"><h2 style="font-size:20px">Health of the sources at this run</h2></div>
+    <div class="tablebox">
+      <table style="min-width:640px">
+        <thead><tr><th>Source</th><th>Used for</th><th>Answer</th><th class="n">Time</th></tr></thead>
+        <tbody id="health"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card pad">
+    <h2>Sources and credit</h2>
+    <div class="tablebox">
+      <table style="min-width:760px;margin-top:10px">
+        <thead><tr><th>Source</th><th>Used for</th><th>Licence or terms</th></tr></thead>
+        <tbody>
+          <tr><td><b>GBIF.org</b></td><td>All public records</td><td>Each record keeps the licence of its dataset (CC0, CC BY or CC BY-NC). Cite the download DOIs above.</td></tr>
+          <tr><td><b>Catalogue of Life</b></td><td>Species names, as GBIF uses them</td><td>CC BY 4.0</td></tr>
+          <tr><td><b>Local Government Directory</b>, via bharatlas</td><td>District boundaries</td><td>CC0 1.0 / CC BY 4.0</td></tr>
+          <tr><td><b>iNaturalist</b></td><td>Counts of observations that wait for a name; newer observations of quiet species</td><td>Counts from api.inaturalist.org. Each observation keeps its own licence. Open-licence research-grade observations also reach GBIF.</td></tr>
+          <tr><td><b>India Biodiversity Portal</b></td><td>Its records in GBIF</td><td>CC BY 4.0. Its GBIF dataset has records until 2024.</td></tr>
+          <tr><td><b>Botanical Survey of India</b> (Plant Discoveries; Indian Virtual Herbarium)</td><td>New plant species and new records for India (module 3)</td><td>Reproduced free of charge, accurately, with acknowledgement. Source: Botanical Survey of India, Ministry of Environment, Forest and Climate Change, Government of India.</td></tr>
+          <tr><td><b>Zoological Survey of India</b> (Fauna of India Checklist)</td><td>Checklist of animal species (later module)</td><td>Reproduced free of charge, accurately, with acknowledgement. Source: Zoological Survey of India, Ministry of Environment, Forest and Climate Change, Government of India.</td></tr>
+          <tr><td><b>Plazi</b>, <b>IPNI</b>, <b>Index Fungorum</b></td><td>Names of new species (module 3)</td><td>Plazi: CC0. IPNI: CC BY. Index Fungorum: open web service.</td></tr>
+          <tr><td><b>Royal Botanic Gardens, Kew</b> (WCVP)</td><td>Plant checklist (later module)</td><td>CC BY 4.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="grow card pad">
+      <h2>Download the data</h2>
+      <p class="note">Parquet files of this snapshot. You can read them with DuckDB, pandas or R. Older snapshots stay available.</p>
+      <ul class="plain" id="files"><li class="muted">Loading…</li></ul>
+    </div>
+    <div class="side act" style="display:block">
+      <h2>Licence</h2>
+      <p>Data and text on this site: CC BY 4.0, Sathya Sankaran. Code: MIT.</p>
+      <p>Each source keeps its own licence. When you use these figures, cite this site, the GBIF download DOIs, and the sources above.</p>
+      <div class="links" style="margin-top:12px"><a href="https://github.com/urbanmorph/overlooked">Code on GitHub</a></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences.</span>
+    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a>
+  </div>
+</footer>
+</body>
+</html>
