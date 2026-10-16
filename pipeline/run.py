@@ -280,7 +280,8 @@ def finish(args, state, out, manifest, summary, bpath, bfile, publish):
             print(f"uploaded {sent} of {len(files)} files (the rest were already in R2)")
             # The manifest goes last: its presence marks a complete snapshot.
             r2.sync_file(s3, out / "manifest.json", f"{prefix}/manifest.json")
-        latest = {"run_id": run_id, "built": summary["built"], "base": f"{prefix}/",
+        built_at = (r2.get_json(s3, f"{prefix}/summary.json") or summary)["built"] if remote else summary["built"]
+        latest = {"run_id": run_id, "built": built_at, "base": f"{prefix}/",
                   "manifest": f"{prefix}/manifest.json", "summary": f"{prefix}/summary.json", "boundaries": bpath}
         if r2.get_json(s3, "latest.json") != latest:
             r2.put_json(s3, latest, "latest.json")
