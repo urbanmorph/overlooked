@@ -144,3 +144,20 @@ def unresolved_json(con, out: Path):
            "india": by("0")["0"]}
     dump(obj, out / "unresolved.json")
     return obj["india"]["n"]
+
+
+def changes_json(con, out: Path, counts, previous, summary):
+    """Page data for the change feed. previous: the previous snapshot's summary, or None (first run)."""
+    if previous is None:
+        dump({"baseline": True, "previous": None}, out / "changes.json")
+        return
+    rows = con.sql("""
+        SELECT c.change, c.species_key, s.name, g.gi, c.district_lgd, c.state_lgd, c.before_year, c.now_year, c.reason
+        FROM changes c JOIN sp s USING (species_key) JOIN gidx g USING (grp)
+        ORDER BY CASE c.change WHEN 'recorded_again' THEN 0 WHEN 'first_in_state' THEN 1 WHEN 'now_quiet' THEN 2 ELSE 3 END,
+                 c.now_year DESC NULLS LAST, s.name
+    """).fetchall()
+    prev_q = dict(zip(previous.get("groups", []), previous.get("group_quiet_1980", [])))
+    groups = [{"group": g, "before": prev_q.get(g), "now": q} for g, q in zip(summary["groups"], summary["group_quiet_1980"])]
+    dump({"baseline": False, "previous": previous["run_id"], "counts": counts, "groups": groups, "rows": rows},
+         out / "changes.json")
