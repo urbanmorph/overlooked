@@ -16,3 +16,4 @@ node_modules/
 .dev.vars
 *.egg-info/
 .playwright-mcp/
+.wrangler/

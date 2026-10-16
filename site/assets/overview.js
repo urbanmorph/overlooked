@@ -33,7 +33,7 @@ sel.insertAdjacentHTML('beforeend', s.groups.map((g, i) => `<option value="${i}"
 const [boundaries, stats] = await mapP;
 const map = drawMap($('#map'), boundaries, {
   label: 'Map of India: number of quiet species in each district',
-  onPick: d => { location.href = `/ledger.html?district=${d.id}`; },
+  onPick: d => { location.href = `/ledger?district=${d.id}`; },
 });
 
 function paint() {

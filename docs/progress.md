@@ -7,7 +7,7 @@ Newest first. Updated as work happens.
 | Area | State |
 |---|---|
 | Repository, licence, secrets | Done. Public repo `urbanmorph/overlooked` (MIT). Actions secrets: GBIF and bucket-scoped R2 keys only. |
-| Cloudflare | R2 bucket `overlooked-data` (private, CORS set). Pages project not created yet (`overlooked-india.pages.dev` is free). |
+| Cloudflare | R2 bucket `overlooked-data` (private, CORS set). Data function (`functions/data/`) tested locally on wrangler. Pages project waits for one step: add the repo to the Cloudflare GitHub app on `urbanmorph` (organisation owner). |
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
 | Module 1: last-seen ledger | Pipeline works on Kerala (GBIF test download). Overview and ledger pages work on test data. |
 | Module 2: change feed | Not started. Needs two monthly snapshots. |
@@ -19,6 +19,8 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Pages Function for `/data/*` written and tested on wrangler with local R2: GET, HEAD, Range (206), ETag (304), `cache/` blocked, POST refused. Links now use `/ledger` (Pages redirects `.html`).
+- Pages project: Cloudflare's GitHub app on `urbanmorph` covers selected repositories only, and `overlooked` is not one. Adding it needs an organisation owner.
 - BSI: the earlier blanket exclusion was a misread instruction. BSI is now synced like every other source. A survey of BSI data and terms is running.
 - Rate limits of all sources: research running; results go to `docs/sources.md`.
 - Query C (species history and names) written. Queries B and D dropped. Kerala test download for query C running at GBIF.

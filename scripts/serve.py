@@ -28,6 +28,8 @@ def make_handler(site: Path, data: Path):
             target = (base / rel).resolve()
             if target.is_dir():
                 target = target / "index.html"
+            elif not target.exists() and target.with_suffix(".html").is_file():
+                target = target.with_suffix(".html")  # /ledger -> ledger.html, as on Cloudflare Pages
             if base.resolve() not in target.parents and target != base.resolve():
                 return None
             return target if target.is_file() else None
