@@ -54,9 +54,10 @@ Filters on every query (ported from fnf `01_gbif_download.py`): country IN, has 
 | Query | Groups by | Measures | Feeds |
 |---|---|---|---|
 | A. Ledger cube | speciesKey, ROUND(lat, 3), ROUND(lon, 3) | MIN(year), MAX(year), COUNT(*) | Ledger, change feed |
-| B. Since-year cube | speciesKey, ROUND(lat, 3), ROUND(lon, 3), WHERE year >= 1980 | COUNT(*) | Quiet flag, effort |
-| C. Species history | speciesKey, decade, basisOfRecord | COUNT(*) | Species page chart |
-| D. Taxonomy | speciesKey | kingdom to genus, species name, author | Species table |
+| C. Species history and names | speciesKey, kingdom to species, FLOOR(year / 10) * 10, basisOfRecord | COUNT(*) | Species table, species page chart |
+
+- **Dropped, 16 October 2026:** query B (records since 1980) and query D (taxonomy). Effort comes from the ledger: a group with no species recorded in an area since the chosen year marks the area unsurveyed for that group. Names and classification come with query C.
+- **Species keys are Catalogue of Life IDs** (text, for example `5VKF2`), because GBIF SQL downloads use the COL taxonomy.
 
 - **Rounded points, not grid cells:** coordinates rounded to 3 decimals (about 110 m). The grid test (`scripts/grid_test.py`, on 2.49 million fnf records) compared each method with exact points:
 
