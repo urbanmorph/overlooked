@@ -47,19 +47,28 @@ No application server and no database. The one Pages Function only streams files
 
 ## 3. Data from GBIF
 
-GBIF SQL downloads allow one table, SELECT and GROUP BY, and no joins. Admin columns are GADM, not LGD. So we group by a small grid cell and place cells in LGD districts ourselves.
+GBIF SQL downloads allow one table, SELECT and GROUP BY, and no joins. Admin columns are GADM, not LGD. So we group by rounded coordinates and place the points in LGD districts ourselves.
 
 Filters on every query (ported from fnf `01_gbif_download.py`): country IN, has coordinates, no geospatial issue, occurrence status PRESENT, coordinate uncertainty 25 km or less (or empty), no FOSSIL_SPECIMEN or LIVING_SPECIMEN, the fnf excluded datasets.
 
 | Query | Groups by | Measures | Feeds |
 |---|---|---|---|
-| A. Ledger cube | speciesKey, grid cell | MIN(year), MAX(year), COUNT(*) | Ledger, change feed |
-| B. Since-year cube | speciesKey, grid cell, WHERE year >= 1980 | COUNT(*) | Quiet flag, effort |
+| A. Ledger cube | speciesKey, ROUND(lat, 3), ROUND(lon, 3) | MIN(year), MAX(year), COUNT(*) | Ledger, change feed |
+| B. Since-year cube | speciesKey, ROUND(lat, 3), ROUND(lon, 3), WHERE year >= 1980 | COUNT(*) | Quiet flag, effort |
 | C. Species history | speciesKey, decade, basisOfRecord | COUNT(*) | Species page chart |
 | D. Taxonomy | speciesKey | kingdom to genus, species name, author | Species table |
 
-- **Grid cell:** EQDGC level 6 (1/64 degree, about 1.7 km). Each cell goes to the LGD district that holds its centre. Cells that cross a district border get a flag, and the method page reports how many records sit in such cells.
-- **Size check first:** run A on one state before the national run, to confirm the functions work and to measure row counts. If A is too large, drop to EQDGC level 5 (about 3.5 km).
+- **Rounded points, not grid cells:** coordinates rounded to 3 decimals (about 110 m). The grid test (`scripts/grid_test.py`, on 2.49 million fnf records) compared each method with exact points:
+
+  | Method | Records in a different district | Species x district rows lost | Rows |
+  |---|---|---|---|
+  | EQDGC grid, about 1.7 km | 1.6% | 2.6% | 0.86 M |
+  | EQDGC grid, about 0.9 km | 1.0% | 1.2% | 0.93 M |
+  | Rounded to 3 decimals | 0.2% | 0.15% | 1.10 M |
+
+- **Shore and islands:** district outlines are simplified, so some shore and island points fall just outside. A point within 5 km of a district takes the nearest one; further out it is offshore and left out of the ledger (1.1% of records in the test). The method page reports both counts.
+- **Records with no year** have a place but no date (3.1% in the test). They count as records, but never as the latest year.
+- **Size check first:** run A on one state (Kerala) before the national run, to confirm the query works and to see how much birds add to the row count.
 - Each download has its own DOI. The manifest lists all of them.
 
 ## 4. Names and new species
@@ -98,7 +107,7 @@ cache/                               name lookups, Plazi and IPNI responses (not
 Main columns:
 
 - `species`: species_key, name, author, group, kingdom, phylum, class, order, family, genus, year_described (where known), endemic_india (Kew, plants).
-- `ledger`: species_key, district_lgd, state_lgd, first_year, last_year, n_records, n_since_1980, border_flag. Sorted by state and district, so the browser reads only the row groups it needs.
+- `ledger`: species_key, district_lgd, state_lgd, first_year, last_year, n_records, n_since_1980, n_records_near_shore. Sorted by state and district, so the browser reads only the row groups it needs.
 - `district_group`: district_lgd, group, n_records_since_1980, n_species_since_1980.
 - `new_species`: name, species_key (if matched), group, published_date, journal, doi, type_state, source, matched_by (exact, synonym, verbatim), first_record_after (date), status (recorded, only in later papers, no public record since), years_waited.
 - `changes`: change_type (recorded_again, first_in_state, new_species_followed_up, now_quiet), species_key, area, previous_value, new_value, record_date, reason (new record, or older record newly published).
@@ -154,8 +163,8 @@ docs/                this plan, method notes
 
 ## 10. Build order
 
-1. Test the SQL functions and row counts on one state (query A).
-2. LGD districts from bharatlas: cells to districts.
+1. Test query A and row counts on one state (Kerala).
+2. LGD districts from bharatlas: points to districts.
 3. Ledger and effort tables, built locally from a national download.
 4. Site: overview, ledger, species page, reading from local Parquet.
 5. R2 upload, `latest.json`, Actions workflows. First published snapshot (baseline).
@@ -168,4 +177,4 @@ docs/                this plan, method notes
 2. **Thresholds.** Default quiet year 1980, with a picker for 1990, 2000 and 2010. "Now quiet" in the feed at 30 years.
 3. **IUCN.** Left out of the first release. Its terms forbid bulk redistribution, and our Parquet files are public downloads.
 4. **Groups.** Reuse the fnf group definitions (`09_attention.py`) as they are.
-5. **Grid size.** EQDGC level 6 (about 1.7 km), unless the one-state test shows the files are too large.
+5. **Placement.** Coordinates rounded to 3 decimals instead of a grid, after the grid test. Points within 5 km of land take the nearest district.

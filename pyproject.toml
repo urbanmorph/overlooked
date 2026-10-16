@@ -1,0 +1,15 @@
+[project]
+name = "overlooked"
+version = "0.1.0"
+description = "Monthly monitor of gaps in India's public biodiversity data"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+  "duckdb>=1.1",
+  "pyarrow>=17",
+  "requests>=2.32",
+  "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+packages = ["pipeline"]
