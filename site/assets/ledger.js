@@ -2,6 +2,8 @@ import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine } from './com
 import { drawMap, legendHTML } from './map.js';
 
 const PAGE = 50;
+// GBIF SQL downloads key species by Catalogue of Life ID (text, e.g. 5VKF2); older data used numeric GBIF keys.
+const taxonURL = k => /^\d+$/.test(String(k)) ? `https://www.gbif.org/species/${k}` : `https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(k)}`;
 const snap = await snapshot();
 const [summary, boundaries, stats] = await Promise.all([snap.summary(), snap.boundaries(), snap.stats()]);
 showDevBanner(summary);
@@ -153,7 +155,7 @@ function renderTable() {
   st.page = Math.min(st.page, pages - 1);
   const slice = view.slice(st.page * PAGE, st.page * PAGE + PAGE);
   $('#rows').innerHTML = slice.length ? slice.map(r => `<tr>
-      <td class="sp"><a href="https://www.gbif.org/species/${r.key}">${esc(r.name)}</a></td>
+      <td class="sp"><a href="${taxonURL(r.key)}">${esc(r.name)}</a></td>
       <td>${esc(groups[r.gi])}</td>
       <td class="muted">${esc(r.family)}</td>
       <td class="n"><span class="yr">${r.first ?? '<span class="muted">unknown</span>'}</span></td>

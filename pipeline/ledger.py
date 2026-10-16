@@ -1,5 +1,8 @@
 """Build the ledger (species x LGD district) from a query A download.
 
+species_key is a Catalogue of Life (XR) taxon ID, a short text code such as 5VKF2: GBIF SQL
+downloads use the COL taxonomy (checked 16 October 2026).
+
 Usage:
     .venv/bin/python -m pipeline.ledger <download key> [--out data/build/<key>]
 """
@@ -33,7 +36,7 @@ def load_cube(con, tsv):
     con.sql(f"""
         CREATE OR REPLACE TABLE cube AS
         SELECT * FROM read_csv('{tsv}', delim = '\t', header = true,
-            columns = {{'specieskey': 'BIGINT', 'lat': 'DOUBLE', 'lon': 'DOUBLE', 'first_year': 'INTEGER',
+            columns = {{'specieskey': 'VARCHAR', 'lat': 'DOUBLE', 'lon': 'DOUBLE', 'first_year': 'INTEGER',
                         'last_year': 'INTEGER', 'n_records': 'BIGINT'}})
     """)
 
