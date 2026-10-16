@@ -1,0 +1,58 @@
+name: iNaturalist layer
+
+# Module 5: identification backlog and a direct check of quiet species on iNaturalist.
+# Daily on days 2 to 15 (it continues within iNaturalist's daily limit until the month is done),
+# and by hand. Scheduled runs need the repository variable PIPELINE_ENABLED = true.
+
+on:
+  schedule:
+    - cron: "23 5 2-15 * *"
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: "Maximum iNaturalist requests in this run"
+        required: false
+        default: "9000"
+
+concurrency:
+  group: inat
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  inat:
+    if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - uses: actions/cache@v6
+        with:
+          path: data/ref
+          key: lgd-districts-v1
+      - name: Build the layer
+        env:
+          GBIF_EMAIL: ${{ secrets.GBIF_EMAIL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          BUDGET: ${{ inputs.budget || '9000' }}
+        run: |
+          python -c "from pipeline import districts; districts.ensure('overlooked-india')"
+          python -m pipeline.layer_inat --publish --budget "$BUDGET"
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "iNaturalist layer failed ($(date -u +%Y-%m-%d))" \
+            --body "The iNaturalist workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

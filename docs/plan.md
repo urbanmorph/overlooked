@@ -20,6 +20,23 @@ Definitions (shown on the site):
 - **Now quiet** (change feed only): a species whose latest record in India is now more than 30 years old.
 - We never say "lost", "missing" or "extinct". Re:wild and IUCN call a species lost after 10 years without a documented record; the method page says how our terms differ.
 
+## 1b. Module 5: identification backlog (brought forward 16 October 2026)
+
+Question: where do observations wait for a name, and could a "quiet" species be hiding among them?
+
+| Part | Source | How | Requests per month |
+|---|---|---|---|
+| Backlog by state, group and age | iNaturalist API | For India and each state place, and each iconic group (plus "no taxon"): needs-ID counts by year created (histogram endpoint) and research-grade counts | about 1,100 |
+| Active identifiers | iNaturalist API | People who identified each group in India in the last 12 months, and the busiest identifier's count | about 15 |
+| Direct check of quiet species | iNaturalist API | For each species quiet in India: match the name to an iNaturalist taxon (cached once), then the latest Indian observation of any quality, with its quality grade and licence | first month about 2 per species, then about 1; at most 9,000 a day, continuing next day if needed |
+| Records not named to species | GBIF (query U) | Records with a taxon above species (genus, family...), by group, rank and rounded point, placed in districts | 1 download |
+
+Rules:
+- iNaturalist limits: at most 60 requests a minute and under 10,000 a day; we use about 1 a second and a daily budget of 9,000.
+- An iNaturalist observation that is not in GBIF is never counted as a public record. The ledger shows it as a separate note: "iNaturalist: observed in India on <date> (<quality>, <licence>)".
+- iNaturalist results have their own as-of date. They live in a separate, dated layer (`layers/inat/<date>/` in R2), because they can finish after the GBIF snapshot is published, and snapshots never change.
+- The India Biodiversity Portal: we do not contact it. Its GBIF dataset is included as it is (records stop in 2024), and the site says so.
+
 ## 2. Architecture
 
 ```

@@ -11,6 +11,7 @@ Newest first. Updated as work happens.
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
 | Module 1: last-seen ledger | Pipeline works on Kerala (GBIF test download). Overview and ledger pages work on test data. |
 | Module 2: change feed | Not started. Needs two monthly snapshots. |
+| Module 5: identification backlog | Brought forward. iNaturalist layer (backlog by state and group, identifiers, direct check of quiet species) and GBIF query U built; backlog page and ledger note built; testing. |
 | Module 3: new species | Sources checked (Plazi, IPNI, Index Fungorum, BSI). Not built. |
 | Monthly run (GitHub Actions) | Workflows in place, tested end to end on Kerala. Schedules off until `PIPELINE_ENABLED` is set. |
 | Source limits | Documented in `docs/sources.md`. Pipeline follows them (GBIF downloads one at a time, crons off the hour). |
@@ -19,6 +20,10 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Module 5 brought forward. The India Biodiversity Portal is not contacted; its GBIF dataset is used as it is.
+- iNaturalist layer: all 36 states mapped to iNaturalist places (two manual matches: Ladakh; Dadra, Nagar Haveli, Daman & Diu). Backlog by state, group and year; identifiers per group; direct check of quiet species with a 9,000-request daily budget that continues next day. Stored apart from the GBIF snapshot, with its own date. First sample: of 10 fish quiet in Kerala since 1980, 7 have recent research-grade iNaturalist observations in India, several without an open licence.
+- GBIF query U (records not named to species) added; runs already started pick it up after their other downloads.
+- New page: Waiting for a name (`/backlog`). Ledger shows "iNaturalist: seen in India <date>" next to quiet species.
 - Runs are now idempotent and incremental (see plan section 7): rebuild with the same inputs skipped (tested), R2 uploads resume and skip identical files (tested), month skipped if GBIF reports no change. Health check of 12 sources at every refresh: all working on 16 October.
 - Fixed: locally, inherited shell variables from another project overrode this project's R2 keys. `.env` now takes priority (GitHub Actions was not affected).
 - iNaturalist reaches us through GBIF (1.71 million India records, updated weekly), but about 0.8 million research-grade observations without an open licence and about 3 million awaiting identification do not. The India Biodiversity Portal's GBIF dataset stops in 2024. Options put to the owner: direct iNaturalist check for quiet species; ask the Portal to republish; bring module 5 (identification backlog) forward.

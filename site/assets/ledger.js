@@ -111,6 +111,17 @@ function area() {
   return stats.india;
 }
 const isOld = r => r.last != null && r.last < st.since;
+// iNaturalist layer: species with an observation in India, including ones not shared with GBIF.
+// flags[key] = [latest date, quality grade, open licence 1/0, observations in India]
+let flags = {};
+getJSON('layers/inat/latest.json').then(l => l && l.quiet_flags ? getJSON(l.quiet_flags) : null)
+  .then(f => { if (f && f.snapshot === summary.run_id) { flags = f.species; refresh(); } }).catch(() => {});
+const QUALITY = { research: 'research grade', needs_id: 'waits for a name', casual: 'casual' };
+function inatNote(r) {
+  const f = flags[r.key];
+  if (!f || !f[0] || +f[0].slice(0, 4) < st.since) return '';
+  return `<br><span class="tagi">iNaturalist: seen in India ${esc(f[0])} (${QUALITY[f[1]] || esc(f[1])}${f[2] ? '' : ', no open licence'})</span>`;
+}
 function surveyed(r) { return (area().a[years.indexOf(st.since)][r.gi + 1] || 0) > 0; }
 
 const KEYS = { name: r => r.name, gi: r => groups[r.gi], family: r => r.family, first: r => r.first ?? 9999, last: r => r.last ?? 9999, n: r => r.n };
@@ -150,6 +161,7 @@ function renderAside() {
       <dt>No public record since ${st.since}</dt><dd class="q">${fmt(quiet.length)}</dd>
       <dt>Latest record before 1950</dt><dd>${fmt(before1950)}</dd>
       <dt>Not counted: no record of the group here since ${st.since}</dt><dd>${fmt(unsurveyed)}</dd>
+      ${Object.keys(flags).length ? `<dt>Quiet, but seen in India on iNaturalist since ${st.since}</dt><dd>${fmt(quiet.filter(r => flags[r.key] && +String(flags[r.key][0]).slice(0, 4) >= st.since).length)}</dd>` : ''}
     </dl>
     ${top.length && st.group < 0 ? `<div style="border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px">
       <div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px">Quiet species by group</div>
@@ -175,7 +187,7 @@ function renderTable() {
   st.page = Math.min(st.page, pages - 1);
   const slice = view.slice(st.page * PAGE, st.page * PAGE + PAGE);
   $('#rows').innerHTML = slice.length ? slice.map(r => `<tr>
-      <td class="sp"><a href="${taxonURL(r.key)}">${esc(r.name)}</a></td>
+      <td class="sp"><a href="${taxonURL(r.key)}">${esc(r.name)}</a>${!allMode && isOld(r) ? inatNote(r) : ''}</td>
       <td>${esc(groups[r.gi])}${!allMode && !surveyed(r) ? '<br><span class="tagu">no record of the group here since ' + st.since + '</span>' : ''}</td>
       <td class="muted">${esc(r.family)}</td>
       <td class="n"><span class="yr">${r.first ?? '<span class="muted">unknown</span>'}</span></td>

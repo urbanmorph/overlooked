@@ -125,3 +125,22 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
     })
     dump(summary, out / "summary.json")
     return summary
+
+
+def unresolved_json(con, out: Path):
+    """Records not named to species (module 5), per district, state and India, by group and rank."""
+    groups = [r[0] for r in con.sql("SELECT grp FROM unresolved GROUP BY grp ORDER BY sum(n_records) DESC").fetchall()]
+    ranks = [r[0] for r in con.sql("SELECT taxonrank FROM unresolved GROUP BY 1 ORDER BY sum(n_records) DESC").fetchall()]
+    gi, ri = {g: i for i, g in enumerate(groups)}, {r: i for i, r in enumerate(ranks)}
+
+    def by(level):
+        res = {}
+        for area, g, rk, n in con.sql(f"SELECT {level}, grp, taxonrank, sum(n_records) FROM unresolved GROUP BY ALL").fetchall():
+            d = res.setdefault(str(area), {"n": 0, "g": [0] * len(groups), "r": [0] * len(ranks)})
+            d["n"] += int(n); d["g"][gi[g]] += int(n); d["r"][ri[rk]] += int(n)
+        return res
+
+    obj = {"groups": groups, "ranks": ranks, "districts": by("district_lgd"), "states": by("state_lgd"),
+           "india": by("0")["0"]}
+    dump(obj, out / "unresolved.json")
+    return obj["india"]["n"]

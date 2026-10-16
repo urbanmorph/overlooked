@@ -119,3 +119,17 @@ def test_health_changed():
     assert changed(now, None, "kew")
     assert not changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "1"}}}}, "kew")
     assert changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "0"}}}}, "kew")
+
+
+def test_unresolved_records_placed_by_group_and_rank(districts, tmp_path):
+    from pipeline import unresolved
+    tsv = tmp_path / "u.tsv"
+    tsv.write_text("kingdom\tphylum\tclass\torder\tfamily\ttaxonrank\tlat\tlon\tfirst_year\tlast_year\tn_records\n"
+                   "Animalia\tArthropoda\tInsecta\tColeoptera\tCarabidae\tGENUS\t10.5\t76.5\t2001\t2020\t4\n"
+                   "Animalia\tArthropoda\tInsecta\tColeoptera\t\tORDER\t10.5\t77.5\t2010\t2010\t1\n"
+                   "Plantae\tTracheophyta\t\t\t\tPHYLUM\t10.5\t74.0\t2010\t2010\t9\n")
+    con = duckdb.connect()
+    total = unresolved.build(con, tsv, str(districts))
+    rows = con.sql("SELECT district_lgd, grp, taxonrank, n_records FROM unresolved ORDER BY 1").fetchall()
+    assert total == 5                       # the offshore plant record is left out
+    assert rows == [(101, "Insects: beetles", "genus", 4), (102, "Insects: beetles", "order", 1)]

@@ -108,3 +108,4 @@ footer { margin-top: 56px; border-top: 1px solid var(--line); background: var(--
 footer .wrap { padding-block: 28px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; line-height: 1.6; color: var(--ink-2) }
 footer .grow { flex: 999 1 480px }
 .tagu { display: inline-block; margin-top: 2px; font-size: 12px; color: #6B5A1E; background: #FFF4D6; border-radius: 3px; padding: 1px 6px }
+.tagi { display: inline-block; margin-top: 2px; font-size: 12px; font-style: normal; color: #1F3F73; background: #E5EDF9; border-radius: 3px; padding: 1px 6px }

@@ -26,16 +26,16 @@ from concurrent.futures import ThreadPoolExecutor
 from pipeline import boundaries as boundary_map
 import hashlib
 
-from pipeline import checks, districts, gbif, health, ledger, names, site_data
+from pipeline import checks, districts, gbif, health, ledger, names, site_data, unresolved
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 SNAPSHOTS = ROOT / "data" / "snapshots"
 SITE_DATA = ROOT / "site" / "data"
 
-# Query A (ledger) and C (species history and names). B and D were dropped: effort comes from the
-# ledger itself, and names come with query C (docs/plan.md, section 3).
-QUERIES = ["ledger_cube", "species_history"]
+# Query A (ledger), C (species history and names) and U (records not named to species, module 5).
+# B and D were dropped: effort comes from the ledger itself, and names come with query C.
+QUERIES = ["ledger_cube", "species_history", "unresolved_cube"]
 DONE = "SUCCEEDED"
 FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
@@ -151,6 +151,9 @@ def build(args):
         print(f"run {run_id} is {state['status']}; nothing to do")
         return
     check_sources(state)
+    # A run started before a query was added picks it up here, after the others.
+    for name in QUERIES:
+        state["downloads"].setdefault(name, {"status": "WAITING"})
 
     http = gbif.session()
     metas = {}
@@ -200,6 +203,11 @@ def build(args):
     names.load_history(con, ledger.unpack(state["downloads"]["species_history"]["key"]))
     con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+    unresolved_records = None
+    if "unresolved_cube" in state["downloads"]:
+        unresolved_records = unresolved.build(con, ledger.unpack(state["downloads"]["unresolved_cube"]["key"]),
+                                              str(districts.PATH))
+        con.sql(f"COPY unresolved TO '{out / 'unresolved.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
 
     # The district map depends only on the boundary file, so it is stored once per boundary version.
     bpath = f"boundaries/lgd-{boundaries['sha256'][:12]}/districts_map.json"
@@ -212,12 +220,15 @@ def build(args):
         "run_id": run_id,
         "built": now(),
         "taxon_ids": "col",
-        "dois": [metas[n]["doi"] for n in QUERIES],
+        "dois": [metas[n]["doi"] for n in QUERIES if n in metas],
         "gbif_snapshot": metas["ledger_cube"].get("created", "")[:10],
         "region": state["region"],
     }
     summary = site_data.build(con, out, meta)
-    summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"]})
+    if unresolved_records is not None:
+        site_data.unresolved_json(con, out)
+    summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"],
+                    "unresolved_records": unresolved_records})
     (out / "summary.json").write_text(json.dumps(summary, separators=(",", ":")))
     manifest = {
         "run_id": run_id,

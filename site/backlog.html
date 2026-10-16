@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting for a name · Overlooked</title>
+<meta name="description" content="Observations from India that wait for a species name, by group and state, and the people who identify them.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<link rel="modulepreload" href="/assets/map.js">
+<script type="module" src="/assets/backlog.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Overview</a>
+      <a href="/ledger">Last seen</a>
+      <a href="/backlog" aria-current="page">Waiting for a name</a>
+      <span>Changes<small>soon</small></span>
+      <span>New species<small>soon</small></span>
+      <span>Sources and method<small>soon</small></span>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <p class="mono note" id="runline" style="margin:0 0 8px">Module 05</p>
+    <h1 class="page">Waiting for a name</h1>
+    <p class="lede">Many observations from India have no species name yet. A species can look quiet only because nobody named its recent photos. This page shows where observations wait for a name, and how many people identify each group.</p>
+  </section>
+
+  <section aria-label="Key figures" class="kpis" id="kpis">
+    <div class="card kpi"><b style="color:var(--quiet)">–</b><span>iNaturalist observations from India that wait for a name</span></div>
+    <div class="card kpi"><b>–</b><span>of verifiable iNaturalist observations from India wait for a name</span></div>
+    <div class="card kpi"><b>–</b><span>of the waiting observations were added before this year</span></div>
+    <div class="card kpi"><b>–</b><span>GBIF records from India with no species name (genus or higher)</span></div>
+  </section>
+
+  <section class="row">
+    <div class="grow card pad">
+      <div class="row" style="justify-content:space-between;align-items:baseline;gap:12px;margin:0">
+        <h2 id="maph">Waiting for a name, by state</h2>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px">Show
+          <select id="layer" style="width:auto">
+            <option value="inat">iNaturalist: waiting for a name (by state)</option>
+            <option value="gbif">GBIF: records with no species name (by district)</option>
+          </select>
+        </label>
+      </div>
+      <p class="note" id="mapnote"></p>
+      <div class="map" id="map"><p class="loading">Loading map…</p></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside class="side card pad" aria-live="polite" id="aside">
+      <p class="loading">Loading…</p>
+    </aside>
+  </section>
+
+  <section class="card" style="margin-top:20px">
+    <div class="bar-head"><h2 style="font-size:20px">By group, all of India</h2></div>
+    <p class="note" style="padding:0 18px">iNaturalist groups. "Identifiers" are the people who added an identification in the group in the last 12 months.</p>
+    <div class="tablebox">
+      <table style="min-width:860px">
+        <thead><tr>
+          <th>Group</th><th class="n">Waiting for a name</th><th class="n">Research grade</th><th class="n">Share waiting</th>
+          <th class="n">Added before this year</th><th class="n">Identifiers</th><th class="n">Waiting per identifier</th>
+        </tr></thead>
+        <tbody id="groups"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="note" style="margin-top:20px;max-width:880px" id="source"></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Data and text: CC BY 4.0, Sathya Sankaran. iNaturalist counts from api.inaturalist.org. GBIF records keep their dataset licences.</span>
+    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a>
+  </div>
+</footer>
+</body>
+</html>
