@@ -79,7 +79,8 @@ Filters on every query (ported from fnf `01_gbif_download.py`): country IN, has 
   - Plazi TreatmentBank `srsStats`: species with an Indian holotype, published 2015 onward. About 2,777 names as of 16 October 2026. CC0.
   - IPNI: plant names by year, filtered to India on our side.
   - Index Fungorum: fungus names by date range, filtered on type locality text.
-  - Not used: ZooBank (blocks automated access), BSI publications (handoff rule).
+  - BSI Plant Discoveries (annual, new species and new records for India): synced automatically like every other source, with prominent acknowledgement. Survey of BSI sources under way (16 October 2026).
+  - Not used: ZooBank (blocks automated access with a captcha).
   - The site names the journals each source covers. Known gaps: Journal of Threatened Taxa after 2020, JBNHS, Taiwania, Nelumbo, Bionotes.
 - **Follow-up check** (ported from fnf `21_discoveries_recheck.py`): exact name, then COL synonyms, then GBIF records by verbatim name. A GBIF hit counts only when the record carries the name itself. A record counts as a follow-up only when its date is after the publication date and it is not the type material.
 - Name lookups go to the GBIF API, one request at a time, 1 to 1.5 s apart, cached in R2 `cache/`. Each month only names not yet followed up are checked again.
