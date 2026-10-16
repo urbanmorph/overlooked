@@ -12,7 +12,7 @@ Newest first. Updated as work happens.
 | Module 1: last-seen ledger | **Live** on the first all-India snapshot (2026-10). |
 | Module 2: change feed | Built and live; shows its first changes after the 1 November run. |
 | Module 5: identification backlog | Brought forward. iNaturalist layer (backlog by state and group, identifiers, direct check of quiet species) and GBIF query U built; backlog page and ledger note built; testing. |
-| Module 3: new species | Sources checked (Plazi, IPNI, Index Fungorum, BSI). Not built. |
+| Module 3: new species | Built and live (page waits for the first layer). Names: 4,157 species described from India since 2015 (Plazi 2,614; BSI Plant Discoveries 2,001; 326 in both). GBIF queries Y and V running. |
 | Monthly run (GitHub Actions) | Workflows in place, tested end to end on Kerala. Schedules off until `PIPELINE_ENABLED` is set. |
 | Source limits | Documented in `docs/sources.md`. Pipeline follows them (GBIF downloads one at a time, crons off the hour). |
 
@@ -20,6 +20,8 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Module 3 built: BSI Plant Discoveries parser ported from fnf with a monthly sync (listing page, new editions only, parsed once and cached in R2; 2025 edition parsed: 328 entries, 207 new species). New species layer (`layer_newspecies.py`, daily workflow): names from Plazi and BSI, GBIF queries Y (records since 2015 by species, year and kind) and V (names as published), matching by exact name, GBIF/Catalogue of Life synonyms and published names. New species page live; first results when the layer finishes.
+- Overview module cards now link to all five live modules.
 - Scheduled runs switched on (`PIPELINE_ENABLED=true`): downloads on the 1st, builds every 6 hours on days 1 to 10, iNaturalist layer daily.
 - New pages live: Sources and method (run steps, definitions, DOIs, health of each source, credits including BSI and ZSI acknowledgement, downloads); Changes (module 2; first changes after the November run); Species (`/species?key=`, latest record, districts, history by decade, links onward). Ledger and Changes link species names to the species page.
 - Species data split into 512 files by key hash (about 10 KB each). Added to snapshot 2026-10 as new derived files only (`scripts/backfill_derived.py`); no published file changed.
