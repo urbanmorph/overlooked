@@ -10,7 +10,7 @@ Newest first. Updated as work happens.
 | Cloudflare | **Live: https://overlooked-india.pages.dev** (16 October 2026). R2 bucket `overlooked-data` holds snapshot `2026-10`. |
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
 | Module 1: last-seen ledger | **Live** on the first all-India snapshot (2026-10). |
-| Module 2: change feed | Not started. Needs two monthly snapshots. |
+| Module 2: change feed | Built and live; shows its first changes after the 1 November run. |
 | Module 5: identification backlog | Brought forward. iNaturalist layer (backlog by state and group, identifiers, direct check of quiet species) and GBIF query U built; backlog page and ledger note built; testing. |
 | Module 3: new species | Sources checked (Plazi, IPNI, Index Fungorum, BSI). Not built. |
 | Monthly run (GitHub Actions) | Workflows in place, tested end to end on Kerala. Schedules off until `PIPELINE_ENABLED` is set. |
@@ -20,6 +20,9 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Scheduled runs switched on (`PIPELINE_ENABLED=true`): downloads on the 1st, builds every 6 hours on days 1 to 10, iNaturalist layer daily.
+- New pages live: Sources and method (run steps, definitions, DOIs, health of each source, credits including BSI and ZSI acknowledgement, downloads); Changes (module 2; first changes after the November run); Species (`/species?key=`, latest record, districts, history by decade, links onward). Ledger and Changes link species names to the species page.
+- Species data split into 512 files by key hash (about 10 KB each). Added to snapshot 2026-10 as new derived files only (`scripts/backfill_derived.py`); no published file changed.
 - **Public launch.** First all-India snapshot `2026-10` published (doi:10.15468/dl.hbk62c, doi:10.15468/dl.c8fw5y, doi:10.15468/dl.hsmcmy): 53,445 species, 63.8 million records, 784 districts, 549,804 ledger rows; 6,990 species with no public record in India since 1980; 651 districts with quiet species; 419,594 records not named to species. Production deploys on; https://overlooked-india.pages.dev live. Live overview: first paint 444 ms, 8 requests, 198 KB. iNaturalist layer workflow started.
 - Fixed: `.gitignore` rule `data/` also matched `functions/data/` and `site/data/`, so the data function had never been committed. Rules now apply to the top-level folders only.
 - Rerunning the publish was a no-op for R2 (same inputs) and recorded the run as published; `latest.json` now keeps the original snapshot time.
