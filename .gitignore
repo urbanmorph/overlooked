@@ -4,8 +4,8 @@ supporting-docs/
 .venv/
 __pycache__/
 *.pyc
-cache/
-data/
+/cache/
+/data/
 *.parquet
 node_modules/
 .wrangler/
