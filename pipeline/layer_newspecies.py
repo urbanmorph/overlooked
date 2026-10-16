@@ -92,9 +92,10 @@ def merge(names):
     return sorted(by.values(), key=lambda r: (r["year"], r["name"]))
 
 
-def gbif_match(http, name, cache):
-    if name in cache:
-        return cache[name]
+def gbif_match(http, name, cache, need_classification=False):
+    hit = cache.get(name, "missing")
+    if hit != "missing" and not (need_classification and hit and "classification" not in hit):
+        return hit
     r = http.get("https://api.gbif.org/v2/species/match", params={"scientificName": name, "checklistKey": COL_XR}, timeout=60)
     time.sleep(1.1)
     if not r.ok:
@@ -102,10 +103,23 @@ def gbif_match(http, name, cache):
     d = r.json()
     usage, accepted = d.get("usage") or {}, d.get("acceptedUsage") or {}
     exact = (d.get("diagnostics") or {}).get("matchType") == "EXACT"
-    res = {"key": accepted.get("key") or usage.get("key"), "synonym": bool(d.get("synonym")),
-           "name": usage.get("name")} if exact and usage.get("key") else None
+    ranks = {c.get("rank", "").lower(): c.get("name") for c in d.get("classification") or []}
+    res = {"key": accepted.get("key") or usage.get("key"), "synonym": bool(d.get("synonym")), "name": usage.get("name"),
+           "classification": {r: ranks.get(r) for r in ("kingdom", "phylum", "class", "order", "family")}
+           } if exact and usage.get("key") else None
     cache[name] = res
     return res
+
+
+def group_from(con, c):
+    """Overlooked group (fnf rules) from a classification dict, or None."""
+    if not c or not any(c.values()):
+        return None
+    from pipeline.groups import GROUP_SQL
+    row = con.execute(f"""SELECT {GROUP_SQL} FROM (SELECT ?::VARCHAR AS kingdom, ?::VARCHAR AS phylum,
+                         ?::VARCHAR AS class, ?::VARCHAR AS "order", ?::VARCHAR AS family)""",
+                      [c.get("kingdom"), c.get("phylum"), c.get("class"), c.get("order"), c.get("family")]).fetchone()
+    return row[0] if row and row[0] != "Other" else ("Other" if row else None)
 
 
 def run(publish, force=False):
@@ -213,7 +227,10 @@ def run(publish, force=False):
         any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
         any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
         status = "recorded" if obs else ("later_papers" if papers else "none")
-        grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""), "Not matched yet")
+        grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""))
+        if not grp:
+            m = gbif_match(http, n["name"], mcache, need_classification=True)
+            grp = group_from(con, (m or {}).get("classification")) or "Not matched yet"
         out.append({**{k: n[k] for k in ("name", "year", "sources", "journal", "state", "link")}, "group": grp,
                     "bsi_group": n.get("bsi_group", ""), "key": key, "matched_by": how if (key or rows) else "not found",
                     "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers,

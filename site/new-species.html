@@ -10,7 +10,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
 <link rel="stylesheet" href="/assets/style.css">
-<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
 <link rel="modulepreload" href="/assets/common.js">
 <script type="module" src="/assets/newspecies.js"></script>
 </head>
@@ -40,6 +39,7 @@
     <p class="lede">Scientists describe hundreds of new species from India each year. This page asks one question about each species described since 2015: is there a public record of it after the description?</p>
   </section>
 
+  <p class="loading" id="loading">Loading…</p>
   <section class="card pad" id="pending" hidden>
     <h2>The first results are on their way</h2>
     <p class="note" style="font-size:16px">Overlooked collects the names and asks GBIF for the records. This takes some hours. Then this page shows the results.</p>
