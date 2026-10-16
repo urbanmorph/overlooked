@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overlooked: gaps in India's public biodiversity data</title>
+<meta name="description" content="A monthly monitor of which species in India have no public record, and where. Every figure links to its source.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<link rel="modulepreload" href="/assets/map.js">
+<script type="module" src="/assets/overview.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/" aria-current="page">Overview</a>
+      <a href="/ledger.html">Last seen</a>
+      <span>Changes<small>soon</small></span>
+      <span>New species<small>soon</small></span>
+      <span>Sources and method<small>soon</small></span>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section class="row" style="margin-top:48px;align-items:flex-end">
+    <div class="grow">
+      <p class="eyebrow">A monthly monitor of public biodiversity data</p>
+      <h1>Which species in India have no public record, and where?</h1>
+      <p class="lede">Overlooked rebuilds itself each month from public data. It shows the latest public record of each species in each district, and which species have none since a given year.</p>
+    </div>
+    <aside class="side card pad snap" id="snap" aria-label="This snapshot">
+      <b>This snapshot</b>
+      <span class="muted">Loading…</span>
+    </aside>
+  </section>
+
+  <section aria-label="Key figures" class="kpis" id="kpis">
+    <a class="card kpi" href="/ledger.html"><b style="color:var(--quiet)">–</b><span>species with no public record in India since 1980</span></a>
+    <a class="card kpi" href="/ledger.html"><b>–</b><span>districts with at least one species quiet since 1980</span></a>
+    <a class="card kpi" href="/ledger.html"><b>–</b><span>species with a public record in India</span></a>
+    <a class="card kpi" href="/ledger.html"><b>–</b><span>public records placed in a district</span></a>
+  </section>
+
+  <section class="row">
+    <div class="grow card pad">
+      <div class="row" style="justify-content:space-between;align-items:baseline;gap:12px;margin:0">
+        <h2>Quiet species by district</h2>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px">Group
+          <select id="group" style="width:auto"><option value="-1">All groups</option></select>
+        </label>
+      </div>
+      <p class="note">Species with public records in the district, but none since 1980. Select a district to open its ledger.</p>
+      <div class="map" id="map"><p class="loading">Loading map…</p></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="side card pad">
+      <h2>Quiet species by group</h2>
+      <p class="note">The 12 groups with the highest share of species with no public record in India since 1980 (groups of 100 species or more)</p>
+      <div class="gbars" id="gbars" style="margin-top:16px"></div>
+      <h2 style="margin-top:28px">This month</h2>
+      <p class="note">The change feed starts after the second monthly run, when there is a previous month to compare with.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What you can ask here</h2>
+    <p class="note" style="font-size:16px">Each module answers one question across the whole country. Every figure carries its date and source.</p>
+    <div class="mods">
+      <a class="card mod" href="/ledger.html"><span class="mono">01</span><b>Last-seen ledger</b><span>For each species and district, when was the latest public record? Which species have no public record since 1980?</span></a>
+      <div class="card mod later"><span class="tag">Coming</span><b>Change feed</b><span>Quiet species recorded again. First records in a state. Groups that get quieter.</span></div>
+      <div class="card mod later"><span class="tag">Coming</span><b>Follow-up on new species</b><span>Species described from India since 2015. Has anyone recorded them since?</span></div>
+    </div>
+  </section>
+
+  <section class="act">
+    <div style="flex:999 1 420px">
+      <h2>Seen one of these species?</h2>
+      <p>Overlooked takes no records. Add yours where others can check and use it.</p>
+    </div>
+    <div class="links">
+      <a class="primary" href="https://www.inaturalist.org/observations/new">Record on iNaturalist</a>
+      <a href="https://indiabiodiversity.org/observation/create">India Biodiversity Portal</a>
+      <a href="https://www.gbif.org/country/IN/summary">GBIF</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div id="source">GBIF.org · Catalogue of Life · Local Government Directory, via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -140,9 +140,12 @@ Computed by comparing this month's Parquet with last month's.
 
 ## 8. Site
 
-- Static HTML and plain JavaScript modules. No build step to start with.
-- DuckDB-WASM (pinned version, from jsDelivr) for the ledger, species and new species pages. MapLibre GL with PMTiles for the district map.
-- The overview reads `summary.json` only, so it loads fast without DuckDB.
+- Static HTML and plain JavaScript modules. No build step, no framework.
+- **Built for speed (16 October 2026):** no database and no map library in the browser.
+  - The pipeline writes small JSON files (`pipeline/site_data.py`): `summary.json`, `map_stats.json` (per district and state, per group, quiet counts for 1980, 1990, 2000 and 2010), and one ledger file per district (all species), per state and for India (quiet species only).
+  - The district map is pre-simplified SVG (`pipeline/boundaries.py`): 785 districts in about 70 KB compressed, coloured in the browser.
+  - Measured on the development data: the overview loads 8 files, 135 KB compressed in all. A district file is about 4 KB (median). Lighthouse (mobile): 100 for accessibility, best practices and SEO on both pages, no layout shift.
+  - Parquet files stay in each snapshot for download. DuckDB-WASM may come back later for free-form queries, loaded only on demand.
 - Pages: Overview, Last seen, Species (`species.html?key=`), Changes, New species, Sources and method. Layout as in the design canvas.
 - Every table offers CSV download. Every figure shows its snapshot date and DOI.
 - Links out: iNaturalist (`observations?place_id=6681&taxon_id=`), India Biodiversity Portal, GBIF species and occurrence pages.

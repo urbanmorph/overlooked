@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Last-seen ledger · Overlooked</title>
+<meta name="description" content="The latest public record of each species in each district of India, and which species are quiet since a chosen year.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<link rel="modulepreload" href="/assets/map.js">
+<script type="module" src="/assets/ledger.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Overview</a>
+      <a href="/ledger.html" aria-current="page">Last seen</a>
+      <span>Changes<small>soon</small></span>
+      <span>New species<small>soon</small></span>
+      <span>Sources and method<small>soon</small></span>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <p class="mono note" id="runline" style="margin:0 0 8px">Module 01</p>
+    <h1 class="page">Last-seen ledger</h1>
+    <p class="lede">The latest public record of each species in each district. A species is quiet in an area when it has records there, but none since the year you choose.</p>
+  </section>
+
+  <form class="card pad filters" id="filters" aria-label="Filters" style="margin-top:28px;padding:18px" onsubmit="return false">
+    <label class="f">Group <select id="f-group"><option value="-1">All groups</option></select></label>
+    <label class="f">State <select id="f-state"><option value="">All of India</option></select></label>
+    <label class="f">District <select id="f-district"><option value="">All districts</option></select></label>
+    <label class="f">No public record since <select id="f-since"></select></label>
+    <label class="f">Species or family <input type="search" id="f-q" placeholder="Name or family" autocomplete="off"></label>
+  </form>
+
+  <section class="row" style="margin-top:20px">
+    <div class="grow card pad" style="padding:18px">
+      <div class="map" id="map" style="margin:0"><p class="loading">Loading map…</p></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside class="side card pad" id="aside" aria-live="polite">
+      <p class="loading">Loading…</p>
+    </aside>
+  </section>
+
+  <section class="card" style="margin-top:20px">
+    <div class="bar-head">
+      <h2 id="count" style="font-size:20px">Loading species…</h2>
+      <div class="row" style="gap:8px;margin:0;align-items:center">
+        <label class="check" id="all-wrap" hidden><input type="checkbox" id="f-all"> Show all species</label>
+        <button class="b" type="button" id="csv">Download CSV</button>
+      </div>
+    </div>
+    <p class="note" id="scope" style="padding:0 18px"></p>
+    <div class="tablebox">
+      <table style="min-width:820px">
+        <thead><tr>
+          <th><button data-k="name">Species</button></th>
+          <th><button data-k="gi">Group</button></th>
+          <th><button data-k="family">Family</button></th>
+          <th class="n"><button data-k="first">First record</button></th>
+          <th class="n" aria-sort="ascending"><button data-k="last">Latest record</button></th>
+          <th class="n"><button data-k="n">Records</button></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pinfo"></span>
+      <span class="row" style="gap:8px;margin:0">
+        <button class="b" type="button" id="prev">Previous</button>
+        <button class="b" type="button" id="next">Next</button>
+      </span>
+    </div>
+  </section>
+
+  <p class="note" style="margin-top:20px;max-width:880px">"No public record since" means no record in GBIF for this species in this area after that year. It does not mean the species is gone. <span id="source"></span></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences.</span>
+    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a>
+  </div>
+</footer>
+</body>
+</html>

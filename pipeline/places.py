@@ -12,14 +12,27 @@ NEAR_KM = 5
 NEAR_DEG = NEAR_KM / 100
 
 
-def place_points(con: duckdb.DuckDBPyConnection, points_rel: str, districts_path: str):
-    """Create table point_district (lat, lon, dist_lgd, state_lgd, how) for the distinct
-    (lat, lon) pairs in points_rel. how is 'inside', 'near' or 'offshore'."""
+def load_districts(con: duckdb.DuckDBPyConnection, districts_path: str):
+    """Create table districts. Two districts have no LGD code (both 0 in the source):
+    Muzaffarabad and Mirpur get -1 and -2 so every district has its own code."""
     con.sql("INSTALL spatial; LOAD spatial")
     con.sql(f"""
         CREATE OR REPLACE TABLE districts AS
-        SELECT dist_lgd, state_lgd, dtname, stname, geometry FROM '{districts_path}'
+        SELECT CASE WHEN dist_lgd = 0 AND dtname = 'Muzaffarabad' THEN -1
+                    WHEN dist_lgd = 0 AND dtname = 'Mirpur' THEN -2
+                    ELSE dist_lgd END AS dist_lgd,
+               state_lgd, dtname, stname, geometry
+        FROM '{districts_path}'
     """)
+    dupes = con.sql("SELECT count(*) - count(DISTINCT dist_lgd) FROM districts").fetchone()[0]
+    if dupes:
+        raise ValueError(f"{dupes} duplicate district codes in {districts_path}")
+
+
+def place_points(con: duckdb.DuckDBPyConnection, points_rel: str, districts_path: str):
+    """Create table point_district (lat, lon, dist_lgd, state_lgd, how) for the distinct
+    (lat, lon) pairs in points_rel. how is 'inside', 'near' or 'offshore'."""
+    load_districts(con, districts_path)
     con.sql(f"CREATE OR REPLACE TABLE upts AS SELECT DISTINCT lat, lon FROM {points_rel} WHERE lat IS NOT NULL")
     con.sql("""
         CREATE OR REPLACE TABLE inside AS
