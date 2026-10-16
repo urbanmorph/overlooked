@@ -15,7 +15,7 @@ try {
     const n = rows.length, cnt = s => rows.filter(r => r.status === s).length;
     const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '–');
     const k = document.querySelectorAll('#kpis b');
-    k[0].textContent = fmt(n); k[1].textContent = pct(cnt('none'), n); k[2].textContent = fmt(cnt('recorded')); k[3].textContent = fmt(cnt('later_papers'));
+    k[0].textContent = fmt(n); k[1].textContent = pct(cnt('none'), n); k[2].textContent = fmt(cnt('recorded')); k[3].textContent = pct(rows.filter(r => r.any_record).length, n);
     $('#runline').textContent = `Module 03 · built ${monthName(data.built)} · GBIF snapshot ${data.snapshot || ''}`;
 
     // Stacked bars by group (groups with 20 or more new species).

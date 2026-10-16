@@ -108,7 +108,7 @@ def gbif_match(http, name, cache):
     return res
 
 
-def run(publish):
+def run(publish, force=False):
     from pipeline import r2
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -119,6 +119,8 @@ def run(publish):
     state_key = f"cache/newspecies/state_{month}.json"
     state = (r2.get_json(s3, state_key) if s3 else None) or {"month": month, "downloads": {q: {"status": "WAITING"} for q in QUERIES}}
     save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{month}.json").write_text(json.dumps(state)))
+    if force:
+        state.pop("done", None)
     if state.get("done"):
         print(f"new species layer for {month} is done ({state['done']}); nothing to do")
         return
@@ -175,11 +177,12 @@ def run(publish):
         f = CACHE / "species.parquet"
         s3.download_file(r2.bucket(), latest["base"] + "species.parquet", str(f))
         species_by_name = dict(con.sql(f"SELECT name, species_key FROM '{f}'").fetchall())
+        in_snapshot = set(species_by_name.values())
         from pipeline.groups import GROUP_SQL
         group_of = dict(con.sql(f"SELECT species_key, {GROUP_SQL} FROM '{f}'").fetchall())
         snapshot_run = latest["run_id"]
     else:
-        snapshot_run, group_of = None, {}
+        snapshot_run, group_of, in_snapshot = None, {}, set()
     match_cache_key = "cache/newspecies/gbif_match.json"
     mcache = (r2.get_json(s3, match_cache_key) if s3 else None) or {}
 
@@ -206,11 +209,15 @@ def run(publish):
             if vrows:
                 rows, how = vrows, "name as published in GBIF"
         obs, papers, latest = after(rows)
+        # Any public record in India at all, including the type material from the description itself.
+        any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
+        any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
         status = "recorded" if obs else ("later_papers" if papers else "none")
         grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""), "Not matched yet")
         out.append({**{k: n[k] for k in ("name", "year", "sources", "journal", "state", "link")}, "group": grp,
                     "bsi_group": n.get("bsi_group", ""), "key": key, "matched_by": how if (key or rows) else "not found",
-                    "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers})
+                    "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers,
+                    "any_record": any_record})
         if s3 and i % 200 == 0:
             r2.put_json(s3, mcache, match_cache_key)
     if s3:
@@ -225,6 +232,7 @@ def run(publish):
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "new_species.json").write_text(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
     counts = {s: sum(1 for r in out if r["status"] == s) for s in ("recorded", "later_papers", "none")}
+    counts["any_record"] = sum(1 for r in out if r["any_record"])
     print(f"{len(out)} new species: {counts}")
     state["done"] = now()
     save()
@@ -237,7 +245,9 @@ def run(publish):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
-    run(p.parse_args().publish)
+    p.add_argument("--force", action="store_true", help="recompute this month from the downloads already made")
+    a = p.parse_args()
+    run(a.publish, a.force)
 
 
 if __name__ == "__main__":
