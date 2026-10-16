@@ -165,3 +165,13 @@ def test_change_feed(tmp_path):
     assert ("withdrawn", "E") in got
     assert not any(k in ("F_old", "F_new") for _, k in got)   # renamed key matched by name: no change
     assert con.sql("SELECT reason FROM changes WHERE species_key = 'A'").fetchone()[0] == "new record"
+
+
+def test_new_species_names():
+    from pipeline.layer_newspecies import binomial, merge, SP_NOV
+    assert binomial("Cycas dharmrajii L.J.Singh") == "Cycas dharmrajii"
+    assert binomial("CYCAS") is None and binomial("the species") is None
+    assert SP_NOV.match("sp. nov.") and SP_NOV.match("nov.sp") and not SP_NOV.match("comb. nov.")
+    m = merge([{"name": "A b", "year": 2019, "source": "Plazi", "journal": "Zootaxa", "state": "", "link": "p"},
+               {"name": "A b", "year": 2018, "source": "BSI Plant Discoveries", "journal": "", "state": "Kerala", "link": "b"}])
+    assert len(m) == 1 and m[0]["year"] == 2018 and m[0]["sources"] == ["Plazi", "BSI Plant Discoveries"] and m[0]["state"] == "Kerala"

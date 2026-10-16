@@ -1,0 +1,48 @@
+name: New species layer
+
+# Module 3: follow-up on species described from India since 2015. Daily, after the monthly build
+# (it waits while GBIF downloads run, then builds and publishes once a month), and by hand.
+# Scheduled runs need the repository variable PIPELINE_ENABLED = true.
+
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  newspecies:
+    if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Build the layer
+        env:
+          GBIF_USER: ${{ secrets.GBIF_USER }}
+          GBIF_PASSWORD: ${{ secrets.GBIF_PASSWORD }}
+          GBIF_EMAIL: ${{ secrets.GBIF_EMAIL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python -m pipeline.layer_newspecies --publish
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "New species layer failed ($(date -u +%Y-%m-%d))" \
+            --body "The new species workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

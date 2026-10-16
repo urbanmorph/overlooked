@@ -130,3 +130,9 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .hist .stack { flex: 1; display: flex; flex-direction: column-reverse; border-bottom: 1px solid #9AA49E }
 .hist .stack i { display: block; width: 100% } .hist .col.old .stack { background: #FBF3EC }
 .hist .col span { font-size: 10px; color: var(--muted); text-align: center }
+.sbars { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-size: 14px }
+.sbars div { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr) 92px; gap: 10px; align-items: center }
+.sbars .mono { text-align: right; font-size: 12px }
+.stackbar { display: flex; height: 16px; border-radius: 2px; overflow: hidden; background: #EEF0ED } .stackbar i { display: block; height: 16px }
+.badge { display: inline-block; font-size: 13px; font-weight: 500; padding: 3px 8px; border-radius: 4px; white-space: nowrap }
+.st-ok { background: #DCEEE8; color: #063F33 } .st-paper { background: #EEF0ED; color: #2D3833 } .st-none { background: #FBEBDD; color: #7A3208 }

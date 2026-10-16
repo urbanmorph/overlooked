@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New species · Overlooked</title>
+<meta name="description" content="Species described from India since 2015: has anyone made a public record of them since the description?">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<script type="module" src="/assets/newspecies.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Overview</a>
+      <a href="/ledger">Last seen</a>
+      <a href="/backlog">Waiting for a name</a>
+      <a href="/changes">Changes</a>
+      <a href="/new-species" aria-current="page">New species</a>
+      <a href="/method">Sources and method</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <p class="mono note" id="runline" style="margin:0 0 8px">Module 03</p>
+    <h1 class="page">Follow-up on new species</h1>
+    <p class="lede">Scientists describe hundreds of new species from India each year. This page asks one question about each species described since 2015: is there a public record of it after the description?</p>
+  </section>
+
+  <section class="card pad" id="pending" hidden>
+    <h2>The first results are on their way</h2>
+    <p class="note" style="font-size:16px">Overlooked collects the names and asks GBIF for the records. This takes some hours. Then this page shows the results.</p>
+  </section>
+
+  <div id="body" hidden>
+    <section aria-label="Key figures" class="kpis" id="kpis">
+      <div class="card kpi"><b>–</b><span>species described from India since 2015 (names from Plazi and BSI)</span></div>
+      <div class="card kpi"><b style="color:var(--quiet)">–</b><span>with no public record after the description</span></div>
+      <div class="card kpi"><b style="color:var(--accent)">–</b><span>recorded again after the description</span></div>
+      <div class="card kpi"><b>–</b><span>found only in later papers</span></div>
+    </section>
+
+    <section class="row">
+      <div class="grow card pad">
+        <h2>Which groups get a follow-up?</h2>
+        <p class="note">Share of the species described since 2015, by what happened after the description</p>
+        <div class="sbars" id="sbars"></div>
+        <div class="legend">
+          <span class="lbl"><i class="sw" style="background:var(--accent);border:0"></i>Recorded again</span>
+          <span class="lbl"><i class="sw" style="background:#8FB9AE;border:0"></i>Only in later papers</span>
+          <span class="lbl"><i class="sw" style="background:var(--q2);border:0"></i>No public record since</span>
+        </div>
+      </div>
+      <aside class="side card pad">
+        <h2>By year described</h2>
+        <p class="note">Species with no public record after the description</p>
+        <div class="gbars" id="ybars" style="margin-top:14px"></div>
+      </aside>
+    </section>
+
+    <section class="card">
+      <form class="filters pad" onsubmit="return false" style="padding:18px">
+        <label class="f">Group <select id="f-group"><option value="">All groups</option></select></label>
+        <label class="f">After the description <select id="f-status"><option value="">All</option><option value="none">No public record since</option><option value="later_papers">Only in later papers</option><option value="recorded">Recorded again</option></select></label>
+        <label class="f">Year described <select id="f-year"><option value="">All years</option></select></label>
+        <label class="f">Species <input type="search" id="f-q" placeholder="Name" autocomplete="off"></label>
+      </form>
+      <div class="tablebox"><table style="min-width:960px">
+        <thead><tr><th>Species</th><th>Group</th><th class="n">Described</th><th>Source</th><th>Type locality</th><th>After the description</th><th>Found by</th></tr></thead>
+        <tbody id="rows"></tbody></table></div>
+      <div class="pager"><span id="pinfo"></span><span class="row" style="gap:8px;margin:0">
+        <button class="b" type="button" id="prev">Previous</button><button class="b" type="button" id="next">Next</button></span></div>
+    </section>
+
+    <section class="row">
+      <div class="grow card pad">
+        <h2>How a follow-up is found</h2>
+        <ol class="plain">
+          <li>The name as published, in this month's snapshot.</li>
+          <li>GBIF's match against the Catalogue of Life, which also finds synonyms.</li>
+          <li>GBIF records under the name as published, when GBIF could not match it to a species.</li>
+        </ol>
+        <p class="note">A follow-up is a record dated after the year of the description. Records copied from papers (Plazi) count only as "later papers". Records from the year of the description are not counted, because they are often the type material.</p>
+      </div>
+      <div class="side card pad">
+        <h2>Where the names come from</h2>
+        <p class="note" style="font-size:15px">Plazi: species with an Indian holotype, marked "sp. nov." (CC0). Botanical Survey of India: Plant Discoveries, species new to science (reproduced with acknowledgement). Journals that Plazi does not process are missing, for example most issues of the Journal of Threatened Taxa after 2020.</p>
+      </div>
+    </section>
+  </div>
+  <p class="note" style="margin-top:20px;max-width:880px" id="source"></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Data and text: CC BY 4.0, Sathya Sankaran. Names: Plazi (CC0); Botanical Survey of India, Plant Discoveries (acknowledged). GBIF records keep their dataset licences.</span>
+    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a>
+  </div>
+</footer>
+</body>
+</html>
