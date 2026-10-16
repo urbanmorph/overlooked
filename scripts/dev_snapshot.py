@@ -49,6 +49,7 @@ def main():
         "run_id": RUN,
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "dev": True,
+        "taxon_ids": "gbif",
         "dev_note": "Development data: fnf download of 13 October 2026. Birds and mammals are not included.",
         "dois": ["10.15468/dl.w34hz8"],
         "gbif_snapshot": "2026-10-13",

@@ -2,11 +2,12 @@ import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine } from './com
 import { drawMap, legendHTML } from './map.js';
 
 const PAGE = 50;
-// GBIF SQL downloads key species by Catalogue of Life ID (text, e.g. 5VKF2); older data used numeric GBIF keys.
-const taxonURL = k => /^\d+$/.test(String(k)) ? `https://www.gbif.org/species/${k}` : `https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(k)}`;
 const snap = await snapshot();
 const [summary, boundaries, stats] = await Promise.all([snap.summary(), snap.boundaries(), snap.stats()]);
 showDevBanner(summary);
+// Species keys are Catalogue of Life IDs (GBIF SQL downloads); the fnf development data uses GBIF keys.
+const taxonURL = k => summary.taxon_ids === 'gbif' ? `https://www.gbif.org/species/${encodeURIComponent(k)}`
+  : `https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(k)}`;
 $('#runline').textContent = `Module 01 · snapshot ${summary.run_id}`;
 $('#source').innerHTML = sourceLine(summary);
 

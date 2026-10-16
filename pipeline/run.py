@@ -120,6 +120,7 @@ def build(args):
     summary = {
         "run_id": run_id,
         "built": now(),
+        "taxon_ids": "col",
         "species": stats["species"],
         "records": stats["records"],
         "districts": stats["districts"],
