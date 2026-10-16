@@ -7,9 +7,9 @@ Newest first. Updated as work happens.
 | Area | State |
 |---|---|
 | Repository, licence, secrets | Done. Public repo `urbanmorph/overlooked` (MIT). Actions secrets: GBIF and bucket-scoped R2 keys only. |
-| Cloudflare | R2 bucket `overlooked-data` (private, CORS set). Data function (`functions/data/`) tested locally on wrangler. Pages project `overlooked-india` created and linked to GitHub; production deploys off. |
+| Cloudflare | **Live: https://overlooked-india.pages.dev** (16 October 2026). R2 bucket `overlooked-data` holds snapshot `2026-10`. |
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
-| Module 1: last-seen ledger | Pipeline works on Kerala (GBIF test download). Overview and ledger pages work on test data. |
+| Module 1: last-seen ledger | **Live** on the first all-India snapshot (2026-10). |
 | Module 2: change feed | Not started. Needs two monthly snapshots. |
 | Module 5: identification backlog | Brought forward. iNaturalist layer (backlog by state and group, identifiers, direct check of quiet species) and GBIF query U built; backlog page and ledger note built; testing. |
 | Module 3: new species | Sources checked (Plazi, IPNI, Index Fungorum, BSI). Not built. |
@@ -20,6 +20,9 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- **Public launch.** First all-India snapshot `2026-10` published (doi:10.15468/dl.hbk62c, doi:10.15468/dl.c8fw5y, doi:10.15468/dl.hsmcmy): 53,445 species, 63.8 million records, 784 districts, 549,804 ledger rows; 6,990 species with no public record in India since 1980; 651 districts with quiet species; 419,594 records not named to species. Production deploys on; https://overlooked-india.pages.dev live. Live overview: first paint 444 ms, 8 requests, 198 KB. iNaturalist layer workflow started.
+- Fixed: `.gitignore` rule `data/` also matched `functions/data/` and `site/data/`, so the data function had never been committed. Rules now apply to the top-level folders only.
+- Rerunning the publish was a no-op for R2 (same inputs) and recorded the run as published; `latest.json` now keeps the original snapshot time.
 - All-India run: species history ready at 20:23 IST (146,689 rows); query U submitted (`0030871-260928105237408`). GBIF and GitHub work went on while the laptop slept; only local helpers paused.
 - Module 5 checked in the browser on test data: 2,955,818 iNaturalist observations from India wait for a name (54% of verifiable ones; 76% added before 2026). Fungi: 95% waiting, 865 identifiers in 12 months. Ledger notes work; the iNaturalist request budget stops cleanly and continues next run.
 - All-India run `2026-10`: ledger download ready at 19:44 (11.8 million rows, 311 MB, key `0030725-260928105237408`). Build on Actions passed the health check and submitted species history (`0030812-260928105237408`); query U follows.
