@@ -217,7 +217,7 @@ def build(args):
     state["finished"] = now()
     state["summary"] = {k: summary[k] for k in ("species", "records", "districts", "ledger_rows", "quiet_species")}
     save(state)
-    print(json.dumps(summary, indent=1))
+    print(json.dumps(state["summary"], indent=1))
 
 
 def main():

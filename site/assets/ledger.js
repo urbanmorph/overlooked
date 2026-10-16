@@ -1,6 +1,7 @@
-import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine } from './common.js';
+import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 
+try {
 const PAGE = 50;
 const snap = await snapshot();
 const [summary, boundaries, stats] = await Promise.all([snap.summary(), snap.boundaries(), snap.stats()]);
@@ -228,3 +229,6 @@ $('#csv').addEventListener('click', () => {
 });
 
 update();
+} catch (err) {
+  showLoadError(err);
+}

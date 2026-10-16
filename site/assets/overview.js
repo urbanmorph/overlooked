@@ -1,6 +1,7 @@
-import { snapshot, fmt, esc, $, monthName, showDevBanner, sourceLine } from './common.js';
+import { snapshot, fmt, esc, $, monthName, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 
+try {
 const snap = await snapshot();
 const summaryP = snap.summary();
 const mapP = Promise.all([snap.boundaries(), snap.stats()]);
@@ -16,7 +17,7 @@ k[3].textContent = fmt(s.records);
 $('#snap').innerHTML = `<b>This snapshot</b>
   <div>Built ${esc(monthName(s.built))}</div>
   <div>GBIF ${(s.dois || []).map(d => `<a class="mono" href="https://doi.org/${esc(d)}">doi:${esc(d)}</a>`).join(', ')}</div>
-  <div>Catalogue of Life ${esc(s.col_release || '')}</div>`;
+  <div>Names: ${s.col_release ? 'Catalogue of Life ' + esc(s.col_release) : 'Catalogue of Life, as used by GBIF'}</div>`;
 $('#source').innerHTML = sourceLine(s);
 
 // Groups: bars of the share quiet since 1980, largest groups first.
@@ -51,3 +52,6 @@ function paint() {
 }
 sel.addEventListener('change', paint);
 paint();
+} catch (err) {
+  showLoadError(err);
+}

@@ -48,3 +48,16 @@ export function sourceLine(summary) {
   const dois = (summary.dois || []).map(d => `<a class="mono" href="https://doi.org/${esc(d)}">doi:${esc(d)}</a>`).join(', ');
   return `Source: GBIF.org (${esc(monthName(summary.gbif_snapshot || summary.built))}), ${dois}. District boundaries: Local Government Directory, via bharatlas.`;
 }
+
+// If data cannot load, say so in plain words instead of leaving "Loading" on the page.
+export function showLoadError(err) {
+  console.error(err);
+  const main = document.getElementById('main');
+  const box = document.createElement('div');
+  box.className = 'card pad';
+  box.setAttribute('role', 'alert');
+  box.style.margin = '24px 0';
+  box.innerHTML = '<b>The data did not load.</b> Reload the page. If the problem continues, try again later.';
+  main.prepend(box);
+  for (const el of document.querySelectorAll('.loading')) el.textContent = 'Not available.';
+}
