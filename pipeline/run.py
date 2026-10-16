@@ -67,19 +67,33 @@ def code_commit():
         return None
 
 
+def submit_next(http, state):
+    """GBIF lets one account run very few downloads at once, so queries go one after another.
+    Submit the next query that has no key yet, if nothing is running. Returns True if one was submitted."""
+    running = [d for d in state["downloads"].values() if d.get("key") and d["status"] not in (DONE, *FAILED)]
+    if running:
+        return False
+    for name, d in state["downloads"].items():
+        if not d.get("key"):
+            key = gbif.submit(http, gbif.build_sql(name, state["region"]))
+            if not key:
+                print(f"{name}: GBIF is busy for this account (429); will try at the next check")
+                return False
+            d.update(key=key, status="PREPARING", requested=now())
+            print(f"{name}: requested {key}")
+            return True
+    return False
+
+
 def request(args):
     run_id = args.run_id or default_run_id(args.state)
     if load(run_id):
         print(f"run {run_id} already requested; nothing to do")
         return
     http = gbif.session()
-    state = {"run_id": run_id, "region": args.state, "status": "requested", "requested": now(), "downloads": {}}
-    for name in QUERIES:
-        sql = gbif.build_sql(name, args.state)
-        key = gbif.submit(http, sql)
-        state["downloads"][name] = {"key": key, "status": "PREPARING"}
-        print(f"{name}: requested {key}")
-        time.sleep(1.5)
+    state = {"run_id": run_id, "region": args.state, "status": "requested", "requested": now(),
+             "downloads": {name: {"status": "WAITING"} for name in QUERIES}}
+    submit_next(http, state)
     save(state)
 
 
@@ -96,10 +110,16 @@ def build(args):
     http = gbif.session()
     metas = {}
     for name, d in state["downloads"].items():
+        if not d.get("key"):
+            continue
         meta = http.get(f"{gbif.API}/{d['key']}", timeout=60).json()
         d["status"] = meta["status"]
         metas[name] = meta
         time.sleep(1.0)
+    if not any(d["status"] in FAILED for d in state["downloads"].values()) and submit_next(http, state):
+        save(state)
+        print(f"run {run_id}: submitted the next download; waiting for GBIF")
+        return
     if any(d["status"] in FAILED for d in state["downloads"].values()):
         state["status"] = "failed"
         save(state)

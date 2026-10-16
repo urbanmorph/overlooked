@@ -30,7 +30,8 @@ API = "https://api.gbif.org/v1/occurrence/download"
 def session():
     load_dotenv(ROOT / ".env")
     http = requests.Session()
-    http.headers["User-Agent"] = f"overlooked-india ({os.environ['GBIF_EMAIL']})"
+    # GBIF asks for a User-Agent with a URL or an email address.
+    http.headers["User-Agent"] = f"overlooked-india (+https://github.com/urbanmorph/overlooked; {os.environ['GBIF_EMAIL']})"
     http.auth = (os.environ["GBIF_USER"], os.environ["GBIF_PASSWORD"])
     return http
 
@@ -54,7 +55,10 @@ def validate(http, sql):
 
 
 def submit(http, sql):
+    """Submit a download. Returns its key, or None if GBIF says too many downloads are running (429)."""
     r = http.post(f"{API}/request", json=request_body(sql), timeout=60)
+    if r.status_code == 429:
+        return None
     if not r.ok:
         sys.exit(f"HTTP {r.status_code}: {r.text[:500]}")
     return r.text.strip()
@@ -101,6 +105,8 @@ def main():
         print(code, text[:1500])
         return
     key = submit(http, sql)
+    if not key:
+        sys.exit("GBIF: too many downloads running for this account (429); try again later")
     print(f"requested {key}")
     fetch(http, wait(http, key))
 

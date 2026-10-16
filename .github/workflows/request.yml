@@ -6,7 +6,7 @@ name: Request monthly downloads
 
 on:
   schedule:
-    - cron: "0 2 1 * *"
+    - cron: "17 2 1 * *"
   workflow_dispatch:
     inputs:
       state:

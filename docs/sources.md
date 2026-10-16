@@ -1,0 +1,37 @@
+# Sources: limits, terms and how we use them
+
+Checked 16 October 2026. **V** = from the source's own documentation. **O** = observed in one polite test request. **I** = inferred or from secondary sources. Review this page when a source changes or a run fails.
+
+## General rules for every source
+
+- One request at a time, 1 to 1.5 s apart unless a source allows more. Back off on 429 and 5xx (exponential, with the `Retry-After` header when present).
+- User-Agent on every request: `overlooked-india (+https://github.com/urbanmorph/overlooked; <contact email>)`.
+- Prefer bulk files and downloads over many API calls. Cache every answer.
+- A source that fails or blocks us fails soft: the run keeps last month's data for that source and says so on the site.
+- Every source is kept in sync. A source is limited only for a recorded reason in the table below.
+
+## Table
+
+| Source | Documented limit or rule | Our policy | Reference |
+|---|---|---|---|
+| GBIF API | **V** No fixed rate promised; rapid or numerous search queries may get 429. User-Agent with a URL or email recommended. Use a download for anything over 15 minutes of search calls. Search: max 300 per page; offset + limit max 100,000. | Downloads, not search loops. About 1 req/s for status checks. | techdocs.gbif.org/en/openapi/ |
+| GBIF downloads | **V** Few downloads per user at once (3 while the queue is short, possibly 1); 429 if exceeded. Predicates: max 101,000 items. SQL downloads are experimental: SQL_TSV_ZIP, one `occurrence` table, no joins. DOI for every download. **I** Files kept about 6 months; DOIs kept for ever. | Queries run one after another; a 429 waits for the next check. Status checked every 6 hours by the build job (every 60 s in manual runs). DOIs cited on the site. Files we need are copied to R2. Keep a predicate-download fallback in mind if SQL downloads change. | techdocs.gbif.org/en/data-use/api-sql-downloads ; gbif.org/faq |
+| Catalogue of Life / ChecklistBank | **V/O** No rate limit documented. Sites sit behind anti-bot challenges (catalogueoflife.org returned 403 to scripts). Licence CC BY 4.0. Monthly releases. | Not called by the pipeline: GBIF query C carries names and classification. If needed, one ColDP release file per month. | api.checklistbank.org |
+| Kew WCVP | **O** Files at sftp.kew.org/pub/data-repositories/WCVP/ over HTTPS (84 MB, last 4 June 2026). **I** CC BY 4.0; irregular releases. | Monthly check of Last-Modified/ETag; download only when it changes. | sftp.kew.org/pub/data-repositories/WCVP/ |
+| IPNI | **V** Data CC BY. Web downloads capped at 10,000 records. Rate limit not documented. | 1 req/s, cached; new names only. | ipni.org/terms-and-conditions |
+| Index Fungorum | Not documented. **O** Behind Cloudflare; HTTPS. | 1 req/s, cached. | indexfungorum.org/ixfwebservice/fungus.asmx |
+| MycoBank | Not documented. **O** Script-only web app; no API confirmed. | Not used (no usable access). Fungi from Index Fungorum and GBIF. | mycobank.org |
+| ZooBank | **V** Blocks robots ("verify that you are a human"). **O** API returns a reCAPTCHA. | Not used (captcha). New animal names come through Plazi and GBIF. Could ask admin@zoobank.org for access. | zoobank.org/Help |
+| Plazi TreatmentBank | **V** Open access by HTTP GET; CC0. Rate limit not documented. | 1 req/s to srsStats, cached. Bulk through GBIF. | plazi.org/data-apis-tools/treatmentbank-api/ |
+| BSI websites | **V** Web policy: "Material featured on this website may be reproduced free of charge… reproduced accurately… source must be prominently acknowledged." A copyright clause on the same page asks for written permission for reproduction. Nothing on automated access. **O** No robots.txt, no rate limiting, no captcha on GET pages. Missing files return the home page with HTTP 200. | Synced monthly at 1 req/s. Prominent credit to BSI and IVH. Check Content-Type to catch soft 404s. Ask BSI for written permission to settle the two clauses. | bsi.gov.in/page/en/web-policies |
+| BSI Plant Discoveries | **O** Listing page lists 2007 to 2025 PDFs; new edition about 1 July each year; no machine-readable version. | Monthly: fetch the listing page (1 request), download only new PDFs, parse, check counts. | bsi.gov.in/page/en/national-wild-life-action-plan |
+| BSI Indian Virtual Herbarium | **O** HTML only, 12 rows per page, GET search. No coordinates or district; dates often blank. About 26,100 type specimens; about 160,000 India records in the general collection. | Monthly: probe new barcode prefixes (about 20 requests). Full sweep at most quarterly (about 2,300 pages for types; about 13,500 for the general collection). Shown as a separate source, never mixed into GBIF records. | ivh.bsi.gov.in |
+| iNaturalist (later modules) | **V** Max 100 req/min; keep to 60/min and under 10,000/day. Not for scraping. | Up to 1 req/s, well under 10,000/day. Research-grade counts come through GBIF. | api.inaturalist.org/v1 |
+| IUCN Red List | **I** Token required; about 2 s between bulk calls; non-commercial use; no bulk redistribution. | Not used in the first release. | iucnredlist.org/terms/terms-of-use |
+| bharatlas | **V** "Don't scrape rate-limited endpoints". R2 file URLs are public and not rate-limited. Licence per layer. | Read the R2 files once per boundary version. Credit each layer. | bharatlas.com/terms |
+| Cloudflare R2 | **V** Free each month: 10 GB-month storage, 1 M Class A, 10 M Class B operations; no egress fee. One write per second to the same key. Single PUT up to 5 GiB. | Each key written once per run. Snapshots never overwritten. | developers.cloudflare.com/r2/pricing/ |
+| Cloudflare r2.dev | **V** Rate-limited, development only. | Not used: the site reads R2 through its own `/data` function. | developers.cloudflare.com/r2/buckets/public-buckets/ |
+| Cloudflare Pages | **V** 20,000 files per deploy (100,000 paid), 25 MiB per file, 500 builds a month (free). Function requests count as Workers requests. | Data stays in R2, not in the deploy. Deploys only when site code changes. | developers.cloudflare.com/pages/platform/limits/ |
+| Cloudflare Workers | **V** Paid: no daily request cap, 30 s CPU by default, 128 MB memory. | The data function only streams from R2. | developers.cloudflare.com/workers/platform/limits/ |
+| GitHub Actions | **V** 6 h per job. Cron may be delayed, worst at the start of each hour. Schedules in public repos switch off after 60 days without activity. ubuntu-24.04 runners: 4 CPU, 16 GB RAM, 14 GB disk. Artifacts kept up to 90 days. | Crons at 02:17 (1st) and :47 (every 6 h, days 1 to 10). Runs resume from saved download keys. Monthly commits keep the repository active (I: bot commits count as activity). Stream big files; stay under 14 GB disk. | docs.github.com/en/actions/reference/limits |
+| data.gov.in | **V** API key required. **O** Nothing useful from BSI found. | Not used. | data.gov.in/apis |

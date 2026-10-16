@@ -13,12 +13,15 @@ Newest first. Updated as work happens.
 | Module 2: change feed | Not started. Needs two monthly snapshots. |
 | Module 3: new species | Sources checked (Plazi, IPNI, Index Fungorum, BSI). Not built. |
 | Monthly run (GitHub Actions) | Workflows in place, tested end to end on Kerala. Schedules off until `PIPELINE_ENABLED` is set. |
-| Source limits | Being documented in `docs/sources.md`. |
+| Source limits | Documented in `docs/sources.md`. Pipeline follows them (GBIF downloads one at a time, crons off the hour). |
 
 ## Log
 
 ### 16 October 2026
 
+- Source limits documented in `docs/sources.md` (GBIF, COL, Kew, IPNI, Index Fungorum, MycoBank, ZooBank, Plazi, BSI, iNaturalist, IUCN, bharatlas, Cloudflare, GitHub, data.gov.in).
+- Pipeline changed to match: GBIF downloads run one after another and a 429 waits for the next check; User-Agent carries the repository URL; crons moved off the hour (02:17 and :47).
+- BSI survey: no technical block. Plant Discoveries 2007 to 2025 online (2025 out since 30 June 2026); new edition about 1 July. Indian Virtual Herbarium: HTML only, no coordinates, about 26,100 types and 160,000 India records; new type specimens found by barcode prefix in about 20 requests. Web policy allows free reproduction with prominent credit, but a second clause asks for written permission: ask BSI to confirm.
 - Pages Function for `/data/*` written and tested on wrangler with local R2: GET, HEAD, Range (206), ETag (304), `cache/` blocked, POST refused. Links now use `/ledger` (Pages redirects `.html`).
 - Pages project: Cloudflare's GitHub app on `urbanmorph` covers selected repositories only, and `overlooked` is not one. Adding it needs an organisation owner.
 - BSI: the earlier blanket exclusion was a misread instruction. BSI is now synced like every other source. A survey of BSI data and terms is running.
