@@ -9,7 +9,11 @@ dependencies = [
   "pyarrow>=17",
   "requests>=2.32",
   "python-dotenv>=1.0",
+  "boto3>=1.35",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
 
 [tool.setuptools]
 packages = ["pipeline"]

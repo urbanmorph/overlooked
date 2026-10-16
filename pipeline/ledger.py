@@ -38,10 +38,10 @@ def load_cube(con, tsv):
     """)
 
 
-def build(con, out: Path, label: str):
+def build(con, out: Path, label: str, districts: Path = DISTRICTS):
     """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records)."""
     out.mkdir(parents=True, exist_ok=True)
-    place_points(con, "cube", str(DISTRICTS))
+    place_points(con, "cube", str(districts))
     con.sql("""
         CREATE OR REPLACE TABLE ledger AS
         SELECT q.specieskey AS species_key, p.dist_lgd AS district_lgd, p.state_lgd,

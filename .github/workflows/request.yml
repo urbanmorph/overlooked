@@ -1,0 +1,61 @@
+name: Request monthly downloads
+
+# 1st of each month: submit the GBIF SQL downloads and commit their keys to runs/.
+# Scheduled runs need the repository variable PIPELINE_ENABLED = true. Manual runs always work;
+# give a state for a test run (never published).
+
+on:
+  schedule:
+    - cron: "0 2 1 * *"
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "GADM state name for a test run (leave empty for all of India)"
+        required: false
+        default: ""
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  request:
+    if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Request downloads
+        env:
+          GBIF_USER: ${{ secrets.GBIF_USER }}
+          GBIF_PASSWORD: ${{ secrets.GBIF_PASSWORD }}
+          GBIF_EMAIL: ${{ secrets.GBIF_EMAIL }}
+          STATE: ${{ inputs.state }}
+        run: |
+          if [ -n "$STATE" ]; then
+            python -m pipeline.run request --state "$STATE"
+          else
+            python -m pipeline.run request
+          fi
+      - name: Commit run state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runs
+          git diff --cached --quiet || { git commit -m "Request downloads for $(ls -t runs | head -1 | sed 's/.json//')"; git push; }
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Download request failed ($(date -u +%Y-%m-%d))" \
+            --body "The request workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

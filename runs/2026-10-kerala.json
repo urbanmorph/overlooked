@@ -1,0 +1,12 @@
+{
+ "run_id": "2026-10-kerala",
+ "region": "Kerala",
+ "status": "requested",
+ "requested": "2026-10-16T11:44:00Z",
+ "downloads": {
+  "ledger_cube": {
+   "key": "0030590-260928105237408",
+   "status": "PREPARING"
+  }
+ }
+}

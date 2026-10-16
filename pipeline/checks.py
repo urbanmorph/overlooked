@@ -1,0 +1,21 @@
+"""Checks before a snapshot is published. Any failure stops the run; nothing is uploaded."""
+
+# A month-on-month change larger than this in species or ledger rows stops the run for a look.
+MAX_CHANGE = 0.20
+
+
+def run(summary, manifest, previous_summary=None):
+    problems = []
+    if summary["ledger_rows"] <= 0:
+        problems.append("ledger is empty")
+    if summary["districts"] < 1:
+        problems.append("no districts in the ledger")
+    for d in manifest["downloads"]:
+        if not d.get("doi"):
+            problems.append(f"download {d['key']} has no DOI")
+    if previous_summary:
+        for k in ("species", "ledger_rows"):
+            before, now = previous_summary.get(k), summary[k]
+            if before and abs(now - before) / before > MAX_CHANGE:
+                problems.append(f"{k} changed from {before:,} to {now:,} (more than {MAX_CHANGE:.0%})")
+    return problems
