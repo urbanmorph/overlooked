@@ -1,12 +1,24 @@
 {
  "run_id": "2026-10-kerala",
  "region": "Kerala",
- "status": "requested",
+ "status": "built",
  "requested": "2026-10-16T11:44:00Z",
  "downloads": {
   "ledger_cube": {
    "key": "0030590-260928105237408",
-   "status": "PREPARING"
+   "status": "SUCCEEDED",
+   "doi": "10.15468/dl.6mfzfh"
   }
+ },
+ "finished": "2026-10-16T12:44:49Z",
+ "summary": {
+  "run_id": "2026-10-kerala",
+  "built": "2026-10-16T12:44:49Z",
+  "taxon_ids": "col",
+  "species": 9243,
+  "records": 8847781,
+  "districts": 23,
+  "ledger_rows": 35502,
+  "species_quiet_since_1980": 505
  }
 }
