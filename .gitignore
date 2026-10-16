@@ -1,0 +1,11 @@
+supporting-docs/
+.env
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+cache/
+data/
+*.parquet
+node_modules/
+.wrangler/
