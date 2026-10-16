@@ -187,7 +187,7 @@ function renderTable() {
   st.page = Math.min(st.page, pages - 1);
   const slice = view.slice(st.page * PAGE, st.page * PAGE + PAGE);
   $('#rows').innerHTML = slice.length ? slice.map(r => `<tr>
-      <td class="sp"><a href="${taxonURL(r.key)}">${esc(r.name)}</a>${!allMode && isOld(r) ? inatNote(r) : ''}</td>
+      <td class="sp"><a href="/species?key=${encodeURIComponent(r.key)}">${esc(r.name)}</a>${!allMode && isOld(r) ? inatNote(r) : ''}</td>
       <td>${esc(groups[r.gi])}${!allMode && !surveyed(r) ? '<br><span class="tagu">no record of the group here since ' + st.since + '</span>' : ''}</td>
       <td class="muted">${esc(r.family)}</td>
       <td class="n"><span class="yr">${r.first ?? '<span class="muted">unknown</span>'}</span></td>

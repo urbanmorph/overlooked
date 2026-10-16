@@ -34,7 +34,7 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
     """)
     groups = [r[0] for r in con.sql("""
         SELECT grp FROM sp JOIN (SELECT DISTINCT species_key FROM ledger) USING (species_key)
-        GROUP BY grp ORDER BY count(*) DESC""").fetchall()]
+        GROUP BY grp ORDER BY count(*) DESC, grp""").fetchall()]
     gi = {g: i for i, g in enumerate(groups)}
     con.execute("CREATE OR REPLACE TABLE gidx AS SELECT unnest($1) AS grp, generate_subscripts($1, 1) - 1 AS gi", [groups])
     con.sql("""
@@ -161,3 +161,41 @@ def changes_json(con, out: Path, counts, previous, summary):
     groups = [{"group": g, "before": prev_q.get(g), "now": q} for g, q in zip(summary["groups"], summary["group_quiet_1980"])]
     dump({"baseline": False, "previous": previous["run_id"], "counts": counts, "groups": groups, "rows": rows},
          out / "changes.json")
+
+
+SHARDS = 512
+
+
+def shard_of(key):
+    """FNV-1a (32-bit) of the species key, modulo SHARDS. The site computes the same in JavaScript."""
+    h = 0x811C9DC5
+    for ch in str(key).encode("utf-8"):
+        h ^= ch
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h % SHARDS
+
+
+def species_shards(con, out: Path):
+    """One small file per shard: each species with its classification, districts and history by decade."""
+    has_decades = bool(con.sql("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'species_decade'").fetchone()[0])
+    genus = "s.genus" if "genus" in [c[0] for c in con.sql("DESCRIBE species").fetchall()] else "NULL"
+    sp = {r[0]: {"name": r[1], "gi": r[2], "kingdom": r[3], "phylum": r[4], "class": r[5], "order": r[6],
+                 "family": r[7], "genus": r[8], "districts": [], "decades": []}
+          for r in con.sql("""
+              SELECT s.species_key, s.name, g.gi, s.kingdom, s.phylum, s.class, s."order", s.family,
+                     {genus} AS genus
+              FROM species s JOIN sp USING (species_key) JOIN gidx g USING (grp)
+              WHERE s.species_key IN (SELECT species_key FROM lg)""".format(genus=genus)).fetchall()}
+    for key, dist, first, last, n in con.sql(
+            "SELECT species_key, district_lgd, first_year, last_year, n_records FROM lg ORDER BY species_key, last_year DESC").fetchall():
+        sp[key]["districts"].append([dist, first, last, int(n)])
+    if has_decades:
+        for key, dec, basis, n in con.sql("SELECT species_key, decade, basis, n_records FROM species_decade").fetchall():
+            if key in sp:
+                sp[key]["decades"].append([dec, basis, int(n)])
+    shards = {}
+    for key, v in sp.items():
+        shards.setdefault(shard_of(key), {})[key] = v
+    for i, part in shards.items():
+        dump(part, out / "species" / f"{i}.json")
+    return len(sp)

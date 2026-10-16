@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Species · Overlooked</title>
+<meta name="description" content="Public records of one species in India: latest record, districts, and history by decade.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<script type="module" src="/assets/species.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#16201C" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="#B4480E" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Overview</a>
+      <a href="/ledger" aria-current="page">Last seen</a>
+      <a href="/backlog">Waiting for a name</a>
+      <a href="/changes">Changes</a>
+      <span>New species<small>soon</small></span>
+      <a href="/method">Sources and method</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <nav aria-label="Breadcrumb" class="note" style="margin-top:32px"><a href="/ledger">Last-seen ledger</a> <span id="crumb"></span></nav>
+  <section class="row" style="margin-top:14px;align-items:flex-start">
+    <div class="grow">
+      <h1 class="page" id="name" style="font-style:italic">Loading…</h1>
+      <p class="lede" id="classif" style="margin-top:8px"></p>
+      <div class="tags" id="tags"></div>
+    </div>
+    <aside class="side card pad" id="latest" aria-live="polite"></aside>
+  </section>
+
+  <section class="card pad">
+    <div class="row" style="justify-content:space-between;align-items:baseline;margin:0">
+      <h2>Public records by decade</h2>
+      <div class="legend" id="hlegend" style="margin:0"></div>
+    </div>
+    <div class="hist" id="hist" role="img" aria-label="Public records of this species in India by decade and kind of record"></div>
+    <p class="note" id="histnote"></p>
+  </section>
+
+  <section class="row">
+    <div class="grow card">
+      <div class="bar-head"><h2 style="font-size:20px" id="dh">Districts with records</h2></div>
+      <div class="tablebox"><table style="min-width:560px">
+        <thead><tr><th>District</th><th>State</th><th class="n">First record</th><th class="n">Latest record</th><th class="n">Records</th></tr></thead>
+        <tbody id="districts"></tbody></table></div>
+    </div>
+    <div class="side" style="display:flex;flex-direction:column;gap:20px">
+      <div class="card pad"><h2 style="font-size:18px">Look further</h2><ul class="plain" id="links"></ul></div>
+      <div class="act" style="display:block"><h2 style="font-size:18px">Did you see it?</h2>
+        <p>Add a photo with the date and the place. A new public record shows here after the next monthly run.</p>
+        <div class="links" style="margin-top:12px"><a class="primary" href="https://www.inaturalist.org/observations/new">Record on iNaturalist</a>
+        <a href="https://indiabiodiversity.org/observation/create">India Biodiversity Portal</a></div></div>
+    </div>
+  </section>
+  <p class="note" style="margin-top:20px;max-width:880px" id="source"></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences.</span>
+    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a>
+  </div>
+</footer>
+</body>
+</html>

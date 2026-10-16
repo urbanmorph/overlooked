@@ -124,3 +124,9 @@ ul.feed li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap
 ul.feed .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px } ul.feed .kind { font-size: 13px; font-weight: 600 }
 ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 @media (max-width: 600px) { ul.feed li { grid-template-columns: 12px minmax(0, 1fr) } ul.feed .why { grid-column: 2; text-align: left; white-space: normal } }
+.tags { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px } .tag2 { border: 1px solid var(--field); border-radius: 999px; padding: 5px 12px; font-size: 13px }
+.hist { margin-top: 18px; height: 200px; display: flex; gap: 4px; align-items: stretch }
+.hist .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px }
+.hist .stack { flex: 1; display: flex; flex-direction: column-reverse; border-bottom: 1px solid #9AA49E }
+.hist .stack i { display: block; width: 100% } .hist .col.old .stack { background: #FBF3EC }
+.hist .col span { font-size: 10px; color: var(--muted); text-align: center }

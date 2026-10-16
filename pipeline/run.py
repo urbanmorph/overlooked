@@ -246,6 +246,8 @@ def build(args):
     if unresolved_records is not None:
         site_data.unresolved_json(con, out)
 
+    site_data.species_shards(con, out)
+
     # Module 2: compare with the previous published snapshot, if there is one.
     previous = previous_snapshot(run_id)
     counts = None

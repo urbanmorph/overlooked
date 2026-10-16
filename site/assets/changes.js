@@ -36,7 +36,7 @@ try {
       $('#items').innerHTML = slice.map(r => `<li>
           <span class="dot" style="background:${DOT[r.kind]}"></span>
           <div><div class="kind" style="color:${DOT[r.kind]}">${LABEL[r.kind]}</div>
-          <div><a href="${taxon(r.key)}" style="font-style:italic">${esc(r.name)}</a> · ${esc(summary.groups[r.gi] || '')}</div>
+          <div><a href="/species?key=${encodeURIComponent(r.key)}" style="font-style:italic">${esc(r.name)}</a> · ${esc(summary.groups[r.gi] || '')}</div>
           <div class="note" style="margin:2px 0 0">${esc(text(r))}</div></div>
           <div class="note why">${esc(r.reason)}</div></li>`).join('') || '<li class="muted" style="padding:24px">No changes of this kind.</li>';
       $('#pinfo').textContent = view.length ? `Showing ${fmt(page * PAGE + 1)} to ${fmt(page * PAGE + slice.length)} of ${fmt(view.length)}` : '';
