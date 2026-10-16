@@ -7,7 +7,7 @@ Newest first. Updated as work happens.
 | Area | State |
 |---|---|
 | Repository, licence, secrets | Done. Public repo `urbanmorph/overlooked` (MIT). Actions secrets: GBIF and bucket-scoped R2 keys only. |
-| Cloudflare | R2 bucket `overlooked-data` (private, CORS set). Data function (`functions/data/`) tested locally on wrangler. Pages project waits for one step: add the repo to the Cloudflare GitHub app on `urbanmorph` (organisation owner). |
+| Cloudflare | R2 bucket `overlooked-data` (private, CORS set). Data function (`functions/data/`) tested locally on wrangler. Pages project `overlooked-india` created and linked to GitHub; production deploys off. |
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
 | Module 1: last-seen ledger | Pipeline works on Kerala (GBIF test download). Overview and ledger pages work on test data. |
 | Module 2: change feed | Not started. Needs two monthly snapshots. |
@@ -19,6 +19,8 @@ Newest first. Updated as work happens.
 
 ### 16 October 2026
 
+- Decision: for BSI and ZSI we rely on the web-policy clause that allows free reproduction with prominent acknowledgement. No permission request. Every page that uses their data credits them by name.
+- Cloudflare Pages project `overlooked-india` created (GitHub `main`, output `site/`, R2 bound as `DATA`, rebuilds only for `site/` and `functions/`). Production deploys off until a real snapshot is published.
 - Source limits documented in `docs/sources.md` (GBIF, COL, Kew, IPNI, Index Fungorum, MycoBank, ZooBank, Plazi, BSI, iNaturalist, IUCN, bharatlas, Cloudflare, GitHub, data.gov.in).
 - Pipeline changed to match: GBIF downloads run one after another and a 429 waits for the next check; User-Agent carries the repository URL; crons moved off the hour (02:17 and :47).
 - BSI survey: no technical block. Plant Discoveries 2007 to 2025 online (2025 out since 30 June 2026); new edition about 1 July. Indian Virtual Herbarium: HTML only, no coordinates, about 26,100 types and 160,000 India records; new type specimens found by barcode prefix in about 20 requests. Web policy allows free reproduction with prominent credit, but a second clause asks for written permission: ask BSI to confirm.
