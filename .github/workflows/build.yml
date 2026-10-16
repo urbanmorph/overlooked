@@ -33,13 +33,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e .
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: data/ref
           key: lgd-districts-v1
@@ -61,7 +61,7 @@ jobs:
           python -m pipeline.run build "${args[@]}"
       - name: Keep the built snapshot (unpublished runs)
         if: always() && hashFiles('data/snapshots/**') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snapshot
           path: data/snapshots
