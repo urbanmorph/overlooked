@@ -1,0 +1,16 @@
+{
+ "run_id": "2026-10",
+ "region": null,
+ "status": "requested",
+ "requested": "2026-10-16T13:21:32Z",
+ "downloads": {
+  "ledger_cube": {
+   "status": "PREPARING",
+   "key": "0030725-260928105237408",
+   "requested": "2026-10-16T13:21:40Z"
+  },
+  "species_history": {
+   "status": "WAITING"
+  }
+ }
+}
