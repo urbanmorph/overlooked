@@ -51,10 +51,11 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import health, iucn, site_data
+from pipeline import health, iucn
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
+from pipeline.site_data import RIGHTS
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "master"
@@ -630,7 +631,7 @@ def site_files(con, out: Path, meta, districts_path, notes):
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
-               "totals": totals, "notes": notes, **getattr(site_data, "RIGHTS", {})}
+               "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
 
     row_sql = "coalesce(key, ''), name, sources_mask, status, iucn_i, labels_mask, states_obs_mask, states_id_mask"

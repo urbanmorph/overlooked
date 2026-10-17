@@ -150,6 +150,7 @@ def test_site_files(built):
     assert s["india"][birds][:3] == [5, 3, 2]                # Aus, Gus, Hus, Qus, Zus
     assert s["india"][birds][3][s["iucn"].index("EN")] == 1 and s["india"][birds][4] == 1
     assert [st["code"] for st in s["states"]] == ["29", "32"]
+    assert {"licence", "attribution", "disclaimer"} <= set(s)
     assert s["by_state"]["29"][birds] == [1, 0, 0]
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
