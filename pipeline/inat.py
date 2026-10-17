@@ -146,6 +146,59 @@ def backlog(client, place_ids, groups=GROUPS, month=None):
     return [done[f"{pid}|{g}"] for pid in place_ids for g in groups]
 
 
+QUALITIES = ("research", "needs_id")
+PER_PAGE = 500
+
+
+def species_places(places):
+    """[(area code, place id)]: each state with an iNaturalist place, then India (species with no state place)."""
+    return [(code, v["place_id"]) for code, v in sorted(places.items(), key=lambda kv: int(kv[0])) if v["place_id"]] + \
+        [("india", str(INDIA))]
+
+
+def species_counts(client, areas, month):
+    """Species observed in each area, research grade and needs ID separately (observations/species_counts,
+    taxa at species rank or below). Saved after every page in species_counts_<month>.json, so a stopped run
+    continues at the next page. Raises Budget when the request budget or time limit is reached."""
+    name = f"species_counts_{month}.json"
+    done = cached(name) or {}
+    for code, pid in areas:
+        for q in QUALITIES:
+            d = done.setdefault(f"{code}|{q}", {"place_id": str(pid), "page": 0, "total": None, "rows": []})
+            while d["total"] is None or d["page"] * PER_PAGE < d["total"]:
+                res = client.get("observations/species_counts", place_id=pid, quality_grade=q, hrank="species",
+                                 per_page=PER_PAGE, page=d["page"] + 1)
+                d["rows"] += [[r["taxon"]["id"], r["taxon"]["name"], r["taxon"].get("iconic_taxon_name"), r["count"]]
+                              for r in res["results"]]
+                d["page"], d["total"] = d["page"] + 1, res["total_results"]
+                store(name, done)
+                if not res["results"]:
+                    break
+    return done
+
+
+def species_requests(done):
+    """Requests a full species_counts pass takes, from the totals seen (one page per 500 species)."""
+    return sum(max(1, -(-(d["total"] or 0) // PER_PAGE)) for d in done.values())
+
+
+def species_doc(done, areas, as_of):
+    """Layer file: per area and quality, rows [taxon id, name, iconic group, observations]. complete is
+    true when every area and quality was fetched to the last page."""
+    lists = {}
+    for code, _ in areas:
+        for q in QUALITIES:
+            d = done.get(f"{code}|{q}")
+            if d:
+                seen = {}
+                for row in d["rows"]:  # counts can shift between pages; keep one row per taxon
+                    seen.setdefault(row[0], row)
+                lists.setdefault(code, {})[q] = list(seen.values())
+    complete = all((d := done.get(f"{c}|{q}")) and d["total"] is not None and d["page"] * PER_PAGE >= d["total"]
+                   for c, _ in areas for q in QUALITIES)
+    return {"as_of": as_of, "complete": complete, "places": dict(areas), "lists": lists}
+
+
 def identifiers(client, groups=GROUPS):
     since = (date.today() - timedelta(days=365)).isoformat()
     out = []
@@ -200,7 +253,7 @@ def quiet_check(client, species, month):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("cmd", choices=["places", "backlog", "quiet"])
+    p.add_argument("cmd", choices=["places", "backlog", "quiet", "species"])
     p.add_argument("arg", nargs="?")
     p.add_argument("--places", help="comma-separated state names, or India")
     p.add_argument("--groups", help="comma-separated iconic groups")
@@ -213,6 +266,20 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     if a.cmd == "places":
         print(json.dumps(places(c), indent=1, ensure_ascii=False))
+    elif a.cmd == "species":
+        # Local run (no R2): species lists per state, written to data/layers/inat/<month>/species_counts.json.
+        month = today[:7]
+        areas = species_places(places(c))
+        try:
+            species_counts(c, areas, month)
+        except Budget as e:
+            print(f"stopped: {e}; the next run continues")
+        done = cached(f"species_counts_{month}.json") or {}
+        doc = species_doc(done, areas, today)
+        (LAYERS / month).mkdir(parents=True, exist_ok=True)
+        (LAYERS / month / "species_counts.json").write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
+        print(f"species lists: complete={doc['complete']}, {c.used} requests; a full pass takes about "
+              f"{species_requests(done)}")
     elif a.cmd == "backlog":
         pl = places(c)
         wanted = a.places.split(",") if a.places else None
