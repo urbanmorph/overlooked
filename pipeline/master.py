@@ -714,9 +714,9 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     start(con)
     has_dna = load_gbif(con, paths)
     if not has_dna:
-        notes.append("DNA only: from the kind of record only (this snapshot's ledger does not mark DNA sequences).")
+        notes.append("The label \"DNA only\" uses the record type only: this month's GBIF data does not mark DNA sequences.")
     if not paths.get("unlocated"):
-        notes.append("Records with no coordinates (query L) are not in this snapshot: 'location missing' is empty.")
+        notes.append("This month's GBIF data does not include records without coordinates, so no species has the label \"location missing\" yet.")
     if inputs.get("zsi"):
         load_zsi(con, inputs["zsi"])
     if inputs.get("wcvp"):
