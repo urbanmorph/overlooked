@@ -145,6 +145,89 @@ def unresolved_json(con, out: Path):
     return obj["india"]["n"]
 
 
+def candidates_json(con, out: Path, cap=2000):
+    """May be an overlooked species: totals by group and state, and the top rows by records named only to genus.
+    Row: [district_lgd, state_lgd, group index, genus, tier, records named only to genus, species not recorded,
+    [[species_key, name], ...] examples]."""
+    groups = [r[0] for r in con.sql(
+        "SELECT grp FROM candidates GROUP BY grp ORDER BY sum(n_records_unnamed) DESC, grp").fetchall()]
+    gi = {g: i for i, g in enumerate(groups)}
+    by_group = [[0, 0, 0] for _ in groups]   # rows, records, rows matched in the district itself
+    states = {}
+    for state, g, tier, rows, recs in con.sql(
+            "SELECT state_lgd, grp, tier, count(*), sum(n_records_unnamed) FROM candidates GROUP BY ALL").fetchall():
+        d = states.setdefault(str(state), {"rows": 0, "records": 0, "g": [0] * len(groups)})
+        d["rows"] += rows; d["records"] += int(recs); d["g"][gi[g]] += int(recs)
+        b = by_group[gi[g]]
+        b[0] += rows; b[1] += int(recs); b[2] += rows if tier == "district" else 0
+    rows = [[d, s, gi[g], genus, tier, int(n), k, [list(x) for x in zip(keys, names)]]
+            for d, s, g, genus, tier, n, k, names, keys in con.sql(f"""
+                SELECT district_lgd, state_lgd, grp, genus, tier, n_records_unnamed, n_species_not_recorded,
+                       examples, example_keys
+                FROM candidates ORDER BY n_records_unnamed DESC, district_lgd, genus LIMIT {cap}""").fetchall()]
+    india = {"rows": sum(b[0] for b in by_group), "records": sum(b[1] for b in by_group)}
+    obj = {"since": 1980, "groups": groups, "india": india, "by_group": by_group, "states": states, "rows": rows}
+    dump(obj, out / "candidates.json")
+    return obj
+
+
+def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
+    """Records with no coordinates, by state ("none" for no place) and group: records (r) and species (s),
+    arrays indexed [0 = all groups, 1 + group index]. Top dataset holders, and species known in India only
+    from these records (no record with coordinates in the ledger or species table).
+    titles: a function from dataset keys to {key: title}, or None to leave titles out."""
+    groups = [r[0] for r in con.sql("SELECT grp FROM unlocated GROUP BY grp ORDER BY sum(n_records) DESC, grp").fetchall()]
+    gi, n = {g: i for i, g in enumerate(groups)}, len(groups) + 1
+
+    def by(area):
+        res = {}
+        for key, g, recs, sp in con.sql(f"""
+                SELECT area, grp, sum(n_records), count(DISTINCT species_key)
+                FROM (SELECT {area} AS area, * FROM unlocated)
+                GROUP BY GROUPING SETS ((area, grp), (area))""").fetchall():
+            d = res.setdefault(str(key), {"r": [0] * n, "s": [0] * n})
+            k = 0 if g is None else gi[g] + 1
+            d["r"][k], d["s"][k] = int(recs), sp
+        return res
+
+    holders = con.sql(f"""SELECT datasetkey, sum(n_records), count(DISTINCT species_key) FROM unlocated
+                          GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT {top}""").fetchall()
+    state_holders = {}
+    for state, key, recs in con.sql(f"""
+            SELECT state, datasetkey, r FROM (
+                SELECT coalesce(state_lgd::VARCHAR, 'none') AS state, datasetkey, sum(n_records) AS r,
+                       row_number() OVER (PARTITION BY state_lgd ORDER BY sum(n_records) DESC, datasetkey) AS rk
+                FROM unlocated GROUP BY state_lgd, datasetkey)
+            WHERE rk <= {per_state} ORDER BY state, r DESC""").fetchall():
+        state_holders.setdefault(state, []).append([key, int(recs)])
+    keys = list(dict.fromkeys([h[0] for h in holders] + [k for v in state_holders.values() for k, _ in v]))
+    names = titles(keys) if titles else {}
+
+    con.sql("""
+        CREATE OR REPLACE TABLE only_unlocated AS
+        SELECT species_key, any_value(name) AS name, any_value(grp) AS grp, sum(n_records) AS n,
+               min(first_year) AS first_year, max(last_year) AS last_year, count(DISTINCT state_lgd) AS states
+        FROM unlocated
+        WHERE species_key IS NOT NULL
+          AND species_key NOT IN (SELECT species_key FROM ledger) AND species_key NOT IN (SELECT species_key FROM species)
+        GROUP BY species_key
+    """)
+    only_g = [0] * n
+    for g, c in con.sql("SELECT grp, count(*) FROM only_unlocated GROUP BY GROUPING SETS ((grp), ())").fetchall():
+        only_g[0 if g is None else gi[g] + 1] = c
+    only_rows = [[k, nm, gi[g], int(c), f, la, st] for k, nm, g, c, f, la, st in con.sql(f"""
+        SELECT species_key, name, grp, n, first_year, last_year, states FROM only_unlocated
+        ORDER BY n DESC, name LIMIT {cap}""").fetchall()]
+
+    states = by("coalesce(state_lgd::VARCHAR, 'none')")
+    obj = {"groups": groups, "states": states, "india": by("0")["0"],
+           "holders": [[k, names.get(k), int(r), s] for k, r, s in holders],
+           "state_holders": state_holders, "titles": {k: names.get(k) for k in keys},
+           "only_unlocated": {"g": only_g, "rows": only_rows}}
+    dump(obj, out / "unlocated.json")
+    return obj
+
+
 def changes_json(con, out: Path, counts, previous, summary):
     """Page data for the change feed. previous: the previous snapshot's summary, or None (first run)."""
     if previous is None:
