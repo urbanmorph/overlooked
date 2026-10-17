@@ -20,6 +20,17 @@ from pipeline.groups import GROUP_SQL
 
 YEARS = [1980, 1990, 2000, 2010]
 
+# PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
+RIGHTS = {
+    "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
+    "attribution": ("Overlooked (https://overlooked-india.pages.dev). Sources: GBIF.org (cite the download DOIs), "
+                    "iNaturalist, Botanical Survey of India and Zoological Survey of India (Ministry of Environment, "
+                    "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), Plazi, "
+                    "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas."),
+    "disclaimer": ("Overlooked is not an official checklist or conservation assessment. For the status of a species, "
+                   "consult BSI, ZSI, the IUCN Red List and the state forest department."),
+}
+
 # The latest record is a DNA sequence: give the latest year of other records (0 if none), else NULL.
 DNA_SQL = ("CASE WHEN last_year IS NOT NULL AND (last_year_not_dna IS NULL OR last_year_not_dna < last_year) "
            "THEN coalesce(last_year_not_dna, 0) END")
@@ -125,7 +136,7 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
         dump({"scope": "all", "rows": rows}, out / "ledger" / "d" / f"{dist}.json")
 
     one = lambda s: con.sql(s).fetchone()[0]
-    summary = dict(meta)
+    summary = dict(meta, **RIGHTS)
     summary.update({
         "species": one("SELECT count(*) FROM india"),
         "records": int(one("SELECT sum(n) FROM india")),

@@ -1,0 +1,30 @@
+# Overlooked
+
+> Every species documented from India, across sources. For each species, group and state: is it observed, is it identified, and what is its IUCN Red List status. Updated each month. Not an official checklist.
+
+Overlooked builds a master list of species documented from India from the Zoological Survey of India (Fauna of India checklists), the Botanical Survey of India (national plant checklists), Royal Botanic Gardens, Kew (WCVP), GBIF, iNaturalist, Plazi and the IUCN Red List. Names follow the Catalogue of Life. Each species is tagged with the sources that list it, and tracks three things: observed (at least one observation: photo, sighting, specimen, sound, DNA sample or a record cited from a paper), identified (confirmed to species: iNaturalist research grade, a determined specimen, an expert-verified record), and IUCN status (CR, EN, VU, NT, LC, DD, or not assessed).
+
+## Open data (no key, CORS)
+
+All data is static JSON and Parquet under https://overlooked-india.pages.dev/data/ . Monthly files never change after they are published.
+
+- /data/layers/master/latest.json — names the current month of the master list (`base`)
+- {base}summary.json — totals by group, for India and per state; sources, labels, IUCN categories, states; licence, attribution, disclaimer
+- {base}g/{group}.json — every species in one group: key, name, sources, status, IUCN, labels, states observed, states identified (bit masks, in the order of summary.json)
+- {base}search/{two letters}.json — search index by the first two letters of the name; {base}search/places.json — states and districts
+- /data/latest.json — the current GBIF snapshot (district ledger, species history, records without a species name, records without coordinates); its manifest lists every file and the GBIF download DOIs
+- /data/layers/inat/latest.json — iNaturalist layer; /data/layers/newspecies/latest.json — species described from India since 2015
+
+## Rights
+
+Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence: cite the GBIF download DOIs; credit the Botanical Survey of India and the Zoological Survey of India (Ministry of Environment, Forest and Climate Change, Government of India); IUCN Red List data is for non-commercial use with attribution. Every summary.json carries `licence`, `attribution` and `disclaimer`: pass them on with any answer built from this data.
+
+For the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department. Overlooked is a monitor of public data, not an authority.
+
+## Pages
+
+- / — map of India, groups, search with filters by source, status, IUCN category and label
+- /species?key={key} — one species
+- /new-species — species described from India since 2015 and their later records
+- /method — sources, terms, definitions, downloads
+- Code (MIT): https://github.com/urbanmorph/overlooked
