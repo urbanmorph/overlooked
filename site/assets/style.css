@@ -44,10 +44,10 @@ h2 { margin: 0; font-size: 22px; font-weight: 600 }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px }
 .pad { padding: 20px } @media (min-width: 720px) { .pad { padding: 24px } }
 .row { display: flex; flex-wrap: wrap; gap: 20px }
-.grow { flex: 999 1 560px; min-width: 0 } .side { flex: 1 1 320px; min-width: 0 }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px }
+.grow { flex: 999 1 560px; min-width: 0 } .side { flex: 1 1 320px; min-width: 0; align-self: flex-start }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px } .kpis > * { min-width: 0 }
 .kpi { display: block; text-decoration: none; color: var(--ink); padding: 20px }
-.kpi b { display: block; font: 500 38px/1.1 var(--mono) } .kpi span { display: block; margin-top: 8px; font-size: 15px; line-height: 1.45 }
+.kpi b { display: block; font: 500 clamp(26px, 2.6vw, 36px)/1.1 var(--mono); overflow-wrap: anywhere } .kpi span { display: block; margin-top: 8px; font-size: 15px; line-height: 1.45 }
 .kpi small { font-size: 18px; color: var(--muted) }
 .snap { font-size: 14px; line-height: 1.7 } .snap b { display: block; margin-bottom: 4px }
 section { margin-top: 32px }
@@ -67,7 +67,9 @@ section { margin-top: 32px }
 .loading { color: var(--muted); padding: 40px 0; text-align: center }
 
 /* Forms */
-label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2) }
+label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); min-width: 0; max-width: 100% }
+label.f select { min-width: 0; max-width: 100% }
+label.f.inline { flex-direction: row; align-items: center; gap: 8px } label.f.inline select { width: auto; flex: 0 1 auto }
 select, input[type=search] { font: inherit; font-size: 15px; color: var(--ink); padding: 9px 10px; border: 1px solid var(--field); border-radius: 6px; background: #fff; min-height: 44px; width: 100% }
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; align-items: end }
 button.b, a.b { font: inherit; font-size: 14px; padding: 10px 14px; min-height: 44px; border: 1px solid var(--field); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center }
@@ -78,7 +80,7 @@ button.b:hover { background: var(--ground) } button.b:disabled { opacity: .45; c
 .tablebox { overflow-x: auto }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
 th { font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--field); white-space: nowrap }
-th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer }
+th button { font: inherit; color: inherit; background: none; border: 0; padding: 12px 0; margin: -12px 0; cursor: pointer }
 th[aria-sort=ascending] button::after { content: " ↑" } th[aria-sort=descending] button::after { content: " ↓" }
 td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); font-size: 15px; vertical-align: top }
 td.n, th.n { text-align: right }
