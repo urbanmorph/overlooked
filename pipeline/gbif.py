@@ -40,9 +40,11 @@ def build_sql(name, state=None):
     excluded = ", ".join(f"'{r['datasetKey']}'" for r in csv.DictReader(EXCLUDED.open()))
     # GADM state name is only for test runs. The real runs place cells in LGD districts later.
     region = f"AND level1name = '{state}'" if state else ""
+    # Records with no coordinates have no GADM name; a test run selects them by the state text.
+    text_region = f"AND stateprovince = '{state}'" if state else ""
     text = (QUERIES / f"{name}.sql").read_text()
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("--"))
-    return " ".join(body.format(excluded=excluded, region_filter=region).split())
+    return " ".join(body.format(excluded=excluded, region_filter=region, stateprovince_filter=text_region).split())
 
 
 def request_body(sql):

@@ -36,13 +36,16 @@ Scheduled runs need the repository variable `PIPELINE_ENABLED=true`. Runs starte
 ### Steps of a snapshot
 
 1. **Check the sources.** One request to each source (`pipeline/health.py`). If GBIF or R2 does not answer, the run stops and opens an issue. If another source does not answer, that source keeps last month's data.
-2. **Download.** Three GBIF SQL downloads, one after another, each with its own DOI:
+2. **Download.** Four GBIF SQL downloads, one after another, each with its own DOI:
    - A, `ledger_cube`: species at each point (coordinates rounded to 3 decimals), first and latest year, records.
    - C, `species_history`: names, classification, and records by decade and kind of record.
-   - U, `unresolved_cube`: records named only to genus, family or higher.
-3. **Place.** Each point goes to its LGD district. A point less than 5 km from land goes to the nearest district; a point farther out is offshore.
-4. **Compute.** The ledger, the page data (small JSON files per area), the species files, the records with no species name, and the change feed against the previous snapshot.
-5. **Check.** Every download has a DOI; the ledger is not empty; species and ledger rows did not change by more than 20% from last month.
+   - U, `unresolved_cube`: records named only to genus, family or higher, with the genus.
+   - L, `unlocated_cube`: records with no coordinates, by taxon, state as written, dataset and kind of record.
+3. **Place.** Each point goes to its LGD district. A point less than 5 km from land goes to the nearest district; a point farther out is offshore. A record with no coordinates goes to a state when its state text names one (old names too, such as Orissa). If not, it has no place.
+4. **Compute.** The ledger, the page data (small JSON files per area), the species files, the records with no species name, and the change feed against the previous snapshot. Also:
+   - `candidates.json`: records named only to genus in a district where a species of that genus has no record since 1980 (in the district, or else in the state). They may be an overlooked species.
+   - `unlocated.json`: records with no coordinates by state and group, the datasets that hold most of them (titles from the GBIF API, cached), and species known in India only from such records.
+5. **Check.** Every download has a DOI; the ledger is not empty; species and ledger rows did not change by more than 20% from last month. Records with no coordinates and candidates are not empty, and did not change by more than 20% if last month has them.
 6. **Publish.** Files go to R2 under `snapshots/<YYYY-MM>/`, the manifest last, then `latest.json`. The site reads them through the `/data/*` Pages Function.
 
 ### Safe to run again

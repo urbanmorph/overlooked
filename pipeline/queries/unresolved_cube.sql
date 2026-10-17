@@ -1,5 +1,6 @@
 -- Query U: records not named to species (genus, family or higher), by group, rank and point.
 -- Module 5: where public records wait for a species name. Coordinates rounded to 3 decimals, as in query A.
+-- genus is kept so records named only to genus can be matched with species of that genus (candidates).
 -- {region_filter} is empty for the national run, or an extra AND clause for a test region.
 SELECT
   kingdom,
@@ -7,6 +8,7 @@ SELECT
   class,
   "order",
   family,
+  genus,
   taxonrank,
   ROUND(decimallatitude, 3) AS lat,
   ROUND(decimallongitude, 3) AS lon,
@@ -24,4 +26,4 @@ WHERE countrycode = 'IN'
   AND (coordinateuncertaintyinmeters IS NULL OR coordinateuncertaintyinmeters <= 25000)
   AND datasetkey NOT IN ({excluded})
   {region_filter}
-GROUP BY kingdom, phylum, class, "order", family, taxonrank, ROUND(decimallatitude, 3), ROUND(decimallongitude, 3)
+GROUP BY kingdom, phylum, class, "order", family, genus, taxonrank, ROUND(decimallatitude, 3), ROUND(decimallongitude, 3)

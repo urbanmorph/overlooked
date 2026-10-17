@@ -29,7 +29,14 @@ Question: where do observations wait for a name, and could a "quiet" species be 
 | Backlog by state, group and age | iNaturalist API | For India and each state place, and each iconic group (plus "no taxon"): needs-ID counts by year created (histogram endpoint) and research-grade counts | about 1,100 |
 | Active identifiers | iNaturalist API | People who identified each group in India in the last 12 months, and the busiest identifier's count | about 15 |
 | Direct check of quiet species | iNaturalist API | For each species quiet in India: match the name to an iNaturalist taxon (cached once), then the latest Indian observation of any quality, with its quality grade and licence | first month about 2 per species, then about 1; at most 9,000 a day, continuing next day if needed |
-| Records not named to species | GBIF (query U) | Records with a taxon above species (genus, family...), by group, rank and rounded point, placed in districts | 1 download |
+| Records not named to species | GBIF (query U) | Records with a taxon above species (genus, family...), by group, genus, rank and rounded point, placed in districts | 1 download |
+| May be an overlooked species | Query U and the ledger | Records named only to genus in a district, at points with a record since 1980, where a species of that genus has no record in the district since 1980 (or, if none, in the state). The unsurveyed rule holds: the species' group must have a record in that area since 1980 | none |
+| Records with no coordinates | GBIF (query L) | Records with no coordinates, by taxon, state text, dataset and kind of record. Placed in a state when the text names one (`pipeline/ref/state_names.csv`); otherwise "no place" | 1 download |
+
+Notes (17 October 2026):
+- Query L: about 1.4 million India records have no coordinates. Only about 258,000 carry any state text (GBIF facet, 17 October 2026). The variants table places 94% of those, so about 17% of all such records get a state.
+- Old names map to today's state: Orissa, Pondicherry, Uttaranchal, Mysore State, Madras State, NEFA. Records of Jammu and Kashmir from before 2019 stay in Jammu and Kashmir, though the old state included Ladakh. Cities (Bombay, Madras, Mysore alone), regions across states (Bengal, United Provinces, Bombay State) and text naming two states are left unplaced.
+- Dataset titles for the top holders come from the GBIF API at build time, one request per dataset not yet cached (`data/cache/gbif_datasets.json` and R2 `cache/`). About 100 requests once, then almost none. A failed lookup leaves the title empty and is tried again next build. This is cheaper for readers than each browser asking GBIF.
 
 Rules:
 - iNaturalist limits: at most 60 requests a minute and under 10,000 a day; we use about 1 a second and a daily budget of 9,000.
@@ -66,12 +73,19 @@ No application server and no database. The one Pages Function only streams files
 
 GBIF SQL downloads allow one table, SELECT and GROUP BY, and no joins. Admin columns are GADM, not LGD. So we group by rounded coordinates and place the points in LGD districts ourselves.
 
-Filters on every query (ported from fnf `01_gbif_download.py`): country IN, has coordinates, no geospatial issue, occurrence status PRESENT, coordinate uncertainty 25 km or less (or empty), no FOSSIL_SPECIMEN or LIVING_SPECIMEN, the fnf excluded datasets.
+Filters on every query (ported from fnf `01_gbif_download.py`): country IN, has coordinates, no geospatial issue, occurrence status PRESENT, coordinate uncertainty 25 km or less (or empty), no FOSSIL_SPECIMEN or LIVING_SPECIMEN, the fnf excluded datasets. Query L is the exception: it takes the records with no coordinates, so the coordinate filters do not apply.
+
+The monthly run downloads A, C, U and L, one after another, in that order.
 
 | Query | Groups by | Measures | Feeds |
 |---|---|---|---|
 | A. Ledger cube | speciesKey, ROUND(lat, 3), ROUND(lon, 3) | MIN(year), MAX(year), COUNT(*) | Ledger, change feed |
 | C. Species history and names | speciesKey, kingdom to species, FLOOR(year / 10) * 10, basisOfRecord | COUNT(*) | Species table, species page chart |
+| U. Records not named to species | kingdom to family, genus, taxonRank, ROUND(lat, 3), ROUND(lon, 3) | MIN(year), MAX(year), COUNT(*) | Waiting for a name, may be an overlooked species |
+| L. Records with no coordinates | speciesKey, species, genus, taxonRank, kingdom to family, stateProvince (as published), datasetKey, basisOfRecord | MIN(year), MAX(year), COUNT(*) | Records with no coordinates by state, holders, species known only from them |
+
+- Query L size: species and classification depend on speciesKey, so rows are about species x state text x dataset x kind of record. Expected a few hundred thousand rows, well below query A (11.8 million). A test run selects L by the state text, because records with no coordinates have no GADM name.
+- Downloads made before genus was added to U still build: genus is empty, and the candidates step is skipped. A run started before L was added downloads it after the others.
 
 - **Dropped, 16 October 2026:** query B (records since 1980) and query D (taxonomy). Effort comes from the ledger: a group with no species recorded in an area since the chosen year marks the area unsurveyed for that group. Names and classification come with query C.
 - **Species keys are Catalogue of Life IDs** (text, for example `5VKF2`), because GBIF SQL downloads use the COL taxonomy.
@@ -116,7 +130,14 @@ snapshots/YYYY-MM/
   species_decade.parquet             one row per species x decade x basis of record
   new_species.parquet                one row per new species
   changes.parquet                    one row per change since last month
+  unresolved.parquet                 records not named to species, per district x group x genus x rank
+  candidates.parquet                 may be an overlooked species: one row per district x genus
+  unlocated.parquet                  records with no coordinates, per taxon x state text x dataset x kind
   summary.json                       the overview figures, small, for fast first paint
+  unresolved.json                    records not named to species, by area, group and rank
+  candidates.json                    totals by group and state, top 2,000 rows
+  unlocated.json                     by state (or no place) x group: records and species; top dataset
+                                     holders with titles; species known only from records with no coordinates
 boundaries/lgd-YYYY-MM/
   districts.pmtiles                  map tiles
   districts.parquet                  LGD codes and names
@@ -130,6 +151,10 @@ Main columns:
 - `district_group`: district_lgd, group, n_records_since_1980, n_species_since_1980.
 - `new_species`: name, species_key (if matched), group, published_date, journal, doi, type_state, source, matched_by (exact, synonym, verbatim), first_record_after (date), status (recorded, only in later papers, no public record since), years_waited.
 - `changes`: change_type (recorded_again, first_in_state, new_species_followed_up, now_quiet), species_key, area, previous_value, new_value, record_date, reason (new record, or older record newly published).
+- `unresolved`: district_lgd, state_lgd, grp, genus, taxonrank, n_records, n_records_since_1980 (records at points whose latest record is 1980 or later), first_year, last_year.
+- `candidates`: district_lgd, state_lgd, grp, genus, tier (district or state), n_records_unnamed, n_species_not_recorded, examples, example_keys, last_year_unnamed.
+- `unlocated`: species_key (empty above species), name, genus, taxonrank, grp, stateprovince (as published), state_lgd (empty for no place), datasetkey, basis, first_year, last_year, n_records.
+- "Known only from records with no coordinates": a species in L with no row in the ledger or the species table. A species whose only records with coordinates failed the filters (for example, uncertainty over 25 km) also counts here.
 
 Snapshots are never overwritten. A failed run publishes nothing, and the site keeps showing the last good month.
 
@@ -148,14 +173,14 @@ Computed by comparing this month's Parquet with last month's.
 
 | Workflow | When | Does |
 |---|---|---|
-| `request.yml` | 1st of the month, 02:00 UTC, and by hand | Submits GBIF downloads A to D. Writes the keys to `runs/YYYY-MM.json` and commits it. |
+| `request.yml` | 1st of the month, 02:00 UTC, and by hand | Submits the first GBIF download (A); C, U and L follow one at a time from `build.yml`. Writes the keys to `runs/YYYY-MM.json` and commits it. |
 | `build.yml` | Every 6 hours on days 1 to 10, and by hand | If downloads are pending, polls GBIF. When all are ready: builds, checks, uploads to R2, writes `latest.json`, commits `site/data/latest.json`. The commit triggers the Pages build. |
 | `checks.yml` | On pull requests | Tests and a small sample build. |
 
 - One build at a time (`concurrency` group). Jobs stop at 6 hours; a build resumes from the download keys.
 - **Idempotent and incremental (16 October 2026):** every step can run again safely. Download keys and fetched files are reused; a build is skipped when a snapshot from the same inputs (download keys and boundary checksum) exists; R2 uploads skip files already there with the same SHA-256, so an interrupted upload continues; the manifest and `latest.json` go last. If GBIF reports no India record added, changed or re-processed since the last published run, the month downloads nothing. GBIF itself is re-summarised each month: about 5% of India records are re-processed monthly and GBIF publishes no deletions, so adding only changed records to the totals would drift.
 - **Source health at every refresh:** `pipeline/health.py` sends one request to each source (GBIF API and downloads, R2, LGD boundaries, Plazi, IPNI, Index Fungorum, iNaturalist, the India Biodiversity Portal's GBIF dataset, Kew WCVP, BSI Plant Discoveries and IVH). A critical failure (GBIF, R2) stops the run and opens an issue; any other failure is a warning, and that source keeps last month's data. Results are kept in the run state and the manifest.
-- Checks before publishing: row counts within a set range of last month, no district codes outside LGD, every figure has a DOI. If a check fails, the job stops and opens a GitHub issue.
+- Checks before publishing: row counts within a set range of last month, no district codes outside LGD, every figure has a DOI. Records with no coordinates and candidates are not empty when built, and within 20% of last month when last month has them. If a check fails, the job stops and opens a GitHub issue.
 - The monthly commits keep the repository active, so GitHub does not turn off the schedules.
 - Secrets in Actions: GBIF account and R2 keys (scoped to `overlooked-data`). The site builds through Cloudflare's GitHub integration, so Actions holds no Cloudflare API token. The broader Cloudflare token stays local.
 

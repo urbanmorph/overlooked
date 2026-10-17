@@ -26,16 +26,18 @@ from concurrent.futures import ThreadPoolExecutor
 from pipeline import boundaries as boundary_map
 import hashlib
 
-from pipeline import changes, checks, districts, gbif, health, ledger, names, site_data, unresolved
+from pipeline import (candidates, changes, checks, districts, gbif, health, ledger, names, site_data, unlocated,
+                      unresolved)
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 SNAPSHOTS = ROOT / "data" / "snapshots"
 SITE_DATA = ROOT / "site" / "data"
 
-# Query A (ledger), C (species history and names) and U (records not named to species, module 5).
-# B and D were dropped: effort comes from the ledger itself, and names come with query C.
-QUERIES = ["ledger_cube", "species_history", "unresolved_cube"]
+# Query A (ledger), C (species history and names), U (records not named to species, module 5) and
+# L (records with no coordinates). B and D were dropped: effort comes from the ledger itself, and names
+# come with query C. A new query goes last: a run already started downloads it after the others.
+QUERIES = ["ledger_cube", "species_history", "unresolved_cube", "unlocated_cube"]
 DONE = "SUCCEEDED"
 FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
@@ -223,11 +225,18 @@ def build(args):
 
     con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-    unresolved_records = None
+    unresolved_records = n_candidates = unlocated_records = None
     if "unresolved_cube" in state["downloads"]:
         unresolved_records = unresolved.build(con, ledger.unpack(state["downloads"]["unresolved_cube"]["key"]),
                                               str(districts.PATH))
         con.sql(f"COPY unresolved TO '{out / 'unresolved.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+        # None when query U came without genus (downloads made before genus was added).
+        n_candidates = candidates.build(con)
+        if n_candidates is not None:
+            con.sql(f"COPY candidates TO '{out / 'candidates.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+    if "unlocated_cube" in state["downloads"]:
+        unlocated_records = unlocated.build(con, ledger.unpack(state["downloads"]["unlocated_cube"]["key"]))
+        con.sql(f"COPY unlocated TO '{out / 'unlocated.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
 
     # The district map depends only on the boundary file, so it is stored once per boundary version.
     bpath = f"boundaries/lgd-{boundaries['sha256'][:12]}/districts_map.json"
@@ -247,6 +256,18 @@ def build(args):
     summary = site_data.build(con, out, meta)
     if unresolved_records is not None:
         site_data.unresolved_json(con, out)
+    if n_candidates is not None:
+        site_data.candidates_json(con, out)
+    unlocated_counts = {}
+    if unlocated_records is not None:
+        # Titles of the top dataset holders: one GBIF API request per dataset not yet cached (data/cache, R2 cache/).
+        s3 = None
+        if os.environ.get("R2_ENDPOINT"):
+            from pipeline import r2
+            s3 = r2.client()
+        u = site_data.unlocated_json(con, out, titles=lambda keys: unlocated.dataset_titles(http, keys, s3=s3))
+        unlocated_counts = {"unlocated_placed_records": sum(v["r"][0] for k, v in u["states"].items() if k != "none"),
+                            "only_unlocated_species": u["only_unlocated"]["g"][0]}
 
     site_data.species_shards(con, out)
 
@@ -261,7 +282,8 @@ def build(args):
     summary["changes"] = counts
     summary["previous_run"] = previous["summary"]["run_id"] if previous else None
     summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"],
-                    "unresolved_records": unresolved_records})
+                    "unresolved_records": unresolved_records, "candidates": n_candidates,
+                    "unlocated_records": unlocated_records, **unlocated_counts})
     (out / "summary.json").write_text(json.dumps(summary, separators=(",", ":")))
     manifest = {
         "run_id": run_id,
