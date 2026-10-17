@@ -2,9 +2,10 @@
 
 1. Restore the iNaturalist cache from R2 (cache/inat/), so a run continues where the last one stopped.
 2. Backlog by state and group, and active identifiers (once a month).
+2b. Species lists per state, research grade and needs ID (once a month; for the master list).
 3. Direct check of the species that are quiet in the latest published snapshot, oldest first,
    within the daily request budget.
-4. Write layers/inat/<month>/{backlog,quiet}.json and layers/inat/latest.json to R2, and save the cache.
+4. Write layers/inat/<month>/{backlog,species_counts,quiet}.json and layers/inat/latest.json to R2, and save the cache.
 
 Safe to run again: finished parts are skipped, and the quiet check continues from its cache.
 
@@ -36,7 +37,8 @@ def record_usage(day, n):
 
 def sync_cache(s3, direction):
     from pipeline import r2
-    names = ["usage.json", "places.json", "taxa.json", "backlog_{m}.json", "backlog_rows_{m}.json", "quiet_{m}.json"]
+    names = ["usage.json", "places.json", "taxa.json", "backlog_{m}.json", "backlog_rows_{m}.json", "quiet_{m}.json",
+             "species_counts_{m}.json"]
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     for n in (x.format(m=month) for x in names):
         local, key = inat.CACHE / n, f"cache/inat/{n}"
@@ -104,6 +106,17 @@ def run(a, month, client, s3):
         print(f"backlog stopped: {e}; the next run continues")
         bl = None
 
+    # Species lists per state, research grade and needs ID (for the master list), once a month.
+    # About 700 requests a month (October 2026: 25,708 research-grade and 35,143 needs-ID species in India).
+    areas = inat.species_places(inat.cached("places.json") or {})
+    try:
+        if len(areas) > 1:
+            inat.species_counts(client, areas, month)
+    except inat.Budget as e:
+        print(f"species lists stopped: {e}; the next run continues")
+    species = inat.species_doc(inat.cached(f"species_counts_{month}.json") or {}, areas,
+                               datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+
     # Direct check of quiet species from the latest published snapshot (oldest latest record first).
     if a.quiet_file:
         rows = json.loads(Path(a.quiet_file).read_text())["rows"]
@@ -124,6 +137,8 @@ def run(a, month, client, s3):
     out.mkdir(parents=True, exist_ok=True)
     if bl:
         (out / "backlog.json").write_text(json.dumps(bl, separators=(",", ":"), ensure_ascii=False))
+    if species["lists"]:
+        (out / "species_counts.json").write_text(json.dumps(species, separators=(",", ":"), ensure_ascii=False))
     # Small file for the ledger page: only species with an observation in India.
     # [latest date, quality grade, open licence (1/0), observations in India]
     open_lic = {"cc0", "cc-by", "cc-by-nc"}
@@ -136,6 +151,8 @@ def run(a, month, client, s3):
     info = {"month": month, "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "backlog": f"layers/inat/{month}/backlog.json" if bl else None,
             "quiet": f"layers/inat/{month}/quiet.json", "quiet_flags": f"layers/inat/{month}/quiet_flags.json",
+            "species_counts": f"layers/inat/{month}/species_counts.json" if species["lists"] else None,
+            "species_counts_complete": species["complete"],
             "quiet_complete": complete, "quiet_checked": len(quiet), "quiet_of": len(species), "snapshot": run_id,
             "requests": client.used}
     if s3:

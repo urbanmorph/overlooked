@@ -1,5 +1,7 @@
 """Species groups, ported unchanged from fnf scripts/09_attention.py. Order matters: first match wins."""
 
+import re
+
 BUTTERFLY_FAMILIES = "('Papilionidae', 'Pieridae', 'Nymphalidae', 'Lycaenidae', 'Hesperiidae', 'Riodinidae')"
 LARGE_MAMMAL_ORDERS = "('Carnivora', 'Proboscidea', 'Artiodactyla', 'Perissodactyla', 'Primates', 'Pholidota')"
 LICHEN_CLASSES = "('Lecanoromycetes', 'Lichinomycetes', 'Arthoniomycetes')"
@@ -38,3 +40,6 @@ GROUP_SQL = f"""
         ELSE 'Other'
     END
 """
+
+# The groups in GROUP_SQL order, 'Other' last. Site files of the master list index into this list.
+GROUPS = list(dict.fromkeys(re.findall(r"THEN '([^']+)'", GROUP_SQL))) + ["Other"]

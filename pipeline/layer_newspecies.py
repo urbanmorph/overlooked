@@ -112,6 +112,7 @@ def gbif_match(http, name, cache, need_classification=False):
     exact = (d.get("diagnostics") or {}).get("matchType") == "EXACT"
     ranks = {c.get("rank", "").lower(): c.get("name") for c in d.get("classification") or []}
     res = {"key": accepted.get("key") or usage.get("key"), "synonym": bool(d.get("synonym")), "name": usage.get("name"),
+           "accepted_name": accepted.get("canonicalName") or usage.get("canonicalName"),
            "classification": {r: ranks.get(r) for r in ("kingdom", "phylum", "class", "order", "family")}
            } if exact and usage.get("key") else None
     cache[name] = res
