@@ -20,6 +20,16 @@ Newest first. Updated as work happens.
 
 ### 17 October 2026
 
+- Pipeline, from the next snapshot: query U keeps the genus; new candidates.json (records named only
+  to genus, from 1980 or later, where a species of that genus has no public record since 1980 in the
+  district, else the state); new query L (records with no coordinates) placed at state level from the
+  state text (pipeline/ref/state_names.csv), with unlocated.json (by state and "no place", top
+  holders, species known only from such records). Both queries pass GBIF's validator.
+- Audit items done: no layout shift on New species and Species, new species file 1.55 MB -> 0.34 MB
+  (format 2, the page reads both), tap to select on the maps, histogram labels on phones, one-row nav
+  on phones (header 199 -> 107 px), self-hosted IBM Plex fonts with a one-year cache.
+- Front page prototype (design canvas, option E): map first, group cards, three views (not recorded
+  since 1980, waiting for a name, no location), wired both ways with the state.
 - Duplicate Catalogue of Life keys: 103 species names had two keys with the same classification, so
   23 species looked not recorded since 1980 while their recent records sat under the other key. The
   build now merges them (most records wins; homonyms stay apart). From the next snapshot: 6,990 -> 6,967.
