@@ -392,7 +392,7 @@ def to_match(con, cache):
     return [n for (n,) in rows if n not in cache]
 
 
-def match_names(con, names, cache, s3, deadline=None, http=None):
+def match_names(names, cache, s3, deadline=None, http=None):
     """Ask GBIF for each name (one at a time, about 1 a second), saving the cache every 10 minutes and at the end.
     Stops at the deadline or when GBIF stops answering; the next run continues. Returns how many were asked."""
     http = http or requests.Session()
@@ -428,6 +428,7 @@ def add_matches(con, cache):
     if rows:
         con.executemany("INSERT INTO matched VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         [r + [None] * (8 - len(r)) for r in rows])
+    con.sql("DELETE FROM alias WHERE prio = 3")
     con.sql("INSERT INTO alias SELECT name, key, display, 3 FROM matched")
 
 
@@ -487,7 +488,8 @@ def resolve(con):
             UNION ALL SELECT n.id, 4, NULL, f.kingdom, f.phylum, f.class, f."order", n.hf
                       FROM n JOIN family_ref f ON f.family = n.hf AND (n.hk IS NULL OR n.hk = f.kingdom)
             UNION ALL SELECT id, 5, NULL, hk, hp, hc, ho, hf FROM n)
-        SELECT id, arg_min(coalesce(grp, {GROUP_SQL}), t) AS grp, arg_min(kingdom, t) AS kingdom
+        SELECT id, arg_min(coalesce(grp, {GROUP_SQL}), t) AS grp,
+               arg_min(kingdom, t) FILTER (WHERE kingdom IS NOT NULL) AS kingdom
         FROM c GROUP BY id
     """)
     con.sql("""
@@ -689,7 +691,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     pending = to_match(con, cache)
     if match and pending:
         print(f"{len(pending)} names to match with GBIF", flush=True)
-        match_names(con, pending, cache, s3, deadline, http)
+        match_names(pending, cache, s3, deadline, http)
         add_matches(con, cache)
         pending = to_match(con, cache)
     if pending:
