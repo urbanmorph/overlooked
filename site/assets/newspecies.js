@@ -3,16 +3,31 @@ import { getJSON, fmt, esc, $, monthName, showLoadError } from './common.js';
 const STATUS = { recorded: 'Recorded again', later_papers: 'Only in later papers', none: 'No public record since' };
 const CLS = { recorded: 'st-ok', later_papers: 'st-paper', none: 'st-none' };
 const PAGE = 50;
+const LOOKUP = ['sources', 'journal', 'state', 'group', 'matched_by', 'status'];
+
+// Rows from the file. Version 2 is columnar with lookup tables (pipeline/layer_newspecies.py compact);
+// a file without a version is the older list of row objects.
+function expand(doc) {
+  if (!doc.version) return doc.species;
+  const { lookups: lk, columns: c } = doc;
+  const fields = Object.keys(c).filter(f => f !== 'link_rest');
+  return Array.from({ length: doc.n }, (_, i) => {
+    const r = {};
+    for (const f of fields) r[f] = LOOKUP.includes(f) ? lk[f][c[f][i]] : c[f][i];
+    r.link = lk.link[c.link[i]] + c.link_rest[i];
+    r.any_record = !!r.any_record;
+    return r;
+  });
+}
 
 try {
   const layer = await getJSON('layers/newspecies/latest.json').catch(() => null);
-  const done = () => { const l = document.getElementById('loading'); if (l) l.hidden = true; };
   if (!layer) {
-    done(); $('#pending').hidden = false;
+    $('#body').hidden = true; $('#pending').hidden = false;
   } else {
     const data = await getJSON(layer.file);
-    done(); $('#body').hidden = false;
-    const rows = data.species;
+    $('#body').removeAttribute('aria-busy');
+    const rows = expand(data);
     const n = rows.length, cnt = s => rows.filter(r => r.status === s).length;
     const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '–');
     const k = document.querySelectorAll('#kpis b');

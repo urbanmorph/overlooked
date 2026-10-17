@@ -68,6 +68,7 @@ function syncURL() {
 // Map.
 const map = drawMap($('#map'), boundaries, {
   label: 'Map of India: species not recorded since the year, in each district. Select a district to filter the table.',
+  pickLabel: 'Show this district',
   onPick: d => { st.district = st.district === d.id ? null : d.id; st.state = d.state_lgd; update(); },
 });
 

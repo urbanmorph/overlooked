@@ -4,7 +4,7 @@ import { esc, fmt } from './common.js';
 
 const RAMP = ['--q0', '--q1', '--q2', '--q3', '--q4'];
 
-export function drawMap(box, boundaries, { onPick, label } = {}) {
+export function drawMap(box, boundaries, { onPick, label, pickLabel = 'Open' } = {}) {
   const [x, y, w, h] = boundaries.viewBox;
   const byState = new Map();
   for (const d of boundaries.districts) {
@@ -23,21 +23,43 @@ export function drawMap(box, boundaries, { onPick, label } = {}) {
   const full = [x, y, w, h];
   let values = new Map(), tipText = () => '';
 
+  // Mouse: the tip follows the pointer and a click picks the district.
+  // Touch and pen: the first tap shows the tip with a button; the button, or a second tap on the same district, picks it.
+  let armed = null, lastType = 'mouse';
+  const hl = id => { for (const p of el.querySelectorAll('path.hl')) p.classList.remove('hl'); const p = paths.get(id); if (p) { p.classList.add('hl'); p.parentNode.appendChild(p); } };
+  function hide() { tip.hidden = true; tip.classList.remove('touch'); armed = null; hl(null); }
+  function show(d, clientX, clientY, touch) {
+    tip.innerHTML = `<b>${esc(d.name)}</b>, ${esc(d.state)}<br>${tipText(d.id, values.get(d.id))}`
+      + (touch && onPick ? `<br><button class="b" type="button">${esc(pickLabel)}</button>` : '');
+    tip.classList.toggle('touch', touch);
+    tip.hidden = false;
+    // Keep the tip inside the map box: above the point if it fits, else below it.
+    const r = box.getBoundingClientRect(), x = clientX - r.left, y = clientY - r.top;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.max(0, Math.min(x - w / 2, r.width - w))}px`;
+    tip.style.top = `${y - h - 12 >= 0 ? y - h - 12 : y + 16}px`;
+  }
+  function pick(d) { hide(); if (onPick) onPick(d); }
+
+  el.addEventListener('pointerdown', e => { lastType = e.pointerType || 'mouse'; });
   el.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
     const p = e.target.closest('path');
     if (!p) { tip.hidden = true; return; }
-    const d = info.get(+p.dataset.id);
-    const r = box.getBoundingClientRect();
-    tip.style.left = `${e.clientX - r.left}px`;
-    tip.style.top = `${e.clientY - r.top}px`;
-    tip.innerHTML = `<b>${esc(d.name)}</b>, ${esc(d.state)}<br>${tipText(d.id, values.get(d.id))}`;
-    tip.hidden = false;
+    show(info.get(+p.dataset.id), e.clientX, e.clientY, false);
   });
-  el.addEventListener('pointerleave', () => { tip.hidden = true; });
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') tip.hidden = true; });
   el.addEventListener('click', e => {
     const p = e.target.closest('path');
-    if (p && onPick) onPick(info.get(+p.dataset.id));
+    if (!p) { hide(); return; }
+    const d = info.get(+p.dataset.id);
+    if (lastType === 'mouse') { pick(d); return; }
+    if (armed === d.id) { pick(d); return; }
+    armed = d.id; hl(d.id);
+    show(d, e.clientX, e.clientY, true);
   });
+  tip.addEventListener('click', e => { if (e.target.closest('button') && armed != null) pick(info.get(armed)); });
+  document.addEventListener('pointerdown', e => { if (armed != null && !box.contains(e.target)) hide(); });
 
   return {
     info,
