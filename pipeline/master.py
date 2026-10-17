@@ -45,6 +45,7 @@ import os
 import re
 import shutil
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,7 +68,8 @@ BSI_LOCAL = ROOT / "data" / "bsi" / "bsi_checklist.csv"
 MATCH_KEY = "cache/master/gbif_match.json"
 SEED_MATCH_KEYS = ["cache/newspecies/gbif_match.json"]   # earlier matches, read only
 CHECKPOINT = 600  # seconds between saves of the match cache
-RETRIES, BACKOFF = 5, 30  # GBIF match: failures in a row before stopping; seconds
+RETRIES, BACKOFF = 5, 30  # GBIF match: tries per name, and names failing in a row before stopping; seconds
+WORKERS = 4  # GBIF match requests at once
 
 SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN"]
 LABELS = [
@@ -397,35 +399,62 @@ def to_match(con, cache):
 
 
 def match_names(names, cache, s3, deadline=None, http=None):
-    """Ask GBIF for each name (one at a time, about 1 a second), saving the cache every 10 minutes and at the end.
-    Stops at the deadline or when GBIF stops answering; the next run continues. Returns how many were asked."""
+    """Ask GBIF for each name not in the cache, WORKERS at a time (each worker about 1 request a second),
+    saving the cache every 10 minutes and at the end. A failed request is tried again after a pause; the run
+    stops at the deadline, or after RETRIES names in a row fail. The next run continues. Returns how many
+    names were answered."""
     http = http or requests.Session()
     http.headers.setdefault("User-Agent", health.ua())
-    asked, failures, next_save = 0, 0, time.monotonic() + CHECKPOINT
-    try:
-        for name in names:
-            if deadline is not None and time.monotonic() > deadline:
-                print(f"time limit: {asked} names matched this run, {len(names) - asked} left for the next", flush=True)
-                break
+    todo = iter([n for n in dict.fromkeys(names) if n not in cache])
+
+    def ask(name):
+        """(name, answer) from a private dict, so only this thread touches the shared cache."""
+        for attempt in range(1, RETRIES + 1):
+            got = {}
             try:
-                gbif_match(http, name, cache, need_classification=True)
-                failures = 0
-            except requests.RequestException as e:
-                failures += 1
-                if failures >= RETRIES:
-                    print(f"GBIF match stopped after {failures} failures in a row ({type(e).__name__}); "
-                          "the next run continues", flush=True)
+                gbif_match(http, name, got, need_classification=True)
+                return name, got  # empty: GBIF answered with an error; asked again next run
+            except requests.RequestException:
+                if attempt == RETRIES:
+                    raise
+                time.sleep(BACKOFF * attempt)
+
+    asked, failures, next_save, stop = 0, 0, time.monotonic() + CHECKPOINT, None
+    with ThreadPoolExecutor(WORKERS) as pool:
+        running = set()
+        try:
+            while True:
+                while not stop and len(running) < WORKERS * 2:
+                    if deadline is not None and time.monotonic() > deadline:
+                        stop = "time limit"
+                        break
+                    name = next(todo, None)
+                    if name is None:
+                        break
+                    running.add(pool.submit(ask, name))
+                if not running:
                     break
-                time.sleep(BACKOFF * failures)  # a timeout now and then: wait, then go on with the next name
-                continue
-            asked += 1
-            if time.monotonic() > next_save:
-                next_save = time.monotonic() + CHECKPOINT
-                print(f"{asked} of {len(names)} names matched; saving the cache", flush=True)
+                done, running = wait(running, return_when=FIRST_COMPLETED)
+                for f in done:
+                    try:
+                        name, got = f.result()
+                        cache.update(got)
+                        asked, failures = asked + 1, 0
+                    except requests.RequestException as e:
+                        failures += 1
+                        if failures >= RETRIES and not stop:
+                            stop = f"{failures} names in a row failed ({type(e).__name__})"
+                if time.monotonic() > next_save:
+                    next_save = time.monotonic() + CHECKPOINT
+                    print(f"{asked} names matched; saving the cache", flush=True)
+                    save_match_cache(cache, s3)
+        finally:
+            for f in running:
+                f.cancel()
+            if asked:
                 save_match_cache(cache, s3)
-    finally:
-        if asked:
-            save_match_cache(cache, s3)
+    if stop:
+        print(f"GBIF match stopped: {stop}; {asked} names matched this run; the next run continues", flush=True)
     return asked
 
 

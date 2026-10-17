@@ -1,6 +1,8 @@
 """Master list: matching, flags, labels and the site files, on small synthetic inputs."""
 
 import json
+import threading
+import time
 
 import duckdb
 import pytest
@@ -223,8 +225,8 @@ def test_match_survives_a_timeout(tmp_path, monkeypatch):
             return super().get(url, params=params, **kw)
 
     cache, http = {}, Flaky()
-    assert master.match_names(["Bad name", "Wus vus"], cache, None, http=http) == 1
-    assert cache["Wus vus"]["key"] == "K5" and "Bad name" not in cache   # asked again next run
+    assert master.match_names(["Bad name", "Wus vus"], cache, None, http=http) == 2
+    assert cache["Wus vus"]["key"] == "K5" and cache["Bad name"] is None   # tried again after the pause
     monkeypatch.setattr(master, "RETRIES", 1)
 
     class Down(FakeGbif):
@@ -233,4 +235,41 @@ def test_match_survives_a_timeout(tmp_path, monkeypatch):
             raise requests.ConnectionError("down")
 
     down = Down()
-    assert master.match_names(["A b", "C d"], {}, None, http=down) == 0 and down.asked == ["A b"]
+    cache = {}
+    assert master.match_names(["A b", "C d"], cache, None, http=down) == 0 and cache == {}  # asked again next run
+
+
+def test_match_runs_a_few_requests_at_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path)
+    monkeypatch.setattr(layer_newspecies.time, "sleep", lambda s: None)
+
+    class Slow(FakeGbif):
+        def __init__(self):
+            super().__init__()
+            self.lock, self.now, self.most = threading.Lock(), 0, 0
+
+        def get(self, url, params=None, **kw):
+            with self.lock:
+                self.now += 1
+                self.most = max(self.most, self.now)
+                self.asked.append(params["scientificName"])
+            threading.Event().wait(0.05)  # time.sleep is patched out
+            with self.lock:
+                self.now -= 1
+                self.asked.pop()
+            return super().get(url, params=params, **kw)
+
+    names = [f"Aus n{i}" for i in range(12)] + ["Wus vus"]
+    cache = {"Aus n0": None}                       # already asked: skipped
+    http = Slow()
+    assert master.match_names(names, cache, None, http=http) == 12
+    assert 1 < http.most <= master.WORKERS
+    assert "Aus n0" not in http.asked and cache["Wus vus"]["key"] == "K5" and len(cache) == 13
+    assert len(json.loads((tmp_path / "gbif_match.json").read_text())) == 13
+
+
+def test_match_stops_at_deadline_with_workers(tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path)
+    http = FakeGbif()
+    assert master.match_names(["A b", "C d"], {}, None, deadline=time.monotonic() - 1, http=http) == 0
+    assert http.asked == []
