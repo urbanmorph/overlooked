@@ -113,8 +113,8 @@ function area() {
 const isOld = r => r.last != null && r.last < st.since;
 // iNaturalist layer: species with an observation in India, including ones not shared with GBIF.
 // flags[key] = [latest date, quality grade, open licence 1/0, observations in India]
-let flags = {};
-getJSON('layers/inat/latest.json').then(l => l && l.quiet_flags ? getJSON(l.quiet_flags) : null)
+let flags = {}, inatInfo = null;
+getJSON('layers/inat/latest.json').then(l => { inatInfo = l; return l && l.quiet_flags ? getJSON(l.quiet_flags) : null; })
   .then(f => { if (f && f.snapshot === summary.run_id) { flags = f.species; refresh(); } }).catch(() => {});
 const QUALITY = { research: 'research grade', needs_id: 'waits for a name', casual: 'casual' };
 function inatNote(r) {
@@ -161,7 +161,7 @@ function renderAside() {
       <dt>No public record since ${st.since}</dt><dd class="q">${fmt(quiet.length)}</dd>
       <dt>Latest record before 1950</dt><dd>${fmt(before1950)}</dd>
       <dt>Not counted: no record of the group here since ${st.since}</dt><dd>${fmt(unsurveyed)}</dd>
-      ${Object.keys(flags).length ? `<dt>Quiet, but seen in India on iNaturalist since ${st.since}</dt><dd>${fmt(quiet.filter(r => flags[r.key] && +String(flags[r.key][0]).slice(0, 4) >= st.since).length)}</dd>` : ''}
+      ${Object.keys(flags).length ? `<dt>Quiet, but seen in India on iNaturalist since ${st.since}${inatInfo && !inatInfo.quiet_complete ? ` (check in progress: ${fmt(inatInfo.quiet_checked)} of ${fmt(inatInfo.quiet_of)} species checked)` : ''}</dt><dd>${fmt(quiet.filter(r => flags[r.key] && +String(flags[r.key][0]).slice(0, 4) >= st.since).length)}</dd>` : ''}
     </dl>
     ${top.length && st.group < 0 ? `<div style="border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px">
       <div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px">Quiet species by group</div>
