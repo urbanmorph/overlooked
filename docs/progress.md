@@ -20,6 +20,14 @@ Newest first. Updated as work happens.
 
 ### 17 October 2026
 
+- Duplicate Catalogue of Life keys: 103 species names had two keys with the same classification, so
+  23 species looked not recorded since 1980 while their recent records sat under the other key. The
+  build now merges them (most records wins; homonyms stay apart). From the next snapshot: 6,990 -> 6,967.
+- Site copy: "quiet" replaced by "not recorded since <year>" / "no public record since <year>".
+- Mobile and performance audit; fixed: page wider than a phone (selects), number cards overflowing,
+  stretched side cards, small sort buttons, robots.txt and a real 404 page. Open: layout shift on
+  New species and Species, the 1.5 MB new-species file, map use on phones, decade chart labels on
+  phones, nav height on phones, self-hosted fonts. Redesign options are on a design canvas.
 - iNaturalist layer: the first run was cancelled at the 5-hour job limit. Its cache went to R2 only at
   the end, so the work was lost. The run now stops itself after 240 minutes and publishes what it has, and
   saves the cache to R2 every 10 minutes and on any exit. Checked on Actions: after 10 minutes, 255 of 518
