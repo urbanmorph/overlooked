@@ -3,7 +3,8 @@ import { snapshot, getJSON, fmt, esc, $, monthName, showDevBanner, showLoadError
 const QUERY = {
   ledger_cube: 'Ledger: species at each place, first and latest year',
   species_history: 'Species names and history by decade',
-  unresolved_cube: 'Records with no species name',
+  unresolved_cube: 'Records with no species name (genus or higher)',
+  unlocated_cube: 'Records with no coordinates',
 };
 const SOURCE = {
   gbif_api: 'GBIF API', gbif_downloads: 'GBIF downloads', r2: 'Overlooked data store', lgd_boundaries: 'LGD boundaries (bharatlas)',
