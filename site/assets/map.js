@@ -69,7 +69,7 @@ export function drawMap(box, boundaries, { onPick, label, pickLabel = 'Open' } =
       const nz = [...vals.values()].filter(v => v > 0).sort((a, b) => a - b);
       const q = f => nz[Math.min(nz.length - 1, Math.floor(f * nz.length))];
       const breaks = nz.length ? [q(.2), q(.4), q(.6), q(.8)] : [];
-      const style = getComputedStyle(document.documentElement);
+      const style = getComputedStyle(box);  // a view can set its own ramp on a parent
       const colours = RAMP.map(v => style.getPropertyValue(v).trim());
       const zero = style.getPropertyValue('--zero').trim(), none = style.getPropertyValue('--none').trim();
       for (const [id, p] of paths) {

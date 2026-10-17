@@ -236,3 +236,12 @@ def test_old_cube_without_dna_column(districts, tmp_path):
     ledger.load_cube(con, cube)
     ledger.build(con, tmp_path / "out", "test", districts)
     assert con.sql("SELECT last_year, last_year_not_dna FROM ledger").fetchall() == [(2019, 2019)]
+
+
+def test_rights_travel_with_the_data():
+    """PDGI: attribution, licence and a disclaimer ride inside every published summary."""
+    from pipeline import site_data
+    r = site_data.RIGHTS
+    assert r["licence"].startswith("CC BY 4.0") and "Sathya Sankaran" in r["licence"]
+    assert "Botanical Survey of India" in r["attribution"] and "Zoological Survey of India" in r["attribution"]
+    assert "not an official" in r["disclaimer"]

@@ -157,3 +157,44 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .badge { display: inline-block; font-size: 13px; font-weight: 500; padding: 3px 8px; border-radius: 4px; white-space: nowrap }
 .st-ok { background: #DCEEE8; color: #063F33 } .st-paper { background: #EEF0ED; color: #2D3833 } .st-none { background: #FBEBDD; color: #7A3208 }
 .tagd { font-size: 12px; color: var(--ink-2); background: var(--chip); border-radius: 3px; padding: 1px 5px; white-space: nowrap }
+
+/* Front page: explore */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+.ex { display: flex; flex-direction: column; gap: 16px; padding-top: 20px; padding-bottom: 40px }
+.ex-top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between }
+.views { display: flex; flex-wrap: wrap; gap: 6px }
+.views button { min-height: 52px; padding: 6px 14px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--field) }
+.views button b { display: block; font-size: 15px } .views button span { display: block; font-size: 12px; color: var(--muted) }
+.views button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink) } .views button[aria-selected="true"] span { color: #DADFDB }
+.search { position: relative; flex: 1 1 380px; max-width: 620px; display: flex; gap: 8px }
+.sbox { flex: 1; display: flex; align-items: center; gap: 10px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 12px; background: var(--surface); min-height: 48px }
+.sbox input { border: 0; outline: 0; padding: 0; min-height: 44px; font-size: 16px; background: transparent; width: 100% }
+.sbox:focus-within { box-shadow: 0 0 0 3px rgba(11,93,75,.25) }
+.fbtn { min-height: 48px; white-space: nowrap }
+.hits { position: absolute; z-index: 20; left: 0; right: 0; top: 56px; background: var(--surface); border: 1px solid var(--field); border-radius: 10px; box-shadow: 0 8px 24px rgba(22,32,28,.12); overflow: hidden; max-height: 60vh; overflow-y: auto }
+.hits button { display: flex; width: 100%; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 14px; min-height: 44px; border: 0; border-bottom: 1px solid var(--line-2); background: var(--surface); font: inherit; font-size: 15px; text-align: left; cursor: pointer }
+.hits button:hover, .hits button:focus { background: var(--ground) } .hits .muted { font-size: 12px } .hits .none { padding: 12px 14px; font-size: 14px }
+.filters-panel fieldset { border: 0; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.filters-panel legend { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; width: 100% }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--field); border-radius: 18px; font-size: 13px; cursor: pointer; background: var(--surface) }
+.chip input { width: 16px; height: 16px; margin: 0 } .chip:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink) }
+.ex-main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start }
+.cards { flex: 1 1 290px; min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.cards-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 13px }
+.cardlist { display: flex; flex-direction: column; gap: 8px }
+.gcard { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; cursor: pointer; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); min-height: 44px }
+.gcard[aria-pressed="true"] { border: 2px solid var(--ink); padding: 9px 11px }
+.gtop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline } .gtop b { font-size: 14px } .gtop .mono { font-size: 15px; color: var(--quiet) }
+.gline { display: block; font-size: 12px; color: var(--muted); margin-top: 4px }
+.gbar { display: block; height: 6px; background: var(--zero); border-radius: 3px; margin-top: 8px; overflow: hidden } .gbar i { display: block; height: 6px; background: var(--q2) }
+.ex-map { flex: 3 1 560px; min-width: 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px }
+.ex-sel { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start }
+.crumb { font-size: 13px } .headline { margin: 2px 0 0; font-size: 17px } .headline b { font-weight: 500; font-size: 26px; color: var(--quiet) }
+.ex-map .mapbox { min-height: 360px; aspect-ratio: 520 / 560 }
+.ex-map[data-view="identified"] { --q0: #E3ECF7; --q1: #B9CDEA; --q2: #7FA2D6; --q3: #2F5DA8; --q4: #173A75 }
+.ex-map[data-view="iucn"] { --q0: #F7E3E3; --q1: #EDB8B8; --q2: #D9787A; --q3: #B03A3E; --q4: #6E1A1D }
+.sp-table { width: 100%; min-width: 900px }
+.tag { display: inline-block; font-size: 12px; background: var(--chip); color: var(--ink-2); border-radius: 3px; padding: 1px 6px; margin: 1px 4px 1px 0; white-space: nowrap }
+.iucn { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 3px; padding: 1px 6px; white-space: nowrap; background: var(--chip); color: var(--ink-2) }
+.i-CR { background: #6E1A1D; color: #fff } .i-EN { background: #B03A3E; color: #fff } .i-VU { background: #F2C14E; color: #16201C }
+.i-NT { background: #DCEEE8; color: #063F33 } .i-LC { background: #E9ECE8; color: #3E4A44 } .i-DD { background: #E3ECF7; color: #173A75 }
