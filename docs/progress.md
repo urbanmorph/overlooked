@@ -18,6 +18,19 @@ Newest first. Updated as work happens.
 
 ## Log
 
+### 17 October 2026
+
+- iNaturalist layer: the first run was cancelled at the 5-hour job limit. Its cache went to R2 only at
+  the end, so the work was lost. The run now stops itself after 240 minutes and publishes what it has, and
+  saves the cache to R2 every 10 minutes and on any exit. Checked on Actions: after 10 minutes, 255 of 518
+  backlog rows were in R2.
+- New species layer checked against the same rule (cache, restart, safe to run again): Plazi fetched one
+  year at a time and saved; GBIF zips written to a temporary file and renamed when complete (also for the
+  monthly snapshot); name matching has its own time limit and saves its cache every 10 minutes and on exit;
+  the month is marked done only after the result is published. Rebuilt on Actions: same figures (4,157
+  species).
+- Tests for these (16 in all). pyflakes runs in CI.
+
 ### 16 October 2026
 
 - Module 3 live (GBIF doi:10.15468/dl.rhshrn and doi:10.15468/dl.yccnbk). The fnf story's 77% counted any record including type material; Overlooked counts only records after the description year, and shows both figures. Groups for species with no India records now come from GBIF's classification ("Not matched yet" 1,198 → 193).
