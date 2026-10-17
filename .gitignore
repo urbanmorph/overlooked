@@ -17,3 +17,4 @@ node_modules/
 *.egg-info/
 .playwright-mcp/
 .wrangler/
+/.claude/worktrees/
