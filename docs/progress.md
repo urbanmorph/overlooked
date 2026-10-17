@@ -28,7 +28,7 @@ Newest first. Updated as work happens.
   needs ID). IUCN categories from the Red List checklist on GBIF (CC BY 4.0), no token. ZSI and WCVP inputs
   copied to R2 `cache/master/`. First local build on snapshot 2026-10: see the totals in the layer's
   summary.json; GBIF name matching of about 21,800 names (mostly iNaturalist names not in GBIF's India
-  list) takes several daily runs at about 2,500 names an hour.
+  list) takes about 2 hours at 4 requests at once (about 11,000 names an hour).
 
 - Pipeline, from the next snapshot: query U keeps the genus; new candidates.json (records named only
   to genus, from 1980 or later, where a species of that genus has no public record since 1980 in the

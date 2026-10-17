@@ -263,6 +263,14 @@ def start(con):
     con.sql("CREATE OR REPLACE TABLE alias (name VARCHAR, key VARCHAR, display VARCHAR, prio INTEGER)")
 
 
+def insert(con, table, select, cols, rows):
+    """Insert Python rows through an Arrow table (DuckDB's executemany goes row by row, and is slow)."""
+    import pyarrow as pa
+    con.register("py_rows", pa.table({c: [r[i] for r in rows] for i, c in enumerate(cols)}))
+    con.sql(f"INSERT INTO {table} {select} FROM py_rows")
+    con.unregister("py_rows")
+
+
 def load_gbif(con, paths):
     """GBIF species (records with coordinates), their kinds of record, states, and records with no coordinates."""
     basis = " ".join(f"WHEN '{b}' THEN '{c}'" for b, c in BASIS_LABEL.items())
@@ -329,8 +337,9 @@ def load_bsi(con, path):
     rows = con.sql(f"""SELECT DISTINCT binomial(name), family, "group", coalesce(status, '') ILIKE '%endemic%'
                        FROM read_csv('{path}', header = true, all_varchar = true)
                        WHERE name IS NOT NULL AND coalesce(status, 'accepted') NOT ILIKE '%synonym%'""").fetchall()
-    con.executemany("INSERT INTO names_in VALUES ('BSI', ?, NULL, ?, ?, ?, NULL, ?, NULL, NULL, ?, false, 5)",
-                    [[n, *hint_row(BSI_HINTS, g), fam, end] for n, fam, g, end in rows])
+    insert(con, "names_in", """SELECT 'BSI', n, NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, fam, NULL, NULL,
+                                      e::BOOLEAN, false, 5""",
+           ["n", "k", "p", "c", "fam", "e"], [[n, *hint_row(BSI_HINTS, g), fam, end] for n, fam, g, end in rows])
 
 
 def load_inat(con, doc):
@@ -342,10 +351,11 @@ def load_inat(con, doc):
             for _, name, iconic, _ in lists.get(quality, []):
                 rows.append([name, state, label, ident])
                 names.setdefault(name, iconic)
-    con.executemany("INSERT INTO evidence VALUES ('iNaturalist', binomial(?), NULL, ?, ?, true, ?, true)", rows)
-    con.executemany("""INSERT INTO names_in VALUES ('iNaturalist', binomial(?), NULL, ?, ?, ?, NULL, NULL, NULL, NULL,
-                       false, false, 5)""",
-                    [[n, *INAT_HINTS.get(i or "", (None, None, None))] for n, i in names.items()])
+    insert(con, "evidence", "SELECT 'iNaturalist', binomial(n), NULL, s::INTEGER, l, true, i, true",
+           ["n", "s", "l", "i"], rows)
+    insert(con, "names_in", """SELECT 'iNaturalist', binomial(n), NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, NULL,
+                                      NULL, NULL, false, false, 5""",
+           ["n", "k", "p", "c"], [[n, *INAT_HINTS.get(i or "", (None, None, None))] for n, i in names.items()])
 
 
 def load_newspecies(con, doc):
@@ -356,8 +366,8 @@ def load_newspecies(con, doc):
         for src, tag in (("Plazi", "Plazi"), ("BSI", "BSI Plant Discoveries")):
             if tag in r["sources"]:
                 rows.append([src, r["name"], r["key"], grp, (r["year"] or 0) >= NEW_SINCE])
-    con.executemany("""INSERT INTO names_in VALUES (?, binomial(?), ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, false, ?, 5)""",
-                    rows)
+    insert(con, "names_in", """SELECT src, binomial(n), k::VARCHAR, NULL, NULL, NULL, NULL, NULL, NULL, g::VARCHAR,
+                                      false, new, 5""", ["src", "n", "k", "g", "new"], rows)
 
 
 # ---------------------------------------------------------------- names
@@ -440,6 +450,8 @@ def match_names(names, cache, s3, deadline=None, http=None):
                         name, got = f.result()
                         cache.update(got)
                         asked, failures = asked + 1, 0
+                        if asked % 500 == 0:
+                            print(f"{datetime.now(timezone.utc):%H:%M:%S} {asked} names matched", flush=True)
                     except requests.RequestException as e:
                         failures += 1
                         if failures >= RETRIES and not stop:
@@ -464,9 +476,9 @@ def add_matches(con, cache):
             for n, m in cache.items() if m and m.get("key")]
     con.sql("CREATE OR REPLACE TABLE matched (name VARCHAR, key VARCHAR, display VARCHAR, kingdom VARCHAR, "
             "phylum VARCHAR, class VARCHAR, \"order\" VARCHAR, family VARCHAR)")
-    if rows:
-        con.executemany("INSERT INTO matched VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        [r + [None] * (8 - len(r)) for r in rows])
+    cols = ["name", "key", "display", "kingdom", "phylum", "class", "order", "family"]
+    insert(con, "matched", "SELECT " + ", ".join(f'"{c}"::VARCHAR' for c in cols), cols,
+           [r + [None] * (8 - len(r)) for r in rows])
     con.sql("DELETE FROM alias WHERE prio = 3")
     con.sql("INSERT INTO alias SELECT name, key, display, 3 FROM matched")
 
