@@ -39,6 +39,9 @@ def load_cube(con, tsv):
             columns = {{'specieskey': 'VARCHAR', 'lat': 'DOUBLE', 'lon': 'DOUBLE', 'first_year': 'INTEGER',
                         'last_year': 'INTEGER', 'n_records': 'BIGINT'}})
     """)
+    # Merged duplicate keys (names.merge_duplicates), when that step has run.
+    if con.sql("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'").fetchone()[0]:
+        con.sql("UPDATE cube SET specieskey = m.canonical FROM key_map m WHERE cube.specieskey = m.species_key")
 
 
 def build(con, out: Path, label: str, districts: Path = DISTRICTS):

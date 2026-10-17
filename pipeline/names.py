@@ -28,3 +28,31 @@ def load_history(con, tsv):
         SELECT specieskey AS species_key, decade, basisofrecord AS basis, sum(n_records) AS n_records
         FROM history GROUP BY ALL ORDER BY species_key, decade, basis
     """)
+
+
+def merge_duplicates(con):
+    """The Catalogue of Life can give one species two keys with the same name and classification.
+    Keep the key with the most records and fold the others into it, so a species is not shown as
+    not recorded under one key while its recent records sit under the other. A homonym (same name,
+    other classification) stays separate.
+    Creates table key_map (species_key -> canonical) for load_cube; returns the number of names merged."""
+    con.sql("""
+        CREATE OR REPLACE TABLE key_map AS
+        WITH n AS (SELECT species_key, sum(n_records) AS n FROM species_decade GROUP BY 1),
+        ranked AS (
+            SELECT s.species_key, s.name,
+                   first_value(s.species_key) OVER w AS canonical, count(*) OVER (PARTITION BY s.name, s.kingdom, s.phylum,
+                       s.class, s."order", s.family, s.genus) AS keys
+            FROM species s JOIN n USING (species_key)
+            WINDOW w AS (PARTITION BY s.name, s.kingdom, s.phylum, s.class, s."order", s.family, s.genus
+                         ORDER BY n.n DESC, s.species_key))
+        SELECT species_key, canonical, name FROM ranked WHERE keys > 1 AND species_key <> canonical
+    """)
+    con.sql("DELETE FROM species WHERE species_key IN (SELECT species_key FROM key_map)")
+    con.sql("""
+        CREATE OR REPLACE TABLE species_decade AS
+        SELECT coalesce(m.canonical, d.species_key) AS species_key, d.decade, d.basis, sum(d.n_records) AS n_records
+        FROM species_decade d LEFT JOIN key_map m USING (species_key)
+        GROUP BY ALL ORDER BY species_key, decade, basis
+    """)
+    return con.sql("SELECT count(DISTINCT name) FROM key_map").fetchone()[0]

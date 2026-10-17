@@ -215,10 +215,12 @@ def build(args):
         bfile = SNAPSHOTS / "_shared" / bpath
         return finish(args, state, out, manifest, summary, bpath, bfile, publish)
     con = duckdb.connect()
+    # Names first: duplicate keys are merged before the ledger is built.
+    names.load_history(con, ledger.unpack(state["downloads"]["species_history"]["key"]))
+    print(f"merged duplicate keys for {names.merge_duplicates(con)} names")
     ledger.load_cube(con, ledger.unpack(state["downloads"]["ledger_cube"]["key"]))
     stats = ledger.build(con, out, f"GBIF download {state['downloads']['ledger_cube']['key']}", districts.PATH)
 
-    names.load_history(con, ledger.unpack(state["downloads"]["species_history"]["key"]))
     con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     unresolved_records = None

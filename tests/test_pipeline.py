@@ -176,3 +176,25 @@ def test_new_species_names():
     m = merge([{"name": "A b", "year": 2019, "source": "Plazi", "journal": "Zootaxa", "state": "", "link": "p"},
                {"name": "A b", "year": 2018, "source": "BSI Plant Discoveries", "journal": "", "state": "Kerala", "link": "b"}])
     assert len(m) == 1 and m[0]["year"] == 2018 and m[0]["sources"] == ["Plazi", "BSI Plant Discoveries"] and m[0]["state"] == "Kerala"
+
+
+def test_duplicate_keys_for_one_name_are_merged(districts, tmp_path):
+    """COL can give one species two keys with the same classification; records under both count as one."""
+    from pipeline import names
+    head = "specieskey\tkingdom\tphylum\tclass\torder\tfamily\tgenus\tspecies\tdecade\tbasisofrecord\tn_records\n"
+    row = "\tAnimalia\tChordata\tAves\tColumbiformes\tColumbidae\tColumba\tColumba elphinstonii\t"
+    tsv = tmp_path / "h.tsv"
+    tsv.write_text(head + "XBFD" + row + "2020\tHUMAN_OBSERVATION\t1700\n" + "VN78J" + row + "1940\tPRESERVED_SPECIMEN\t2\n"
+                   # a homonym in another kingdom stays separate
+                   + "PL1\tPlantae\tTracheophyta\tMagnoliopsida\tX\tY\tColumba\tColumba elphinstonii\t1950\tPRESERVED_SPECIMEN\t1\n")
+    con = duckdb.connect()
+    names.load_history(con, tsv)
+    assert names.merge_duplicates(con) == 1
+    assert sorted(con.sql("SELECT species_key FROM species").fetchall()) == [("PL1",), ("XBFD",)]
+    assert con.sql("SELECT sum(n_records) FROM species_decade WHERE species_key = 'XBFD'").fetchone()[0] == 1702
+    cube = tmp_path / "c.tsv"
+    cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\n"
+                    "VN78J\t10.5\t76.5\t1938\t1947\t2\nXBFD\t10.5\t76.5\t1990\t2026\t1700\n")
+    ledger.load_cube(con, cube)
+    ledger.build(con, tmp_path / "out", "test", districts)
+    assert con.sql("SELECT species_key, first_year, last_year, n_records FROM ledger").fetchall() == [("XBFD", 1938, 2026, 1702)]
