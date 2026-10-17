@@ -40,10 +40,10 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
     p.add_argument("--budget", type=int, default=9000)
+    p.add_argument("--minutes", type=int, help="stop cleanly and publish after this many minutes")
     p.add_argument("--quiet-file", help="local ledger/india.json to use instead of the published one")
     a = p.parse_args()
     month = datetime.now(timezone.utc).strftime("%Y-%m")
-    client = inat.Client(a.budget)
     s3 = None
     if a.publish:
         from dotenv import load_dotenv
@@ -51,6 +51,22 @@ def main():
         load_dotenv(ROOT / ".env", override=True)  # local runs; in Actions the secrets are set directly
         s3 = r2.client()
         sync_cache(s3, "down")
+
+    def checkpoint(c):
+        print(f"{datetime.now(timezone.utc):%H:%M} {c.used} requests; saving the cache", flush=True)
+        if s3:
+            sync_cache(s3, "up")
+
+    client = inat.Client(a.budget, a.minutes, checkpoint)
+    try:
+        run(a, month, client, s3)
+    finally:
+        if s3:  # keep the work done, also when the run fails
+            sync_cache(s3, "up")
+
+
+def run(a, month, client, s3):
+    from pipeline import r2
 
     # Backlog and identifiers, once a month.
     bl = inat.cached(f"backlog_{month}.json")
@@ -103,7 +119,6 @@ def main():
         for f in out.iterdir():
             r2.sync_file(s3, f, f"layers/inat/{month}/{f.name}", immutable=False)
         r2.put_json(s3, info, "layers/inat/latest.json")
-        sync_cache(s3, "up")
     print(json.dumps(info, indent=1))
 
 

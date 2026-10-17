@@ -28,6 +28,7 @@ CACHE = ROOT / "data" / "cache" / "inat"
 LAYERS = ROOT / "data" / "layers" / "inat"
 INDIA = 6681
 GAP = 1.1
+CHECKPOINT = 600  # seconds
 # iNaturalist's iconic groups; "unknown" means no taxon at all.
 GROUPS = ["Plantae", "Insecta", "Aves", "Fungi", "Arachnida", "Mollusca", "Reptilia", "Amphibia",
           "Mammalia", "Actinopterygii", "Animalia", "Chromista", "Protozoa", "unknown"]
@@ -38,16 +39,27 @@ class Budget(Exception):
 
 
 class Client:
-    def __init__(self, budget=9000):
+    """minutes: stop cleanly after this time. checkpoint: called about every 10 minutes
+    (for example to save the cache to R2), so a run that is killed loses little."""
+
+    def __init__(self, budget=9000, minutes=None, checkpoint=None):
         self.http = requests.Session()
         self.http.headers["User-Agent"] = health.ua()
         self.budget = budget
         self.used = 0
         self.last = 0.0
+        self.deadline = time.monotonic() + minutes * 60 if minutes else None
+        self.checkpoint = checkpoint
+        self.next_checkpoint = time.monotonic() + CHECKPOINT
 
     def get(self, path, **params):
         if self.used >= self.budget:
             raise Budget(f"request budget of {self.budget} used")
+        if self.deadline and time.monotonic() > self.deadline:
+            raise Budget(f"time limit reached after {self.used} requests")
+        if self.checkpoint and time.monotonic() > self.next_checkpoint:
+            self.next_checkpoint = time.monotonic() + CHECKPOINT
+            self.checkpoint(self)
         for attempt in range(5):
             wait = GAP - (time.time() - self.last)
             if wait > 0:

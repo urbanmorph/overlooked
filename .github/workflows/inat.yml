@@ -48,7 +48,7 @@ jobs:
           BUDGET: ${{ inputs.budget || '9000' }}
         run: |
           python -c "from pipeline import districts; districts.ensure('overlooked-india')"
-          python -m pipeline.layer_inat --publish --budget "$BUDGET"
+          python -u -m pipeline.layer_inat --publish --budget "$BUDGET" --minutes 240
       - name: Open an issue on failure
         if: failure()
         env:
