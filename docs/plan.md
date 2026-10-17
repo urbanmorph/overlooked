@@ -78,7 +78,7 @@ Output (`layers/master/<month>/`, published with `--publish`, then `layers/maste
 | `master_state.parquet` | species x state: GBIF with and without coordinates, iNaturalist research grade and needs ID, observed, identified |
 | `summary.json` | sources, labels, IUCN categories, groups, states (bit order for the masks); India by group: documented, observed, identified, IUCN counts, threatened and observed; by state x group: observed, identified, threatened and observed; totals; notes on what is incomplete |
 | `g/<gi>.json` | every species of a group: [key, name, sources mask, status (0 documented, 1 observed, 2 identified), IUCN index, labels mask, states observed mask, states identified mask] |
-| `search/<p>.json` | search index: one file per first two letters of the name (other characters `_`), sorted by name: [name, key, group, status, IUCN index, sources mask, labels mask]. Largest file about 46 KB compressed; median about 1.5 KB |
+| `search/<p>.json` | search index: one file per first two letters of the name (other characters `_`), sorted by name: [name, key, group, status, IUCN index, sources mask, labels mask]. 2026-10: 334 files, largest 51 KB compressed (`pa`, `ca`), median 1.6 KB, 1.9 MB in all |
 | `search/places.json` | LGD states and districts: [name, "state" or "district", code, state code] |
 
 - Runs daily after the iNaturalist layer (`.github/workflows/master.yml`), within a time limit for name matching. A run with the same inputs (file checksums, layer files, match cache, IUCN ETag) and no names left to match does nothing.

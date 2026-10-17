@@ -26,9 +26,11 @@ Newest first. Updated as work happens.
   built on the published snapshot without GBIF downloads; daily workflow `master.yml`. iNaturalist species
   lists per state added to the iNaturalist layer (651 requests for all states and India, research grade and
   needs ID). IUCN categories from the Red List checklist on GBIF (CC BY 4.0), no token. ZSI and WCVP inputs
-  copied to R2 `cache/master/`. First local build on snapshot 2026-10: see the totals in the layer's
-  summary.json; GBIF name matching of about 21,800 names (mostly iNaturalist names not in GBIF's India
-  list) takes about 2 hours at 4 requests at once (about 11,000 names an hour).
+  copied to R2 `cache/master/`. First local build on snapshot 2026-10 (not published): 152,983 species
+  documented, 74,023 observed, 61,333 identified; 2,204 assessed CR, EN or VU, of which 1,638 observed;
+  15,372 names not matched to the Catalogue of Life (12,000 of them ZSI names fnf could not match).
+  GBIF name matching of about 22,200 names (mostly iNaturalist names not in GBIF's India list) took
+  about 2 hours at 4 requests at once (about 11,000 names an hour); later runs only match new names.
 
 - Pipeline, from the next snapshot: query U keeps the genus; new candidates.json (records named only
   to genus, from 1980 or later, where a species of that genus has no public record since 1980 in the
