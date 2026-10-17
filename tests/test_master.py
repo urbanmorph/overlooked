@@ -38,6 +38,11 @@ def inputs(tmp_path):
         "120_Aves.pdf,Muscicapidae,Hus ius,species,,Z1,Hus ius,Muscicapidae,exact,false\n"
         "108_Insecta_Coleoptera.pdf,Unknownidae,Xus (Yus) yus,species,,,,,none,false\n"
         "120_Aves.pdf,Muscicapidae,Qus rus,species,,K7,,,exact,false\n")  # no accepted name given
+    bsi = tmp_path / "bsi.csv"
+    bsi.write_text("source,checklist,group,family,name,rank,authority,status,states,page,edition,url\n"
+                   "BSI,FPI,flowering plants,Orchidaceae,Cus dus,species,L.,accepted,Kerala,1,e,u\n"
+                   "BSI,FPI,flowering plants,Orchidaceae,Old dus,species,L.,synonym,,1,e,u\n"
+                   "BSI,FPI,pteridophytes,Pteridaceae,Pus qus var. minor,variety,L.,accepted,,2,e,u\n")
     wcvp = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Orchidaceae', 'Cus', true), ('Wus vus', 'Orchidaceae', 'Wus', false))
         t(species, family, genus, endemic_india)""", tmp_path / "wcvp.parquet")
     dist = write(con, """SELECT * FROM (VALUES (101, 32, 'ERNAKULAM', 'KERALA'), (201, 29, 'MYSURU', 'KARNATAKA'))
@@ -49,7 +54,7 @@ def inputs(tmp_path):
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
                                          "any_record": False}])
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "candidates": None},
-            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": None, "inat": inat_doc, "newspecies": ns_doc},
+            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc},
             "districts": dist}
 
 
@@ -102,7 +107,7 @@ def built(inputs, tmp_path, monkeypatch):
 
 def test_documented_observed_identified(built):
     t = built["summary"]["totals"]
-    assert t == {"documented": 9, "observed": 5, "identified": 4}
+    assert t == {"documented": 10, "observed": 5, "identified": 4}
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
     assert r["Aus bus"]["identified"] and r["Aus bus"]["states_identified"] == [32]
@@ -115,7 +120,8 @@ def test_sources_and_labels(built):
     r = built["rows"]
     assert r["Aus bus"]["sources"] == ["ZSI", "GBIF", "iNaturalist", "IUCN"]
     assert r["Aus bus"]["labels"] == ["rg", "ho", "end"]
-    assert r["Cus dus"]["sources"] == ["WCVP", "GBIF", "IUCN"] and r["Cus dus"]["labels"] == ["sp", "end"]
+    assert r["Cus dus"]["sources"] == ["BSI", "WCVP", "GBIF", "IUCN"]
+    assert "Old dus" not in r and r["Pus qus"]["group"] == "Plants: ferns & lycophytes" and r["Cus dus"]["labels"] == ["sp", "end"]
     assert r["Eus fus"]["labels"] == ["dna", "do"]
     assert r["Gus hus"]["sources"] == ["ZSI", "Plazi"] and r["Gus hus"]["labels"] == ["chk", "ns"]
     assert r["Zus zus"]["labels"] == ["nid", "nm"]
@@ -134,7 +140,7 @@ def test_names_matched_or_kept(built):
     assert r["Xus yus"]["key"] is None and "nm" in r["Xus yus"]["labels"]   # kept, subgenus dropped
     assert r["Hus ius"]["key"] == "G1"                       # ZSI's key folded into GBIF's for the same name
     assert "Aus bus minor" not in r                          # subspecies counted as its species
-    assert built["http"].asked == ["Zus zus", "Wus vus"]     # iNaturalist first; ZSI names are not asked again
+    assert built["http"].asked == ["Zus zus", "Wus vus", "Pus qus"]  # iNaturalist, WCVP, BSI; never ZSI names
 
 
 def test_groups_from_classification_or_hints(built):
@@ -185,7 +191,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     http = FakeGbif()
     s = master.build(con, inputs["paths"], tmp_path / "o", {"month": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
-    assert http.asked == [] and s["names_pending_match"] == 2
+    assert http.asked == [] and s["names_pending_match"] == 3
     assert any("not yet matched" in n for n in s["notes"])
 
 

@@ -126,11 +126,11 @@ INAT_HINTS = {"Plantae": ("Plantae", None, None), "Insecta": ("Animalia", "Arthr
               "Fungi": ("Fungi", None, None), "Animalia": ("Animalia", None, None),
               "Chromista": ("Chromista", None, None), "Protozoa": ("Protozoa", None, None)}
 # BSI checklist group text -> (kingdom, phylum, class).
-BSI_HINTS = [(r"lichen", ("Fungi", "Ascomycota", "Lecanoromycetes")), (r"fung", ("Fungi", None, None)),
-             (r"bryo|moss|liverwort|hornwort", ("Plantae", "Bryophyta", None)),
-             (r"alga|diatom", ("Plantae", "Chlorophyta", None)),
-             (r"pterido|fern|lycophyt", ("Plantae", "Tracheophyta", "Polypodiopsida")),
-             (r"", ("Plantae", "Tracheophyta", None))]
+BSI_HINTS = [(r"lichen", "Fungi", "Ascomycota", "Lecanoromycetes"), (r"fung", "Fungi", None, None),
+             (r"bryo|moss|liverwort|hornwort", "Plantae", "Bryophyta", None),
+             (r"alga|diatom", "Plantae", "Chlorophyta", None),
+             (r"pterido|fern|lycophyt", "Plantae", "Tracheophyta", "Polypodiopsida"),
+             (r"", "Plantae", "Tracheophyta", None)]
 
 
 def now():
@@ -321,9 +321,12 @@ def load_wcvp(con, path):
 
 
 def load_bsi(con, path):
-    """BSI checklists (pipeline/bsi_checklist.py). status containing 'endemic' marks an endemic species."""
-    rows = con.sql(f"""SELECT binomial(name), family, "group", coalesce(status, '') ILIKE '%endemic%'
-                       FROM read_csv('{path}', header = true, all_varchar = true) WHERE name IS NOT NULL""").fetchall()
+    """BSI checklists (pipeline/bsi_checklist.py). Accepted names only: a synonym is another name of a species
+    the checklist lists under its accepted name. Varieties and subspecies count as their species.
+    status containing 'endemic' marks an endemic species."""
+    rows = con.sql(f"""SELECT DISTINCT binomial(name), family, "group", coalesce(status, '') ILIKE '%endemic%'
+                       FROM read_csv('{path}', header = true, all_varchar = true)
+                       WHERE name IS NOT NULL AND coalesce(status, 'accepted') NOT ILIKE '%synonym%'""").fetchall()
     con.executemany("INSERT INTO names_in VALUES ('BSI', ?, NULL, ?, ?, ?, NULL, ?, NULL, NULL, ?, false, 5)",
                     [[n, *hint_row(BSI_HINTS, g), fam, end] for n, fam, g, end in rows])
 
