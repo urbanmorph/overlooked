@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /data/
+Sitemap: https://overlooked-india.pages.dev/sitemap.xml
