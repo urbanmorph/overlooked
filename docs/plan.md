@@ -44,7 +44,46 @@ Rules:
 - iNaturalist results have their own as-of date. They live in a separate, dated layer (`layers/inat/<date>/` in R2), because they can finish after the GBIF snapshot is published, and snapshots never change.
 - The India Biodiversity Portal: we do not contact it. Its GBIF dataset is included as it is (records stop in 2024), and the site says so.
 
-## 2. Architecture
+## 1c. Master list (17 October 2026)
+
+Question: which species are documented from India, and for each one, is it observed, is it identified, and what is its IUCN category? The same three things per state, where the place is known.
+
+- **Documented:** on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India), GBIF, iNaturalist, new species since 2015 (Plazi, BSI Plant Discoveries). A species on a BSI or ZSI checklist counts as documented.
+- **Observed:** at least one observation in any source: a GBIF record of any kind (photo, sighting, specimen, sound, DNA sample, record cited from a paper), or an iNaturalist observation of any quality grade.
+- **Identified:** at least one observation confirmed to species: a GBIF record named to species (labelled by its basis of record) or an iNaturalist research-grade observation. An iNaturalist "needs ID" observation with a species name proposed is observed, not identified. A checklist entry is not an observation.
+- We never write "not recorded since 1980" on these pages. A species is documented, observed or identified.
+
+Labels (several per species; the search filters on them):
+
+| Kind | Labels |
+|---|---|
+| Identification | research grade (iNaturalist), needs ID (iNaturalist), human observation, specimen, from a paper (GBIF MATERIAL_CITATION), DNA sequence or sample (MATERIAL_SAMPLE), machine observation, other record (GBIF OCCURRENCE: kind not given), checklist only |
+| Other | location missing (only records with no coordinates, query L), DNA only, endemic to India (WCVP for plants; ZSI checklists that mark endemics with `*`; BSI checklist status), new species since 2015, name not matched |
+| Sources | ZSI, BSI, WCVP, GBIF, iNaturalist, Plazi, IUCN |
+| IUCN | CR, EN, VU, NT, LC, DD, EW, EX, or NE (not assessed) |
+
+How it is built (`pipeline/master.py`, a dated layer like the iNaturalist and new species layers; no GBIF download):
+
+1. Inputs: the latest published snapshot (species, ledger, species by decade and kind of record; records with no coordinates and candidates when the snapshot has them); ZSI checklists (fnf, 98,703 names) and WCVP India (fnf, 19,045 species), copied to R2 `cache/master/` with `python -m pipeline.master seed` because they are not in git; the BSI checklist (`data/bsi/bsi_checklist.csv` or R2 `cache/bsi/`, optional); iNaturalist species lists per state (`layers/inat/<month>/species_counts.json`); new species (`layers/newspecies/`); IUCN (below).
+2. Names to the Catalogue of Life (eXtended Release, the taxonomy of GBIF's SQL downloads): GBIF keys as they are; ZSI's own match (fnf, same release; names held for review are not trusted); then exact names; then GBIF's name match (`/v2/species/match`, `checklistKey` COL XR), one request a second, cached in R2 `cache/master/gbif_match.json`, with a time limit per run. iNaturalist names go first, then WCVP and BSI. ZSI names are not sent again. Subspecies count as their species. A name with no match stays on the list under its own name, labelled "name not matched".
+3. One species per key. Keys that share a name and kingdom are folded into one (GBIF's key first), as `names.merge_duplicates` does for GBIF; two GBIF keys are never merged here.
+4. Group: GBIF's classification; else the GBIF match's; else IUCN's; else the genus or family as known from GBIF and IUCN (same kingdom only); else a hint from the source (ZSI checklist name, iNaturalist iconic group, WCVP = vascular plants).
+5. IUCN: by name, the assessed name first, then IUCN synonyms; same kingdom.
+
+Output (`layers/master/<month>/`, published with `--publish`, then `layers/master/latest.json`):
+
+| File | Content |
+|---|---|
+| `master.parquet` | key, name, group, sources[], observed, identified, iucn, labels[], states_observed[], states_identified[] |
+| `master_state.parquet` | species x state: GBIF with and without coordinates, iNaturalist research grade and needs ID, observed, identified |
+| `summary.json` | sources, labels, IUCN categories, groups, states (bit order for the masks); India by group: documented, observed, identified, IUCN counts, threatened and observed; by state x group: observed, identified, threatened and observed; totals; notes on what is incomplete |
+| `g/<gi>.json` | every species of a group: [key, name, sources mask, status (0 documented, 1 observed, 2 identified), IUCN index, labels mask, states observed mask, states identified mask] |
+| `search/<p>.json` | search index: one file per first two letters of the name (other characters `_`), sorted by name: [name, key, group, status, IUCN index, sources mask, labels mask]. Largest file about 46 KB compressed; median about 1.5 KB |
+| `search/places.json` | LGD states and districts: [name, "state" or "district", code, state code] |
+
+- Runs daily after the iNaturalist layer (`.github/workflows/master.yml`), within a time limit for name matching. A run with the same inputs (file checksums, layer files, match cache, IUCN ETag) and no names left to match does nothing.
+- Approximate: "DNA only" comes from the kind of record (all MATERIAL_SAMPLE) until a snapshot's ledger marks DNA sequences; then also from the ledger. ZSI endemics come from the `*` mark in the checklists that use it. iNaturalist lists can shift a little between pages while they are fetched.
+
 
 ```
 GitHub Actions (monthly)
@@ -224,6 +263,6 @@ docs/                this plan, method notes
 
 1. **Address.** `overlooked-india.pages.dev`, with data served from the same origin through `/data/*`. No custom domain for now.
 2. **Thresholds.** Default quiet year 1980, with a picker for 1990, 2000 and 2010. "Now quiet" in the feed at 30 years.
-3. **IUCN.** Left out of the first release. Its terms forbid bulk redistribution, and our Parquet files are public downloads.
+3. **IUCN.** Left out of the first release. Its terms forbid bulk redistribution, and our Parquet files are public downloads. **Update 17 October 2026:** the master list takes categories from the Red List checklist that IUCN publishes on GBIF, which GBIF lists under CC BY 4.0 (see `docs/sources.md`). The IUCN API (token) is not used. To confirm before publishing: that the CC BY 4.0 copy on GBIF covers our public files, given the IUCN website terms.
 4. **Groups.** Reuse the fnf group definitions (`09_attention.py`) as they are.
 5. **Placement.** Coordinates rounded to 3 decimals instead of a grid, after the grid test. Points within 5 km of land take the nearest district.

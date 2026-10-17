@@ -435,7 +435,7 @@ def resolve(con):
     Then fold ids that share a name and kingdom into one (GBIF's key first), as names.merge_duplicates does
     for GBIF keys. Creates tables ids (id, name, grp, kingdom), idmap (id -> canonical)."""
     con.sql("""CREATE OR REPLACE TABLE alias1 AS
-               SELECT name, arg_min(key, prio * 10 + CASE WHEN prio = 0 THEN 0 ELSE 1 END) AS key FROM alias
+               SELECT name, arg_min(key, prio) AS key FROM alias
                WHERE name IS NOT NULL AND key IS NOT NULL GROUP BY name""")
     for t in ("names_in", "evidence"):
         con.sql(f"""CREATE OR REPLACE TABLE {t}_r AS
