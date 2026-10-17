@@ -67,6 +67,7 @@ BSI_LOCAL = ROOT / "data" / "bsi" / "bsi_checklist.csv"
 MATCH_KEY = "cache/master/gbif_match.json"
 SEED_MATCH_KEYS = ["cache/newspecies/gbif_match.json"]   # earlier matches, read only
 CHECKPOINT = 600  # seconds between saves of the match cache
+RETRIES, BACKOFF = 5, 30  # GBIF match: failures in a row before stopping; seconds
 
 SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN"]
 LABELS = [
@@ -397,7 +398,7 @@ def match_names(names, cache, s3, deadline=None, http=None):
     Stops at the deadline or when GBIF stops answering; the next run continues. Returns how many were asked."""
     http = http or requests.Session()
     http.headers.setdefault("User-Agent", health.ua())
-    asked, next_save = 0, time.monotonic() + CHECKPOINT
+    asked, failures, next_save = 0, 0, time.monotonic() + CHECKPOINT
     try:
         for name in names:
             if deadline is not None and time.monotonic() > deadline:
@@ -405,9 +406,15 @@ def match_names(names, cache, s3, deadline=None, http=None):
                 break
             try:
                 gbif_match(http, name, cache, need_classification=True)
+                failures = 0
             except requests.RequestException as e:
-                print(f"GBIF match stopped ({type(e).__name__}); the next run continues", flush=True)
-                break
+                failures += 1
+                if failures >= RETRIES:
+                    print(f"GBIF match stopped after {failures} failures in a row ({type(e).__name__}); "
+                          "the next run continues", flush=True)
+                    break
+                time.sleep(BACKOFF * failures)  # a timeout now and then: wait, then go on with the next name
+                continue
             asked += 1
             if time.monotonic() > next_save:
                 next_save = time.monotonic() + CHECKPOINT

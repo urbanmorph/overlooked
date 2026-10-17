@@ -201,3 +201,30 @@ def test_iucn_parse(tmp_path):
     iucn.parse(con, tmp_path, tmp_path / "iucn.parquet")
     rows = con.sql("SELECT name, category, accepted, kingdom, class FROM iucn ORDER BY name").fetchall()
     assert rows == [("Aus bus", "NT", True, "Animalia", "Aves"), ("Aus cus", "NT", False, "Animalia", "Aves")]
+
+
+def test_match_survives_a_timeout(tmp_path, monkeypatch):
+    import requests
+    monkeypatch.setattr(master, "CACHE", tmp_path)
+    monkeypatch.setattr(master, "BACKOFF", 0)
+    monkeypatch.setattr(layer_newspecies.time, "sleep", lambda s: None)
+
+    class Flaky(FakeGbif):
+        def get(self, url, params=None, **kw):
+            if params["scientificName"] == "Bad name" and "Bad name" not in self.asked:
+                self.asked.append("Bad name")
+                raise requests.ReadTimeout("slow")
+            return super().get(url, params=params, **kw)
+
+    cache, http = {}, Flaky()
+    assert master.match_names(["Bad name", "Wus vus"], cache, None, http=http) == 1
+    assert cache["Wus vus"]["key"] == "K5" and "Bad name" not in cache   # asked again next run
+    monkeypatch.setattr(master, "RETRIES", 1)
+
+    class Down(FakeGbif):
+        def get(self, url, params=None, **kw):
+            self.asked.append(params["scientificName"])
+            raise requests.ConnectionError("down")
+
+    down = Down()
+    assert master.match_names(["A b", "C d"], {}, None, http=down) == 0 and down.asked == ["A b"]

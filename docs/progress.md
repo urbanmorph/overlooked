@@ -20,6 +20,16 @@ Newest first. Updated as work happens.
 
 ### 17 October 2026
 
+- Master list (`pipeline/master.py`, plan section 1c): every species documented from India across ZSI,
+  BSI, WCVP, GBIF, iNaturalist, Plazi, with observed, identified and IUCN category per species and per
+  state, labels for search, and a search index sharded by two-letter prefix. Layer `layers/master/<month>/`,
+  built on the published snapshot without GBIF downloads; daily workflow `master.yml`. iNaturalist species
+  lists per state added to the iNaturalist layer (651 requests for all states and India, research grade and
+  needs ID). IUCN categories from the Red List checklist on GBIF (CC BY 4.0), no token. ZSI and WCVP inputs
+  copied to R2 `cache/master/`. First local build on snapshot 2026-10: see the totals in the layer's
+  summary.json; GBIF name matching of about 21,800 names (mostly iNaturalist names not in GBIF's India
+  list) takes several daily runs at about 2,500 names an hour.
+
 - Pipeline, from the next snapshot: query U keeps the genus; new candidates.json (records named only
   to genus, from 1980 or later, where a species of that genus has no public record since 1980 in the
   district, else the state); new query L (records with no coordinates) placed at state level from the
