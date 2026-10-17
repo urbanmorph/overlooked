@@ -61,3 +61,24 @@ export function showLoadError(err) {
   main.prepend(box);
   for (const el of document.querySelectorAll('.loading')) el.textContent = 'Not available.';
 }
+
+// Main menu: one row that scrolls sideways on narrow screens. Show the current page, and fade the edge that has more links.
+function setupNav() {
+  const nav = document.querySelector('nav.main');
+  if (!nav) return;
+  const edges = () => {
+    const max = nav.scrollWidth - nav.clientWidth;
+    nav.classList.toggle('more-l', nav.scrollLeft > 1);
+    nav.classList.toggle('more-r', nav.scrollLeft < max - 1);
+  };
+  const cur = nav.querySelector('[aria-current]');
+  if (cur && nav.scrollWidth > nav.clientWidth) {
+    const n = nav.getBoundingClientRect(), c = cur.getBoundingClientRect();
+    nav.scrollLeft += c.left - n.left - (n.width - c.width) / 2;
+  }
+  edges();
+  nav.addEventListener('scroll', edges, { passive: true });
+  addEventListener('resize', edges);
+  document.fonts?.ready.then(edges);
+}
+setupNav();

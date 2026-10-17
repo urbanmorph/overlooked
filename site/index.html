@@ -61,9 +61,14 @@
           <select id="group"><option value="-1">All groups</option></select>
         </label>
       </div>
-      <p class="note">The map shows the species that have public records in a district, but no record since 1980. If a group has no record in a district since 1980, Overlooked does not count that group there. Possibly nobody surveyed the group in that district. Select a district to open its ledger.</p>
+      <p class="note">The map shows the species that have public records in a district, but no record since 1980. If a group has no record in a district since 1980, Overlooked does not count that group there. Possibly nobody surveyed the group in that district. Select a district on the map, or below the map, to open its ledger.</p>
       <div class="map" id="map"><p class="loading">Loading map…</p></div>
       <div class="legend" id="legend"></div>
+      <form class="filters pick" id="pick" aria-label="Open the ledger of a district">
+        <label class="f">State <select id="p-state"><option value="">Select a state</option></select></label>
+        <label class="f">District <select id="p-district" disabled><option value="">All districts</option></select></label>
+        <button class="b" type="submit">Open the ledger</button>
+      </form>
     </div>
     <div class="side card pad">
       <h2>Species not recorded since 1980, by group</h2>

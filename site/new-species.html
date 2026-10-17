@@ -38,13 +38,12 @@
     <p class="lede">Scientists describe hundreds of new species from India each year. This page asks one question about each species described since 2015: is there a public record of it after the description?</p>
   </section>
 
-  <p class="loading" id="loading">Loading…</p>
   <section class="card pad" id="pending" hidden>
     <h2>The first results are on their way</h2>
     <p class="note" style="font-size:16px">Overlooked collects the names and asks GBIF for the records. This takes some hours. Then this page shows the results.</p>
   </section>
 
-  <div id="body" hidden>
+  <div id="body" aria-busy="true">
     <section aria-label="Key figures" class="kpis" id="kpis">
       <div class="card kpi"><b>–</b><span>species described from India since 2015 (names from Plazi and BSI)</span></div>
       <div class="card kpi"><b style="color:var(--quiet)">–</b><span>with no public record after the description</span></div>
@@ -79,7 +78,7 @@
       </form>
       <div class="tablebox"><table style="min-width:960px">
         <thead><tr><th>Species</th><th>Group</th><th class="n">Described</th><th>Source</th><th>Type locality</th><th>After the description</th><th>Found by</th></tr></thead>
-        <tbody id="rows"></tbody></table></div>
+        <tbody id="rows"><tr><td colspan="7" class="muted" style="padding:24px 14px">Loading…</td></tr></tbody></table></div>
       <div class="pager"><span id="pinfo"></span><span class="row" style="gap:8px;margin:0">
         <button class="b" type="button" id="prev">Previous</button><button class="b" type="button" id="next">Next</button></span></div>
     </section>

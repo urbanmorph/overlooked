@@ -14,6 +14,17 @@ const BASIS = [
 const KIND = Object.fromEntries(BASIS.map(([b, l, c]) => [b, { l, c }]));
 const QUALITY = { research: 'research grade', needs_id: 'waits for a name', casual: 'casual' };
 
+// Show every Nth decade label, counted back from the latest, so that labels never overlap at the measured column width.
+function thinLabels(box) {
+  const cols = box.querySelectorAll('.col');
+  if (cols.length < 2) return;
+  const spans = [...box.querySelectorAll('.col span')];
+  const pitch = cols[1].offsetLeft - cols[0].offsetLeft;
+  const widest = Math.max(...spans.map(s => s.offsetWidth)) + 8;
+  const step = Math.max(1, Math.ceil(widest / pitch));
+  spans.forEach((s, i) => { s.style.visibility = (spans.length - 1 - i) % step ? 'hidden' : ''; });
+}
+
 try {
   const key = new URLSearchParams(location.search).get('key');
   if (!key) throw new Error('no species key in the address');
@@ -64,8 +75,11 @@ try {
     $('#hist').innerHTML = cols.map(d => {
       const m = decades.get(d) || {};
       const segs = order.filter(([l]) => m[l]).map(([l, c]) => `<i style="height:${(100 * m[l] / max).toFixed(2)}%;background:${c}" title="${d}s: ${fmt(m[l])} ${l.toLowerCase()}"></i>`).join('');
-      return `<div class="col${d < 1980 ? ' old' : ''}"><div class="stack">${segs}</div><span class="mono">${cols.length > 14 && (d / 10) % 2 ? '' : d}</span></div>`;
+      return `<div class="col${d < 1980 ? ' old' : ''}"><div class="stack">${segs}</div><span class="mono">${d}</span></div>`;
     }).join('');
+    const hist = $('#hist');
+    thinLabels(hist);
+    new ResizeObserver(() => thinLabels(hist)).observe(hist);
     $('#hlegend').innerHTML = order.map(([l, c]) => `<span class="lbl"><i class="sw" style="background:${c};border:0"></i>${l}</span>`).join('');
     $('#histnote').textContent = `${lo}s to ${hi}s. Each bar is one decade, on one scale; the tallest has ${fmt(max)} records. The shaded decades are before 1980.`;
   } else {

@@ -27,8 +27,15 @@ a { color: var(--accent) } a:hover { color: var(--accent-dark) }
 .top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 12px }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none }
 .brand b { font-size: 20px; font-weight: 600; letter-spacing: -.01em } .brand span { font-size: 13px; color: var(--muted) }
-nav.main { display: flex; flex-wrap: wrap; gap: 2px }
-nav.main a, nav.main span { color: var(--ink); text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 15px; min-height: 44px; display: inline-flex; align-items: center }
+/* One row. If the links do not fit, the row scrolls sideways; common.js fades the edge that has more links. */
+nav.main { --fl: 0px; --fr: 0px; display: flex; flex-wrap: nowrap; gap: 2px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent) }
+nav.main::-webkit-scrollbar { display: none }
+nav.main.more-l { --fl: 32px } nav.main.more-r { --fr: 32px }
+@media (max-width: 899px) { nav.main { flex: 1 1 100%; margin-inline: -12px; padding-inline: 12px; scroll-padding-inline: 12px } }
+nav.main a, nav.main span { flex: none; white-space: nowrap; color: var(--ink); text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 15px; min-height: 44px; display: inline-flex; align-items: center }
+nav.main a:focus-visible { outline-offset: -2px }
 nav.main a:hover { background: var(--chip) }
 nav.main a[aria-current] { background: var(--ink); color: #fff }
 nav.main span { color: #6B7771 } nav.main span small { font-size: 11px; margin-left: 4px }
@@ -62,13 +69,15 @@ section { margin-top: 32px }
 .map svg { width: 100%; height: 100%; display: block }
 .map path { stroke: #fff; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: pointer }
 .map path:hover { stroke: var(--ink); stroke-width: 1.5 }
-.map path.sel { stroke: var(--ink); stroke-width: 2.5 }
+.map path.sel, .map path.hl { stroke: var(--ink); stroke-width: 2.5 }
 .map path.dim { opacity: .35 }
-.tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; font-size: 13px; line-height: 1.4; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); z-index: 2 }
+.tip { position: absolute; left: 0; top: 0; pointer-events: none; background: var(--ink); color: #fff; font-size: 13px; line-height: 1.4; padding: 6px 9px; border-radius: 6px; width: max-content; max-width: min(280px, 100%); z-index: 2 }
+.tip.touch { pointer-events: auto; font-size: 14px; padding: 10px 12px } .tip button.b { margin-top: 8px; font-weight: 600 }
 .legend { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--ink-2) }
 .legend .ramp { display: flex } .legend .ramp i { width: 40px; height: 12px } .legend .ramp i + i { margin-left: 1px }
 .legend .lbl { display: flex; gap: 6px; align-items: center } .legend .sw { width: 12px; height: 12px; border: 1px solid #9AA49E }
 .loading { color: var(--muted); padding: 40px 0; text-align: center }
+.pick { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-2) } .pick button.b { justify-content: center }
 
 /* Forms */
 label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); min-width: 0; max-width: 100% }
@@ -136,10 +145,14 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .hist .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px }
 .hist .stack { flex: 1; display: flex; flex-direction: column-reverse; border-bottom: 1px solid #9AA49E }
 .hist .stack i { display: block; width: 100% } .hist .col.old .stack { background: #FBF3EC }
-.hist .col span { font-size: 10px; color: var(--muted); text-align: center }
+.hist .col span { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; align-self: center }
 .sbars { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-size: 14px }
 .sbars div { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr) 92px; gap: 10px; align-items: center }
 .sbars .mono { text-align: right; font-size: 12px }
 .stackbar { display: flex; height: 16px; border-radius: 2px; overflow: hidden; background: #EEF0ED } .stackbar i { display: block; height: 16px }
+/* Space kept for content that arrives with the data, so the page does not move (CLS). */
+#snap { min-height: 160px } #group { width: 15em } #runline { min-height: 1.5em } #sbars { min-height: 480px } #ybars { min-height: 300px }
+#classif { min-height: 1.55em } #tags { min-height: 32px } #latest { min-height: 248px } #hlegend { min-height: 20px } #histnote { min-height: 1.5em }
+@media (max-width: 600px) { #runline, #crumbs { min-height: 3em } #histnote { min-height: 4.5em } #classif { min-height: 3.1em } #hlegend { min-height: 47px } }
 .badge { display: inline-block; font-size: 13px; font-weight: 500; padding: 3px 8px; border-radius: 4px; white-space: nowrap }
 .st-ok { background: #DCEEE8; color: #063F33 } .st-paper { background: #EEF0ED; color: #2D3833 } .st-none { background: #FBEBDD; color: #7A3208 }

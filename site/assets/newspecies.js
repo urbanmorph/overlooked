@@ -22,12 +22,11 @@ function expand(doc) {
 
 try {
   const layer = await getJSON('layers/newspecies/latest.json').catch(() => null);
-  const done = () => { const l = document.getElementById('loading'); if (l) l.hidden = true; };
   if (!layer) {
-    done(); $('#pending').hidden = false;
+    $('#body').hidden = true; $('#pending').hidden = false;
   } else {
     const data = await getJSON(layer.file);
-    done(); $('#body').hidden = false;
+    $('#body').removeAttribute('aria-busy');
     const rows = expand(data);
     const n = rows.length, cnt = s => rows.filter(r => r.status === s).length;
     const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '–');

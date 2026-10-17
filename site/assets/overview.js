@@ -34,7 +34,24 @@ sel.insertAdjacentHTML('beforeend', s.groups.map((g, i) => `<option value="${i}"
 const [boundaries, stats] = await mapP;
 const map = drawMap($('#map'), boundaries, {
   label: 'Map of India: number of species not recorded since 1980 in each district',
+  pickLabel: 'Open the ledger',
   onPick: d => { location.href = `/ledger?district=${d.id}`; },
+});
+
+// State, then district: the same choice as the map, with a keyboard.
+const pState = $('#p-state'), pDist = $('#p-district');
+const states = [...new Map(boundaries.districts.map(d => [d.state_lgd, d.state]))].sort((a, b) => a[1].localeCompare(b[1]));
+pState.insertAdjacentHTML('beforeend', states.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join(''));
+pState.addEventListener('change', () => {
+  const list = boundaries.districts.filter(d => String(d.state_lgd) === pState.value).sort((a, b) => a.name.localeCompare(b.name));
+  pDist.innerHTML = '<option value="">All districts</option>' + list.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  pDist.disabled = !list.length;
+});
+$('#pick').addEventListener('submit', e => {
+  e.preventDefault();
+  if (pDist.value) location.href = `/ledger?district=${pDist.value}`;
+  else if (pState.value) location.href = `/ledger?state=${pState.value}`;
+  else pState.focus();
 });
 
 function paint() {
