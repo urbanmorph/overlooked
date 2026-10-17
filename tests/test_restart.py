@@ -82,3 +82,14 @@ def test_matching_stops_at_time_limit():
     state = {"names": [{"name": "Aus bus", "year": 2020}]}
     out = ns.match_all(None, None, state, {}, set(), {}, {}, time.monotonic() - 1, lambda: None)
     assert out is None
+
+
+def test_inat_daily_budget_counts_earlier_runs_today(tmp_path, monkeypatch):
+    from pipeline import layer_inat
+    monkeypatch.setattr(inat, "CACHE", tmp_path)
+    assert layer_inat.budget_left(9000, "2026-10-17") == 9000
+    layer_inat.record_usage("2026-10-17", 7866)
+    assert layer_inat.budget_left(9000, "2026-10-17") == 1134
+    assert layer_inat.budget_left(9000, "2026-10-18") == 9000
+    layer_inat.record_usage("2026-10-17", 2000)
+    assert layer_inat.budget_left(9000, "2026-10-17") == 0

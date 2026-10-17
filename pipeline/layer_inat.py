@@ -19,11 +19,24 @@ from pathlib import Path
 from pipeline import inat
 
 ROOT = Path(__file__).resolve().parent.parent
+DAILY = 9000  # iNaturalist asks for under 10,000 requests a day, across all runs
+
+
+def budget_left(budget, day):
+    """Requests this run may send: its own budget, less what earlier runs used on the same UTC day."""
+    used = (inat.cached("usage.json") or {}).get(day, 0)
+    return max(0, min(budget, DAILY - used))
+
+
+def record_usage(day, n):
+    usage = inat.cached("usage.json") or {}
+    usage = {day: usage.get(day, 0) + n}  # only today is needed
+    inat.store("usage.json", usage)
 
 
 def sync_cache(s3, direction):
     from pipeline import r2
-    names = ["places.json", "taxa.json", "backlog_{m}.json", "backlog_rows_{m}.json", "quiet_{m}.json"]
+    names = ["usage.json", "places.json", "taxa.json", "backlog_{m}.json", "backlog_rows_{m}.json", "quiet_{m}.json"]
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     for n in (x.format(m=month) for x in names):
         local, key = inat.CACHE / n, f"cache/inat/{n}"
@@ -52,17 +65,27 @@ def main():
         s3 = r2.client()
         sync_cache(s3, "down")
 
-    def checkpoint(c):
-        print(f"{datetime.now(timezone.utc):%H:%M} {c.used} requests; saving the cache", flush=True)
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    recorded = 0
+
+    def save(c):
+        nonlocal recorded
+        record_usage(day, c.used - recorded)
+        recorded = c.used
         if s3:
             sync_cache(s3, "up")
 
-    client = inat.Client(a.budget, a.minutes, checkpoint)
+    def checkpoint(c):
+        print(f"{datetime.now(timezone.utc):%H:%M} {c.used} requests; saving the cache", flush=True)
+        save(c)
+
+    budget = budget_left(a.budget, day)
+    print(f"budget for this run: {budget} requests", flush=True)
+    client = inat.Client(budget, a.minutes, checkpoint)
     try:
         run(a, month, client, s3)
     finally:
-        if s3:  # keep the work done, also when the run fails
-            sync_cache(s3, "up")
+        save(client)  # keep the work done and the day's count, also when the run fails
 
 
 def run(a, month, client, s3):
