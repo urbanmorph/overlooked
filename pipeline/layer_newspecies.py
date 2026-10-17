@@ -177,6 +177,71 @@ def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, 
     return out
 
 
+# The page's file format. Version 1 (no "version" key) had a list of row objects under "species".
+# Version 2 is columnar: one array per field, with repeated strings stored once in "lookups".
+FORMAT_VERSION = 2
+PAGE_FIELDS = ("name", "year", "sources", "journal", "state", "link", "group", "key", "matched_by", "status",
+               "latest_after", "any_record")
+LOOKUP_FIELDS = ("sources", "journal", "state", "group", "matched_by", "status")
+
+
+def _link_prefix(link, counts):
+    """A link used more than once is its own prefix; otherwise the prefix ends at the last '/'."""
+    return link if counts[link] > 1 else link[:link.rfind("/") + 1]
+
+
+def compact(rows):
+    """Columnar form of the page fields of rows, for the site. expand() reverses it."""
+    lookups = {f: [] for f in (*LOOKUP_FIELDS, "link")}
+    index = {f: {} for f in lookups}
+
+    def code(field, value):
+        k = json.dumps(value)
+        if k not in index[field]:
+            index[field][k] = len(lookups[field])
+            lookups[field].append(value)
+        return index[field][k]
+
+    link_counts = {}
+    for r in rows:
+        link_counts[r["link"]] = link_counts.get(r["link"], 0) + 1
+    cols = {f: [] for f in (*PAGE_FIELDS, "link_rest")}
+    for r in rows:
+        for f in PAGE_FIELDS:
+            v = r[f]
+            if f in LOOKUP_FIELDS:
+                v = code(f, v)
+            elif f == "link":
+                prefix = _link_prefix(v, link_counts)
+                cols["link_rest"].append(v[len(prefix):])
+                v = code("link", prefix)
+            elif f == "any_record":
+                v = int(bool(v))
+            cols[f].append(v)
+    return {"version": FORMAT_VERSION, "n": len(rows), "lookups": lookups, "columns": cols}
+
+
+def expand(doc):
+    """Rows (dicts of the page fields) from either format of the file."""
+    if "version" not in doc:
+        return doc["species"]
+    lk, cols = doc["lookups"], doc["columns"]
+    out = []
+    for i in range(doc["n"]):
+        r = {}
+        for f in PAGE_FIELDS:
+            v = cols[f][i]
+            if f in LOOKUP_FIELDS:
+                v = lk[f][v]
+            elif f == "link":
+                v = lk["link"][v] + cols["link_rest"][i]
+            elif f == "any_record":
+                v = bool(v)
+            r[f] = v
+        out.append(r)
+    return out
+
+
 def run(publish, force=False, minutes=None):
     from pipeline import r2
     deadline = time.monotonic() + minutes * 60 if minutes else None
@@ -271,7 +336,7 @@ def run(publish, force=False, minutes=None):
               "downloads": [{"query": q, "key": d[q]["key"], "doi": d[q]["doi"], "created": metas[q].get("created"),
                              "records": metas[q].get("totalRecords")} for q in QUERIES],
               "sources": ["Plazi TreatmentBank (CC0)", "Botanical Survey of India, Plant Discoveries (reproduced with acknowledgement)"],
-              "species": out}
+              **compact(out)}
     folder = ROOT / "data" / "layers" / "newspecies" / month
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "new_species.json").write_text(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
