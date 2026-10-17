@@ -2,9 +2,9 @@ import { snapshot, getJSON, fmt, esc, $, monthName, showDevBanner, sourceLine, s
 
 const KINDS = [
   ['all', 'All'], ['recorded_again', 'Recorded again'], ['first_in_state', 'First in a state'],
-  ['now_quiet', 'Now quiet'], ['withdrawn', 'Withdrawn'],
+  ['now_quiet', 'Not recorded in 30 years'], ['withdrawn', 'Withdrawn'],
 ];
-const LABEL = { recorded_again: 'Recorded again', first_in_state: 'First record in a state', now_quiet: 'Now quiet', withdrawn: 'Withdrawn' };
+const LABEL = { recorded_again: 'Recorded again', first_in_state: 'First record in a state', now_quiet: 'Not recorded in 30 years', withdrawn: 'Withdrawn' };
 const DOT = { recorded_again: 'var(--accent)', first_in_state: 'var(--blue)', now_quiet: 'var(--quiet)', withdrawn: '#6B7771' };
 const PAGE = 50;
 

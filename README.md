@@ -28,7 +28,7 @@ Three GitHub Actions workflows build the GBIF snapshot. Two more build dated lay
 | `request.yml` | 02:17 on the 1st, and by hand | Checks every source. Sends the first GBIF download request. Commits the run state to `runs/<YYYY-MM>.json`. |
 | `build.yml` | Every 6 hours on days 1 to 10 (at :47), and by hand | Checks the sources. Sends the next GBIF download when the last one is ready (GBIF allows few downloads at a time). When all downloads are ready: builds, checks and publishes the snapshot to R2. Commits the run state. |
 | `checks.yml` | Every push and pull request | Runs the tests. |
-| `inat.yml` | 05:23 daily, and by hand | iNaturalist layer (module 5): backlog by state and group, identifiers, and a direct check of quiet species. At most 9,000 requests a day; it continues the next day until the month is done. |
+| `inat.yml` | 05:23 daily, and by hand | iNaturalist layer (module 5): backlog by state and group, identifiers, and a direct check of species not recorded since 1980. At most 9,000 requests a day; it continues the next day until the month is done. |
 | `newspecies.yml` | 06:41 daily, and by hand | New species layer (module 3): names from Plazi and BSI Plant Discoveries, two GBIF downloads, matching, and the status of each species. |
 
 Scheduled runs need the repository variable `PIPELINE_ENABLED=true`. Runs started by hand always work.

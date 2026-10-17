@@ -33,7 +33,7 @@ sel.insertAdjacentHTML('beforeend', s.groups.map((g, i) => `<option value="${i}"
 
 const [boundaries, stats] = await mapP;
 const map = drawMap($('#map'), boundaries, {
-  label: 'Map of India: number of quiet species in each district',
+  label: 'Map of India: number of species not recorded since 1980 in each district',
   onPick: d => { location.href = `/ledger?district=${d.id}`; },
 });
 
@@ -46,9 +46,9 @@ function paint() {
   }
   const breaks = map.paint(vals, (id, v) => {
     const st = stats.districts[id];
-    return v == null ? 'No public records' : `${fmt(v)} of ${fmt(st.s[gi])} species quiet since 1980`;
+    return v == null ? 'No public records' : `${fmt(v)} of ${fmt(st.s[gi])} species not recorded since 1980`;
   });
-  $('#legend').innerHTML = legendHTML(breaks, 'Quiet species in district');
+  $('#legend').innerHTML = legendHTML(breaks, 'Species not recorded since 1980');
 }
 sel.addEventListener('change', paint);
 paint();

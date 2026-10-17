@@ -67,7 +67,7 @@ function syncURL() {
 
 // Map.
 const map = drawMap($('#map'), boundaries, {
-  label: 'Map of India: quiet species in each district. Select a district to filter the table.',
+  label: 'Map of India: species not recorded since the year, in each district. Select a district to filter the table.',
   onPick: d => { st.district = st.district === d.id ? null : d.id; st.state = d.state_lgd; update(); },
 });
 
@@ -79,8 +79,8 @@ function paintMap() {
     vals.set(d.id, s && s.s[gi] ? s.q[yi][gi] : null);
   }
   const breaks = map.paint(vals, (id, v) => v == null ? 'No public records' :
-    `${fmt(v)} of ${fmt(stats.districts[id].s[gi])} species quiet since ${st.since}`);
-  $('#legend').innerHTML = legendHTML(breaks, `Quiet species since ${st.since}`);
+    `${fmt(v)} of ${fmt(stats.districts[id].s[gi])} species not recorded since ${st.since}`);
+  $('#legend').innerHTML = legendHTML(breaks, `Species not recorded since ${st.since}`);
   map.select(st.district);
   map.focusState(st.state);
 }
@@ -161,10 +161,10 @@ function renderAside() {
       <dt>No public record since ${st.since}</dt><dd class="q">${fmt(quiet.length)}</dd>
       <dt>Latest record before 1950</dt><dd>${fmt(before1950)}</dd>
       <dt>Not counted: no record of the group here since ${st.since}</dt><dd>${fmt(unsurveyed)}</dd>
-      ${Object.keys(flags).length ? `<dt>Quiet, but seen in India on iNaturalist since ${st.since}${inatInfo && !inatInfo.quiet_complete ? ` (check in progress: ${fmt(inatInfo.quiet_checked)} of ${fmt(inatInfo.quiet_of)} species checked)` : ''}</dt><dd>${fmt(quiet.filter(r => flags[r.key] && +String(flags[r.key][0]).slice(0, 4) >= st.since).length)}</dd>` : ''}
+      ${Object.keys(flags).length ? `<dt>Not recorded here since ${st.since}, but seen in India on iNaturalist${inatInfo && !inatInfo.quiet_complete ? ` (check in progress: ${fmt(inatInfo.quiet_checked)} of ${fmt(inatInfo.quiet_of)} species checked)` : ''}</dt><dd>${fmt(quiet.filter(r => flags[r.key] && +String(flags[r.key][0]).slice(0, 4) >= st.since).length)}</dd>` : ''}
     </dl>
     ${top.length && st.group < 0 ? `<div style="border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px">
-      <div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px">Quiet species by group</div>
+      <div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px">Species not recorded since the year, by group</div>
       <div class="gbars">${top.map(([g, c]) => `<div><span>${esc(groups[g])}</span><span class="bar"><i style="width:${(100 * c / max).toFixed(1)}%"></i></span><span>${fmt(c)}</span></div>`).join('')}</div>
     </div>` : ''}
     ${st.district != null || st.state != null ? '<button class="b" type="button" id="clear" style="margin-top:16px">Show all of India</button>' : ''}`;
