@@ -35,7 +35,6 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
     groups = [r[0] for r in con.sql("""
         SELECT grp FROM sp JOIN (SELECT DISTINCT species_key FROM ledger) USING (species_key)
         GROUP BY grp ORDER BY count(*) DESC, grp""").fetchall()]
-    gi = {g: i for i, g in enumerate(groups)}
     con.execute("CREATE OR REPLACE TABLE gidx AS SELECT unnest($1) AS grp, generate_subscripts($1, 1) - 1 AS gi", [groups])
     con.sql("""
         CREATE OR REPLACE TABLE lg AS

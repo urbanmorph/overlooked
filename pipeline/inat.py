@@ -13,7 +13,6 @@ Output goes to data/layers/inat/<date>/.
 
 import argparse
 import json
-import os
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path

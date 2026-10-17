@@ -15,7 +15,6 @@ Usage:
 
 import csv
 import re
-import sys
 from pathlib import Path
 
 import pymupdf

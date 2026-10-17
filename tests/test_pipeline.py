@@ -165,6 +165,7 @@ def test_change_feed(tmp_path):
     assert ("withdrawn", "E") in got
     assert not any(k in ("F_old", "F_new") for _, k in got)   # renamed key matched by name: no change
     assert con.sql("SELECT reason FROM changes WHERE species_key = 'A'").fetchone()[0] == "new record"
+    assert counts == {c: n for c, n in con.sql("SELECT change, count(*) FROM changes GROUP BY 1").fetchall()}
 
 
 def test_new_species_names():
