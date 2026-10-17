@@ -198,3 +198,41 @@ def test_duplicate_keys_for_one_name_are_merged(districts, tmp_path):
     ledger.load_cube(con, cube)
     ledger.build(con, tmp_path / "out", "test", districts)
     assert con.sql("SELECT species_key, first_year, last_year, n_records FROM ledger").fetchall() == [("XBFD", 1938, 2026, 1702)]
+
+
+DNA = "d8cd16ba-bb74-4420-821e-083f2bac17c2"      # INSDC Sequences
+HOST = "393b8c26-e4e0-4dd0-a218-93fc074ebf4e"     # INSDC Host Organism Sequences
+
+
+def test_sequence_datasets_scope():
+    """Host-organism sequences are left out everywhere; sequences are left out of the no-coordinates
+    query only, and query A keeps a latest year without them."""
+    for q in ("ledger_cube", "species_history", "unresolved_cube", "unlocated_cube"):
+        assert HOST in gbif.build_sql(q)
+    assert DNA in gbif.build_sql("unlocated_cube").split("NOT IN")[1]
+    assert DNA not in gbif.build_sql("ledger_cube").split("NOT IN")[1]
+    assert "last_year_not_dna" in gbif.build_sql("ledger_cube")
+
+
+def test_latest_record_from_dna_is_marked(districts, tmp_path):
+    from pipeline import site_data
+    cube = tmp_path / "c.tsv"
+    cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\tlast_year_not_dna\n"
+                    "S1\t10.5\t76.5\t1950\t2019\t3\t1950\n"      # latest record is a DNA sequence
+                    "S2\t10.5\t76.5\t1960\t2001\t2\t2001\n")     # latest record is not
+    con = duckdb.connect()
+    ledger.load_cube(con, cube)
+    ledger.build(con, tmp_path / "out", "test", districts)
+    got = dict(con.sql("SELECT species_key, last_year_not_dna FROM ledger").fetchall())
+    assert got == {"S1": 1950, "S2": 2001}
+    assert site_data.dna_note(2019, 1950) == 1950 and site_data.dna_note(2001, 2001) is None
+    assert site_data.dna_note(2019, None) == 0      # only DNA records have a year
+
+
+def test_old_cube_without_dna_column(districts, tmp_path):
+    cube = tmp_path / "c.tsv"
+    cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\nS1\t10.5\t76.5\t1950\t2019\t3\n")
+    con = duckdb.connect()
+    ledger.load_cube(con, cube)
+    ledger.build(con, tmp_path / "out", "test", districts)
+    assert con.sql("SELECT last_year, last_year_not_dna FROM ledger").fetchall() == [(2019, 2019)]

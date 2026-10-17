@@ -100,7 +100,7 @@ async function loadRows() {
   let data;
   try { data = await getJSON(rowsFile()); } catch { data = { rows: [], scope: 'all' }; }
   if (token !== loadToken) return null;
-  rows = data.rows.map(r => ({ key: r[0], name: r[1], gi: r[2], family: r[3] || '', first: r[4], last: r[5], n: r[6] }));
+  rows = data.rows.map(r => ({ key: r[0], name: r[1], gi: r[2], family: r[3] || '', first: r[4], last: r[5], n: r[6], dna: r[7] ?? null }));
   return data.scope;
 }
 
@@ -112,6 +112,8 @@ function area() {
   return stats.india;
 }
 const isOld = r => r.last != null && r.last < st.since;
+// The latest record is a DNA sequence (often a submission date, not a field date).
+const dnaNote = r => r.dna == null ? '' : `<br><span class="tagd" title="The latest record is a DNA sequence. ${r.dna ? `Latest other record: ${r.dna}.` : 'No other record has a year.'}">DNA${r.dna ? `, other ${r.dna}` : ''}</span>`;
 // iNaturalist layer: species with an observation in India, including ones not shared with GBIF.
 // flags[key] = [latest date, quality grade, open licence 1/0, observations in India]
 let flags = {}, inatInfo = null;
@@ -192,7 +194,7 @@ function renderTable() {
       <td>${esc(groups[r.gi])}${!allMode && !surveyed(r) ? '<br><span class="tagu">no record of the group here since ' + st.since + '</span>' : ''}</td>
       <td class="muted">${esc(r.family)}</td>
       <td class="n"><span class="yr">${r.first ?? '<span class="muted">unknown</span>'}</span></td>
-      <td class="n"><span class="yr${r.last != null && r.last < st.since ? ' q' : ''}">${r.last ?? '<span class="muted">unknown</span>'}</span></td>
+      <td class="n"><span class="yr${r.last != null && r.last < st.since ? ' q' : ''}">${r.last ?? '<span class="muted">unknown</span>'}</span>${dnaNote(r)}</td>
       <td class="n mono">${fmt(r.n)}</td></tr>`).join('')
     : `<tr><td colspan="6" class="muted" style="padding:28px 14px">There are no species for these filters.</td></tr>`;
   $('#pinfo').textContent = view.length ? `Showing ${fmt(st.page * PAGE + 1)} to ${fmt(st.page * PAGE + slice.length)} of ${fmt(view.length)}` : '';

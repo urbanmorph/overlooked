@@ -26,6 +26,6 @@ WHERE countrycode = 'IN'
   AND occurrencestatus = 'PRESENT'
   AND taxonkey IS NOT NULL
   AND basisofrecord <> 'FOSSIL_SPECIMEN' AND basisofrecord <> 'LIVING_SPECIMEN'
-  AND datasetkey NOT IN ({excluded})
+  AND datasetkey NOT IN ({excluded_unlocated})
   {stateprovince_filter}
 GROUP BY specieskey, species, genus, taxonrank, kingdom, phylum, class, "order", family, stateprovince, datasetkey, basisofrecord

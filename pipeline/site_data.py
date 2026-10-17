@@ -15,9 +15,21 @@ from pathlib import Path
 
 import duckdb
 
+from pipeline import ledger
 from pipeline.groups import GROUP_SQL
 
 YEARS = [1980, 1990, 2000, 2010]
+
+# The latest record is a DNA sequence: give the latest year of other records (0 if none), else NULL.
+DNA_SQL = ("CASE WHEN last_year IS NOT NULL AND (last_year_not_dna IS NULL OR last_year_not_dna < last_year) "
+           "THEN coalesce(last_year_not_dna, 0) END")
+
+
+def dna_note(last_year, last_year_not_dna):
+    """Python form of DNA_SQL, for checks and tests."""
+    if last_year is None or (last_year_not_dna is not None and last_year_not_dna >= last_year):
+        return None
+    return last_year_not_dna or 0
 
 
 def dump(obj, path: Path):
@@ -36,6 +48,7 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
         SELECT grp FROM sp JOIN (SELECT DISTINCT species_key FROM ledger) USING (species_key)
         GROUP BY grp ORDER BY count(*) DESC, grp""").fetchall()]
     con.execute("CREATE OR REPLACE TABLE gidx AS SELECT unnest($1) AS grp, generate_subscripts($1, 1) - 1 AS gi", [groups])
+    ledger.ensure_dna_column(con, "ledger")
     con.sql("""
         CREATE OR REPLACE TABLE lg AS
         SELECT l.*, s.name, s.family, g.gi
@@ -87,24 +100,27 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
     dump({"groups": groups, "years": YEARS, "districts": stats, "states": states, "india": india},
          out / "map_stats.json")
 
-    # National species table and quiet counts.
+    # National species table and quiet counts. Rows: key, name, group, family, first, last, records, dna
+    # (dna: when the latest record is a DNA sequence, the latest year of other records, 0 if none).
     con.sql("""
         CREATE OR REPLACE TABLE india AS
         SELECT species_key, any_value(name) AS name, any_value(gi) AS gi, any_value(family) AS family,
-               min(first_year) AS first_year, max(last_year) AS last_year, sum(n_records) AS n
+               min(first_year) AS first_year, max(last_year) AS last_year,
+               max(last_year_not_dna) AS last_year_not_dna, sum(n_records) AS n
         FROM lg GROUP BY species_key
     """)
-    row_sql = "SELECT species_key, name, gi, family, first_year, last_year, n FROM {} ORDER BY last_year NULLS LAST, name"
+    row_sql = f"SELECT species_key, name, gi, family, first_year, last_year, n, {DNA_SQL} FROM {{}} ORDER BY last_year NULLS LAST, name"
     quiet = f"(SELECT * FROM {{}} WHERE last_year < {YEARS[-1]})"
     dump({"scope": f"quiet_before_{YEARS[-1]}", "rows": con.sql(row_sql.format(quiet.format("india"))).fetchall()},
          out / "ledger" / "india.json")
     for (state,) in con.sql("SELECT DISTINCT state_lgd FROM lg").fetchall():
         rows = con.sql(row_sql.format(quiet.format(f"""(SELECT species_key, any_value(name) AS name, any_value(gi) AS gi,
-                any_value(family) AS family, min(first_year) AS first_year, max(last_year) AS last_year, sum(n_records) AS n
+                any_value(family) AS family, min(first_year) AS first_year, max(last_year) AS last_year,
+                max(last_year_not_dna) AS last_year_not_dna, sum(n_records) AS n
                 FROM lg WHERE state_lgd = {state} GROUP BY species_key)"""))).fetchall()
         dump({"scope": f"quiet_before_{YEARS[-1]}", "rows": rows}, out / "ledger" / "s" / f"{state}.json")
     for (dist,) in con.sql("SELECT DISTINCT district_lgd FROM lg").fetchall():
-        rows = con.sql(row_sql.format(f"""(SELECT species_key, name, gi, family, first_year, last_year, n_records AS n
+        rows = con.sql(row_sql.format(f"""(SELECT species_key, name, gi, family, first_year, last_year, last_year_not_dna, n_records AS n
                 FROM lg WHERE district_lgd = {dist})""")).fetchall()
         dump({"scope": "all", "rows": rows}, out / "ledger" / "d" / f"{dist}.json")
 

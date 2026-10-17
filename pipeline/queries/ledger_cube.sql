@@ -8,7 +8,8 @@ SELECT
   ROUND(decimallongitude, 3) AS lon,
   MIN("year") AS first_year,
   MAX("year") AS last_year,
-  COUNT(*) AS n_records
+  COUNT(*) AS n_records,
+  MAX(CASE WHEN datasetkey = '{dna_dataset}' THEN NULL ELSE "year" END) AS last_year_not_dna
 FROM occurrence
 WHERE countrycode = 'IN'
   AND hascoordinate = TRUE

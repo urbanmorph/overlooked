@@ -23,6 +23,10 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 QUERIES = ROOT / "pipeline" / "queries"
 EXCLUDED = ROOT / "pipeline" / "ref" / "excluded_datasets.csv"
+# Left out of query L only (records with no coordinates): nobody can georeference them.
+EXCLUDED_UNLOCATED = ROOT / "pipeline" / "ref" / "excluded_unlocated.csv"
+# DNA sequences: kept, but query A also keeps the latest year without them.
+DNA_DATASET = "d8cd16ba-bb74-4420-821e-083f2bac17c2"
 RAW = ROOT / "data" / "raw"
 API = "https://api.gbif.org/v1/occurrence/download"
 
@@ -37,14 +41,17 @@ def session():
 
 
 def build_sql(name, state=None):
-    excluded = ", ".join(f"'{r['datasetKey']}'" for r in csv.DictReader(EXCLUDED.open()))
+    keys = lambda f: [f"'{r['datasetKey']}'" for r in csv.DictReader(f.open())]
+    excluded = ", ".join(keys(EXCLUDED))
+    excluded_unlocated = ", ".join(keys(EXCLUDED) + keys(EXCLUDED_UNLOCATED))
     # GADM state name is only for test runs. The real runs place cells in LGD districts later.
     region = f"AND level1name = '{state}'" if state else ""
     # Records with no coordinates have no GADM name; a test run selects them by the state text.
     text_region = f"AND stateprovince = '{state}'" if state else ""
     text = (QUERIES / f"{name}.sql").read_text()
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("--"))
-    return " ".join(body.format(excluded=excluded, region_filter=region, stateprovince_filter=text_region).split())
+    return " ".join(body.format(excluded=excluded, excluded_unlocated=excluded_unlocated, dna_dataset=DNA_DATASET,
+                                   region_filter=region, stateprovince_filter=text_region).split())
 
 
 def request_body(sql):
