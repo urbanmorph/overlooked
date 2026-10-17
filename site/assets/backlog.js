@@ -77,7 +77,7 @@ try {
   const max = states.length ? states[0].t.w : 1;
   $('#aside').innerHTML = `<h2 style="font-size:20px">Most waiting</h2>
     <p class="note">States with the most iNaturalist observations that wait for a name</p>
-    <div class="gbars" style="margin-top:14px">${states.map(s => `<div><span>${esc(s.name)}</span><span class="bar"><i style="width:${(100 * s.t.w / max).toFixed(1)}%"></i></span><span>${fmt(s.t.w)}</span></div>`).join('') || '<p class="muted">Not available yet.</p>'}</div>`;
+    <div class="gbars wide" style="margin-top:14px">${states.map(s => `<div><span>${esc(s.name)}</span><span class="bar"><i style="width:${(100 * s.t.w / max).toFixed(1)}%"></i></span><span>${fmt(s.t.w)}</span></div>`).join('') || '<p class="muted">Not available yet.</p>'}</div>`;
 
   $('#runline').textContent = `Module 05 · iNaturalist counts of ${bl ? esc(monthName(bl.as_of)) : 'a later date'} · GBIF snapshot ${summary.run_id}`;
   $('#source').innerHTML = `iNaturalist: counts from api.inaturalist.org${bl ? `, ${esc(monthName(bl.as_of))}` : ''}. Research-grade observations with an open licence also reach GBIF. ${sourceLine(summary)} The India Biodiversity Portal also holds observations without a name; its data is not available to automated tools.`;

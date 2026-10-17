@@ -89,6 +89,7 @@ td.sp a { font-style: italic }
 .gbars { display: flex; flex-direction: column; gap: 6px; font-size: 14px }
 .gbars div { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(48px, 1fr) 44px; gap: 10px; align-items: center }
 .gbars span:last-child { text-align: right; font-family: var(--mono) }
+.gbars.wide div { grid-template-columns: minmax(0, 1.6fr) minmax(40px, 1fr) 5.8em } /* numbers up to 99,99,999 */
 dl.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 15px }
 dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) } dl.stats dd.q { color: var(--quiet); font-weight: 500 }
 .bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 18px 6px }
