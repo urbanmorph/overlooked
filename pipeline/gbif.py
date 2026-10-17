@@ -78,11 +78,13 @@ def wait(http, key, every=60):
 def fetch(http, meta):
     RAW.mkdir(parents=True, exist_ok=True)
     dest = RAW / f"{meta['key']}.zip"
+    part = dest.with_suffix(".zip.part")  # renamed only when complete, so a cut download is never used
     with http.get(meta["downloadLink"], stream=True, timeout=600) as r:
         r.raise_for_status()
-        with open(dest, "wb") as f:
+        with open(part, "wb") as f:
             for chunk in r.iter_content(1 << 20):
                 f.write(chunk)
+    part.replace(dest)
     (RAW / f"{meta['key']}.json").write_text(json.dumps(
         {k: meta.get(k) for k in ("key", "doi", "created", "modified", "totalRecords", "size")}, indent=1))
     print(f"saved {dest} ({dest.stat().st_size / 1e6:.1f} MB), doi:{meta['doi']}")

@@ -44,7 +44,7 @@ jobs:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           FORCE: ${{ inputs.force }}
-        run: python -m pipeline.layer_newspecies --publish $([ "$FORCE" = "true" ] && echo --force)
+        run: python -u -m pipeline.layer_newspecies --publish --minutes 200 $([ "$FORCE" = "true" ] && echo --force)
       - name: Open an issue on failure
         if: failure()
         env:

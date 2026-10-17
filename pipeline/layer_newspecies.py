@@ -10,7 +10,7 @@ Steps (each saved in R2 cache/newspecies/state_<month>.json, so a run can stop a
                "later papers": only records copied from later papers; "no public record since"
 Output: layers/newspecies/<month>/new_species.json and layers/newspecies/latest.json
 
-Usage: python -m pipeline.layer_newspecies [--publish]
+Usage: python -m pipeline.layer_newspecies [--publish] [--force] [--minutes 200]
 """
 
 import argparse
@@ -47,10 +47,14 @@ def binomial(name):
     return " ".join(parts[:2]) if len(parts) >= 2 and parts[0][:1].isupper() and parts[1].islower() else None
 
 
-def plazi_names(http):
-    out = []
+def plazi_names(http, done=None, save=None):
+    """done: {year: rows} already fetched this month; save() is called after each year."""
+    done = {} if done is None else done
     fields = "tax.name+tax.status+bib.year+bib.source+matCit.typeStatus+matCit.region+doc.uuid"
     for year in range(FIRST_YEAR, datetime.now(timezone.utc).year + 1):
+        if str(year) in done:
+            continue
+        out = []
         url = (f"https://tb.plazi.org/GgServer/srsStats/stats?outputFields={fields}&groupingFields={fields}"
                f"&FP-matCit.country=India&FP-bib.year={year}&FP-matCit.typeStatus=holotype&format=JSON")
         r = http.get(url, timeout=120)
@@ -60,8 +64,11 @@ def plazi_names(http):
             if name and SP_NOV.match(row.get("TaxStatus") or ""):
                 out.append({"name": name, "year": int(row["BibYear"]), "source": "Plazi", "journal": row.get("BibSource"),
                             "state": row.get("MatCitRegion") or "", "link": f"https://tb.plazi.org/GgServer/summary/{row['DocUuid']}"})
+        done[str(year)] = out
+        if save:
+            save()
         time.sleep(1.5)
-    return out
+    return [r for y in sorted(done) for r in done[y]]
 
 
 def bsi_names(http, s3):
@@ -122,8 +129,57 @@ def group_from(con, c):
     return row[0] if row and row[0] != "Other" else ("Other" if row else None)
 
 
-def run(publish, force=False):
+def after(rows):
+    """Records after the description year: (observations, records from papers, latest year)."""
+    obs = sum(n for y, b, n in rows if b != "MATERIAL_CITATION")
+    papers = sum(n for y, b, n in rows if b == "MATERIAL_CITATION")
+    latest = max((y for y, b, n in rows if b != "MATERIAL_CITATION"), default=None)
+    return obs, papers, latest
+
+
+def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline, save_cache):
+    """Status of each name. Returns None if the time limit is reached first."""
+    out = []
+    next_save = time.monotonic() + 600
+    for i, n in enumerate(state["names"]):
+        if deadline and time.monotonic() > deadline:
+            return None
+        key, how = species_by_name.get(n["name"]), "exact name"
+        if not key:
+            m = gbif_match(http, n["name"], mcache)
+            if m and m.get("key"):
+                key, how = m["key"], "synonym" if m["synonym"] else "exact name (GBIF match)"
+        rows = con.execute("SELECT year, basisofrecord, n_records FROM y WHERE specieskey = ? AND year > ?",
+                           [key, n["year"]]).fetchall() if key else []
+        if not rows:
+            vrows = con.execute("""SELECT year, basisofrecord, n_records FROM v
+                                   WHERE year > ? AND lower(v_scientificname) LIKE lower(?) || '%'""",
+                                [n["year"], n["name"]]).fetchall()
+            if vrows:
+                rows, how = vrows, "name as published in GBIF"
+        obs, papers, latest = after(rows)
+        # Any public record in India at all, including the type material from the description itself.
+        any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
+        any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
+        status = "recorded" if obs else ("later_papers" if papers else "none")
+        grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""))
+        if not grp:
+            m = gbif_match(http, n["name"], mcache, need_classification=True)
+            grp = group_from(con, (m or {}).get("classification")) or "Not matched yet"
+        out.append({**{k: n[k] for k in ("name", "year", "sources", "journal", "state", "link")}, "group": grp,
+                    "bsi_group": n.get("bsi_group", ""), "key": key, "matched_by": how if (key or rows) else "not found",
+                    "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers,
+                    "any_record": any_record})
+        if time.monotonic() > next_save:
+            next_save = time.monotonic() + 600
+            print(f"{i} of {len(state['names'])} names; saving the match cache", flush=True)
+            save_cache()
+    return out
+
+
+def run(publish, force=False, minutes=None):
     from pipeline import r2
+    deadline = time.monotonic() + minutes * 60 if minutes else None
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     CACHE.mkdir(parents=True, exist_ok=True)
     http = gbif.session()
@@ -141,9 +197,10 @@ def run(publish, force=False):
 
     # 1. Names (once a month).
     if "names" not in state:
-        names = merge(plazi_names(plain) + bsi_names(plain, s3))
+        names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3))
         state["names"] = names
         state["names_at"] = now()
+        state.pop("plazi", None)
         save()
         print(f"names: {len(names)} new species since {FIRST_YEAR}")
 
@@ -200,45 +257,15 @@ def run(publish, force=False):
     match_cache_key = "cache/newspecies/gbif_match.json"
     mcache = (r2.get_json(s3, match_cache_key) if s3 else None) or {}
 
-    # Records after the description year, by key and by name as published.
-    def after(rows):
-        obs = sum(n for y, b, n in rows if b != "MATERIAL_CITATION")
-        papers = sum(n for y, b, n in rows if b == "MATERIAL_CITATION")
-        latest = max((y for y, b, n in rows if b != "MATERIAL_CITATION"), default=None)
-        return obs, papers, latest
-
-    out = []
-    for i, n in enumerate(state["names"]):
-        key, how = species_by_name.get(n["name"]), "exact name"
-        if not key:
-            m = gbif_match(http, n["name"], mcache)
-            if m and m.get("key"):
-                key, how = m["key"], "synonym" if m["synonym"] else "exact name (GBIF match)"
-        rows = con.execute("SELECT year, basisofrecord, n_records FROM y WHERE specieskey = ? AND year > ?",
-                           [key, n["year"]]).fetchall() if key else []
-        if not rows:
-            vrows = con.execute("""SELECT year, basisofrecord, n_records FROM v
-                                   WHERE year > ? AND lower(v_scientificname) LIKE lower(?) || '%'""",
-                                [n["year"], n["name"]]).fetchall()
-            if vrows:
-                rows, how = vrows, "name as published in GBIF"
-        obs, papers, latest = after(rows)
-        # Any public record in India at all, including the type material from the description itself.
-        any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
-        any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
-        status = "recorded" if obs else ("later_papers" if papers else "none")
-        grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""))
-        if not grp:
-            m = gbif_match(http, n["name"], mcache, need_classification=True)
-            grp = group_from(con, (m or {}).get("classification")) or "Not matched yet"
-        out.append({**{k: n[k] for k in ("name", "year", "sources", "journal", "state", "link")}, "group": grp,
-                    "bsi_group": n.get("bsi_group", ""), "key": key, "matched_by": how if (key or rows) else "not found",
-                    "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers,
-                    "any_record": any_record})
-        if s3 and i % 200 == 0:
+    try:
+        out = match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline,
+                        lambda: s3 and r2.put_json(s3, mcache, match_cache_key))
+    finally:
+        if s3:  # keep the matches done, also when the run stops or fails
             r2.put_json(s3, mcache, match_cache_key)
-    if s3:
-        r2.put_json(s3, mcache, match_cache_key)
+    if out is None:
+        print(f"time limit reached; {len(mcache)} names matched so far; the next run continues")
+        return
 
     result = {"month": month, "built": now(), "snapshot": snapshot_run, "first_year": FIRST_YEAR,
               "downloads": [{"query": q, "key": d[q]["key"], "doi": d[q]["doi"], "created": metas[q].get("created"),
@@ -251,20 +278,21 @@ def run(publish, force=False):
     counts = {s: sum(1 for r in out if r["status"] == s) for s in ("recorded", "later_papers", "none")}
     counts["any_record"] = sum(1 for r in out if r["any_record"])
     print(f"{len(out)} new species: {counts}")
-    state["done"] = now()
-    save()
     if s3:
         r2.sync_file(s3, folder / "new_species.json", f"layers/newspecies/{month}/new_species.json", immutable=False)
         r2.put_json(s3, {"month": month, "updated": now(), "file": f"layers/newspecies/{month}/new_species.json",
                          "snapshot": snapshot_run, "counts": counts}, "layers/newspecies/latest.json")
+    state["done"] = now()  # last, so a failed upload is done again by the next run
+    save()
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
     p.add_argument("--force", action="store_true", help="recompute this month from the downloads already made")
+    p.add_argument("--minutes", type=int, help="stop cleanly after this many minutes; the next run continues")
     a = p.parse_args()
-    run(a.publish, a.force)
+    run(a.publish, a.force, a.minutes)
 
 
 if __name__ == "__main__":
