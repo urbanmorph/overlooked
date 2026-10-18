@@ -20,6 +20,16 @@ Newest first. Updated as work happens.
 
 ### 18 October 2026
 
+- Year described for every species, and the New species page folded into Explore. `pipeline/described.py`
+  reduces the Catalogue of Life XR export (ChecklistBank, 144 MB, authorship) and Kew WCVP (88 MB, the
+  basionym's year) to two parquet files in R2 `cache/described/`, downloaded again only for a new release.
+  Order: the paper of a new species (a COL or ZSI year more than a year earlier wins: 85 Discoveries entries are
+  older species listed as new), then COL, then the ZSI checklist authority, then WCVP for plants. 1,40,821 of
+  1,54,355 species have a year (animals 92 to 100%, plants 84 to 96%; fungi 13%, lichens 17%, mosses 6%).
+  Explore has a "Described" year range in Filters (`?described=2007-`); all filters now drive the map, cards and
+  headline (counted in the browser from the group files; with no filter the counts equal summary.json exactly).
+  `/new-species` redirects to `/?described=2007-`. Label "New species since 2007" replaced by "New species: no
+  record after the description"; `ns.json` removed. 14,930 species on the list were described from 2007.
 - Wait for a name: the master list now writes `w/<group>.json` and `summary.waiting` from the iNaturalist
   needs-ID species lists. 9,76,938 observations of 34,866 species wait for a name (named to species by the
   observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the

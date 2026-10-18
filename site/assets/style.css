@@ -178,6 +178,10 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .filters-panel fieldset { border: 0; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
 .filters-panel legend { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; width: 100% }
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--field); border-radius: 18px; font-size: 13px; cursor: pointer; background: var(--surface) }
+.yr { display: inline-flex; align-items: center; gap: 6px; font-size: 14px }
+.yr input { font: inherit; width: 6.5em; min-height: 36px; padding: 0 8px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); color: var(--ink) }
+#fyears .note { flex: 1 1 100%; margin: 2px 0 0 }
+.yr-quick { display: flex; flex-wrap: wrap; gap: 6px }
 .chip input { width: 16px; height: 16px; margin: 0 } .chip:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink) }
 .ex-main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start }
 .cards { flex: 1 1 290px; min-width: 0; display: flex; flex-direction: column; gap: 8px }

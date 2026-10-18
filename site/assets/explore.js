@@ -1,5 +1,7 @@
 // Front page: India map, groups and search over the master species list (layers/master/<month>/).
 // Three views: observed, identified, IUCN. Groups and states are wired both ways; the URL keeps the state.
+// With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
+// labels) they are counted from the group files, so the map, cards and list always show the same species.
 
 import { getJSON, snapshot, fmt, esc, $, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
@@ -33,6 +35,12 @@ const ICONIC_NAME = { Insecta: 'Insects', Plantae: 'Plants', Fungi: 'Fungi', Chr
   Actinopterygii: 'Ray-finned fish', Mollusca: 'Molluscs', Arachnida: 'Spiders and kin', Amphibia: 'Amphibians', Reptilia: 'Reptiles',
   Aves: 'Birds', Mammalia: 'Mammals', Animalia: 'Other animals' };
 
+// "described=2007-" or "1900-1950" or "-1900" in the address: a range of years described.
+function parseYears(v) {
+  const m = /^(\d{4})?-(\d{4})?$/.exec(v || '');
+  return m ? { from: m[1] ? +m[1] : null, to: m[2] ? +m[2] : null } : { from: null, to: null };
+}
+
 try {
   const latest = await getJSON('layers/master/latest.json');
   const base = latest.base;
@@ -52,26 +60,28 @@ try {
     cat: cats.some(c => c.key === url.searchParams.get('group')) ? url.searchParams.get('group') : null,
     state: stIndex.has(url.searchParams.get('state') || '') ? url.searchParams.get('state') : null,
     filters: { sources: new Set(), status: new Set(), iucn: new Set(), labels: new Set() },
+    years: parseYears(url.searchParams.get('described')),
   };
   const saveURL = () => {
     const u = new URL(location.href);
-    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'identified' && st.list !== 'wait' ? st.list : null], ['group', st.cat], ['state', st.state]]) {
+    const described = st.years.from || st.years.to ? `${st.years.from ?? ''}-${st.years.to ?? ''}` : null;
+    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'identified' && st.list !== 'wait' ? st.list : null], ['group', st.cat], ['state', st.state], ['described', described]]) {
       if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
     }
     history.replaceState(null, '', u);
   };
 
-  // Figures for a set of groups at India level or in one state.
+  // Figures for a set of groups at India level or in one state, from A (summary.json, or counted for the filters).
   function fig(gis, state) {
     let doc = 0, obs = 0, id = 0, thr = 0, assessed = 0, thrObs = 0;
     for (const gi of gis) {
-      const [d, o, i, iu, to] = S.india[gi];
+      const [d, o, i, iu, to] = A.india[gi];
       if (state == null) {
         doc += d; obs += o; id += i; thrObs += to;
         thr += threatIdx.reduce((a, k) => a + iu[k], 0);
         assessed += iu.reduce((a, n, k) => a + (S.iucn[k] === 'NE' ? 0 : n), 0);
       } else {
-        const v = S.by_state[state]?.[gi] || [0, 0, 0];
+        const v = A.by_state[state]?.[gi] || [0, 0, 0];
         obs += v[0]; id += v[1]; thrObs += v[2];
       }
     }
@@ -84,13 +94,45 @@ try {
     const src = (state == null ? india : byState?.[state]) || [];
     return gis.reduce((a, gi) => a.map((x, k) => x + ((src[gi] || [])[k] || 0)), Array(width).fill(0));
   };
-  const waitFig = sumOver(W.india, W.by_state, 3);
+  const waitFig = (gis, state) => sumOver(A.wait.india, A.wait.by_state, 3)(gis, state);
   // Observations named only to genus [genera, observations], and only above genus (per iNaturalist iconic group).
   const genusFig = sumOver(W.genus?.india, W.genus?.by_state, 2);
   const coarseRows = (key, state) => {
     const counts = (state == null ? W.coarse?.india : W.coarse?.by_state[state]) || {};
     return (key ? CARD_ICONIC[key] || [] : Object.keys(counts)).map(g => [g, counts[g] || 0]).filter(([, n]) => n);
   };
+  // Figures for no filter come from summary.json; with filters, counted() builds the same shape from the group files.
+  const BASE = { india: S.india, by_state: S.by_state, wait: { india: W.india, by_state: W.by_state } };
+  let A = BASE;
+  const filtered = () => !!(st.years.from || st.years.to) || Object.values(st.filters).some(s => s.size);
+  function filterText() {
+    const y = st.years, n = Object.values(st.filters).reduce((a, s) => a + s.size, 0);
+    const years = y.from && y.to ? `described ${y.from} to ${y.to}` : y.from ? `described ${y.from} or later` : y.to ? `described up to ${y.to}` : '';
+    return [years, n ? `${n} filter${n === 1 ? '' : 's'}` : ''].filter(Boolean).map(t => ` · ${t}`).join('');
+  }
+  async function counted() {
+    const nIucn = S.iucn.length, codes = S.states.map(s => String(s.code));
+    const india = S.groups.map(() => [0, 0, 0, Array(nIucn).fill(0), 0]), byState = {}, wIndia = S.groups.map(() => [0, 0, 0]), wState = {};
+    const cell = (o, code, w) => (o[code] ||= S.groups.map(() => Array(w).fill(0)));
+    const [g, w] = await Promise.all([Promise.all(allGis.map(groupRows)), Promise.all(allGis.map(waitRows))]);
+    for (const r of g.flat()) {
+      if (!passes(r)) continue;
+      const gi = r[G], row = india[gi], threat = THREAT.has(S.iucn[r[4]]);
+      row[0]++; row[1] += r[3] >= 1; row[2] += r[3] === 2; row[3][r[4]]++; row[4] += threat && r[3] >= 1;
+      for (let i = 0; i < codes.length; i++) {
+        if (!bit(r[6], i)) continue;
+        const v = cell(byState, codes[i], 3)[gi];
+        v[0]++; v[1] += bit(r[7], i); v[2] += threat;
+      }
+    }
+    for (const [r, , nIndia, states] of w.flat()) {
+      if (!passes(r)) continue;
+      const gi = r[G];
+      if (nIndia) { const v = wIndia[gi]; v[0]++; v[1] += nIndia; v[2] += r[3] < 2; }
+      for (const [i, k] of states) { const v = cell(wState, codes[i], 3)[gi]; v[0]++; v[1] += k; v[2] += !bit(r[7], i); }
+    }
+    return { india, by_state: byState, wait: { india: wIndia, by_state: wState } };
+  }
   const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(a && a / b < 0.1 ? 1 : 0)}%` : '–');
   const catOf = key => cats.find(c => c.key === key);
   const gisNow = () => (st.cat ? catOf(st.cat).gis : allGis);
@@ -139,7 +181,7 @@ try {
   function paintHead() {
     const c = st.cat ? catOf(st.cat) : null, gis = gisNow(), f = fig(gis, st.state), india = !st.state;
     const v = value(f, india);
-    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}` : 'India'} · ${c ? c.name : 'All groups'}`;
+    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
     $('#pq').textContent = india ? fmt(st.view === 'observed' ? f.obs : st.view === 'identified' ? f.id : f.thr) : v.big;
     $('#psub').textContent = india
       ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} are assessed by IUCN.`
@@ -150,7 +192,7 @@ try {
     $('#pwait').hidden = st.view !== 'identified' || !w[0];
     $('#pwait').innerHTML = `<b>${fmt(w[1])}</b> observations of <b>${fmt(w[0])}</b> species wait for a name on iNaturalist. `
       + `For <b>${fmt(w[2])}</b> of these species, one confirmation gives the first identification in ${esc(place)}.`
-      + (genus || coarse
+      + ((genus || coarse) && !filtered()
         ? ` A further <b>${fmt(genus)}</b> are named only to genus, and <b>${fmt(coarse)}</b> only to a family or a higher level.` : '')
       + (c ? '' : ' Choose a group to see them.');
     $('#sel-actions').hidden = !st.state;
@@ -159,10 +201,14 @@ try {
 
   // Species list for the chosen group, filtered by state, view and the filter chips.
   let shown = PAGE;
-  const groupFile = gi => getJSON(`${base}g/${gi}.json`);
+  // A g row: key, name, sources, status, IUCN, labels, states observed, states identified, year described;
+  // the group index is added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
+  const G = 9;
+  const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => [...r, gi]));
   const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;   // masks can pass 32 bits
-  function passes(r, f) {
-    const [, , src, status, iucn, labels] = r;
+  function passes(r, f = st.filters, y = st.years) {
+    const [, , src, status, iucn, labels, , , year] = r;
+    if ((y.from || y.to) && (year == null || year < (y.from || 0) || year > (y.to || 9999))) return false;
     if (f.sources.size && ![...f.sources].some(i => bit(src, i))) return false;
     if (f.status.size && !f.status.has(status)) return false;
     if (f.iucn.size && !f.iucn.has(iucn)) return false;
@@ -172,22 +218,23 @@ try {
   const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
   const iucnBadge = i => `<span class="iucn i-${esc(S.iucn[i])}" title="IUCN Red List">${esc(S.iucn[i] === 'NE' ? 'Not assessed' : S.iucn[i])}</span>`;
   const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
-  const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
+  const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Described</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
   const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
-  const waitFile = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }));
+  const waitRows = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }))
+    .then(d => d.rows.map(x => [[...x.slice(0, G), gi], ...x.slice(G)]));
   const endBit = S.labels.findIndex(l => l.code === 'end');
 
   // Species with observations that wait for a name, most useful first.
   let listSeq = 0;
   async function paintWait(c, my) {
     const si = st.state ? stIndex.get(st.state) : null, place = st.state ? stName.get(st.state) : 'India';
-    const w = await Promise.all(c.gis.map(gi => waitFile(gi).then(d => d.rows.map(x => [x.slice(0, 8).concat(gi), ...x.slice(8)]))));
+    const w = await Promise.all(c.gis.map(gi => waitRows(gi)));
     if (my !== listSeq) return;
     const pid = placeId(), rows = [];
     for (const [r, taxon, nIndia, states] of w.flat()) {
-      if (!passes(r, st.filters)) continue;
+      if (!passes(r)) continue;
       const n = waitingIn(nIndia, states, si);
       if (!n) continue;
       const first = si == null ? r[3] < 2 : !bit(r[7], si), never = r[3] < 2;
@@ -202,7 +249,7 @@ try {
         threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
       const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(taxon)}`));
       return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(r[4])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
-        <td>${esc(S.groups[r[8]])}</td><td>${why || '<span class="muted">–</span>'}</td>
+        <td>${esc(S.groups[r[G]])}</td><td>${why || '<span class="muted">–</span>'}</td>
         <td>${iucnBadge(r[4])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
     }).join('') || '<tr><td colspan="6" class="muted">No species wait for a name here.</td></tr>';
     $('#more').hidden = rows.length <= shown;
@@ -258,12 +305,12 @@ try {
     $('#list-h').textContent = mode === 'genus' ? 'Genera' : mode === 'coarse' ? 'Groups' : 'Species';
     $('#list-head').innerHTML = { wait: HEAD_WAIT, genus: HEAD_GENUS, coarse: HEAD_COARSE }[mode] || HEAD_ALL;
     $('#list').closest('table').classList.toggle('waitlist', wait);
-    if (!c) { $('#list').innerHTML = '<tr><td colspan="6" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
-    $('#list').innerHTML = '<tr><td colspan="6" class="muted">Loading…</td></tr>';
+    if (!c) { $('#list').innerHTML = '<tr><td colspan="7" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
+    $('#list').innerHTML = '<tr><td colspan="7" class="muted">Loading…</td></tr>';
     if (mode === 'wait') return paintWait(c, my);
     if (mode === 'genus') return paintGenus(c, my);
     if (mode === 'coarse') return paintCoarse(c);
-    const parts = await Promise.all(c.gis.map(gi => groupFile(gi).then(d => d.rows.map(r => [...r, gi]))));
+    const parts = await Promise.all(c.gis.map(gi => groupRows(gi)));
     if (my !== listSeq) return;
     const si = st.state ? stIndex.get(st.state) : null;
     const rows = parts.flat().filter(r => {
@@ -274,17 +321,28 @@ try {
       } else if (st.view === 'observed' && r[3] < 1) return false;
       else if (st.view === 'identified' && r[3] < 2) return false;
       if (st.view === 'iucn' && !THREAT.has(S.iucn[r[4]])) return false;
-      return passes(r, st.filters);
+      return passes(r);
     }).sort((a, b) => a[1].localeCompare(b[1]));
     $('#list-sub').textContent = `${fmt(rows.length)} species · ${c.name}${st.state ? ` · ${stName.get(st.state)}` : ''}`;
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr>
-        <td>${speciesLink(r[0], r[1])}</td><td>${esc(S.groups[r[8]])}</td><td>${STATUS[r[3]]}</td>
+        <td>${speciesLink(r[0], r[1])}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
         <td>${iucnBadge(r[4])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
-      || '<tr><td colspan="6" class="muted">No species match.</td></tr>';
+      || '<tr><td colspan="7" class="muted">No species match.</td></tr>';
     $('#more').hidden = rows.length <= shown;
   }
 
-  function paint() { saveURL(); paintCards(); paintHead(); paintMap(); paintList(); }
+  let paintSeq = 0;
+  async function paint() {
+    saveURL();
+    const my = ++paintSeq;
+    if (filtered()) {
+      $('#psub').textContent = 'Counting the species for these filters…';
+      const a = await counted();
+      if (my !== paintSeq) return;
+      A = a;
+    } else A = BASE;
+    paintCards(); paintHead(); paintMap(); paintList();
+  }
   function setState(code) { st.state = code; shown = PAGE; paint(); }
 
   // Events.
@@ -311,19 +369,41 @@ try {
     ['labels', 'Identification', S.labels.map((l, i) => [i, l.name, l.kind]).filter(x => x[2] === 'id')],
     ['labels', 'Other labels', S.labels.map((l, i) => [i, l.name, l.kind]).filter(x => x[2] !== 'id')],
   ];
-  $('#fgroups').innerHTML = fdefs.map(([k, title, opts]) => `<fieldset><legend>${esc(title)}</legend>${opts.map(([i, n]) =>
+  const D = S.described || {};
+  $('#fgroups').innerHTML = `<fieldset id="fyears"><legend>Described</legend>
+    <label class="yr">From <input id="y-from" type="number" inputmode="numeric" min="${D.from ?? 1753}" max="${D.to ?? ''}" placeholder="${D.from ?? 1753}"></label>
+    <label class="yr">to <input id="y-to" type="number" inputmode="numeric" min="${D.from ?? 1753}" max="${D.to ?? ''}" placeholder="${D.to ?? ''}"></label>
+    <span class="note">The year the species was first described.${D.unknown ? ` ${fmt(D.unknown)} species have no year in the sources and are left out when you give years.` : ''}</span>
+    <span class="yr-quick">${[[2007, null, 'Since 2007'], [2000, null, 'Since 2000'], [null, 1900, 'Before 1900']].map(([f, t, l]) =>
+      `<button type="button" class="b" data-from="${f ?? ''}" data-to="${t ?? ''}">${l}</button>`).join('')}</span></fieldset>`
+    + fdefs.map(([k, title, opts]) => `<fieldset><legend>${esc(title)}</legend>${opts.map(([i, n]) =>
     `<label class="chip"><input type="checkbox" data-f="${k}" value="${i}"><span>${esc(n)}</span></label>`).join('')}</fieldset>`).join('');
   $('#fgroups').addEventListener('change', e => {
     const x = e.target; if (!x.dataset.f) return;
     const set = st.filters[x.dataset.f]; x.checked ? set.add(+x.value) : set.delete(+x.value);
-    const n = Object.values(st.filters).reduce((a, s) => a + s.size, 0);
-    $('#fcount').textContent = n ? `(${n})` : '';
-    shown = PAGE; paintList(); runSearch();
+    shown = PAGE; filtersChanged();
+  });
+  $('#fyears').addEventListener('change', () => {
+    const from = parseInt($('#y-from').value, 10) || null, to = parseInt($('#y-to').value, 10) || null;
+    st.years = from && to && from > to ? { from: to, to: from } : { from, to };
+    shown = PAGE; filtersChanged();
   });
   $('#fclear').addEventListener('click', () => {
     for (const s of Object.values(st.filters)) s.clear();
-    for (const x of document.querySelectorAll('#fgroups input')) x.checked = false;
-    $('#fcount').textContent = ''; paintList(); runSearch();
+    for (const x of document.querySelectorAll('#fgroups input[type=checkbox]')) x.checked = false;
+    st.years = { from: null, to: null };
+    filtersChanged();
+  });
+  function filtersChanged() {
+    $('#y-from').value = st.years.from ?? ''; $('#y-to').value = st.years.to ?? '';
+    const n = Object.values(st.filters).reduce((a, s) => a + s.size, 0) + (st.years.from || st.years.to ? 1 : 0);
+    $('#fcount').textContent = n ? `(${n})` : '';
+    paint(); runSearch();
+  }
+  $('#fyears').addEventListener('click', e => {
+    const b = e.target.closest('[data-from]'); if (!b) return;
+    st.years = { from: +b.dataset.from || null, to: +b.dataset.to || null };
+    shown = PAGE; filtersChanged();
   });
   $('#fbtn').addEventListener('click', () => {
     const p = $('#filters'); p.hidden = !p.hidden; $('#fbtn').setAttribute('aria-expanded', String(!p.hidden));
@@ -347,7 +427,7 @@ try {
     }
     for (const r of sp.rows) {
       if (hits.length > 12) break;
-      if (r[0].toLowerCase().startsWith(q) && passes([r[1], r[0], r[5], r[3], r[4], r[6]], st.filters)) {
+      if (r[0].toLowerCase().startsWith(q) && passes([r[1], r[0], r[5], r[3], r[4], r[6], 0, 0, r[7]])) {
         hits.push({ html: `<i>${esc(r[0])}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => { if (r[1]) location.href = `/species?key=${encodeURIComponent(r[1])}`; } });
       }
     }
@@ -361,7 +441,7 @@ try {
   document.addEventListener('pointerdown', e => { if (!e.target.closest('.search')) $('#hits').hidden = true; });
 
   if (S.notes?.length) $('#source').insertAdjacentHTML('beforeend', `<div class="muted" style="margin-top:6px">${S.notes.map(esc).join(' ')}</div>`);
-  paint();
+  filtersChanged();
 } catch (err) {
   showLoadError(err);
 }

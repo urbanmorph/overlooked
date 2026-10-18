@@ -1,4 +1,5 @@
-// One species: what the master list knows (sources, observed, identified, IUCN, labels, waiting observations),
+// One species: what the master list knows (sources, observed, identified, IUCN, labels, year described,
+// waiting observations),
 // where it is observed and identified, and its GBIF records when the snapshot has them.
 
 import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
@@ -17,6 +18,8 @@ const STATUS_TEXT = [
   'Someone observed it in India and the name is confirmed.',
 ];
 const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
+const AFTER = { recorded: 'Recorded again after that year', later_papers: 'After that year, only in papers',
+  none: 'No GBIF record after that year' };
 const BASIS = [
   ['PRESERVED_SPECIMEN', 'Specimen'], ['MATERIAL_SAMPLE', 'Specimen'], ['MATERIAL_CITATION', 'From a paper'],
   ['HUMAN_OBSERVATION', 'Observation'], ['MACHINE_OBSERVATION', 'Observation'], ['OBSERVATION', 'Observation'], ['OCCURRENCE', 'Other'],
@@ -73,7 +76,7 @@ try {
   showDevBanner(snapSummary);
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
-  const [name, gi, sources, status, iucn, labels, obsMask, idMask, taxon, waitIndia, waitStates] = row;
+  const [name, gi, sources, status, iucn, labels, obsMask, idMask, taxon, waitIndia, waitStates, year, authority, paper] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), id: bit(idMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -89,10 +92,13 @@ try {
   $('#status').innerHTML = `<div class="muted crumb">In India</div>
     <p class="sp-big">${STATUS[status]}</p><p class="note" style="margin:4px 0 12px">${STATUS_TEXT[status]}</p>
     <dl class="stats">
+      <dt>Described</dt><dd>${year ? `<a href="/?described=${year}-${year}">${year}</a>` : '<span class="muted">Year not known</span>'}${authority ? ` <span class="muted">· ${esc(authority)}</span>` : ''}</dd>
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span></dd>
       <dt>Identified in</dt><dd>${fmt(nId)} state${nId === 1 ? '' : 's'}</dd>
       <dt>Observed in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
     </dl>
+    ${paper ? `<p class="note" style="margin:12px 0 0">Listed as a new species from India in ${paper[5]}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
+      ${esc(AFTER[paper[3]] || '')}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.</p>` : ''}
     <div class="note" style="margin:12px 0 4px">Sources</div><div>${tags(sources, S.sources)}</div>
     <div class="note" style="margin:12px 0 4px">Labels</div><div>${tags(labels, S.labels.map(l => l.name))}</div>
     ${waitIndia ? `<p class="sp-wait"><b class="mono">${fmt(waitIndia)}</b> observation${waitIndia === 1 ? '' : 's'} on iNaturalist wait for a name.

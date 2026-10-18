@@ -33,13 +33,13 @@ def inputs(tmp_path):
         t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""", tmp_path / "ledger.parquet")
     zsi = tmp_path / "zsi.csv"
     zsi.write_text(
-        "checklist,family,name,rank,mark,col_accepted_id,col_accepted_name,col_family,match_type,needs_review\n"
-        "120_Aves.pdf,Muscicapidae,Aus bus,species,*,K1,Aus bus,Muscicapidae,exact,false\n"
-        "120_Aves.pdf,Muscicapidae,Aus bus minor,subspecies,,K1x,Aus bus minor,Muscicapidae,exact,false\n"
-        "120_Aves.pdf,Muscicapidae,Gus hus,species,,K4,Gus hus,Muscicapidae,exact,false\n"
-        "120_Aves.pdf,Muscicapidae,Hus ius,species,,Z1,Hus ius,Muscicapidae,exact,false\n"
-        "108_Insecta_Coleoptera.pdf,Unknownidae,Xus (Yus) yus,species,,,,,none,false\n"
-        "120_Aves.pdf,Muscicapidae,Qus rus,species,,K7,,,exact,false\n")  # no accepted name given
+        "checklist,family,name,rank,authority,mark,col_accepted_id,col_accepted_name,col_family,match_type,needs_review\n"
+        "120_Aves.pdf,Muscicapidae,Aus bus,species,\"Smith, 1801\",*,K1,Aus bus,Muscicapidae,exact,false\n"
+        "120_Aves.pdf,Muscicapidae,Aus bus minor,subspecies,,,K1x,Aus bus minor,Muscicapidae,exact,false\n"
+        "120_Aves.pdf,Muscicapidae,Gus hus,species,\"Smith, 2019\",,K4,Gus hus,Muscicapidae,exact,false\n"
+        "120_Aves.pdf,Muscicapidae,Hus ius,species,\"Jones, 1850\",,Z1,Hus ius,Muscicapidae,exact,false\n"
+        "108_Insecta_Coleoptera.pdf,Unknownidae,Xus (Yus) yus,species,,,,,,none,false\n"
+        "120_Aves.pdf,Muscicapidae,Qus rus,species,\"Brown, 1920\",,K7,,,exact,false\n")  # no accepted name given
     bsi = tmp_path / "bsi.csv"
     bsi.write_text("source,checklist,group,family,name,rank,authority,status,states,page,edition,url\n"
                    "BSI,FPI,flowering plants,Orchidaceae,Cus dus,species,L.,accepted,Kerala,1,e,u\n"
@@ -58,9 +58,18 @@ def inputs(tmp_path):
     ns_doc = layer_newspecies.compact([{"name": "Gus hus", "year": 2020, "sources": ["Plazi"], "journal": "J",
                                          "state": "", "link": "https://x/1", "group": "Birds", "key": "K4",
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
-                                         "any_record": False}])
+                                         "any_record": False},
+                                        {"name": "Qus rus", "year": 2015, "sources": ["ZSI Animal Discoveries"], "journal": "",
+                                         "state": "", "link": "https://x/2", "group": "Birds", "key": "K7",
+                                         "matched_by": "exact name", "status": "recorded", "latest_after": 2016,
+                                         "any_record": True}])
+    col = write(con, """SELECT * FROM (VALUES ('K1', 1758, '(Linnaeus, 1758)'), ('K2', NULL, '(L.) DC.'),
+        ('G1', 1849, 'Moore, 1849')) t(id, year, authority)""", tmp_path / "col_years.parquet")
+    wcvp_y = write(con, """SELECT * FROM (VALUES ('Cus dus', 1753, '(L.) DC.'), ('Aus bus', 1700, 'X'))
+        t(name, year, authority)""", tmp_path / "wcvp_years.parquet")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc,
+                       "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
                                                           [55, "Hia", "Aves", 1], [56, "Hus", "Plantae", 2]]}},
@@ -137,7 +146,7 @@ def test_sources_and_labels(built):
     assert r["Cus dus"]["sources"] == ["BSI", "WCVP", "GBIF", "IUCN"]
     assert "Old dus" not in r and r["Pus qus"]["group"] == "Plants: ferns & lycophytes" and r["Cus dus"]["labels"] == ["sp", "end"]
     assert r["Eus fus"]["labels"] == ["dna", "do"]
-    assert r["Gus hus"]["sources"] == ["ZSI", "Plazi"] and r["Gus hus"]["labels"] == ["chk", "ns"]
+    assert r["Gus hus"]["sources"] == ["ZSI", "Plazi"] and r["Gus hus"]["labels"] == ["chk", "nra"]
     assert r["Zus zus"]["labels"] == ["nid", "nm"]
 
 
@@ -177,9 +186,10 @@ def test_site_files(built):
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
     assert aus[0] == "K1" and aus[3] == 2 and aus[7] == 1 << 1      # identified in state index 1 (32)
+    assert aus[8] == 1758                                           # year described
     assert aus[5] & (1 << labels.index("end")) and aus[2] == 0b1011001  # ZSI, GBIF, iNaturalist, IUCN
     search = json.loads((out / "search" / "au.json").read_text())["rows"]
-    assert search == [["Aus bus", "K1", birds, 2, 1, aus[2], aus[5]]]
+    assert search == [["Aus bus", "K1", birds, 2, 1, aus[2], aus[5], 1758]]
     assert json.loads((out / "search" / "xu.json").read_text())["rows"][0][1] == ""
     places = json.loads((out / "search" / "places.json").read_text())["rows"]
     assert ["Kerala", "state", 32, 32] in places and ["Mysuru", "district", 201, 29] in places
@@ -196,10 +206,10 @@ def test_waiting_for_a_name(built):
     assert w["by_state"]["32"][birds] == [1, 6, 0]  # Hus ius and its subspecies; identified in Kerala by GBIF
     rows = json.loads((out / "w" / f"{birds}.json").read_text())["rows"]
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
-    # The species' g row, then iNaturalist taxon (the species, not a subspecies), observations in India,
+    # The species' g row (with the year), then iNaturalist taxon (the species, not a subspecies), observations in India,
     # [[state index, n]]
-    assert [r[:8] for r in rows] == [g["Hus ius"], g["Zus zus"]]
-    assert [r[8:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
+    assert [r[:9] for r in rows] == [g["Hus ius"], g["Zus zus"]]
+    assert [r[9:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):
@@ -229,20 +239,27 @@ def test_species_files(built):
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     part = json.loads((out / "sp" / f"{site_data.shard_of('G1')}.json").read_text())
     # [name, group index, sources, status, IUCN, labels, states observed, states identified,
-    #  iNaturalist taxon, observations waiting in India, [[state index, n]]]
-    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:8], 3, 6, [[1, 6]]]
+    #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
+    #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
+    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:8], 3, 6, [[1, 6]], 1849, "Moore, 1849", None]
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
-    assert gus[0] == "Gus hus" and gus[8:] == [None, 0, []]          # nothing waits
+    assert gus[0] == "Gus hus" and gus[8:11] == [None, 0, []]          # nothing waits
+    assert gus[11:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020]]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
+    assert not (out / "ns.json").exists()
 
 
-def test_new_species_file(built):
-    """ns.json: for each species labelled new since the first year, what the master list knows, keyed by key."""
-    ns = json.loads((built["out"] / "ns.json").read_text())
-    iucn = built["summary"]["iucn"]
-    # [status, IUCN index, labels, states observed, states identified, observations waiting in India, taxon]
-    labels = [lab["code"] for lab in built["summary"]["labels"]]
-    assert ns == {"K4": [0, iucn.index("NE"), (1 << labels.index("chk")) | (1 << labels.index("ns")), 0, 0, 0, None]}
+def test_year_described_from_the_first_source_that_has_one(built):
+    """The paper of a new species, then Catalogue of Life, then the ZSI authority, then WCVP (plants only)."""
+    years = dict(duckdb.sql(f"SELECT name, year FROM '{built['out'] / 'master.parquet'}'").fetchall())
+    assert years["Gus hus"] == 2020        # the paper; ZSI says 2019, close enough
+    assert years["Hus ius"] == 1849        # Catalogue of Life, over ZSI's 1850
+    assert years["Aus bus"] == 1758        # Catalogue of Life; WCVP is not asked for an animal
+    assert years["Qus rus"] == 1920        # ZSI authority, over a paper of 2015: an older name listed as new
+    assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
+    assert years["Eus fus"] is None
+    d = built["summary"]["described"]
+    assert d["from"] == 1753 and d["to"] == 2020 and d["unknown"] == 5
 
 
 def test_prefix():

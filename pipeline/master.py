@@ -25,10 +25,11 @@ Inputs (all optional except the snapshot):
                 genus_counts.json (genera of observations named only to genus), coarse_counts.json (named only above genus)
   new species   layers/newspecies/<month>/new_species.json
   IUCN          the Red List checklist on GBIF (pipeline/iucn.py)
+  described     Catalogue of Life authorship and Kew WCVP years (pipeline/described.py), R2 cache/described/
 
 Output: data/layers/master/<month>/ (and R2 layers/master/<month>/ with --publish, then layers/master/latest.json)
   master.parquet        one row per species: key, name, group, sources[], observed, identified, iucn, labels[],
-                        states_observed[], states_identified[]
+                        states_observed[], states_identified[], year (described), authority
   master_state.parquet  one row per species x state with an observation
   summary.json          totals by group and by state x group
   g/<gi>.json           all species of a group
@@ -53,7 +54,7 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import health, iucn
+from pipeline import described, health, iucn
 from pipeline.gbif import NEW_SPECIES_FROM
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
@@ -87,7 +88,7 @@ LABELS = [
     ("lm", "Location missing", "other"),
     ("do", "DNA only", "other"),
     ("end", "Endemic to India", "other"),
-    ("ns", f"New species since {NEW_SPECIES_FROM}", "other"),
+    ("nra", "New species: no record after the description", "other"),
     ("nm", "Name not matched", "other"),
 ]
 CODES = [c for c, _, _ in LABELS]
@@ -187,7 +188,7 @@ def zsi_derived(src: Path, dest: Path):
     """The columns of the ZSI checklist the master list needs, from fnf's matched file."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     duckdb.sql(f"""
-        COPY (SELECT checklist, family, name, rank, mark, col_accepted_id, col_accepted_name, col_family, match_type,
+        COPY (SELECT checklist, family, name, rank, authority, mark, col_accepted_id, col_accepted_name, col_family, match_type,
                      coalesce(needs_review, 'false') AS needs_review
               FROM read_csv('{src}', header = true, all_varchar = true) ORDER BY checklist, name)
         TO '{dest}' (HEADER)
@@ -269,6 +270,9 @@ def start(con):
     con.sql("CREATE OR REPLACE TABLE alias (name VARCHAR, key VARCHAR, display VARCHAR, prio INTEGER)")
     con.sql("CREATE OR REPLACE TABLE inat_wait (name VARCHAR, raw VARCHAR, state_lgd INTEGER, taxon BIGINT, n BIGINT)")
     con.sql("CREATE OR REPLACE TABLE inat_genus (genus VARCHAR, state_lgd INTEGER, taxon BIGINT, n BIGINT, iconic VARCHAR)")
+    con.sql("CREATE OR REPLACE TABLE ns_info (name VARCHAR, year INTEGER, paper VARCHAR)")
+    for t in ("col_year (id VARCHAR", "zsi_year (name VARCHAR", "wcvp_year (name VARCHAR"):
+        con.sql(f"CREATE OR REPLACE TABLE {t}, year INTEGER, authority VARCHAR)")
 
 
 def insert(con, table, select, cols, rows):
@@ -328,6 +332,12 @@ def load_zsi(con, path):
     """)
     con.sql("""INSERT INTO alias SELECT DISTINCT binomial(coalesce(col_accepted_name, name)), col_accepted_id, binomial(coalesce(col_accepted_name, name)), 1
                FROM zsi WHERE matched AND rank = 'species'""")
+    # Authority with its year ("Kruse, 1890"): one source of the year described. Older copies have no authority.
+    if "authority" in [c for c, *_ in con.sql("DESCRIBE zsi").fetchall()]:
+        con.sql(f"""INSERT INTO zsi_year
+                    SELECT DISTINCT CASE WHEN matched THEN binomial(coalesce(col_accepted_name, name)) ELSE binomial(name) END,
+                           {described.year_sql("authority")}, nullif(trim(authority), '')
+                    FROM zsi WHERE rank = 'species' AND authority IS NOT NULL""")
     con.sql("""INSERT INTO alias SELECT DISTINCT binomial(name), col_accepted_id, binomial(coalesce(col_accepted_name, name)), 2
                FROM zsi WHERE matched AND rank = 'species'""")
 
@@ -377,15 +387,51 @@ def load_inat_genus(con, doc):
 
 
 def load_newspecies(con, doc):
-    """Species described from India since the new-species layer's first year (Plazi; BSI and ZSI Discoveries)."""
-    rows = []
+    """Species described from India since the new-species layer's first year (Plazi; BSI and ZSI Discoveries).
+    Table ns_info keeps each paper: year, sources, journal, link, and records after the description."""
+    rows, info = [], []
     for r in expand(doc):
         grp = r["group"] if r["group"] in GROUPS else None
         for src, tag in (("Plazi", "Plazi"), ("BSI", "BSI Plant Discoveries"), ("ZSI", "ZSI Animal Discoveries")):
             if tag in r["sources"]:
                 rows.append([src, r["name"], r["key"], grp, (r["year"] or 0) >= NEW_SPECIES_FROM])
+        info.append([r["name"], r["year"], json.dumps([r["sources"], r["journal"] or None, r["link"], r["status"],
+                                                      r["latest_after"], r["year"]], ensure_ascii=False)])
     insert(con, "names_in", """SELECT src, binomial(n), k::VARCHAR, NULL, NULL, NULL, NULL, NULL, NULL, g::VARCHAR,
                                       false, new, 5""", ["src", "n", "k", "g", "new"], rows)
+    insert(con, "ns_info", "SELECT binomial(n), y::INTEGER, d", ["n", "y", "d"], info)
+
+
+def load_described(con, paths):
+    """Years described: Catalogue of Life by key, WCVP by name (pipeline/described.py)."""
+    if paths.get("col"):
+        con.sql(f"INSERT INTO col_year SELECT id, year, authority FROM '{paths['col']}'")
+    if paths.get("wcvp"):
+        con.sql(f"INSERT INTO wcvp_year SELECT name, year, authority FROM '{paths['wcvp']}'")
+
+
+def described_years(con):
+    """Table id_year (id, year, authority, paper): the year from the paper of a new species, else Catalogue of Life
+    (by key), else the ZSI authority, else WCVP (plants, by name). The authority comes from the same order.
+    A checklist year (Catalogue of Life or ZSI) more than a year before the paper wins over it: the paper lists
+    an older species as new (a new record for India or a new combination, or a name matched to an older species)."""
+    con.sql("""
+        CREATE OR REPLACE TABLE id_year AS
+        WITH ns AS (SELECT DISTINCT r.id, n.year, n.paper FROM ns_info n JOIN names_in_r r ON r.new AND r.name = n.name),
+        c AS (SELECT id, year, NULL AS authority, 0 AS p FROM ns
+              UNION ALL SELECT i.id, y.year, y.authority, 1 FROM ids i JOIN col_year y ON y.id = i.id
+              UNION ALL SELECT DISTINCT r.id, z.year, z.authority, 2 FROM zsi_year z
+                        JOIN names_in_r r ON r.source = 'ZSI' AND r.name = z.name
+              UNION ALL SELECT i.id, w.year, w.authority, 3 FROM ids i JOIN wcvp_year w ON w.name = i.name
+                        WHERE i.kingdom = 'Plantae' OR i.kingdom IS NULL),
+        y AS (SELECT id, arg_min(year, p) FILTER (WHERE year IS NOT NULL) AS first,
+                     min(year) FILTER (WHERE p = 0) AS paper_year, arg_min(year, p) FILTER (WHERE p IN (1, 2) AND year IS NOT NULL) AS checklist_year,
+                     arg_min(authority, p) FILTER (WHERE authority IS NOT NULL) AS authority
+              FROM c GROUP BY id)
+        SELECT y.id, CASE WHEN checklist_year < paper_year - 1 THEN checklist_year ELSE first END AS year,
+               y.authority, ns.paper
+        FROM y LEFT JOIN (SELECT id, arg_min(paper, year) AS paper FROM ns GROUP BY id) ns USING (id)
+    """)
 
 
 # ---------------------------------------------------------------- names
@@ -613,7 +659,7 @@ def flags(con):
             UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed
             UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located
             UNION SELECT id, 'end' FROM names_in_r WHERE endemic
-            UNION SELECT id, 'ns' FROM names_in_r WHERE new
+            UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
             UNION SELECT id, 'nm' FROM ids WHERE starts_with(id, 'n:')
             UNION SELECT id, 'do' FROM id_flags
                   WHERE observed AND NOT list_has_any(ev_labels, ['rg', 'nid'])
@@ -653,9 +699,10 @@ def flags(con):
                CASE WHEN f.identified THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i,
                l.labels, l.labels_mask,
-               coalesce(t.states_observed, []) AS states_observed, coalesce(t.states_identified, []) AS states_identified
+               coalesce(t.states_observed, []) AS states_observed, coalesce(t.states_identified, []) AS states_identified,
+               y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
-        LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id)
+        LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
         ORDER BY gi, i.name
     """)
 
@@ -667,9 +714,9 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
-# One species in g/<gi>.json (and at the start of w/<gi>.json rows).
+# One species in g/<gi>.json (and at the start of w/<gi>.json rows); the last field is the year described.
 ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
-           "s.states_id_mask")
+           "s.states_id_mask, s.year")
 
 
 def per_area(rows, n, width):
@@ -774,31 +821,28 @@ def waiting(con, n, out: Path, places, coarse=None):
 
 def species_files(con, out: Path):
     """sp/<shard>.json for the species page: {key: [name, group index, sources, status, IUCN, labels,
-    states observed, states identified, iNaturalist taxon, observations waiting in India, [[state index, n]]]}.
+    states observed, states identified, iNaturalist taxon, observations waiting in India, [[state index, n]],
+    year described, authority, paper of a new species [sources, journal, link, after the description, latest year
+    after, year of the paper]]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
-    for key, *row, taxon, n_india, states in con.sql("""
+    for key, *row, taxon, n_india, states, year, authority, paper in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    s.states_id_mask, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
-                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL)
+                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
-        parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states)]
+        parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
+                                                    json.loads(paper) if paper else None]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
 
-def newspecies_file(con, out: Path):
-    """ns.json for the New species page: {key: [status, IUCN index, labels, states observed, states identified,
-    observations waiting in India, iNaturalist taxon]} for species labelled new since the first year."""
-    ns = CODES.index("ns")
-    dump({key: [status, iucn, labels, n_obs, n_id, int(wait), taxon] for key, status, iucn, labels, n_obs, n_id, wait, taxon in con.sql(f"""
-            SELECT s.key, s.status, s.iucn_i, s.labels_mask, len(s.states_observed), len(s.states_identified),
-                   coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0), any_value(w.taxon)
-            FROM site s LEFT JOIN wait w USING (id)
-            WHERE s.key IS NOT NULL AND (s.labels_mask >> {ns}) & 1 = 1 GROUP BY ALL ORDER BY s.key""").fetchall()},
-         out / "ns.json")
+def described_summary(con):
+    """Range of the years described, and how many species have no year in the sources."""
+    lo, hi, unknown = con.sql("SELECT min(year), max(year), count(*) FILTER (WHERE year IS NULL) FROM master").fetchone()
+    return {"from": lo, "to": hi, "unknown": unknown}
 
 
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
@@ -836,13 +880,12 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
                "waiting": waiting(con, n, out, places or {}, coarse),
-               "totals": totals, "notes": notes, **RIGHTS}
+               "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
-    newspecies_file(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(f"SELECT gi, {ROW_SQL} FROM site s ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
-    for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask
+    for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year
                         FROM site ORDER BY lower(name), name""").fetchall():
         buckets.setdefault(prefix(r[0]), []).append(list(r))
     for p, rows in buckets.items():
@@ -950,6 +993,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         load_inat_genus(con, inputs["inat_genus"])
     if inputs.get("newspecies"):
         load_newspecies(con, inputs["newspecies"])
+    load_described(con, inputs.get("described") or {})
     if not inputs.get("zsi"):
         notes.append("ZSI checklists not found.")
     if not inputs.get("wcvp"):
@@ -966,10 +1010,11 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         notes.append(f"{len(pending)} names are not yet matched with GBIF; the next run continues. "
                      "They are listed under their own name for now.")
     merged = resolve(con)
+    described_years(con)
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
     con.sql(f"""COPY (SELECT key, name, "group", sources, observed, identified, iucn, labels, states_observed,
-                       states_identified FROM master) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
+                       states_identified, year, authority FROM master) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state) TO '{out / 'master_state.parquet'}' "
             "(FORMAT parquet, COMPRESSION zstd)")
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
@@ -986,7 +1031,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi"))]:
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1036,6 +1081,7 @@ def run(a):
     from pipeline import districts
     districts.ensure(health.ua())
     iucn_meta = iucn.table(con, http, s3)
+    inputs["described"] = described.sync(http, s3)
     prev = previous_layer(s3, month)
     extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
     fp_before = fingerprint(paths, inputs, cache, extra)

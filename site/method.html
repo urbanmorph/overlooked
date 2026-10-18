@@ -25,7 +25,6 @@
     </a>
     <nav class="main" aria-label="Main">
       <a href="/">Explore</a>
-      <a href="/new-species">New species</a>
       <a href="/changes">Changes</a>
       <a href="/method" aria-current="page">Sources and method</a>
     </nav>
@@ -58,6 +57,8 @@
         <dt>Documented</dt><dd>At least one source lists the species for India: a ZSI or BSI checklist, Kew's plant list, GBIF, iNaturalist, Plazi or the IUCN Red List. A listing by BSI or ZSI counts.</dd>
         <dt>Observed</dt><dd>At least one observation of the species in India: a photo, a sighting, a specimen, a sound, a DNA sample, or a record from a paper, in GBIF or iNaturalist.</dd>
         <dt>Identified</dt><dd>The name is confirmed: an iNaturalist research-grade observation, or a GBIF record named to species.</dd>
+        <dt>Described</dt><dd>The year the species was first described. For a species described from India since 2007: the year of the paper (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries). Else the year in the Catalogue of Life author citation, else in the ZSI checklist, else in Kew's plant list (for a plant renamed later, the year of its first name). Most fungi, lichens and mosses have no year in these sources.</dd>
+        <dt>No record after the description</dt><dd>A species described since 2007 with no GBIF record from a later year.</dd>
         <dt>IUCN status</dt><dd>The category on the IUCN Red List (CR, EN, VU, NT, LC, DD), or not assessed. Threatened means CR, EN or VU.</dd>
         <dt>Waiting for a name</dt><dd>An iNaturalist observation with no agreed name yet. The observer may have named it to species, to genus only, or only to a family or a higher level.</dd>
         <dt>Name not matched</dt><dd>A source name that does not match a Catalogue of Life name. It stays on the list under its own name, with this label.</dd>
@@ -106,15 +107,15 @@
         <thead><tr><th>Source</th><th>Used for</th><th>Licence or terms</th></tr></thead>
         <tbody>
           <tr><td><b>GBIF.org</b></td><td>Observations and specimens with a place in India</td><td>Each record keeps the licence of its dataset (CC0, CC BY or CC BY-NC). Cite the download DOIs above.</td></tr>
-          <tr><td><b>Catalogue of Life</b></td><td>Species names, as GBIF uses them</td><td>CC BY 4.0</td></tr>
+          <tr><td><b>Catalogue of Life</b></td><td>Species names, as GBIF uses them; the year each species was described</td><td>CC BY 4.0</td></tr>
           <tr><td><b>Local Government Directory</b>, via bharatlas</td><td>District boundaries</td><td>CC0 1.0 / CC BY 4.0</td></tr>
           <tr><td><b>iNaturalist</b></td><td>Species observed and identified per state; observations that wait for a name, by species, genus and group</td><td>Counts from api.inaturalist.org, within its request limits. Each observation keeps its own licence. Open-licence research-grade observations also reach GBIF.</td></tr>
           <tr><td><b>IUCN Red List</b></td><td>Red List category of each species</td><td>The Red List checklist as published on GBIF (CC BY 4.0). Credit: IUCN Red List of Threatened Species.</td></tr>
           <tr><td><b>India Biodiversity Portal</b></td><td>Its records in GBIF</td><td>CC BY 4.0. Its GBIF dataset has records until 2024.</td></tr>
           <tr><td><b>Botanical Survey of India</b> (national checklists; Plant Discoveries)</td><td>Plant species of India; new plant species and new records for India</td><td>Reproduced free of charge, accurately, with acknowledgement. Source: Botanical Survey of India, Ministry of Environment, Forest and Climate Change, Government of India.</td></tr>
-          <tr><td><b>Zoological Survey of India</b> (Fauna of India Checklist)</td><td>Animal species of India (Fauna of India checklists)</td><td>Reproduced free of charge, accurately, with acknowledgement. Source: Zoological Survey of India, Ministry of Environment, Forest and Climate Change, Government of India.</td></tr>
-          <tr><td><b>Plazi</b>, <b>IPNI</b>, <b>Index Fungorum</b></td><td>Names of new species</td><td>Plazi: CC0. IPNI: CC BY. Index Fungorum: open web service.</td></tr>
-          <tr><td><b>Royal Botanic Gardens, Kew</b> (WCVP)</td><td>Plant species of India, and which are endemic</td><td>CC BY 4.0</td></tr>
+          <tr><td><b>Zoological Survey of India</b> (Fauna of India Checklist; Animal Discoveries)</td><td>Animal species of India (Fauna of India checklists); new animal species (Animal Discoveries)</td><td>Reproduced free of charge, accurately, with acknowledgement. Source: Zoological Survey of India, Ministry of Environment, Forest and Climate Change, Government of India.</td></tr>
+          <tr><td><b>Plazi</b> (TreatmentBank)</td><td>Species described from India since 2007</td><td>CC0</td></tr>
+          <tr><td><b>Royal Botanic Gardens, Kew</b> (WCVP)</td><td>Plant species of India, and which are endemic; the year each plant was described</td><td>CC BY 4.0</td></tr>
         </tbody>
       </table>
     </div>

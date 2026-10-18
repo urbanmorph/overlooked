@@ -9,11 +9,11 @@ Overlooked builds a master list of species documented from India from the Zoolog
 All data is static JSON and Parquet under https://overlooked-india.pages.dev/data/ . Monthly files never change after they are published.
 
 - /data/layers/master/latest.json — names the current month of the master list (`base`)
-- {base}summary.json — totals by group, for India and per state; sources, labels, IUCN categories, states; licence, attribution, disclaimer
-- {base}g/{group}.json — every species in one group: key, name, sources, status, IUCN, labels, states observed, states identified (bit masks, in the order of summary.json)
+- {base}summary.json — totals by group, for India and per state; sources, labels, IUCN categories, states; `described` (range of years described, species with no year); licence, attribution, disclaimer
+- {base}g/{group}.json — every species in one group: key, name, sources, status, IUCN, labels, states observed, states identified (bit masks, in the order of summary.json), year described (null when no source gives it)
 - {base}w/{group}.json — species with iNaturalist observations that wait for a name (needs ID): the species' row as in g/{group}.json, then iNaturalist taxon id, observations waiting in India, [[state index, observations], ...]. summary.json `waiting` has the counts per group (species, observations, species with no identification in that area) and the iNaturalist place ids. Identify page: https://www.inaturalist.org/observations/identify?quality_grade=needs_id&taxon_id={taxon}&place_id={place}
 - {base}wg/{group}.json — genera of iNaturalist observations named only to genus: genus, iNaturalist taxon id, observations in India, [[state index, observations], ...], species of the genus on the list, of them never identified in India, threatened, endemic. summary.json `waiting.genus` has the counts per group and `waiting.coarse` the observations named only above genus, per iNaturalist iconic group (Identify page: add rank=genus, or iconic_taxa={group}&lrank=subtribe)
-- {base}sp/{shard}.json — one object per species key: name, group, sources, status, IUCN, labels, states observed and identified, iNaturalist taxon and observations waiting; shard = FNV-1a 32-bit hash of the key, modulo 512
+- {base}sp/{shard}.json — one object per species key: name, group, sources, status, IUCN, labels, states observed and identified, iNaturalist taxon and observations waiting, year described, authority, and for a species described since 2007 its paper [sources, journal, link, records after the description, latest year]; shard = FNV-1a 32-bit hash of the key, modulo 512
 - {base}changes.json — species that moved since last month: rows [kind, key, name, group, new states, new sources]; kinds identified (first identification in India), state (first identification in a state), observed, documented (added), dropped (renamed or merged); counts per kind and per group
 - {base}search/{two letters}.json — search index by the first two letters of the name; {base}search/places.json — states and districts
 - /data/latest.json — the current GBIF snapshot (district ledger, species history, records without a species name, records without coordinates); its manifest lists every file and the GBIF download DOIs
@@ -27,9 +27,8 @@ For the status of a species, people should consult BSI, ZSI, the IUCN Red List a
 
 ## Pages
 
-- / — map of India, groups, search with filters by source, status, IUCN category and label; in the Identified view, the observations that wait for a name, with links to iNaturalist's Identify page
+- / — map of India, groups, search with filters by year described, source, status, IUCN category and label (the filters drive the map and the figures; `?described=2007-` gives the species described since 2007); in the Identified view, the observations that wait for a name, with links to iNaturalist's Identify page
 - /species?key={key} — one species: sources, status, IUCN, where it is observed and identified, observations that wait for a name, GBIF records by decade and district
 - /changes — what changed since last month
-- /new-species — species described from India since 2007 and their later records
 - /method — sources, terms, definitions, downloads
 - Code (MIT): https://github.com/urbanmorph/overlooked
