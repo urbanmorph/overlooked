@@ -79,15 +79,14 @@ try {
   }
   // iNaturalist observations that wait for a name: [species, observations, species with no identification here].
   const W = S.waiting || { india: [], by_state: {}, places: {} };
-  function waitFig(gis, state) {
-    const src = state == null ? W.india : W.by_state[state] || [];
-    return gis.reduce((a, gi) => { const v = src[gi] || [0, 0, 0]; return [a[0] + v[0], a[1] + v[1], a[2] + v[2]]; }, [0, 0, 0]);
-  }
+  // Sum per-group figures [a, b, ...] over groups, for India or one state.
+  const sumOver = (india, byState, width) => (gis, state) => {
+    const src = (state == null ? india : byState?.[state]) || [];
+    return gis.reduce((a, gi) => a.map((x, k) => x + ((src[gi] || [])[k] || 0)), Array(width).fill(0));
+  };
+  const waitFig = sumOver(W.india, W.by_state, 3);
   // Observations named only to genus [genera, observations], and only above genus (per iNaturalist iconic group).
-  function genusFig(gis, state) {
-    const src = state == null ? W.genus?.india : W.genus?.by_state[state];
-    return gis.reduce((a, gi) => { const v = (src || [])[gi] || [0, 0]; return [a[0] + v[0], a[1] + v[1]]; }, [0, 0]);
-  }
+  const genusFig = sumOver(W.genus?.india, W.genus?.by_state, 2);
   const coarseRows = (key, state) => {
     const counts = (state == null ? W.coarse?.india : W.coarse?.by_state[state]) || {};
     return (key ? CARD_ICONIC[key] || [] : Object.keys(counts)).map(g => [g, counts[g] || 0]).filter(([, n]) => n);
@@ -127,11 +126,11 @@ try {
     $('#cards-sub').textContent = st.state ? VIEW_TEXT[st.view].unit : VIEW_TEXT[st.view].card;
     const rows = [{ key: null, name: 'All groups', gis: allGis }, ...cats];
     $('#cards').innerHTML = rows.map(c => {
-      const v = value(fig(c.gis, st.state), !st.state), f = fig(c.gis, null);
+      const v = value(fig(c.gis, st.state), !st.state), f = fig(c.gis, null), waiting = waitFig(c.gis, st.state);
       const share = st.view === 'iucn' ? (f.doc ? f.thr / f.doc : 0) : (f.doc ? (st.view === 'observed' ? f.obs : f.id) / f.doc : 0);
       return `<button type="button" class="gcard" data-cat="${c.key ?? ''}" aria-pressed="${(c.key ?? null) === st.cat}">
         <span class="gtop"><b>${esc(c.name)}</b><span class="mono">${v.big}</span></span>
-        <span class="gline">${esc(v.line)}</span>${st.view === 'identified' && waitFig(c.gis, st.state)[0] ? `<span class="gwait">${fmt(waitFig(c.gis, st.state)[0])} species wait for a name</span>` : ''}
+        <span class="gline">${esc(v.line)}</span>${st.view === 'identified' && waiting[0] ? `<span class="gwait">${fmt(waiting[0])} species wait for a name</span>` : ''}
         <span class="gbar" aria-hidden="true"><i style="width:${Math.min(100, 100 * share).toFixed(1)}%"></i></span>
       </button>`;
     }).join('');
@@ -147,11 +146,12 @@ try {
         : `of ${fmt(f.doc)} documented species are ${st.view} (${pct(st.view === 'observed' ? f.obs : f.id, f.doc)}).`)
       : `${v.line}.`;
     const w = waitFig(gis, st.state), place = st.state ? stName.get(st.state) : 'India';
+    const genus = genusFig(gis, st.state)[1], coarse = coarseRows(st.cat, st.state).reduce((a, [, n]) => a + n, 0);
     $('#pwait').hidden = st.view !== 'identified' || !w[0];
     $('#pwait').innerHTML = `<b>${fmt(w[1])}</b> observations of <b>${fmt(w[0])}</b> species wait for a name on iNaturalist. `
       + `For <b>${fmt(w[2])}</b> of these species, one confirmation gives the first identification in ${esc(place)}.`
-      + (genusFig(gis, st.state)[1] || coarseRows(st.cat, st.state).length
-        ? ` A further <b>${fmt(genusFig(gis, st.state)[1])}</b> are named only to genus, and <b>${fmt(coarseRows(st.cat, st.state).reduce((a, [, n]) => a + n, 0))}</b> only to a family or a higher level.` : '')
+      + (genus || coarse
+        ? ` A further <b>${fmt(genus)}</b> are named only to genus, and <b>${fmt(coarse)}</b> only to a family or a higher level.` : '')
       + (c ? '' : ' Choose a group to see them.');
     $('#sel-actions').hidden = !st.state;
     document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === st.view)));
@@ -183,16 +183,12 @@ try {
   let listSeq = 0;
   async function paintWait(c, my) {
     const si = st.state ? stIndex.get(st.state) : null, place = st.state ? stName.get(st.state) : 'India';
-    const [g, w] = await Promise.all([Promise.all(c.gis.map(gi => groupFile(gi).then(d => d.rows.map(r => [...r, gi])))),
-      Promise.all(c.gis.map(gi => waitFile(gi).then(d => d.rows)))]);
+    const w = await Promise.all(c.gis.map(gi => waitFile(gi).then(d => d.rows.map(x => [x.slice(0, 8).concat(gi), ...x.slice(8)]))));
     if (my !== listSeq) return;
-    const byId = new Map(g.flat().map(r => [r[0] || `n:${r[1]}`, r]));
-    const pid = W.places[st.state ?? 'india'] ?? W.places.india;
-    const rows = [];
-    for (const [key, name, taxon, nIndia, states] of w.flat()) {
-      const r = byId.get(key || `n:${name}`);
-      if (!r || !passes(r, st.filters)) continue;
-      const n = si == null ? nIndia : (states.find(x => x[0] === si) || [0, 0])[1];
+    const pid = placeId(), rows = [];
+    for (const [r, taxon, nIndia, states] of w.flat()) {
+      if (!passes(r, st.filters)) continue;
+      const n = waitingIn(nIndia, states, si);
       if (!n) continue;
       const first = si == null ? r[3] < 2 : !bit(r[7], si), never = r[3] < 2;
       const threat = THREAT.has(S.iucn[r[4]]), endemic = endBit >= 0 && bit(r[5], endBit);
@@ -204,8 +200,7 @@ try {
       const why = [never ? '<span class="why first">No identification in India yet</span>'
         : first ? `<span class="why first">First identification in ${esc(place)}</span>` : '',
         threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
-      const href = `${IDENTIFY}?quality_grade=needs_id&taxon_id=${encodeURIComponent(taxon)}&place_id=${encodeURIComponent(pid)}`;
-      const link = `<a class="idlink" href="${href}" target="_blank" rel="noopener">Identify on iNaturalist</a>`;
+      const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(taxon)}`));
       return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(r[4])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
         <td>${esc(S.groups[r[8]])}</td><td>${why || '<span class="muted">–</span>'}</td>
         <td>${iucnBadge(r[4])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
@@ -213,6 +208,7 @@ try {
     $('#more').hidden = rows.length <= shown;
   }
 
+  const waitingIn = (nIndia, states, si) => (si == null ? nIndia : (states.find(x => x[0] === si) || [0, 0])[1]);
   const identifyURL = (pid, extra) => `${IDENTIFY}?quality_grade=needs_id&place_id=${encodeURIComponent(pid)}&${extra}`;
   const idLink = href => `<a class="idlink" href="${href}" target="_blank" rel="noopener">Identify on iNaturalist</a>`;
   const placeId = () => W.places[st.state ?? 'india'] ?? W.places.india;
@@ -224,7 +220,7 @@ try {
     if (my !== listSeq) return;
     const rows = [];
     for (const [genus, taxon, nIndia, states, docs, unid, threat, endemic, gi] of w.flat()) {
-      const n = si == null ? nIndia : (states.find(x => x[0] === si) || [0, 0])[1];
+      const n = waitingIn(nIndia, states, si);
       if (n) rows.push({ genus, taxon, n, docs, unid, threat, endemic, gi, score: (docs === 0) * 8 + (unid > 0) * 4 + (threat > 0) * 2 + (endemic > 0) });
     }
     rows.sort((a, b) => b.score - a.score || b.n - a.n || a.genus.localeCompare(b.genus));

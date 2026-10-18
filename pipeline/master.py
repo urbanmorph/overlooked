@@ -667,6 +667,34 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
+# One species in g/<gi>.json (and at the start of w/<gi>.json rows).
+ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
+           "s.states_id_mask")
+
+
+def per_area(rows, n, width):
+    """rows (state or None for India, group index, *values) -> (India per group, {state: per group})."""
+    india, by_state = [[0] * width for _ in range(n)], {}
+    for st, gi, *vals in rows:
+        (india if st is None else by_state.setdefault(str(st), [[0] * width for _ in range(n)]))[gi] = [int(v) for v in vals]
+    return india, by_state
+
+
+def group_files(out: Path, folder, rows, every=()):
+    """Write <folder>/<gi>.json ({"rows": [...]}) from (group index, row) pairs, replacing the folder.
+    every: group indices that get a file even with no rows."""
+    shutil.rmtree(out / folder, ignore_errors=True)
+    files = {gi: [] for gi in every}
+    for gi, row in rows:
+        files.setdefault(gi, []).append(row)
+    for gi, r in files.items():
+        dump({"rows": r}, out / folder / f"{gi}.json")
+
+
+def state_pairs(states):
+    return [[b, int(c)] for b, c in states or []]
+
+
 def waiting_genus(con, n, out: Path):
     """Observations named only to genus. Per group [genera, observations] for India and per state, and
     wg/<gi>.json rows [genus, taxon, observations in India, [[state index, n]], species of the genus on the list,
@@ -693,29 +721,24 @@ def waiting_genus(con, n, out: Path):
                coalesce(s.docs, 0) AS docs, coalesce(s.unid, 0) AS unid, coalesce(s.threat, 0) AS threat,
                coalesce(s.endemic, 0) AS endemic
         FROM inat_genus g LEFT JOIN genus_stats s USING (genus)""")
-    india, by_state = [[0, 0] for _ in range(n)], {}
-    for st, gi, k, obs in con.sql("SELECT state_lgd, gi, count(DISTINCT genus), sum(n) FROM wait_genus GROUP BY ALL").fetchall():
-        (india if st is None else by_state.setdefault(str(st), [[0, 0] for _ in range(n)]))[gi] = [k, int(obs)]
-    shutil.rmtree(out / "wg", ignore_errors=True)
-    files = {}
-    for gi, genus, taxon, n_india, states, docs, unid, threat, endemic in con.sql("""
+    india, by_state = per_area(con.sql(
+        "SELECT state_lgd, gi, count(DISTINCT genus), sum(n) FROM wait_genus GROUP BY ALL").fetchall(), n, 2)
+    group_files(out, "wg", ((gi, [genus, taxon, int(n_india), state_pairs(states), docs, unid, threat, endemic])
+                            for gi, genus, taxon, n_india, states, docs, unid, threat, endemic in con.sql("""
             SELECT w.gi, w.genus, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL),
                    any_value(w.docs), any_value(w.unid), any_value(w.threat), any_value(w.endemic)
             FROM wait_genus w LEFT JOIN state_bit b USING (state_lgd)
-            GROUP BY w.gi, w.genus ORDER BY w.gi, w.genus""").fetchall():
-        files.setdefault(gi, []).append([genus, taxon, int(n_india), [[b, int(c)] for b, c in states or []],
-                                         docs, unid, threat, endemic])
-    for gi, r in files.items():
-        dump({"rows": r}, out / "wg" / f"{gi}.json")
+            GROUP BY w.gi, w.genus ORDER BY w.gi, w.genus""").fetchall()))
     return {"india": india, "by_state": by_state}
 
 
 def waiting(con, n, out: Path, places, coarse=None):
     """iNaturalist observations that wait for a name (needs ID), per species and area.
     Returns the summary part: per group [species, observations, species with no identification in that area],
-    for India and per state. Writes w/<gi>.json: [key, name, iNaturalist taxon, observations in India,
-    [[state index, observations], ...]], so the site can link each species to iNaturalist's Identify page."""
+    for India and per state. Writes w/<gi>.json: the species' g/<gi>.json row (key, name, sources, status, IUCN, labels, states observed,
+    states identified), then iNaturalist taxon, observations in India, [[state index, observations], ...], so the
+    site can rank each species and link it to iNaturalist's Identify page without the group file."""
     con.sql("""
         CREATE OR REPLACE TABLE wait AS
         WITH m AS (SELECT DISTINCT name, id FROM evidence_r WHERE source = 'iNaturalist' AND label = 'nid'),
@@ -724,29 +747,18 @@ def waiting(con, n, out: Path, places, coarse=None):
         SELECT w.id, w.state_lgd, any_value(t.taxon) AS taxon, sum(w.n) AS n
         FROM w JOIN t USING (id) GROUP BY w.id, w.state_lgd
     """)
-    india = [[0, 0, 0] for _ in range(n)]
-    for gi, sp, obs, first in con.sql("""
-            SELECT s.gi, count(*), sum(w.n), count(*) FILTER (WHERE s.status < 2)
-            FROM wait w JOIN site s USING (id) WHERE w.state_lgd IS NULL GROUP BY ALL""").fetchall():
-        india[gi] = [sp, int(obs), first]
-    by_state = {}
-    for st, gi, sp, obs, first in con.sql("""
+    # "First": no identification in that area (India: anywhere; a state: in that state).
+    india, by_state = per_area(con.sql("""
             SELECT w.state_lgd, s.gi, count(*), sum(w.n),
-                   count(*) FILTER (WHERE NOT list_contains(s.states_identified, w.state_lgd))
-            FROM wait w JOIN site s USING (id) WHERE w.state_lgd IS NOT NULL GROUP BY ALL""").fetchall():
-        by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [sp, int(obs), first]
-    shutil.rmtree(out / "w", ignore_errors=True)
-    rows = con.sql("""
-        SELECT s.gi, coalesce(s.key, ''), s.name, any_value(w.taxon),
-               coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
+                   count(*) FILTER (WHERE CASE WHEN w.state_lgd IS NULL THEN s.status < 2
+                                               ELSE NOT list_contains(s.states_identified, w.state_lgd) END)
+            FROM wait w JOIN site s USING (id) GROUP BY ALL""").fetchall(), n, 3)
+    group_files(out, "w", ((gi, [*row, taxon, int(n_india), state_pairs(states)])
+                           for gi, *row, taxon, n_india, states in con.sql(f"""
+        SELECT s.gi, {ROW_SQL}, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL)
         FROM wait w JOIN site s USING (id) LEFT JOIN state_bit b USING (state_lgd)
-        GROUP BY s.gi, s.key, s.name ORDER BY s.gi, s.name""").fetchall()
-    files = {}
-    for gi, key, name, taxon, n_india, states in rows:
-        files.setdefault(gi, []).append([key, name, taxon, int(n_india), [[b, int(c)] for b, c in states or []]])
-    for gi, r in files.items():
-        dump({"rows": r}, out / "w" / f"{gi}.json")
+        GROUP BY ALL ORDER BY s.gi, s.name""").fetchall()))
     counts = (coarse or {}).get("counts", {})
     return {"places": places, "india": india, "by_state": by_state, "genus": waiting_genus(con, n, out),
             "coarse": {"india": counts.get("india", {}), "by_state": {k: v for k, v in counts.items() if k != "india"}}}
@@ -766,8 +778,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                     AS states_id_mask
         FROM master m
     """)
-    for d in ("g", "search"):
-        shutil.rmtree(out / d, ignore_errors=True)
+    shutil.rmtree(out / "search", ignore_errors=True)
     n = len(GROUPS)
     india = [[0, 0, 0, [0] * len(IUCN_CATS), 0] for _ in range(n)]
     for gi, cat, docs, obs, ident, thr in con.sql(f"""
@@ -791,10 +802,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
 
-    row_sql = "coalesce(key, ''), name, sources_mask, status, iucn_i, labels_mask, states_obs_mask, states_id_mask"
-    for gi in range(n):
-        rows = con.sql(f"SELECT {row_sql} FROM site WHERE gi = {gi} ORDER BY name").fetchall()
-        dump({"rows": [list(r) for r in rows]}, out / "g" / f"{gi}.json")
+    group_files(out, "g", ((gi, row) for gi, *row in con.sql(f"SELECT gi, {ROW_SQL} FROM site s ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
     for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask
                         FROM site ORDER BY lower(name), name""").fetchall():

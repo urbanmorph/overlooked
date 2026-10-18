@@ -225,8 +225,11 @@ def test_latest_record_from_dna_is_marked(districts, tmp_path):
     ledger.build(con, tmp_path / "out", "test", districts)
     got = dict(con.sql("SELECT species_key, last_year_not_dna FROM ledger").fetchall())
     assert got == {"S1": 1950, "S2": 2001}
-    assert site_data.dna_note(2019, 1950) == 1950 and site_data.dna_note(2001, 2001) is None
-    assert site_data.dna_note(2019, None) == 0      # only DNA records have a year
+    def note(last_year, not_dna):  # the SQL the site files use
+        return duckdb.sql(f"SELECT {site_data.DNA_SQL} FROM (SELECT {last_year}::INT AS last_year, "
+                          f"{'NULL' if not_dna is None else not_dna}::INT AS last_year_not_dna)").fetchone()[0]
+    assert note(2019, 1950) == 1950 and note(2001, 2001) is None
+    assert note(2019, None) == 0      # only DNA records have a year
 
 
 def test_old_cube_without_dna_column(districts, tmp_path):

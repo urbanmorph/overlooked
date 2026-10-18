@@ -195,8 +195,11 @@ def test_waiting_for_a_name(built):
     assert w["by_state"]["29"][birds] == [1, 1, 1]
     assert w["by_state"]["32"][birds] == [1, 6, 0]  # Hus ius and its subspecies; identified in Kerala by GBIF
     rows = json.loads((out / "w" / f"{birds}.json").read_text())["rows"]
-    # [key, name, iNaturalist taxon (the species, not a subspecies), observations in India, [[state index, n]]]
-    assert rows == [["G1", "Hus ius", 3, 6, [[1, 6]]], ["", "Zus zus", 2, 1, [[0, 1]]]]
+    g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
+    # The species' g row, then iNaturalist taxon (the species, not a subspecies), observations in India,
+    # [[state index, n]]
+    assert [r[:8] for r in rows] == [g["Hus ius"], g["Zus zus"]]
+    assert [r[8:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):

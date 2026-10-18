@@ -47,13 +47,6 @@ def get_json(s3, key):
         raise
 
 
-def put_file(s3, path: Path, key, immutable=True):
-    s3.upload_file(str(path), bucket(), key, ExtraArgs={
-        "ContentType": TYPES.get(path.suffix, "application/octet-stream"),
-        "CacheControl": IMMUTABLE if immutable else SHORT,
-    })
-
-
 def put_json(s3, obj, key):
     s3.put_object(Bucket=bucket(), Key=key, Body=json.dumps(obj, indent=1).encode(),
                   ContentType="application/json", CacheControl=SHORT)

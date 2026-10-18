@@ -36,13 +36,6 @@ DNA_SQL = ("CASE WHEN last_year IS NOT NULL AND (last_year_not_dna IS NULL OR la
            "THEN coalesce(last_year_not_dna, 0) END")
 
 
-def dna_note(last_year, last_year_not_dna):
-    """Python form of DNA_SQL, for checks and tests."""
-    if last_year is None or (last_year_not_dna is not None and last_year_not_dna >= last_year):
-        return None
-    return last_year_not_dna or 0
-
-
 def dump(obj, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
