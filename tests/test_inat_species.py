@@ -63,3 +63,40 @@ def test_species_doc_drops_repeated_taxa():
     done = {"32|research": {"place_id": "1", "page": 1, "total": 2, "rows": [[1, "A b", "Aves", 3], [1, "A b", "Aves", 2]]}}
     doc = inat.species_doc(done, [("32", "1")], "d")
     assert doc["lists"]["32"]["research"] == [[1, "A b", "Aves", 3]]
+
+
+def test_genus_counts_pages_and_restart(cache):
+    """Genera of needs-ID observations named only to genus, per area; saved after every page."""
+    with pytest.raises(inat.Budget):
+        inat.genus_counts(FakeClient(total=5, budget=2), [("32", "9627")], "2026-10")
+    c = FakeClient(total=5)
+    inat.genus_counts(c, [("32", "9627")], "2026-10")
+    assert [p["page"] for p in c.calls] == [3]
+    assert all(p["rank"] == "genus" and p["quality_grade"] == "needs_id" for p in c.calls)
+    doc = inat.genus_doc(inat.cached("genus_counts_2026-10.json"), [("32", "9627")], "2026-10-18")
+    assert doc["complete"] and len(doc["lists"]["32"]) == 5 and doc["places"] == {"32": "9627"}
+
+
+class CountClient:
+    """Answers observations?per_page=0 with a count per iconic group."""
+
+    def __init__(self, budget=100):
+        self.budget, self.calls = budget, []
+
+    def get(self, path, **params):
+        if len(self.calls) >= self.budget:
+            raise inat.Budget("budget used")
+        self.calls.append(params)
+        return {"total_results": len(params["iconic_taxa"])}
+
+
+def test_coarse_counts_per_area_and_group(cache):
+    """Needs-ID observations named only above genus (subtribe or higher), per area and iconic group."""
+    groups = ["Aves", "Insecta"]
+    with pytest.raises(inat.Budget):
+        inat.coarse_counts(CountClient(budget=3), [("32", "9627"), ("india", "6681")], "2026-10", groups)
+    c = CountClient()
+    inat.coarse_counts(c, [("32", "9627"), ("india", "6681")], "2026-10", groups)
+    assert len(c.calls) == 1 and c.calls[0]["lrank"] == "subtribe" and c.calls[0]["per_page"] == 0
+    doc = inat.coarse_doc(inat.cached("coarse_counts_2026-10.json"), [("32", "9627"), ("india", "6681")], "d", groups)
+    assert doc["complete"] and doc["counts"] == {"32": {"Aves": 4, "Insecta": 7}, "india": {"Aves": 4, "Insecta": 7}}

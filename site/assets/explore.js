@@ -26,6 +26,12 @@ const VIEW_TEXT = {
 };
 const PAGE = 50;
 const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
+// iNaturalist iconic groups for each card, for observations named only above genus.
+const CARD_ICONIC = { insects: ['Insecta'], plants: ['Plantae'], fungi: ['Fungi'], mosses: ['Chromista', 'Protozoa'], fish: ['Actinopterygii'],
+  inverts: ['Mollusca', 'Arachnida'], herps: ['Amphibia', 'Reptilia'], birds: ['Aves'], mammals: ['Mammalia'], other: ['Animalia'] };
+const ICONIC_NAME = { Insecta: 'Insects', Plantae: 'Plants', Fungi: 'Fungi', Chromista: 'Algae, diatoms and kin', Protozoa: 'Protozoa',
+  Actinopterygii: 'Ray-finned fish', Mollusca: 'Molluscs', Arachnida: 'Spiders and kin', Amphibia: 'Amphibians', Reptilia: 'Reptiles',
+  Aves: 'Birds', Mammalia: 'Mammals', Animalia: 'Other animals' };
 
 try {
   const latest = await getJSON('layers/master/latest.json');
@@ -42,14 +48,14 @@ try {
   const url = new URL(location.href);
   const st = {
     view: ['observed', 'identified', 'iucn'].includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'observed',
-    list: url.searchParams.get('list') === 'done' ? 'done' : 'wait',
+    list: ['done', 'genus', 'coarse'].includes(url.searchParams.get('list')) ? url.searchParams.get('list') : 'wait',
     cat: cats.some(c => c.key === url.searchParams.get('group')) ? url.searchParams.get('group') : null,
     state: stIndex.has(url.searchParams.get('state') || '') ? url.searchParams.get('state') : null,
     filters: { sources: new Set(), status: new Set(), iucn: new Set(), labels: new Set() },
   };
   const saveURL = () => {
     const u = new URL(location.href);
-    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'identified' && st.list === 'done' ? 'done' : null], ['group', st.cat], ['state', st.state]]) {
+    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'identified' && st.list !== 'wait' ? st.list : null], ['group', st.cat], ['state', st.state]]) {
       if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
     }
     history.replaceState(null, '', u);
@@ -77,6 +83,15 @@ try {
     const src = state == null ? W.india : W.by_state[state] || [];
     return gis.reduce((a, gi) => { const v = src[gi] || [0, 0, 0]; return [a[0] + v[0], a[1] + v[1], a[2] + v[2]]; }, [0, 0, 0]);
   }
+  // Observations named only to genus [genera, observations], and only above genus (per iNaturalist iconic group).
+  function genusFig(gis, state) {
+    const src = state == null ? W.genus?.india : W.genus?.by_state[state];
+    return gis.reduce((a, gi) => { const v = (src || [])[gi] || [0, 0]; return [a[0] + v[0], a[1] + v[1]]; }, [0, 0]);
+  }
+  const coarseRows = (key, state) => {
+    const counts = (state == null ? W.coarse?.india : W.coarse?.by_state[state]) || {};
+    return (key ? CARD_ICONIC[key] || [] : Object.keys(counts)).map(g => [g, counts[g] || 0]).filter(([, n]) => n);
+  };
   const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(a && a / b < 0.1 ? 1 : 0)}%` : '–');
   const catOf = key => cats.find(c => c.key === key);
   const gisNow = () => (st.cat ? catOf(st.cat).gis : allGis);
@@ -135,6 +150,8 @@ try {
     $('#pwait').hidden = st.view !== 'identified' || !w[0];
     $('#pwait').innerHTML = `<b>${fmt(w[1])}</b> observations of <b>${fmt(w[0])}</b> species wait for a name on iNaturalist. `
       + `For <b>${fmt(w[2])}</b> of these species, one confirmation gives the first identification in ${esc(place)}.`
+      + (genusFig(gis, st.state)[1] || coarseRows(st.cat, st.state).length
+        ? ` A further <b>${fmt(genusFig(gis, st.state)[1])}</b> are named only to genus, and <b>${fmt(coarseRows(st.cat, st.state).reduce((a, [, n]) => a + n, 0))}</b> only to a family or a higher level.` : '')
       + (c ? '' : ' Choose a group to see them.');
     $('#sel-actions').hidden = !st.state;
     document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === st.view)));
@@ -157,6 +174,8 @@ try {
   const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
   const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
   const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
+  const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
+  const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
   const waitFile = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }));
   const endBit = S.labels.findIndex(l => l.code === 'end');
 
@@ -194,17 +213,60 @@ try {
     $('#more').hidden = rows.length <= shown;
   }
 
+  const identifyURL = (pid, extra) => `${IDENTIFY}?quality_grade=needs_id&place_id=${encodeURIComponent(pid)}&${extra}`;
+  const idLink = href => `<a class="idlink" href="${href}" target="_blank" rel="noopener">Identify on iNaturalist</a>`;
+  const placeId = () => W.places[st.state ?? 'india'] ?? W.places.india;
+
+  // Genera with observations named only to genus, most useful first.
+  async function paintGenus(c, my) {
+    const si = st.state ? stIndex.get(st.state) : null, pid = placeId();
+    const w = await Promise.all(c.gis.map(gi => getJSON(`${base}wg/${gi}.json`).catch(() => ({ rows: [] })).then(d => d.rows.map(r => [...r, gi]))));
+    if (my !== listSeq) return;
+    const rows = [];
+    for (const [genus, taxon, nIndia, states, docs, unid, threat, endemic, gi] of w.flat()) {
+      const n = si == null ? nIndia : (states.find(x => x[0] === si) || [0, 0])[1];
+      if (n) rows.push({ genus, taxon, n, docs, unid, threat, endemic, gi, score: (docs === 0) * 8 + (unid > 0) * 4 + (threat > 0) * 2 + (endemic > 0) });
+    }
+    rows.sort((a, b) => b.score - a.score || b.n - a.n || a.genus.localeCompare(b.genus));
+    $('#list-sub').textContent = `${fmt(rows.length)} genera wait for a name · ${c.name}${st.state ? ` · ${stName.get(st.state)}` : ''}`;
+    $('#list').innerHTML = rows.slice(0, shown).map(r => {
+      const why = [r.docs === 0 ? '<span class="why first">Genus not on the India list</span>' : '',
+        r.unid ? `<span class="why${r.unid === r.docs ? ' first' : ''}">${fmt(r.unid)} of ${fmt(r.docs)} species not identified in India</span>` : '',
+        r.threat ? `<span class="why">${fmt(r.threat)} threatened</span>` : '', r.endemic ? `<span class="why">${fmt(r.endemic)} endemic</span>` : ''].join('');
+      const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(r.taxon)}&rank=genus`));
+      return `<tr><td><i>${esc(r.genus)}</i><div class="wm">${why}<br><span class="mono">${fmt(r.n)}</span> waiting · ${link}</div></td>
+        <td>${esc(S.groups[r.gi])}</td><td>${why || '<span class="muted">–</span>'}</td><td class="mono">${fmt(r.docs)}</td>
+        <td class="mono">${fmt(r.n)}</td><td>${link}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">No genera wait for a name here.</td></tr>';
+    $('#more').hidden = rows.length <= shown;
+  }
+
+  // Observations named only above genus, per iNaturalist group.
+  function paintCoarse(c) {
+    const pid = placeId(), rows = coarseRows(c.key, st.state);
+    $('#list-sub').textContent = `${c.name}${st.state ? ` · ${stName.get(st.state)}` : ''}`;
+    $('#list').innerHTML = rows.map(([g, n]) => {
+      const link = idLink(identifyURL(pid, `iconic_taxa=${encodeURIComponent(g)}&lrank=subtribe`));
+      return `<tr><td>${esc(ICONIC_NAME[g] || g)}<div class="wm"><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td><td></td><td></td><td></td>
+        <td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">None here.</td></tr>';
+    $('#more').hidden = true;
+  }
+
   async function paintList() {
     const c = st.cat ? catOf(st.cat) : null;
-    const wait = st.view === 'identified' && st.list === 'wait', my = ++listSeq;
+    const mode = st.view === 'identified' ? st.list : 'done', wait = mode !== 'done', my = ++listSeq;
     $('#list-mode').hidden = st.view !== 'identified';
     document.querySelectorAll('#list-mode [data-list]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.list === st.list)));
-    $('#wait-help').hidden = !wait || !c;
-    $('#list-head').innerHTML = wait ? HEAD_WAIT : HEAD_ALL;
+    document.querySelectorAll('.wait-help').forEach(p => { p.hidden = !c || p.dataset.for !== mode; });
+    $('#list-h').textContent = mode === 'genus' ? 'Genera' : mode === 'coarse' ? 'Groups' : 'Species';
+    $('#list-head').innerHTML = { wait: HEAD_WAIT, genus: HEAD_GENUS, coarse: HEAD_COARSE }[mode] || HEAD_ALL;
     $('#list').closest('table').classList.toggle('waitlist', wait);
     if (!c) { $('#list').innerHTML = '<tr><td colspan="6" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
     $('#list').innerHTML = '<tr><td colspan="6" class="muted">Loading…</td></tr>';
-    if (wait) return paintWait(c, my);
+    if (mode === 'wait') return paintWait(c, my);
+    if (mode === 'genus') return paintGenus(c, my);
+    if (mode === 'coarse') return paintCoarse(c);
     const parts = await Promise.all(c.gis.map(gi => groupFile(gi).then(d => d.rows.map(r => [...r, gi]))));
     if (my !== listSeq) return;
     const si = st.state ? stIndex.get(st.state) : null;

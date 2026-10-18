@@ -25,6 +25,12 @@ Newest first. Updated as work happens.
   observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the
   first identification in India. The Identified view lists them per group and state, most useful first
   (no identification here yet, threatened, endemic), each with a link to iNaturalist's Identify page.
+- Wait for a name, all three levels: the iNaturalist layer also fetches genera of observations named only to
+  genus (8,55,929 observations, 13,957 genera) and counts of those named only above genus per iconic group
+  (10,41,700), 694 requests. The master list ranks genera: not on the India list under any name the list knows
+  (1,757 genera, 6,333 observations: possible new records for India), then genera with species never identified
+  in India. Fixed in `layer_inat.run`: the species-lists document was overwritten by the quiet-species list
+  before it was written (the run would have failed with a TypeError).
 - Changes page rebuilt on the master list: each month is compared with the month before (`changes.json`):
   species identified for the first time in India or in a state, observed for the first time, added, or
   dropped (renamed or merged), with the sources that brought the change, and the waiting backlog before

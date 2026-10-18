@@ -156,6 +156,19 @@ def species_places(places):
         [("india", str(INDIA))]
 
 
+def page_through(client, d, save, **params):
+    """Fetch observations/species_counts pages into d ({page, total, rows}) from where it stopped, saving
+    after every page. Rows: [taxon id, name, iconic group, observations]."""
+    while d["total"] is None or d["page"] * PER_PAGE < d["total"]:
+        res = client.get("observations/species_counts", per_page=PER_PAGE, page=d["page"] + 1, **params)
+        d["rows"] += [[r["taxon"]["id"], r["taxon"]["name"], r["taxon"].get("iconic_taxon_name"), r["count"]]
+                      for r in res["results"]]
+        d["page"], d["total"] = d["page"] + 1, res["total_results"]
+        save()
+        if not res["results"]:
+            break
+
+
 def species_counts(client, areas, month):
     """Species observed in each area, research grade and needs ID separately (observations/species_counts,
     taxa at species rank or below). Saved after every page in species_counts_<month>.json, so a stopped run
@@ -165,16 +178,57 @@ def species_counts(client, areas, month):
     for code, pid in areas:
         for q in QUALITIES:
             d = done.setdefault(f"{code}|{q}", {"place_id": str(pid), "page": 0, "total": None, "rows": []})
-            while d["total"] is None or d["page"] * PER_PAGE < d["total"]:
-                res = client.get("observations/species_counts", place_id=pid, quality_grade=q, hrank="species",
-                                 per_page=PER_PAGE, page=d["page"] + 1)
-                d["rows"] += [[r["taxon"]["id"], r["taxon"]["name"], r["taxon"].get("iconic_taxon_name"), r["count"]]
-                              for r in res["results"]]
-                d["page"], d["total"] = d["page"] + 1, res["total_results"]
-                store(name, done)
-                if not res["results"]:
-                    break
+            page_through(client, d, lambda: store(name, done), place_id=pid, quality_grade=q, hrank="species")
     return done
+
+
+def genus_counts(client, areas, month):
+    """Genera of the needs-ID observations named only to genus, per area (observations/species_counts with
+    rank=genus). Saved after every page in genus_counts_<month>.json; a stopped run continues."""
+    name = f"genus_counts_{month}.json"
+    done = cached(name) or {}
+    for code, pid in areas:
+        d = done.setdefault(code, {"place_id": str(pid), "page": 0, "total": None, "rows": []})
+        page_through(client, d, lambda: store(name, done), place_id=pid, quality_grade="needs_id", rank="genus")
+    return done
+
+
+def genus_doc(done, areas, as_of):
+    """Layer file: per area, rows [genus taxon id, genus, iconic group, observations]."""
+    lists = {}
+    for code, _ in areas:
+        if code in done:
+            seen = {}
+            for row in done[code]["rows"]:  # counts can shift between pages; keep one row per taxon
+                seen.setdefault(row[0], row)
+            lists[code] = list(seen.values())
+    complete = all((d := done.get(c)) and d["total"] is not None and d["page"] * PER_PAGE >= d["total"] for c, _ in areas)
+    return {"as_of": as_of, "complete": complete, "places": dict(areas), "lists": lists}
+
+
+COARSE_GROUPS = [g for g in GROUPS if g != "unknown"]
+
+
+def coarse_counts(client, areas, month, groups=COARSE_GROUPS):
+    """Needs-ID observations named only above genus (subtribe or higher), per area and iconic group: one
+    count request each. Saved after every answer in coarse_counts_<month>.json; a stopped run continues."""
+    name = f"coarse_counts_{month}.json"
+    done = cached(name) or {}
+    for code, pid in areas:
+        for g in groups:
+            if f"{code}|{g}" in done:
+                continue
+            res = client.get("observations", place_id=pid, quality_grade="needs_id", lrank="subtribe",
+                             iconic_taxa=g, per_page=0)
+            done[f"{code}|{g}"] = res["total_results"]
+            store(name, done)
+    return done
+
+
+def coarse_doc(done, areas, as_of, groups=COARSE_GROUPS):
+    counts = {code: {g: done[f"{code}|{g}"] for g in groups if f"{code}|{g}" in done} for code, _ in areas}
+    complete = all(f"{c}|{g}" in done for c, _ in areas for g in groups)
+    return {"as_of": as_of, "complete": complete, "places": dict(areas), "counts": counts}
 
 
 def species_requests(done):

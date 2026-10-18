@@ -53,14 +53,18 @@ def inputs(tmp_path):
                 "lists": {"32": {"research": [[1, "Aus bus", "Aves", 3]],
                                  "needs_id": [[31, "Hus ius minor", "Aves", 2], [3, "Hus ius", "Aves", 4]]},
                           "29": {"research": [], "needs_id": [[2, "Zus zus", "Aves", 1]]},
-                          "india": {"research": [[1, "Aus bus", "Aves", 3]],
+                          "india": {"research": [[1, "Aus bus", "Aves", 3], [4, "Hia ius", "Aves", 1]],
                                     "needs_id": [[2, "Zus zus", "Aves", 1], [3, "Hus ius", "Aves", 6]]}}}
     ns_doc = layer_newspecies.compact([{"name": "Gus hus", "year": 2020, "sources": ["Plazi"], "journal": "J",
                                          "state": "", "link": "https://x/1", "group": "Birds", "key": "K4",
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
                                          "any_record": False}])
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "candidates": None},
-            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc},
+            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc,
+                       "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
+                                                "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
+                                                          [55, "Hia", "Aves", 1]]}},
+                       "inat_coarse": {"counts": {"32": {"Aves": 4}, "india": {"Aves": 9, "Insecta": 1}}}},
             "districts": dist}
 
 
@@ -73,7 +77,7 @@ class Resp:
 
 
 class FakeGbif:
-    """GBIF v2 match: 'Wus vus' matches K5; everything else has no exact match."""
+    """GBIF v2 match: 'Wus vus' matches K5, 'Hia ius' (an older name) matches G1 (Hus ius); else no exact match."""
 
     def __init__(self):
         self.headers, self.asked = {}, []
@@ -84,6 +88,10 @@ class FakeGbif:
             return Resp({"usage": {"key": "K5", "name": "Wus vus L.", "canonicalName": "Wus vus"},
                          "classification": [{"rank": "KINGDOM", "name": "Plantae"}, {"rank": "PHYLUM", "name": "Tracheophyta"},
                                             {"rank": "FAMILY", "name": "Orchidaceae"}],
+                         "diagnostics": {"matchType": "EXACT"}})
+        if params["scientificName"] == "Hia ius":
+            return Resp({"usage": {"key": "G1", "name": "Hus ius L.", "canonicalName": "Hus ius"},
+                         "classification": [{"rank": "KINGDOM", "name": "Animalia"}],
                          "diagnostics": {"matchType": "EXACT"}})
         return Resp({"diagnostics": {"matchType": "NONE"}})
 
@@ -146,7 +154,8 @@ def test_names_matched_or_kept(built):
     assert r["Xus yus"]["key"] is None and "nm" in r["Xus yus"]["labels"]   # kept, subgenus dropped
     assert r["Hus ius"]["key"] == "G1"                       # ZSI's key folded into GBIF's for the same name
     assert "Aus bus minor" not in r                          # subspecies counted as its species
-    assert built["http"].asked == ["Zus zus", "Wus vus", "Pus qus"]  # iNaturalist, WCVP, BSI; never ZSI names
+    assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Pus qus"]  # iNaturalist, WCVP, BSI; never ZSI
+    assert "Hia ius" not in r                                # an older name of Hus ius
 
 
 def test_groups_from_classification_or_hints(built):
@@ -190,6 +199,22 @@ def test_waiting_for_a_name(built):
     assert rows == [["G1", "Hus ius", 3, 6, [[1, 6]]], ["", "Zus zus", 2, 1, [[0, 1]]]]
 
 
+def test_waiting_at_genus_and_above(built):
+    """Observations named only to genus: per genus, with what the list knows of the genus in India.
+    Observations named only above genus: counts per area and iNaturalist iconic group."""
+    out, w = built["out"], built["summary"]["waiting"]
+    birds, other = GROUPS.index("Birds"), GROUPS.index("Insects: other")
+    assert w["genus"]["india"][birds] == [2, 6] and w["genus"]["india"][other] == [1, 2]
+    assert w["genus"]["by_state"]["32"][birds] == [1, 3]
+    assert w["coarse"] == {"india": {"Aves": 9, "Insecta": 1}, "by_state": {"32": {"Aves": 4}}}
+    # [genus, iNaturalist taxon, observations in India, [[state index, n]], species of the genus on the list,
+    #  of them never identified, threatened, endemic]
+    rows = json.loads((out / "wg" / f"{birds}.json").read_text())["rows"]
+    # Hia: the genus of an older name of Hus ius, still known to the list through that name.
+    assert rows == [["Hia", 55, 1, [], 1, 0, 0, 0], ["Hus", 50, 5, [[1, 3]], 1, 0, 0, 0]]
+    assert json.loads((out / "wg" / f"{other}.json").read_text())["rows"] == [["Nus", 60, 2, [], 0, 0, 0, 0]]
+
+
 def test_prefix():
     assert master.prefix("Aus bus") == "au" and master.prefix("×Cus") == "_c" and master.prefix("A") == "a_"
 
@@ -211,7 +236,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     http = FakeGbif()
     s = master.build(con, inputs["paths"], tmp_path / "o", {"month": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
-    assert http.asked == [] and s["names_pending_match"] == 3
+    assert http.asked == [] and s["names_pending_match"] == 4
     assert any("not yet matched" in n for n in s["notes"])
 
 

@@ -21,7 +21,8 @@ Inputs (all optional except the snapshot):
   ZSI           data/fnf/zsi/zsi_checklist_matched.csv, else R2 cache/master/zsi_checklist.csv
   WCVP          data/fnf/wcvp/wcvp_india.parquet, else R2 cache/master/wcvp_india.parquet
   BSI checklist data/bsi/bsi_checklist.csv, else R2 cache/bsi/bsi_checklist.csv
-  iNaturalist   layers/inat/<month>/species_counts.json (species per state, research grade and needs ID)
+  iNaturalist   layers/inat/<month>/species_counts.json (species per state, research grade and needs ID),
+                genus_counts.json (genera of observations named only to genus), coarse_counts.json (named only above genus)
   new species   layers/newspecies/<month>/new_species.json
   IUCN          the Red List checklist on GBIF (pipeline/iucn.py)
 
@@ -127,6 +128,11 @@ INAT_HINTS = {"Plantae": ("Plantae", None, None), "Insecta": ("Animalia", "Arthr
               "Arachnida": ("Animalia", "Arthropoda", "Arachnida"), "Mollusca": ("Animalia", "Mollusca", None),
               "Fungi": ("Fungi", None, None), "Animalia": ("Animalia", None, None),
               "Chromista": ("Chromista", None, None), "Protozoa": ("Protozoa", None, None)}
+# Group for a genus that has no species on the list, from its iNaturalist iconic group.
+ICONIC_GROUP = {"Aves": "Birds", "Reptilia": "Reptiles", "Amphibia": "Amphibians", "Actinopterygii": "Fish",
+                "Insecta": "Insects: other", "Arachnida": "Spiders & other arachnids", "Mollusca": "Molluscs",
+                "Mammalia": "Mammals: other (whales, dolphins...)", "Plantae": "Plants: other flowering plants & conifers",
+                "Fungi": "Fungi"}
 # BSI checklist group text -> (kingdom, phylum, class).
 BSI_HINTS = [(r"lichen", "Fungi", "Ascomycota", "Lecanoromycetes"), (r"fung", "Fungi", None, None),
              (r"bryo|moss|liverwort|hornwort", "Plantae", "Bryophyta", None),
@@ -262,6 +268,7 @@ def start(con):
     con.sql(f"CREATE OR REPLACE TABLE evidence ({EVIDENCE_COLS})")
     con.sql("CREATE OR REPLACE TABLE alias (name VARCHAR, key VARCHAR, display VARCHAR, prio INTEGER)")
     con.sql("CREATE OR REPLACE TABLE inat_wait (name VARCHAR, raw VARCHAR, state_lgd INTEGER, taxon BIGINT, n BIGINT)")
+    con.sql("CREATE OR REPLACE TABLE inat_genus (genus VARCHAR, state_lgd INTEGER, taxon BIGINT, n BIGINT, iconic VARCHAR)")
 
 
 def insert(con, table, select, cols, rows):
@@ -360,6 +367,13 @@ def load_inat(con, doc):
     insert(con, "names_in", """SELECT 'iNaturalist', binomial(n), NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, NULL,
                                       NULL, NULL, false, false, 5""",
            ["n", "k", "p", "c"], [[n, *INAT_HINTS.get(i or "", (None, None, None))] for n, i in names.items()])
+
+
+def load_inat_genus(con, doc):
+    """iNaturalist genera of needs-ID observations named only to genus, per state (india = all of India)."""
+    rows = [[g, None if code == "india" else int(code), t, n, i]
+            for code, lst in doc["lists"].items() for t, g, i, n in lst]
+    insert(con, "inat_genus", "SELECT g, s::INTEGER, t::BIGINT, n::BIGINT, i", ["g", "s", "t", "n", "i"], rows)
 
 
 def load_newspecies(con, doc):
@@ -653,7 +667,51 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
-def waiting(con, n, out: Path, places):
+def waiting_genus(con, n, out: Path):
+    """Observations named only to genus. Per group [genera, observations] for India and per state, and
+    wg/<gi>.json rows [genus, taxon, observations in India, [[state index, n]], species of the genus on the list,
+    of them never identified, threatened, endemic]. A genus with no species on the list takes its group from
+    its iNaturalist iconic group."""
+    end = CODES.index("end")
+    # Every name the list knows for a species counts: a source may still use a genus that the Catalogue of
+    # Life now treats as a synonym (iNaturalist's Athyma is Limenitis here).
+    con.sql(f"""
+        CREATE OR REPLACE TABLE genus_stats AS
+        WITH n AS (SELECT id, name FROM site UNION SELECT id, name FROM names_in_r
+                   UNION SELECT id, name FROM evidence_r WHERE name IS NOT NULL
+                   UNION SELECT coalesce(m.canonical, a.key), a.name FROM alias a LEFT JOIN idmap m ON m.id = a.key
+                   WHERE a.key IS NOT NULL),
+        g AS (SELECT DISTINCT split_part(n.name, ' ', 1) AS genus, s.* FROM n JOIN site s USING (id))
+        SELECT genus, mode(gi) AS gi, count(*) AS docs,
+               count(*) FILTER (WHERE status < 2) AS unid, count(*) FILTER (WHERE iucn IN {THREATENED}) AS threat,
+               count(*) FILTER (WHERE (labels_mask >> {end}) & 1 = 1) AS endemic
+        FROM g GROUP BY 1""")
+    iconic = " ".join(f"WHEN '{k}' THEN {GROUPS.index(v)}" for k, v in ICONIC_GROUP.items())
+    con.sql(f"""
+        CREATE OR REPLACE TABLE wait_genus AS
+        SELECT g.*, coalesce(s.gi, CASE g.iconic {iconic} ELSE {GROUPS.index("Other")} END) AS gi,
+               coalesce(s.docs, 0) AS docs, coalesce(s.unid, 0) AS unid, coalesce(s.threat, 0) AS threat,
+               coalesce(s.endemic, 0) AS endemic
+        FROM inat_genus g LEFT JOIN genus_stats s USING (genus)""")
+    india, by_state = [[0, 0] for _ in range(n)], {}
+    for st, gi, k, obs in con.sql("SELECT state_lgd, gi, count(DISTINCT genus), sum(n) FROM wait_genus GROUP BY ALL").fetchall():
+        (india if st is None else by_state.setdefault(str(st), [[0, 0] for _ in range(n)]))[gi] = [k, int(obs)]
+    shutil.rmtree(out / "wg", ignore_errors=True)
+    files = {}
+    for gi, genus, taxon, n_india, states, docs, unid, threat, endemic in con.sql("""
+            SELECT w.gi, w.genus, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
+                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL),
+                   any_value(w.docs), any_value(w.unid), any_value(w.threat), any_value(w.endemic)
+            FROM wait_genus w LEFT JOIN state_bit b USING (state_lgd)
+            GROUP BY w.gi, w.genus ORDER BY w.gi, w.genus""").fetchall():
+        files.setdefault(gi, []).append([genus, taxon, int(n_india), [[b, int(c)] for b, c in states or []],
+                                         docs, unid, threat, endemic])
+    for gi, r in files.items():
+        dump({"rows": r}, out / "wg" / f"{gi}.json")
+    return {"india": india, "by_state": by_state}
+
+
+def waiting(con, n, out: Path, places, coarse=None):
     """iNaturalist observations that wait for a name (needs ID), per species and area.
     Returns the summary part: per group [species, observations, species with no identification in that area],
     for India and per state. Writes w/<gi>.json: [key, name, iNaturalist taxon, observations in India,
@@ -689,10 +747,12 @@ def waiting(con, n, out: Path, places):
         files.setdefault(gi, []).append([key, name, taxon, int(n_india), [[b, int(c)] for b, c in states or []]])
     for gi, r in files.items():
         dump({"rows": r}, out / "w" / f"{gi}.json")
-    return {"places": places, "india": india, "by_state": by_state}
+    counts = (coarse or {}).get("counts", {})
+    return {"places": places, "india": india, "by_state": by_state, "genus": waiting_genus(con, n, out),
+            "coarse": {"india": counts.get("india", {}), "by_state": {k: v for k, v in counts.items() if k != "india"}}}
 
 
-def site_files(con, out: Path, meta, districts_path, notes, places=None):
+def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
     """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
@@ -727,7 +787,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None):
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
-               "waiting": waiting(con, n, out, places or {}),
+               "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
 
@@ -840,6 +900,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
             notes.append("iNaturalist species lists are incomplete (the daily request budget); the next run adds the rest.")
     else:
         notes.append("iNaturalist species lists are not fetched yet: research grade and needs ID are empty.")
+    if inputs.get("inat_genus"):
+        load_inat_genus(con, inputs["inat_genus"])
     if inputs.get("newspecies"):
         load_newspecies(con, inputs["newspecies"])
     if not inputs.get("zsi"):
@@ -864,7 +926,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                        states_identified FROM master) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state) TO '{out / 'master_state.parquet'}' "
             "(FORMAT parquet, COMPRESSION zstd)")
-    summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"))
+    summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
+                         inputs.get("inat_coarse"))
     ch = changes(con, prev and prev["parquet"], prev and prev["month"], meta["month"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
@@ -879,7 +942,7 @@ def fingerprint(paths, inputs, cache, extra=None):
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi"))]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
-    for k in ("inat", "newspecies"):
+    for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
     h.update(json.dumps(cache, sort_keys=True).encode())
     h.update(sha256(Path(__file__)).encode())
@@ -916,7 +979,10 @@ def run(a):
     paths = snapshot_input(s3, snapshot)
     inat_doc, inat_month = layer_input(s3, "inat", "species_counts", "species_counts.json")
     ns_doc, ns_month = layer_input(s3, "newspecies", "file", "new_species.json")
-    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "inat": inat_doc, "newspecies": ns_doc}
+    genus_doc, _ = layer_input(s3, "inat", "genus_counts", "genus_counts.json")
+    coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
+    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "inat": inat_doc, "newspecies": ns_doc,
+              "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
     con = duckdb.connect()
     http = requests.Session()
