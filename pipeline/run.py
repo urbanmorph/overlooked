@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pipeline import boundaries as boundary_map
 import hashlib
 
-from pipeline import (candidates, changes, checks, districts, gbif, health, ledger, names, site_data, unlocated,
+from pipeline import (checks, districts, gbif, health, ledger, names, site_data, unlocated,
                       unresolved)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -136,24 +136,6 @@ def request(args):
     save(state)
 
 
-def previous_snapshot(run_id):
-    """Download the previous published snapshot's ledger, species and summary from R2, if any."""
-    if not os.environ.get("R2_ENDPOINT"):
-        return None
-    from pipeline import r2
-    s3 = r2.client()
-    latest = r2.get_json(s3, "latest.json")
-    if not latest or latest["run_id"] == run_id:
-        return None
-    folder = ROOT / "data" / "previous" / latest["run_id"]
-    folder.mkdir(parents=True, exist_ok=True)
-    for name in ("ledger.parquet", "species.parquet"):
-        if not (folder / name).exists():
-            s3.download_file(r2.bucket(), latest["base"] + name, str(folder / name))
-    return {"ledger": folder / "ledger.parquet", "species": folder / "species.parquet",
-            "summary": r2.get_json(s3, latest["summary"])}
-
-
 def inputs_fingerprint(state, boundaries):
     """What a snapshot is built from. Same inputs give the same snapshot, so a rerun is a no-op."""
     keys = {n: d["key"] for n, d in sorted(state["downloads"].items())}
@@ -225,15 +207,11 @@ def build(args):
 
     con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-    unresolved_records = n_candidates = unlocated_records = None
+    unresolved_records = unlocated_records = None
     if "unresolved_cube" in state["downloads"]:
         unresolved_records = unresolved.build(con, ledger.unpack(state["downloads"]["unresolved_cube"]["key"]),
                                               str(districts.PATH))
         con.sql(f"COPY unresolved TO '{out / 'unresolved.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-        # None when query U came without genus (downloads made before genus was added).
-        n_candidates = candidates.build(con)
-        if n_candidates is not None:
-            con.sql(f"COPY candidates TO '{out / 'candidates.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     if "unlocated_cube" in state["downloads"]:
         unlocated_records = unlocated.build(con, ledger.unpack(state["downloads"]["unlocated_cube"]["key"]))
         con.sql(f"COPY unlocated TO '{out / 'unlocated.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
@@ -256,8 +234,6 @@ def build(args):
     summary = site_data.build(con, out, meta)
     if unresolved_records is not None:
         site_data.unresolved_json(con, out)
-    if n_candidates is not None:
-        site_data.candidates_json(con, out)
     unlocated_counts = {}
     if unlocated_records is not None:
         # Titles of the top dataset holders: one GBIF API request per dataset not yet cached (data/cache, R2 cache/).
@@ -271,18 +247,8 @@ def build(args):
 
     site_data.species_shards(con, out)
 
-    # Module 2: compare with the previous published snapshot, if there is one.
-    previous = previous_snapshot(run_id)
-    counts = None
-    if previous:
-        counts = changes.build(con, previous["ledger"], previous["species"],
-                               prev_year=int(previous["summary"]["built"][:4]), this_year=int(summary["built"][:4]))
-        con.sql(f"COPY changes TO '{out / 'changes.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-    site_data.changes_json(con, out, counts, previous["summary"] if previous else None, summary)
-    summary["changes"] = counts
-    summary["previous_run"] = previous["summary"]["run_id"] if previous else None
     summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"],
-                    "unresolved_records": unresolved_records, "candidates": n_candidates,
+                    "unresolved_records": unresolved_records,
                     "unlocated_records": unlocated_records, **unlocated_counts})
     (out / "summary.json").write_text(json.dumps(summary, separators=(",", ":")))
     manifest = {

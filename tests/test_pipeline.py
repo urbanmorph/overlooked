@@ -1,5 +1,3 @@
-import json
-
 import duckdb
 import pytest
 
@@ -69,27 +67,6 @@ def test_checks_need_doi():
     assert checks.run(summary, {"downloads": [{"key": "k", "doi": None}]})
 
 
-def test_unsurveyed_groups_are_not_counted_as_quiet(tmp_path):
-    from pipeline import site_data
-    con = duckdb.connect()
-    # District 101: one fern recorded in 1950 only, ferns never recorded there since 1980 (unsurveyed);
-    # one orchid last seen 1950 while another orchid was seen in 2020 (quiet, counted).
-    con.sql("""CREATE TABLE ledger AS SELECT * FROM (VALUES
-        ('F1', 101, 32, 1950, 1950, 1), ('O1', 101, 32, 1950, 1950, 1), ('O2', 101, 32, 2020, 2020, 1))
-        t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""")
-    con.sql("""CREATE TABLE species AS SELECT * FROM (VALUES
-        ('F1', 'Fern one', 'Plantae', 'Tracheophyta', 'Polypodiopsida', 'Polypodiales', 'Pteridaceae'),
-        ('O1', 'Orchid one', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae'),
-        ('O2', 'Orchid two', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae'))
-        t(species_key, name, kingdom, phylum, class, "order", family)""")
-    con.sql("CREATE TABLE districts AS SELECT 101 AS dist_lgd")
-    summary = site_data.build(con, tmp_path, {"run_id": "t"})
-    d = json.loads((tmp_path / "map_stats.json").read_text())["districts"]["101"]
-    assert d["q"][0][0] == 1   # only the orchid counts as quiet since 1980
-    assert d["u"][0][0] == 1   # the fern is set apart
-    assert summary["districts_with_quiet"]["1980"] == 1
-
-
 def test_names_from_history(tmp_path):
     from pipeline import names
     tsv = tmp_path / "h.tsv"
@@ -133,39 +110,6 @@ def test_unresolved_records_placed_by_group_and_rank(districts, tmp_path):
     rows = con.sql("SELECT district_lgd, grp, taxonrank, n_records FROM unresolved ORDER BY 1").fetchall()
     assert total == 5                       # the offshore plant record is left out
     assert rows == [(101, "Insects: beetles", "genus", 4), (102, "Insects: beetles", "order", 1)]
-
-
-def test_change_feed(tmp_path):
-    from pipeline import changes
-    con = duckdb.connect()
-    # Last month: orchid A quiet in 101 (1950) while orchid B active there (2015); C only in state 32;
-    # D last seen 1997 (not yet 30 years); E in 102; F under an old key renamed this month.
-    con.sql("""CREATE TABLE p AS SELECT * FROM (VALUES
-        ('A', 101, 32, 1900, 1950, 1), ('B', 101, 32, 2015, 2015, 1), ('C', 101, 32, 2010, 2010, 1),
-        ('D', 101, 32, 1990, 1996, 1), ('E', 102, 32, 2000, 2000, 1), ('F_old', 101, 32, 2001, 2001, 1))
-        t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""")
-    con.sql(f"COPY p TO '{tmp_path / 'pl.parquet'}' (FORMAT parquet)")
-    con.sql("""CREATE TABLE ps AS SELECT * FROM (VALUES ('A','Orchid a'),('B','Orchid b'),('C','Orchid c'),
-        ('D','Orchid d'),('E','Orchid e'),('F_old','Orchid f')) t(species_key, name)""")
-    con.sql(f"COPY ps TO '{tmp_path / 'ps.parquet'}' (FORMAT parquet)")
-    # This month: A recorded again (2026); C now also in state 29; D unchanged but a year passed;
-    # E withdrawn; F under a new key.
-    con.sql("""CREATE TABLE ledger AS SELECT * FROM (VALUES
-        ('A', 101, 32, 1900, 2026, 2), ('B', 101, 32, 2015, 2015, 1), ('C', 101, 32, 2010, 2010, 1),
-        ('C', 201, 29, 2019, 2019, 1), ('D', 101, 32, 1990, 1996, 1), ('F_new', 101, 32, 2001, 2001, 1))
-        t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""")
-    con.sql("""CREATE TABLE species AS SELECT * FROM (VALUES ('A','Orchid a'),('B','Orchid b'),('C','Orchid c'),
-        ('D','Orchid d'),('F_new','Orchid f')) t(species_key, name)""")
-    con.sql("CREATE TABLE sp AS SELECT species_key, name, 'Plants: orchids' AS grp FROM species")
-    counts = changes.build(con, tmp_path / "pl.parquet", tmp_path / "ps.parquet", prev_year=2026, this_year=2027)
-    got = {(r[0], r[1]) for r in con.sql("SELECT change, species_key FROM changes").fetchall()}
-    assert ("recorded_again", "A") in got
-    assert ("first_in_state", "C") in got
-    assert ("now_quiet", "D") in got           # 1996 < 2027 - 30, and was not before
-    assert ("withdrawn", "E") in got
-    assert not any(k in ("F_old", "F_new") for _, k in got)   # renamed key matched by name: no change
-    assert con.sql("SELECT reason FROM changes WHERE species_key = 'A'").fetchone()[0] == "new record"
-    assert counts == {c: n for c, n in con.sql("SELECT change, count(*) FROM changes GROUP BY 1").fetchall()}
 
 
 def test_new_species_names():
@@ -215,7 +159,6 @@ def test_sequence_datasets_scope():
 
 
 def test_latest_record_from_dna_is_marked(districts, tmp_path):
-    from pipeline import site_data
     cube = tmp_path / "c.tsv"
     cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\tlast_year_not_dna\n"
                     "S1\t10.5\t76.5\t1950\t2019\t3\t1950\n"      # latest record is a DNA sequence
@@ -225,11 +168,6 @@ def test_latest_record_from_dna_is_marked(districts, tmp_path):
     ledger.build(con, tmp_path / "out", "test", districts)
     got = dict(con.sql("SELECT species_key, last_year_not_dna FROM ledger").fetchall())
     assert got == {"S1": 1950, "S2": 2001}
-    def note(last_year, not_dna):  # the SQL the site files use
-        return duckdb.sql(f"SELECT {site_data.DNA_SQL} FROM (SELECT {last_year}::INT AS last_year, "
-                          f"{'NULL' if not_dna is None else not_dna}::INT AS last_year_not_dna)").fetchone()[0]
-    assert note(2019, 1950) == 1950 and note(2001, 2001) is None
-    assert note(2019, None) == 0      # only DNA records have a year
 
 
 def test_old_cube_without_dna_column(districts, tmp_path):

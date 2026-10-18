@@ -1,20 +1,14 @@
-"""Module 5: iNaturalist identification backlog, and a direct check of quiet species.
+"""iNaturalist species lists for the master list: per state, species research grade and needs ID, genera of
+observations named only to genus, and counts of observations named only above genus.
 
 iNaturalist asks for at most 60 requests a minute and under 10,000 a day, and for no scraping.
-We send one request at a time, about 1.1 s apart, with a budget per run (default 9,000), and cache
-every answer. A run that hits its budget stops cleanly; the next run continues where it stopped.
-
-Usage:
-    python -m pipeline.inat places
-    python -m pipeline.inat backlog [--places India,Kerala] [--groups Insecta,Plantae]
-    python -m pipeline.inat quiet <species.json> [--limit 50]
-Output goes to data/layers/inat/<date>/.
+We send one request at a time, about 1.1 s apart, with a budget per run, and cache every answer.
+A run that hits its budget or time limit stops cleanly; the next run continues where it stopped.
+Run through pipeline.layer_inat.
 """
 
-import argparse
 import json
 import time
-from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -28,9 +22,9 @@ LAYERS = ROOT / "data" / "layers" / "inat"
 INDIA = 6681
 GAP = 1.1
 CHECKPOINT = 600  # seconds
-# iNaturalist's iconic groups; "unknown" means no taxon at all.
+# iNaturalist's iconic groups.
 GROUPS = ["Plantae", "Insecta", "Aves", "Fungi", "Arachnida", "Mollusca", "Reptilia", "Amphibia",
-          "Mammalia", "Actinopterygii", "Animalia", "Chromista", "Protozoa", "unknown"]
+          "Mammalia", "Actinopterygii", "Animalia", "Chromista", "Protozoa"]
 
 
 class Budget(Exception):
@@ -126,26 +120,6 @@ def places(client):
     return known
 
 
-def backlog(client, place_ids, groups=GROUPS, month=None):
-    """Needs-ID observations by year created, and research-grade totals, per place and group.
-    Each row is saved as it completes, so a stopped run continues."""
-    name = f"backlog_rows_{month}.json" if month else None
-    done = (cached(name) or {}) if name else {}
-    for pid in place_ids:
-        for g in groups:
-            key = f"{pid}|{g}"
-            if key in done:
-                continue
-            h = client.get("observations/histogram", place_id=pid, quality_grade="needs_id", iconic_taxa=g,
-                           date_field="created", interval="year")["results"]["year"]
-            rg = client.get("observations", place_id=pid, quality_grade="research", iconic_taxa=g, per_page=0)
-            done[key] = {"place_id": pid, "group": g, "research_grade": rg["total_results"],
-                         "needs_id_by_year": {k[:4]: v for k, v in h.items() if v}}
-            if name:
-                store(name, done)
-    return [done[f"{pid}|{g}"] for pid in place_ids for g in groups]
-
-
 QUALITIES = ("research", "needs_id")
 PER_PAGE = 500
 
@@ -206,10 +180,7 @@ def genus_doc(done, areas, as_of):
     return {"as_of": as_of, "complete": complete, "places": dict(areas), "lists": lists}
 
 
-COARSE_GROUPS = [g for g in GROUPS if g != "unknown"]
-
-
-def coarse_counts(client, areas, month, groups=COARSE_GROUPS):
+def coarse_counts(client, areas, month, groups=GROUPS):
     """Needs-ID observations named only above genus (subtribe or higher), per area and iconic group: one
     count request each. Saved after every answer in coarse_counts_<month>.json; a stopped run continues."""
     name = f"coarse_counts_{month}.json"
@@ -225,15 +196,10 @@ def coarse_counts(client, areas, month, groups=COARSE_GROUPS):
     return done
 
 
-def coarse_doc(done, areas, as_of, groups=COARSE_GROUPS):
+def coarse_doc(done, areas, as_of, groups=GROUPS):
     counts = {code: {g: done[f"{code}|{g}"] for g in groups if f"{code}|{g}" in done} for code, _ in areas}
     complete = all(f"{c}|{g}" in done for c, _ in areas for g in groups)
     return {"as_of": as_of, "complete": complete, "places": dict(areas), "counts": counts}
-
-
-def species_requests(done):
-    """Requests a full species_counts pass takes, from the totals seen (one page per 500 species)."""
-    return sum(max(1, -(-(d["total"] or 0) // PER_PAGE)) for d in done.values())
 
 
 def species_doc(done, areas, as_of):
@@ -251,104 +217,3 @@ def species_doc(done, areas, as_of):
     complete = all((d := done.get(f"{c}|{q}")) and d["total"] is not None and d["page"] * PER_PAGE >= d["total"]
                    for c, _ in areas for q in QUALITIES)
     return {"as_of": as_of, "complete": complete, "places": dict(areas), "lists": lists}
-
-
-def identifiers(client, groups=GROUPS):
-    since = (date.today() - timedelta(days=365)).isoformat()
-    out = []
-    for g in groups:
-        if g == "unknown":
-            continue
-        d = client.get("observations/identifiers", place_id=INDIA, iconic_taxa=g, d1=since, per_page=1)
-        top = d["results"][0]["count"] if d["results"] else 0
-        out.append({"group": g, "identifiers_12m": d["total_results"], "top_identifier_count": top, "since": since})
-    return out
-
-
-def taxon_id(client, name):
-    """iNaturalist taxon for an exact species name, or None. Cached for good (including misses)."""
-    cache = cached("taxa.json") or {}
-    if name in cache:
-        return cache[name]
-    res = client.get("taxa", q=name, rank="species", per_page=5)["results"]
-    hit = next((t["id"] for t in res if t.get("name", "").lower() == name.lower()), None)
-    cache[name] = hit
-    store("taxa.json", cache)
-    return hit
-
-
-def latest_in_india(client, tid):
-    d = client.get("observations", taxon_id=tid, place_id=INDIA, order_by="observed_on", order="desc",
-                   per_page=1, verifiable="any")
-    if not d["results"]:
-        return {"total": 0}
-    r = d["results"][0]
-    return {"total": d["total_results"], "latest": r.get("observed_on"), "quality": r.get("quality_grade"),
-            "licence": r.get("license_code"), "observation": r.get("id")}
-
-
-def quiet_check(client, species, month):
-    """species: list of {key, name}. Results cached per month, so a stopped run continues."""
-    name = f"quiet_{month}.json"
-    done = cached(name) or {}
-    try:
-        for s in species:
-            if s["key"] in done:
-                continue
-            tid = taxon_id(client, s["name"])
-            done[s["key"]] = {"name": s["name"], "taxon_id": tid, **(latest_in_india(client, tid) if tid else {"total": None})}
-            if len(done) % 25 == 0:
-                store(name, done)
-    except Budget as e:
-        print(f"stopped: {e}; {len(done)} of {len(species)} species checked; the next run continues")
-    store(name, done)
-    return done
-
-
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("cmd", choices=["places", "backlog", "quiet", "species"])
-    p.add_argument("arg", nargs="?")
-    p.add_argument("--places", help="comma-separated state names, or India")
-    p.add_argument("--groups", help="comma-separated iconic groups")
-    p.add_argument("--limit", type=int)
-    p.add_argument("--budget", type=int, default=9000)
-    a = p.parse_args()
-    c = Client(a.budget)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    out = LAYERS / today
-    out.mkdir(parents=True, exist_ok=True)
-    if a.cmd == "places":
-        print(json.dumps(places(c), indent=1, ensure_ascii=False))
-    elif a.cmd == "species":
-        # Local run (no R2): species lists per state, written to data/layers/inat/<month>/species_counts.json.
-        month = today[:7]
-        areas = species_places(places(c))
-        try:
-            species_counts(c, areas, month)
-        except Budget as e:
-            print(f"stopped: {e}; the next run continues")
-        done = cached(f"species_counts_{month}.json") or {}
-        doc = species_doc(done, areas, today)
-        (LAYERS / month).mkdir(parents=True, exist_ok=True)
-        (LAYERS / month / "species_counts.json").write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
-        print(f"species lists: complete={doc['complete']}, {c.used} requests; a full pass takes about "
-              f"{species_requests(done)}")
-    elif a.cmd == "backlog":
-        pl = places(c)
-        wanted = a.places.split(",") if a.places else None
-        ids = [INDIA] if not wanted or "India" in wanted else []
-        ids += [v["place_id"] for v in pl.values() if v["place_id"] and (not wanted or v["state"] in wanted)]
-        groups = a.groups.split(",") if a.groups else GROUPS
-        res = {"as_of": today, "places": pl, "backlog": backlog(c, ids, groups), "identifiers": identifiers(c, groups)}
-        (out / "backlog.json").write_text(json.dumps(res, separators=(",", ":"), ensure_ascii=False))
-        print(f"backlog: {len(res['backlog'])} place x group rows, {c.used} requests")
-    else:
-        species = json.loads(Path(a.arg).read_text())[: a.limit]
-        res = quiet_check(c, species, today[:7])
-        (out / "quiet.json").write_text(json.dumps(res, separators=(",", ":"), ensure_ascii=False))
-        print(f"quiet check: {len(res)} species, {c.used} requests")
-
-
-if __name__ == "__main__":
-    main()

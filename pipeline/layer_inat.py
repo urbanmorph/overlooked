@@ -1,16 +1,15 @@
-"""Monthly iNaturalist layer (module 5), published next to the GBIF snapshot.
+"""Monthly iNaturalist layer: the species lists the master list reads.
 
 1. Restore the iNaturalist cache from R2 (cache/inat/), so a run continues where the last one stopped.
-2. Backlog by state and group, and active identifiers (once a month).
-2b. Species lists per state, research grade and needs ID; genera of observations named only to genus; counts of
-    observations named only above genus, per iconic group (once a month; for the master list).
-3. Direct check of the species that are quiet in the latest published snapshot, oldest first,
-   within the daily request budget.
-4. Write layers/inat/<month>/{backlog,species_counts,genus_counts,coarse_counts,quiet}.json and layers/inat/latest.json to R2, and save the cache.
+2. Map each state to an iNaturalist place (cached for good).
+3. Per state and for India: species research grade and needs ID, genera of observations named only to genus,
+   and counts of observations named only above genus per iconic group. About 1,400 requests a month.
+4. Write layers/inat/<month>/{species,genus,coarse}_counts.json and layers/inat/latest.json to R2, and save
+   the cache.
 
-Safe to run again: finished parts are skipped, and the quiet check continues from its cache.
+Safe to run again: finished parts are skipped, and a stopped part continues from its cache.
 
-Usage: python -m pipeline.layer_inat [--publish] [--budget 9000]
+Usage: python -m pipeline.layer_inat [--publish] [--budget 9000] [--minutes 240]
 """
 
 import argparse
@@ -38,8 +37,7 @@ def record_usage(day, n):
 
 def sync_cache(s3, direction):
     from pipeline import r2
-    names = ["usage.json", "places.json", "taxa.json", "backlog_{m}.json", "backlog_rows_{m}.json", "quiet_{m}.json",
-             "species_counts_{m}.json", "genus_counts_{m}.json", "coarse_counts_{m}.json"]
+    names = ["usage.json", "places.json", "species_counts_{m}.json", "genus_counts_{m}.json", "coarse_counts_{m}.json"]
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     for n in (x.format(m=month) for x in names):
         local, key = inat.CACHE / n, f"cache/inat/{n}"
@@ -57,7 +55,6 @@ def main():
     p.add_argument("--publish", action="store_true")
     p.add_argument("--budget", type=int, default=9000)
     p.add_argument("--minutes", type=int, help="stop cleanly and publish after this many minutes")
-    p.add_argument("--quiet-file", help="local ledger/india.json to use instead of the published one")
     a = p.parse_args()
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     s3 = None
@@ -93,80 +90,27 @@ def main():
 
 def run(a, month, client, s3):
     from pipeline import r2
-
-    # Backlog and identifiers, once a month.
-    bl = inat.cached(f"backlog_{month}.json")
-    try:
-        if not bl:
-            places = inat.places(client)
-            ids = [inat.INDIA] + [v["place_id"] for v in places.values() if v["place_id"]]
-            bl = {"as_of": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "places": places,
-                  "backlog": inat.backlog(client, ids, month=month), "identifiers": inat.identifiers(client)}
-            inat.store(f"backlog_{month}.json", bl)
-    except inat.Budget as e:
-        print(f"backlog stopped: {e}; the next run continues")
-        bl = None
-
-    # Species lists per state, research grade and needs ID (for the master list), once a month.
-    # About 700 requests a month (October 2026: 25,708 research-grade and 35,143 needs-ID species in India).
-    areas = inat.species_places(inat.cached("places.json") or {})
-    # Then the observations that wait at genus (about 300 requests) and above genus (about 500).
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     try:
-        if len(areas) > 1:
-            inat.species_counts(client, areas, month)
-            inat.genus_counts(client, areas, month)
-            inat.coarse_counts(client, areas, month)
+        areas = inat.species_places(inat.places(client))
+        inat.species_counts(client, areas, month)
+        inat.genus_counts(client, areas, month)
+        inat.coarse_counts(client, areas, month)
     except inat.Budget as e:
-        print(f"species lists stopped: {e}; the next run continues")
-    species = inat.species_doc(inat.cached(f"species_counts_{month}.json") or {}, areas, today)
-    genus = inat.genus_doc(inat.cached(f"genus_counts_{month}.json") or {}, areas, today)
-    coarse = inat.coarse_doc(inat.cached(f"coarse_counts_{month}.json") or {}, areas, today)
-
-    # Direct check of quiet species from the latest published snapshot (oldest latest record first).
-    if a.quiet_file:
-        rows = json.loads(Path(a.quiet_file).read_text())["rows"]
-        run_id = "local"
-    else:
-        latest = r2.get_json(s3, "latest.json") if s3 else None
-        if not latest:
-            print("no published snapshot yet; skipping the quiet check")
-            rows, run_id = [], None
-        else:
-            rows = r2.get_json(s3, latest["base"] + "ledger/india.json")["rows"]
-            run_id = latest["run_id"]
-    quiet_species = [{"key": r[0], "name": r[1]} for r in sorted(rows, key=lambda r: (r[5] or 0)) if r[1]]
-    quiet = inat.quiet_check(client, quiet_species, month) if quiet_species else {}
-    complete = len(quiet) >= len(quiet_species)
-
+        print(f"stopped: {e}; the next run continues")
+    areas = inat.species_places(inat.cached("places.json") or {})
+    docs = {"species_counts": inat.species_doc(inat.cached(f"species_counts_{month}.json") or {}, areas, today),
+            "genus_counts": inat.genus_doc(inat.cached(f"genus_counts_{month}.json") or {}, areas, today),
+            "coarse_counts": inat.coarse_doc(inat.cached(f"coarse_counts_{month}.json") or {}, areas, today)}
     out = inat.LAYERS / month
     out.mkdir(parents=True, exist_ok=True)
-    if bl:
-        (out / "backlog.json").write_text(json.dumps(bl, separators=(",", ":"), ensure_ascii=False))
-    for fname, doc, has in (("species_counts.json", species, species["lists"]), ("genus_counts.json", genus, genus["lists"]),
-                            ("coarse_counts.json", coarse, any(coarse["counts"].values()))):
+    info = {"month": month, "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "requests": client.used}
+    for name, doc in docs.items():
+        has = doc.get("lists") or any((doc.get("counts") or {}).values())
         if has:
-            (out / fname).write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
-    # Small file for the ledger page: only species with an observation in India.
-    # [latest date, quality grade, open licence (1/0), observations in India]
-    open_lic = {"cc0", "cc-by", "cc-by-nc"}
-    flags = {k: [v["latest"], v["quality"], int((v.get("licence") or "") in open_lic), v["total"]]
-             for k, v in quiet.items() if v.get("total")}
-    (out / "quiet_flags.json").write_text(json.dumps({"snapshot": run_id, "species": flags}, separators=(",", ":")))
-    (out / "quiet.json").write_text(json.dumps({"snapshot": run_id, "checked": len(quiet), "of": len(quiet_species),
-                                                "complete": complete, "species": quiet},
-                                               separators=(",", ":"), ensure_ascii=False))
-    info = {"month": month, "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "backlog": f"layers/inat/{month}/backlog.json" if bl else None,
-            "quiet": f"layers/inat/{month}/quiet.json", "quiet_flags": f"layers/inat/{month}/quiet_flags.json",
-            "species_counts": f"layers/inat/{month}/species_counts.json" if species["lists"] else None,
-            "species_counts_complete": species["complete"],
-            "genus_counts": f"layers/inat/{month}/genus_counts.json" if genus["lists"] else None,
-            "genus_counts_complete": genus["complete"],
-            "coarse_counts": f"layers/inat/{month}/coarse_counts.json" if any(coarse["counts"].values()) else None,
-            "coarse_counts_complete": coarse["complete"],
-            "quiet_complete": complete, "quiet_checked": len(quiet), "quiet_of": len(quiet_species), "snapshot": run_id,
-            "requests": client.used}
+            (out / f"{name}.json").write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
+        info[name] = f"layers/inat/{month}/{name}.json" if has else None
+        info[f"{name}_complete"] = doc["complete"]
     if s3:
         for f in out.iterdir():
             r2.sync_file(s3, f, f"layers/inat/{month}/{f.name}", immutable=False)

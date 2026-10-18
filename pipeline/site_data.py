@@ -1,13 +1,9 @@
-"""Small JSON files the site reads, built from the ledger and species tables.
+"""Small JSON files the site reads from a GBIF snapshot, built from the ledger and species tables.
 
-The pages never need a database in the browser: each view loads one file.
-  summary.json          overview figures
-  map_stats.json        per district, state and India, per group: species, effort, quiet and unsurveyed counts
-  ledger/india.json     one row per species quiet in India (latest record before the last threshold year)
-  ledger/s/<state>.json the same for a state
-  ledger/d/<dist>.json  one row per species in a district (all species; these files are small)
-India and state files hold only quiet species, to keep them small; the site says so.
-Row: [species_key, name, group index, family, first year, last year, records]
+  summary.json          snapshot figures, groups, rights
+  unresolved.json       records not named to species, by group and area (method page)
+  unlocated.json        records without coordinates, by group and area (method page)
+  species/<shard>.json  one species' GBIF records by decade and district (species page)
 """
 
 import json
@@ -17,8 +13,6 @@ import duckdb
 
 from pipeline import ledger
 from pipeline.groups import GROUP_SQL
-
-YEARS = [1980, 1990, 2000, 2010]
 
 # PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
 RIGHTS = {
@@ -31,19 +25,15 @@ RIGHTS = {
                    "consult BSI, ZSI, the IUCN Red List and the state forest department."),
 }
 
-# The latest record is a DNA sequence: give the latest year of other records (0 if none), else NULL.
-DNA_SQL = ("CASE WHEN last_year IS NOT NULL AND (last_year_not_dna IS NULL OR last_year_not_dna < last_year) "
-           "THEN coalesce(last_year_not_dna, 0) END")
-
-
 def dump(obj, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
 
 
 def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
-    """Needs tables ledger (species_key, district_lgd, state_lgd, first_year, last_year, n_records, ...),
-    species (species_key, name, kingdom, phylum, class, "order", family) and districts."""
+    """summary.json with the snapshot figures. Needs tables ledger (species_key, district_lgd, state_lgd,
+    first_year, last_year, n_records, ...), species (species_key, name, kingdom, phylum, class, "order", family)
+    and districts. Leaves tables sp, gidx, lg and india for the other files."""
     con.sql(f"""
         CREATE OR REPLACE TABLE sp AS
         SELECT species_key, name, family, {GROUP_SQL} AS grp FROM species
@@ -58,89 +48,21 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
         SELECT l.*, s.name, s.family, g.gi
         FROM ledger l JOIN sp s USING (species_key) JOIN gidx g USING (grp)
     """)
-
-    # Map stats. Arrays are indexed [0 = all groups, 1 + group index]; q, u and a have one array per year.
-    #   s  species with public records
-    #   a  species of the group recorded since the year (survey effort)
-    #   q  quiet species: records, none since the year, in a group that WAS recorded since the year
-    #   u  species with no record since the year in a group with no records since then at all:
-    #      the area looks unsurveyed for that group, so these are not counted as quiet
-    n = len(groups) + 1
-
-    def area_stats(rel, area, with_records):
-        a_cols = ", ".join(f"count(*) FILTER (WHERE last_year >= {y}) AS a{y}" for y in YEARS)
-        con.sql(f"CREATE OR REPLACE TABLE eff AS SELECT {area}, gi, {a_cols} FROM {rel} GROUP BY {area}, gi")
-        q_cols = ", ".join(f"count(*) FILTER (WHERE x.last_year < {y} AND e.a{y} > 0) AS q{y}" for y in YEARS)
-        u_cols = ", ".join(f"count(*) FILTER (WHERE x.last_year < {y} AND e.a{y} = 0) AS u{y}" for y in YEARS)
-        a_sum = ", ".join(f"sum(e.a{y}) FILTER (WHERE x.rk = 1) AS a{y}" for y in YEARS)
-        rec = "sum(x.n_records)" if with_records else "0"
-        out = {}
-        for row in con.sql(f"""
-                WITH x AS (SELECT *, row_number() OVER (PARTITION BY {area}, gi ORDER BY species_key) AS rk FROM {rel})
-                SELECT x.{area}, x.gi, count(*), {rec}, {q_cols}, {u_cols}, {a_sum}
-                FROM x JOIN eff e USING ({area}, gi)
-                GROUP BY GROUPING SETS ((x.{area}, x.gi), (x.{area}))""").fetchall():
-            key, g, sp_n, recs = row[:4]
-            k, Y = (0 if g is None else g + 1), len(YEARS)
-            qs, us, as_ = row[4:4 + Y], row[4 + Y:4 + 2 * Y], row[4 + 2 * Y:]
-            d = out.setdefault(str(key), {"s": [0] * n, "a": [[0] * n for _ in YEARS],
-                                          "q": [[0] * n for _ in YEARS], "u": [[0] * n for _ in YEARS]})
-            d["s"][k] = sp_n
-            if with_records:
-                d.setdefault("r", [0] * n)[k] = int(recs or 0)
-            for i in range(Y):
-                d["q"][i][k], d["u"][i][k], d["a"][i][k] = qs[i], us[i], int(as_[i] or 0)
-        return out
-
-    stats = area_stats("lg", "district_lgd", True)
-    con.sql("""CREATE OR REPLACE TABLE lst AS
-               SELECT state_lgd, species_key, any_value(gi) AS gi, max(last_year) AS last_year
-               FROM lg GROUP BY state_lgd, species_key""")
-    states = area_stats("lst", "state_lgd", False)
-    con.sql("""CREATE OR REPLACE TABLE lin AS
-               SELECT 0 AS country, species_key, any_value(gi) AS gi, max(last_year) AS last_year
-               FROM lg GROUP BY species_key""")
-    india = area_stats("lin", "country", False)["0"]
-    dump({"groups": groups, "years": YEARS, "districts": stats, "states": states, "india": india},
-         out / "map_stats.json")
-
-    # National species table and quiet counts. Rows: key, name, group, family, first, last, records, dna
-    # (dna: when the latest record is a DNA sequence, the latest year of other records, 0 if none).
     con.sql("""
         CREATE OR REPLACE TABLE india AS
         SELECT species_key, any_value(name) AS name, any_value(gi) AS gi, any_value(family) AS family,
-               min(first_year) AS first_year, max(last_year) AS last_year,
-               max(last_year_not_dna) AS last_year_not_dna, sum(n_records) AS n
+               min(first_year) AS first_year, max(last_year) AS last_year, sum(n_records) AS n
         FROM lg GROUP BY species_key
     """)
-    row_sql = f"SELECT species_key, name, gi, family, first_year, last_year, n, {DNA_SQL} FROM {{}} ORDER BY last_year NULLS LAST, name"
-    quiet = f"(SELECT * FROM {{}} WHERE last_year < {YEARS[-1]})"
-    dump({"scope": f"quiet_before_{YEARS[-1]}", "rows": con.sql(row_sql.format(quiet.format("india"))).fetchall()},
-         out / "ledger" / "india.json")
-    for (state,) in con.sql("SELECT DISTINCT state_lgd FROM lg").fetchall():
-        rows = con.sql(row_sql.format(quiet.format(f"""(SELECT species_key, any_value(name) AS name, any_value(gi) AS gi,
-                any_value(family) AS family, min(first_year) AS first_year, max(last_year) AS last_year,
-                max(last_year_not_dna) AS last_year_not_dna, sum(n_records) AS n
-                FROM lg WHERE state_lgd = {state} GROUP BY species_key)"""))).fetchall()
-        dump({"scope": f"quiet_before_{YEARS[-1]}", "rows": rows}, out / "ledger" / "s" / f"{state}.json")
-    for (dist,) in con.sql("SELECT DISTINCT district_lgd FROM lg").fetchall():
-        rows = con.sql(row_sql.format(f"""(SELECT species_key, name, gi, family, first_year, last_year, last_year_not_dna, n_records AS n
-                FROM lg WHERE district_lgd = {dist})""")).fetchall()
-        dump({"scope": "all", "rows": rows}, out / "ledger" / "d" / f"{dist}.json")
-
-    one = lambda s: con.sql(s).fetchone()[0]
+    one = lambda q: con.sql(q).fetchone()[0]
     summary = dict(meta, **RIGHTS)
     summary.update({
         "species": one("SELECT count(*) FROM india"),
         "records": int(one("SELECT sum(n) FROM india")),
         "districts_with_records": one("SELECT count(DISTINCT district_lgd) FROM lg"),
         "districts_total": one("SELECT count(*) FROM districts"),
-        "quiet_species": {str(y): india["q"][i][0] for i, y in enumerate(YEARS)},
-        "districts_with_quiet": {str(y): sum(1 for d in stats.values() if d["q"][i][0] > 0) for i, y in enumerate(YEARS)},
-        "unsurveyed_species_district_pairs": {str(y): sum(d["u"][i][0] for d in stats.values()) for i, y in enumerate(YEARS)},
         "groups": groups,
         "group_species": [one(f"SELECT count(*) FROM india WHERE gi = {i}") for i in range(len(groups))],
-        "group_quiet_1980": [india["q"][0][i + 1] for i in range(len(groups))],
     })
     dump(summary, out / "summary.json")
     return summary
@@ -163,32 +85,6 @@ def unresolved_json(con, out: Path):
            "india": by("0")["0"]}
     dump(obj, out / "unresolved.json")
     return obj["india"]["n"]
-
-
-def candidates_json(con, out: Path, cap=2000):
-    """May be an overlooked species: totals by group and state, and the top rows by records named only to genus.
-    Row: [district_lgd, state_lgd, group index, genus, tier, records named only to genus, species not recorded,
-    [[species_key, name], ...] examples]."""
-    groups = [r[0] for r in con.sql(
-        "SELECT grp FROM candidates GROUP BY grp ORDER BY sum(n_records_unnamed) DESC, grp").fetchall()]
-    gi = {g: i for i, g in enumerate(groups)}
-    by_group = [[0, 0, 0] for _ in groups]   # rows, records, rows matched in the district itself
-    states = {}
-    for state, g, tier, rows, recs in con.sql(
-            "SELECT state_lgd, grp, tier, count(*), sum(n_records_unnamed) FROM candidates GROUP BY ALL").fetchall():
-        d = states.setdefault(str(state), {"rows": 0, "records": 0, "g": [0] * len(groups)})
-        d["rows"] += rows; d["records"] += int(recs); d["g"][gi[g]] += int(recs)
-        b = by_group[gi[g]]
-        b[0] += rows; b[1] += int(recs); b[2] += rows if tier == "district" else 0
-    rows = [[d, s, gi[g], genus, tier, int(n), k, [list(x) for x in zip(keys, names)]]
-            for d, s, g, genus, tier, n, k, names, keys in con.sql(f"""
-                SELECT district_lgd, state_lgd, grp, genus, tier, n_records_unnamed, n_species_not_recorded,
-                       examples, example_keys
-                FROM candidates ORDER BY n_records_unnamed DESC, district_lgd, genus LIMIT {cap}""").fetchall()]
-    india = {"rows": sum(b[0] for b in by_group), "records": sum(b[1] for b in by_group)}
-    obj = {"since": 1980, "groups": groups, "india": india, "by_group": by_group, "states": states, "rows": rows}
-    dump(obj, out / "candidates.json")
-    return obj
 
 
 def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
@@ -246,23 +142,6 @@ def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
            "only_unlocated": {"g": only_g, "rows": only_rows}}
     dump(obj, out / "unlocated.json")
     return obj
-
-
-def changes_json(con, out: Path, counts, previous, summary):
-    """Page data for the change feed. previous: the previous snapshot's summary, or None (first run)."""
-    if previous is None:
-        dump({"baseline": True, "previous": None}, out / "changes.json")
-        return
-    rows = con.sql("""
-        SELECT c.change, c.species_key, s.name, g.gi, c.district_lgd, c.state_lgd, c.before_year, c.now_year, c.reason
-        FROM changes c JOIN sp s USING (species_key) JOIN gidx g USING (grp)
-        ORDER BY CASE c.change WHEN 'recorded_again' THEN 0 WHEN 'first_in_state' THEN 1 WHEN 'now_quiet' THEN 2 ELSE 3 END,
-                 c.now_year DESC NULLS LAST, s.name
-    """).fetchall()
-    prev_q = dict(zip(previous.get("groups", []), previous.get("group_quiet_1980", [])))
-    groups = [{"group": g, "before": prev_q.get(g), "now": q} for g, q in zip(summary["groups"], summary["group_quiet_1980"])]
-    dump({"baseline": False, "previous": previous["run_id"], "counts": counts, "groups": groups, "rows": rows},
-         out / "changes.json")
 
 
 SHARDS = 512

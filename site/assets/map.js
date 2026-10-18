@@ -65,21 +65,19 @@ export function drawMap(box, boundaries, { onPick, label, pickLabel = 'Open' } =
     info,
     // values: Map id -> number or null (null = no records). Breaks are quantiles of the non-zero values.
     paint(vals, text) {
-      values = vals; tipText = text || ((id, v) => (v == null ? 'No public records' : fmt(v)));
       const nz = [...vals.values()].filter(v => v > 0).sort((a, b) => a - b);
       const q = f => nz[Math.min(nz.length - 1, Math.floor(f * nz.length))];
       const breaks = nz.length ? [q(.2), q(.4), q(.6), q(.8)] : [];
-      const style = getComputedStyle(box);  // a view can set its own ramp on a parent
-      const colours = RAMP.map(v => style.getPropertyValue(v).trim());
-      const zero = style.getPropertyValue('--zero').trim(), none = style.getPropertyValue('--none').trim();
-      for (const [id, p] of paths) {
-        const v = vals.get(id);
-        let c = none;
-        if (v === 0) c = zero;
-        else if (v > 0) c = colours[breaks.filter(b => v > b).length];
-        p.setAttribute('fill', c);
-      }
+      this.fill(vals, v => (v === 0 ? '--zero' : v > 0 ? RAMP[breaks.filter(b => v > b).length] : '--none'),
+        text || ((id, v) => (v == null ? 'No public records' : fmt(v))));
       return breaks;
+    },
+    // vals: Map id -> value; colourOf(value) -> a CSS variable name. A view can set its own colours on a parent.
+    fill(vals, colourOf, text) {
+      values = vals; tipText = text;
+      const style = getComputedStyle(box), cache = new Map();
+      const colour = v => { if (!cache.has(v)) cache.set(v, style.getPropertyValue(v).trim()); return cache.get(v); };
+      for (const [id, p] of paths) p.setAttribute('fill', colour(colourOf(vals.get(id))));
     },
     select(id) {
       for (const p of el.querySelectorAll('path.sel')) p.classList.remove('sel');

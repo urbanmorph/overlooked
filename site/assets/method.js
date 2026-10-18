@@ -1,7 +1,7 @@
 import { snapshot, getJSON, fmt, esc, $, monthName, showDevBanner, showLoadError } from './common.js';
 
 const QUERY = {
-  ledger_cube: 'Ledger: species at each place, first and latest year',
+  ledger_cube: 'Species at each place, first and latest year',
   species_history: 'Species names and history by decade',
   unresolved_cube: 'Records with no species name (genus or higher)',
   unlocated_cube: 'Records with no coordinates',

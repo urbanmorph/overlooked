@@ -25,6 +25,13 @@ Newest first. Updated as work happens.
   observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the
   first identification in India. The Identified view lists them per group and state, most useful first
   (no identification here yet, threatened, endemic), each with a link to iNaturalist's Identify page.
+- Retired the "last seen" model: the Last seen and Waiting for a name pages (redirected to the front page),
+  the GBIF change feed (`changes.py`), the GBIF genus candidates (`candidates.py`), the quiet statistics and
+  per-district ledger files in `site_data`, and the iNaturalist quiet check and backlog fetch (the daily
+  iNaturalist budget now goes only to the species lists). The species page now reads the master list
+  (`sp/<shard>.json`): status, IUCN, sources, labels, a map of where it is observed and identified, and
+  observations that wait for a name, with GBIF records by decade and district below. Genus names now match
+  by kingdom when both sides know it (a plant and an animal genus can share a name).
 - Wait for a name, all three levels: the iNaturalist layer also fetches genera of observations named only to
   genus (8,55,929 observations, 13,957 genera) and counts of those named only above genus per iconic group
   (10,41,700), 694 requests. The master list ranks genera: not on the India list under any name the list knows

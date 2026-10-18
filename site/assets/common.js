@@ -21,7 +21,6 @@ export async function snapshot() {
     file: name => latest.base + name,
     summary: () => getJSON(latest.summary),
     boundaries: () => getJSON(latest.boundaries),
-    stats: () => getJSON(latest.base + 'map_stats.json'),
   };
 }
 

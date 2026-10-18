@@ -4,7 +4,7 @@
 MAX_CHANGE = 0.20
 # Outputs a snapshot may lack (built from downloads made before they were added). When present they
 # must not be empty, and they are compared with last month only if last month has them too.
-OPTIONAL = ("unlocated_records", "candidates")
+OPTIONAL = ("unlocated_records",)
 
 
 def run(summary, manifest, previous_summary=None):

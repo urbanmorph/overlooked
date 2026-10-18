@@ -94,8 +94,7 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS):
     con.sql("""
         CREATE OR REPLACE TABLE by_district AS
         SELECT l.district_lgd, any_value(d.dtname) AS district, any_value(d.stname) AS state,
-               count(*) AS species, sum(n_records) AS records,
-               count(*) FILTER (WHERE last_year < 1980) AS quiet_since_1980
+               count(*) AS species, sum(n_records) AS records
         FROM ledger l JOIN districts d ON d.dist_lgd = l.district_lgd
         GROUP BY ALL ORDER BY records DESC
     """)

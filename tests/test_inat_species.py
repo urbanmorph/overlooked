@@ -41,7 +41,6 @@ def test_species_counts_pages_and_qualities(cache):
     assert {p["quality_grade"] for p in c.calls} == {"research", "needs_id"}
     assert all(p["hrank"] == "species" for p in c.calls)
     assert [r[1] for r in done["32|research"]["rows"]] == ["Aus b0", "Aus b1", "Aus b2"]
-    assert inat.species_requests(done) == 4
 
 
 def test_species_counts_restart_continues_at_next_page(cache):

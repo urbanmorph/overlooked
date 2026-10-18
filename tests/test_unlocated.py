@@ -1,4 +1,4 @@
-"""Genus in query U, overlooked-species candidates, and records without coordinates (query L)."""
+"""Genus in query U, and records without coordinates (query L)."""
 
 import csv
 import json
@@ -63,54 +63,8 @@ def _ledger(con, rows, species):
         con.executemany("INSERT INTO species VALUES (?, ?, ?, ?, ?, ?, ?, ?)", species)
 
 
-def _unresolved(con, rows):
-    con.sql("""CREATE OR REPLACE TABLE unresolved (district_lgd INT, state_lgd INT, grp VARCHAR, genus VARCHAR, taxonrank VARCHAR,
-               n_records BIGINT, n_records_since_1980 BIGINT, first_year INT, last_year INT)""")
-    con.executemany("INSERT INTO unresolved VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
-
-
 ORCHID = ("Plantae", "Tracheophyta", "Liliopsida", "Asparagales", "Orchidaceae")
 FERN = ("Plantae", "Tracheophyta", "Polypodiopsida", "Polypodiales", "Pteridaceae")
-
-
-def test_candidates_district_then_state(tmp_path):
-    from pipeline import candidates, site_data
-    con = duckdb.connect()
-    _ledger(con, [
-        ("D1", 101, 32, 1900, 1950, 1),   # Dendrobium one: not recorded in 101 since 1980
-        ("D2", 101, 32, 2000, 2020, 1),   # orchids were recorded in 101 since 1980: surveyed
-        ("H1", 102, 32, 1900, 1940, 1),   # Habenaria one: only in 102, not since 1980 in state 32
-        ("A1", 101, 32, 1900, 1940, 1),   # a fern genus: ferns never recorded in 101 or state 32 since 1980
-    ], [("D1", "Dendrobium one", *ORCHID, "Dendrobium"), ("D2", "Dendrobium two", *ORCHID, "Dendrobium"),
-        ("H1", "Habenaria one", *ORCHID, "Habenaria"), ("A1", "Adiantum one", *FERN, "Adiantum")])
-    _unresolved(con, [
-        (101, 32, "Plants: orchids", "Dendrobium", "genus", 7, 5, 1950, 2020),   # district match
-        (101, 32, "Plants: orchids", "Habenaria", "genus", 3, 3, 2001, 2010),    # state match (H1 is in 102)
-        (101, 32, "Plants: orchids", "Bulbophyllum", "genus", 9, 9, 2001, 2010), # no species of the genus
-        (101, 32, "Plants: ferns & lycophytes", "Adiantum", "genus", 4, 4, 2001, 2010),  # unsurveyed group
-        (101, 32, "Plants: orchids", "Dendrobium", "family", 2, 2, 2001, 2010),  # not a genus record
-        (102, 32, "Plants: orchids", "Dendrobium", "genus", 6, 0, 1950, 1960),   # no unnamed record since 1980
-    ])
-    n = candidates.build(con)
-    rows = con.sql("""SELECT district_lgd, genus, tier, n_records_unnamed, n_species_not_recorded, examples
-                      FROM candidates ORDER BY n_records_unnamed DESC""").fetchall()
-    assert n == 2
-    assert rows == [(101, "Dendrobium", "district", 5, 1, ["Dendrobium one"]),
-                    (101, "Habenaria", "state", 3, 1, ["Habenaria one"])]
-    obj = site_data.candidates_json(con, tmp_path)
-    saved = json.loads((tmp_path / "candidates.json").read_text())
-    assert saved == obj
-    assert saved["india"] == {"rows": 2, "records": 8}
-    assert saved["states"]["32"]["records"] == 8
-    assert saved["rows"][0][3] == "Dendrobium" and saved["rows"][0][7] == [["D1", "Dendrobium one"]]
-
-
-def test_candidates_skipped_without_genus():
-    from pipeline import candidates
-    con = duckdb.connect()
-    _ledger(con, [], [])
-    con.sql("CREATE TABLE unresolved (district_lgd INT, state_lgd INT, grp VARCHAR, taxonrank VARCHAR, n_records BIGINT)")
-    assert candidates.build(con) is None
 
 
 # 3. Query L
@@ -214,8 +168,7 @@ def test_checks_new_outputs():
     base = {"ledger_rows": 1000, "districts": 10, "species": 100}
     assert not checks.run(base, manifest)                                  # old snapshot: not built, not checked
     assert checks.run({**base, "unlocated_records": 0}, manifest)          # built but empty
-    assert checks.run({**base, "candidates": 0}, manifest)
-    now = {**base, "unlocated_records": 1000, "candidates": 50}
+    now = {**base, "unlocated_records": 1000}
     assert not checks.run(now, manifest, {"species": 100, "ledger_rows": 1000})   # previous month lacks them
-    assert checks.run(now, manifest, {**base, "unlocated_records": 700, "candidates": 50})
-    assert not checks.run(now, manifest, {**base, "unlocated_records": 900, "candidates": 45})
+    assert checks.run(now, manifest, {**base, "unlocated_records": 700})
+    assert not checks.run(now, manifest, {**base, "unlocated_records": 900})

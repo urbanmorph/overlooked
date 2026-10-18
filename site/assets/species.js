@@ -1,4 +1,8 @@
+// One species: what the master list knows (sources, observed, identified, IUCN, labels, waiting observations),
+// where it is observed and identified, and its GBIF records when the snapshot has them.
+
 import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
+import { drawMap } from './map.js';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -6,13 +10,20 @@ function shardOf(key) {
   for (const b of new TextEncoder().encode(String(key))) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
   return h % 512;
 }
-const BASIS = [
-  ['PRESERVED_SPECIMEN', 'Specimen', '#16201C'], ['MATERIAL_SAMPLE', 'Specimen', '#16201C'],
-  ['MATERIAL_CITATION', 'From a paper', '#8A9690'], ['HUMAN_OBSERVATION', 'Observation', '#2F5DA8'],
-  ['MACHINE_OBSERVATION', 'Observation', '#2F5DA8'], ['OBSERVATION', 'Observation', '#2F5DA8'], ['OCCURRENCE', 'Other', '#C5CCC7'],
+const STATUS = ['Listed only', 'Observed, not identified', 'Identified'];
+const STATUS_TEXT = [
+  'A source lists this species for India. No observation of it is in the sources yet.',
+  'Someone observed it in India, but nobody has confirmed the name yet.',
+  'Someone observed it in India and the name is confirmed.',
 ];
-const KIND = Object.fromEntries(BASIS.map(([b, l, c]) => [b, { l, c }]));
-const QUALITY = { research: 'research grade', needs_id: 'waits for a name', casual: 'casual' };
+const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
+const BASIS = [
+  ['PRESERVED_SPECIMEN', 'Specimen'], ['MATERIAL_SAMPLE', 'Specimen'], ['MATERIAL_CITATION', 'From a paper'],
+  ['HUMAN_OBSERVATION', 'Observation'], ['MACHINE_OBSERVATION', 'Observation'], ['OBSERVATION', 'Observation'], ['OCCURRENCE', 'Other'],
+];
+const KIND = Object.fromEntries(BASIS);
+const KIND_ORDER = [['Specimen', '#16201C'], ['From a paper', '#8A9690'], ['Observation', '#2F5DA8'], ['Other', '#C5CCC7']];
+const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;   // masks can pass 32 bits
 
 // Show every Nth decade label, counted back from the latest, so that labels never overlap at the measured column width.
 function thinLabels(box) {
@@ -25,83 +36,105 @@ function thinLabels(box) {
   spans.forEach((s, i) => { s.style.visibility = (spans.length - 1 - i) % step ? 'hidden' : ''; });
 }
 
-try {
-  const key = new URLSearchParams(location.search).get('key');
-  if (!key) throw new Error('no species key in the address');
-  const snap = await snapshot();
-  const [summary, boundaries, part] = await Promise.all([snap.summary(), snap.boundaries(), getJSON(snap.file(`species/${shardOf(key)}.json`))]);
-  showDevBanner(summary);
-  const s = part[key];
-  if (!s) throw new Error('species not in this snapshot');
-  const dist = new Map(boundaries.districts.map(d => [d.id, d]));
-  const group = summary.groups[s.gi] || '';
-  document.title = `${s.name} · Overlooked`;
-  $('#name').textContent = s.name;
-  $('#crumb').textContent = `/ ${group} / ${s.family || ''}`;
-  $('#classif').textContent = [s.kingdom, s.phylum, s.class, s.order, s.family].filter(Boolean).join(' › ');
-  $('#tags').innerHTML = `<span class="tag2">${esc(group)}</span>`;
-
-  // Latest record in India.
-  const last = s.districts.reduce((m, d) => (d[2] != null && (m == null || d[2] > m[2]) ? d : m), null);
-  const first = Math.min(...s.districts.map(d => d[1] ?? 9999));
-  const records = s.districts.reduce((a, d) => a + d[3], 0);
-  const ld = last ? dist.get(last[0]) : null;
-  $('#latest').innerHTML = `<div class="note" style="margin:0">Latest public record in India</div>
-    <div class="mono" style="font-size:44px;font-weight:500;line-height:1.1;color:${last && last[2] < 1980 ? 'var(--quiet)' : 'var(--ink)'}">${last ? last[2] : 'unknown'}</div>
-    <div style="margin-top:6px">${ld ? `${esc(ld.name)}, ${esc(ld.state)}` : ''}</div>
-    <dl class="stats" style="margin-top:14px"><dt>First public record</dt><dd>${first < 9999 ? first : 'unknown'}</dd>
-    <dt>Public records in India</dt><dd>${fmt(records)}</dd><dt>Districts</dt><dd>${fmt(s.districts.length)}</dd></dl>
-    <div id="inat"></div>`;
-
-  // iNaturalist note, if the layer has one for this snapshot.
-  getJSON('layers/inat/latest.json').then(l => l && l.quiet_flags ? getJSON(l.quiet_flags) : null).then(f => {
-    const v = f && f.snapshot === summary.run_id ? f.species[key] : null;
-    if (v) $('#inat').innerHTML = `<p class="tagi" style="margin-top:12px">iNaturalist: seen in India ${esc(v[0])} (${QUALITY[v[1]] || esc(v[1])}${v[2] ? '' : ', no open licence'}); ${fmt(v[3])} observations in India</p>`;
-  }).catch(() => {});
-
-  // History by decade, stacked by kind of record.
+// GBIF records by decade, stacked by kind of record.
+function history(s) {
   const decades = new Map();
   for (const [dec, basis, n] of s.decades) {
     if (dec == null) continue;
-    const k = (KIND[basis] || KIND.OCCURRENCE).l;
+    const k = KIND[basis] || 'Other';
     const m = decades.get(dec) || {}; m[k] = (m[k] || 0) + n; decades.set(dec, m);
   }
-  if (decades.size) {
-    const lo = Math.min(...decades.keys()), hi = Math.max(...decades.keys(), 2020);
-    const cols = []; for (let d = lo; d <= hi; d += 10) cols.push(d);
-    const tot = d => Object.values(decades.get(d) || {}).reduce((a, b) => a + b, 0);
-    const max = Math.max(...cols.map(tot), 1);
-    const order = [['Specimen', '#16201C'], ['From a paper', '#8A9690'], ['Observation', '#2F5DA8'], ['Other', '#C5CCC7']];
-    $('#hist').innerHTML = cols.map(d => {
-      const m = decades.get(d) || {};
-      const segs = order.filter(([l]) => m[l]).map(([l, c]) => `<i style="height:${(100 * m[l] / max).toFixed(2)}%;background:${c}" title="${d}s: ${fmt(m[l])} ${l.toLowerCase()}"></i>`).join('');
-      return `<div class="col${d < 1980 ? ' old' : ''}"><div class="stack">${segs}</div><span class="mono">${d}</span></div>`;
+  if (!decades.size) return;
+  const lo = Math.min(...decades.keys()), hi = Math.max(...decades.keys(), 2020);
+  const cols = []; for (let d = lo; d <= hi; d += 10) cols.push(d);
+  const tot = d => Object.values(decades.get(d) || {}).reduce((a, b) => a + b, 0);
+  const max = Math.max(...cols.map(tot), 1);
+  $('#hist').innerHTML = cols.map(d => {
+    const m = decades.get(d) || {};
+    const segs = KIND_ORDER.filter(([l]) => m[l]).map(([l, c]) => `<i style="height:${(100 * m[l] / max).toFixed(2)}%;background:${c}" title="${d}s: ${fmt(m[l])} ${l.toLowerCase()}"></i>`).join('');
+    return `<div class="col"><div class="stack">${segs}</div><span class="mono">${d}</span></div>`;
+  }).join('');
+  const hist = $('#hist');
+  thinLabels(hist);
+  new ResizeObserver(() => thinLabels(hist)).observe(hist);
+  $('#hlegend').innerHTML = KIND_ORDER.map(([l, c]) => `<span class="lbl"><i class="sw" style="background:${c};border:0"></i>${l}</span>`).join('');
+  $('#histnote').textContent = `${lo}s to ${hi}s. Each bar is one decade, on one scale; the tallest has ${fmt(max)} records.`;
+  $('#gbif-hist').hidden = false;
+}
+
+try {
+  const key = new URLSearchParams(location.search).get('key');
+  if (!key) throw new Error('no species key in the address');
+  const latest = await getJSON('layers/master/latest.json');
+  const snap = await snapshot();
+  const [S, part, snapSummary, boundaries, gbif] = await Promise.all([
+    getJSON(latest.base + 'summary.json'), getJSON(`${latest.base}sp/${shardOf(key)}.json`),
+    snap.summary(), snap.boundaries(), getJSON(snap.file(`species/${shardOf(key)}.json`)).then(p => p[key]).catch(() => null)]);
+  showDevBanner(snapSummary);
+  const row = part[key];
+  if (!row) throw new Error('species not on the master list');
+  const [name, gi, sources, status, iucn, labels, obsMask, idMask, taxon, waitIndia, waitStates] = row;
+  const group = S.groups[gi] || '';
+  const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), id: bit(idMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
+  document.title = `${name} · Overlooked`;
+  $('#name').textContent = name;
+  $('#crumb').textContent = `/ ${group}${gbif?.family ? ` / ${gbif.family}` : ''}`;
+  $('#classif').textContent = gbif ? [gbif.kingdom, gbif.phylum, gbif.class, gbif.order, gbif.family].filter(Boolean).join(' › ') : group;
+
+  // Status, IUCN, sources, labels and what waits for a name.
+  const nId = states.filter(s => s.id).length, nObs = states.filter(s => s.obs).length;
+  const cat = S.iucn[iucn];
+  const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).filter(Boolean).join('') || '<span class="muted">–</span>';
+  const identify = place => `${IDENTIFY}?quality_grade=needs_id&taxon_id=${encodeURIComponent(taxon)}&place_id=${encodeURIComponent(place)}`;
+  $('#status').innerHTML = `<div class="muted crumb">In India</div>
+    <p class="sp-big">${STATUS[status]}</p><p class="note" style="margin:4px 0 12px">${STATUS_TEXT[status]}</p>
+    <dl class="stats">
+      <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span></dd>
+      <dt>Identified in</dt><dd>${fmt(nId)} state${nId === 1 ? '' : 's'}</dd>
+      <dt>Observed in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
+    </dl>
+    <div class="note" style="margin:12px 0 4px">Sources</div><div>${tags(sources, S.sources)}</div>
+    <div class="note" style="margin:12px 0 4px">Labels</div><div>${tags(labels, S.labels.map(l => l.name))}</div>
+    ${waitIndia ? `<p class="sp-wait"><b class="mono">${fmt(waitIndia)}</b> observation${waitIndia === 1 ? '' : 's'} on iNaturalist wait for a name.
+      <a class="idlink" href="${identify(S.waiting.places.india)}" target="_blank" rel="noopener">Identify on iNaturalist</a></p>` : ''}`;
+
+  // Map: each state shaded by what is known there.
+  const byState = new Map(states.map(s => [Number(s.code), s]));
+  const map = drawMap($('#map'), boundaries, {
+    label: `Map of India: where ${name} is observed and identified`, pickLabel: 'Explore this state',
+    onPick: d => { location.href = `/?state=${d.state_lgd}`; },
+  });
+  map.fill(new Map(boundaries.districts.map(d => [d.id, byState.get(d.state_lgd)])),
+    s => (s?.id ? '--q3' : s?.obs ? '--q1' : '--none'),
+    (id, s) => (s ? `${s.id ? 'Identified' : s.obs ? 'Observed, not identified' : 'No observation'} in the state${s.wait ? `; ${fmt(s.wait)} wait for a name` : ''}` : 'No data'));
+  const names = list => list.map(s => esc(s.name)).join(', ');
+  const waitList = states.filter(s => s.wait).sort((a, b) => b.wait - a.wait).slice(0, 8);
+  $('#where').innerHTML = (nId ? `Identified in ${names(states.filter(s => s.id))}.` : nObs ? 'Not identified in any state yet.' : 'No observation with a state yet.')
+    + (nObs > nId ? ` Observed but not identified in ${names(states.filter(s => s.obs && !s.id))}.` : '')
+    + (waitList.length && taxon ? `<br><span class="note">Waiting for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}</span>` : '');
+
+  // GBIF records, when the snapshot has the species.
+  if (gbif) {
+    history(gbif);
+    const dist = new Map(boundaries.districts.map(d => [d.id, d]));
+    $('#dh').textContent = `Districts with GBIF records (${fmt(gbif.districts.length)})`;
+    $('#districts').innerHTML = gbif.districts.map(([id, f, l, n]) => {
+      const d = dist.get(id);
+      return `<tr><td>${esc(d ? d.name : id)}</td><td>${d ? `<a href="/?state=${d.state_lgd}">${esc(d.state)}</a>` : ''}</td>
+        <td class="n mono">${f ?? 'unknown'}</td><td class="n mono">${l ?? 'unknown'}</td><td class="n mono">${fmt(n)}</td></tr>`;
     }).join('');
-    const hist = $('#hist');
-    thinLabels(hist);
-    new ResizeObserver(() => thinLabels(hist)).observe(hist);
-    $('#hlegend').innerHTML = order.map(([l, c]) => `<span class="lbl"><i class="sw" style="background:${c};border:0"></i>${l}</span>`).join('');
-    $('#histnote').textContent = `${lo}s to ${hi}s. Each bar is one decade, on one scale; the tallest has ${fmt(max)} records. The shaded decades are before 1980.`;
-  } else {
-    $('#hist').innerHTML = '<p class="muted">No history by decade in this snapshot.</p>';
+    $('#gbif-districts').hidden = false;
   }
 
-  // Districts.
-  $('#dh').textContent = `Districts with records (${fmt(s.districts.length)})`;
-  $('#districts').innerHTML = s.districts.map(([id, f, l, n]) => {
-    const d = dist.get(id);
-    return `<tr><td><a href="/ledger?district=${id}">${esc(d ? d.name : id)}</a></td><td>${esc(d ? d.state : '')}</td>
-      <td class="n mono">${f ?? 'unknown'}</td><td class="n"><span class="yr${l != null && l < 1980 ? ' q' : ''}">${l ?? 'unknown'}</span></td><td class="n mono">${fmt(n)}</td></tr>`;
-  }).join('');
-
-  const q = encodeURIComponent(s.name);
+  const q = encodeURIComponent(name);
   $('#links').innerHTML = [
-    summary.taxon_ids === 'gbif' ? `<a href="https://www.gbif.org/species/${encodeURIComponent(key)}">GBIF species page</a>` : `<a href="https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(key)}">Catalogue of Life</a>`,
+    `<a href="https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(key)}">Catalogue of Life</a>`,
     `<a href="https://www.gbif.org/species/search?q=${q}">GBIF: search this name</a>`,
-    `<a href="https://www.inaturalist.org/observations?place_id=6681&taxon_name=${q}">iNaturalist: observations in India</a>`,
+    taxon ? `<a href="https://www.inaturalist.org/taxa/${encodeURIComponent(taxon)}">iNaturalist</a>` : `<a href="https://www.inaturalist.org/taxa/search?q=${q}">iNaturalist: search this name</a>`,
+    `<a href="https://www.iucnredlist.org/search?query=${q}">IUCN Red List</a>`,
     `<a href="https://indiabiodiversity.org/species/list?query=${q}">India Biodiversity Portal</a>`,
   ].map(x => `<li>${x}</li>`).join('');
-  $('#source').innerHTML = `"No public record since 1980" means that GBIF has no record of the species in the area after 1980. It does not mean that the species is not there now. ${sourceLine(summary)}`;
+  $('#source').innerHTML = `${esc(S.disclaimer || '')} ${sourceLine(snapSummary)}`;
 } catch (err) {
   showLoadError(err);
 }

@@ -217,3 +217,6 @@ a.idlink { white-space: nowrap; font-weight: 500 }
 }
 @media (max-width: 600px) { .tiles4 { grid-template-columns: 1fr 1fr; gap: 10px } .tiles4 .kpi { padding: 14px } .tiles4 .kpi span { font-size: 13px } }
 .seg { flex-wrap: wrap; align-items: center } .seg-label { font-size: 13px; margin-right: 2px }
+.sp-status { flex: 1 1 300px; align-self: stretch } .sp-big { margin: 4px 0 0; font-size: 26px; font-weight: 600 }
+.sp-wait { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line-2) } .sp-wait .idlink { display: inline-block; margin-top: 4px }
+.sp-main .ex-map { --none: var(--zero) }

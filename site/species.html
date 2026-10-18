@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Species · Overlooked</title>
-<meta name="description" content="Public records of one species in India: latest record, districts, and history by decade.">
+<meta name="description" content="One species of India: which sources list it, where it is observed and identified, its IUCN status, and observations that wait for a name.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/style.css">
-<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="preload" href="/data/layers/master/latest.json" as="fetch" crossorigin>
 <link rel="modulepreload" href="/assets/common.js">
+<link rel="modulepreload" href="/assets/map.js">
 <script type="module" src="/assets/species.js"></script>
 </head>
 <body>
@@ -33,27 +34,37 @@
 
 <main id="main" class="wrap">
   <nav aria-label="Breadcrumb" class="note" id="crumbs" style="margin-top:32px"><a href="/">Explore</a> <span id="crumb"></span></nav>
-  <section class="row" style="margin-top:14px;align-items:flex-start">
-    <div class="grow">
-      <h1 class="page" id="name" style="font-style:italic">Loading…</h1>
-      <p class="lede" id="classif" style="margin-top:8px"></p>
-      <div class="tags" id="tags"></div>
-    </div>
-    <aside class="side card pad" id="latest" aria-live="polite"></aside>
+  <section style="margin-top:14px">
+    <h1 class="page" id="name" style="font-style:italic">Loading…</h1>
+    <p class="lede" id="classif" style="margin-top:8px"></p>
   </section>
 
-  <section class="card pad">
+  <section class="ex-main sp-main">
+    <div class="card pad sp-status" id="status" aria-live="polite"></div>
+    <div class="card ex-map">
+      <div class="ex-sel"><div class="grow"><div class="muted crumb">Where in India</div>
+        <p class="headline" id="where"></p></div></div>
+      <div id="map" class="mapbox" aria-label="Map"></div>
+      <div class="legend" id="legend">
+        <span class="lbl"><i class="sw" style="background:var(--q3);border:0"></i>Identified</span>
+        <span class="lbl"><i class="sw" style="background:var(--q1);border:0"></i>Observed, not identified</span>
+        <span class="lbl"><i class="sw" style="background:var(--zero);border:0"></i>No observation</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card pad" id="gbif-hist" hidden>
     <div class="row" style="justify-content:space-between;align-items:baseline;margin:0">
-      <h2>Public records by decade</h2>
+      <h2>GBIF records by decade</h2>
       <div class="legend" id="hlegend" style="margin:0"></div>
     </div>
-    <div class="hist" id="hist" role="img" aria-label="Public records of this species in India by decade and kind of record"></div>
+    <div class="hist" id="hist" role="img" aria-label="GBIF records of this species in India by decade and kind of record"></div>
     <p class="note" id="histnote"></p>
   </section>
 
   <section class="row">
-    <div class="grow card">
-      <div class="bar-head"><h2 style="font-size:20px" id="dh">Districts with records</h2></div>
+    <div class="grow card" id="gbif-districts" hidden>
+      <div class="bar-head"><h2 style="font-size:20px" id="dh">Districts with GBIF records</h2></div>
       <div class="tablebox"><table style="min-width:560px">
         <thead><tr><th>District</th><th>State</th><th class="n">First record</th><th class="n">Latest record</th><th class="n">Records</th></tr></thead>
         <tbody id="districts"></tbody></table></div>
@@ -61,7 +72,7 @@
     <div class="side" style="display:flex;flex-direction:column;gap:20px">
       <div class="card pad"><h2 style="font-size:18px">Look further</h2><ul class="plain" id="links"></ul></div>
       <div class="act" style="display:block"><h2 style="font-size:18px">Did you see it?</h2>
-        <p>Add a photo with the date and the place. A new public record shows here after the next monthly run.</p>
+        <p>Add a photo with the date and the place. It shows here after the next monthly run.</p>
         <div class="links" style="margin-top:12px"><a class="primary" href="https://www.inaturalist.org/observations/new">Record on iNaturalist</a>
         <a href="https://indiabiodiversity.org/observation/create">India Biodiversity Portal</a></div></div>
     </div>

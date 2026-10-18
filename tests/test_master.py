@@ -59,11 +59,11 @@ def inputs(tmp_path):
                                          "state": "", "link": "https://x/1", "group": "Birds", "key": "K4",
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
                                          "any_record": False}])
-    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "candidates": None},
+    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc,
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
-                                                          [55, "Hia", "Aves", 1]]}},
+                                                          [55, "Hia", "Aves", 1], [56, "Hus", "Plantae", 2]]}},
                        "inat_coarse": {"counts": {"32": {"Aves": 4}, "india": {"Aves": 9, "Insecta": 1}}}},
             "districts": dist}
 
@@ -216,6 +216,24 @@ def test_waiting_at_genus_and_above(built):
     # Hia: the genus of an older name of Hus ius, still known to the list through that name.
     assert rows == [["Hia", 55, 1, [], 1, 0, 0, 0], ["Hus", 50, 5, [[1, 3]], 1, 0, 0, 0]]
     assert json.loads((out / "wg" / f"{other}.json").read_text())["rows"] == [["Nus", 60, 2, [], 0, 0, 0, 0]]
+    # A plant genus spelled like the bird genus Hus: not counted with the birds.
+    plants = GROUPS.index("Plants: other flowering plants & conifers")
+    assert json.loads((out / "wg" / f"{plants}.json").read_text())["rows"] == [["Hus", 56, 2, [], 0, 0, 0, 0]]
+
+
+def test_species_files(built):
+    """sp/<shard>.json: one object per species key, for the species page."""
+    from pipeline import site_data
+    out = built["out"]
+    birds = GROUPS.index("Birds")
+    g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
+    part = json.loads((out / "sp" / f"{site_data.shard_of('G1')}.json").read_text())
+    # [name, group index, sources, status, IUCN, labels, states observed, states identified,
+    #  iNaturalist taxon, observations waiting in India, [[state index, n]]]
+    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:8], 3, 6, [[1, 6]]]
+    gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
+    assert gus[0] == "Gus hus" and gus[8:] == [None, 0, []]          # nothing waits
+    assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
 
 
 def test_prefix():

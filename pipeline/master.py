@@ -17,7 +17,7 @@ GBIF's name match against the Catalogue of Life (one request per name, cached in
 A name that does not match stays on the list with the label "name not matched".
 
 Inputs (all optional except the snapshot):
-  snapshot      snapshots/<run>/{species,ledger,species_decade}.parquet (+ unlocated, candidates when built)
+  snapshot      snapshots/<run>/{species,ledger,species_decade}.parquet (+ unlocated when built)
   ZSI           data/fnf/zsi/zsi_checklist_matched.csv, else R2 cache/master/zsi_checklist.csv
   WCVP          data/fnf/wcvp/wcvp_india.parquet, else R2 cache/master/wcvp_india.parquet
   BSI checklist data/bsi/bsi_checklist.csv, else R2 cache/bsi/bsi_checklist.csv
@@ -57,7 +57,7 @@ from pipeline import health, iucn
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
-from pipeline.site_data import RIGHTS
+from pipeline.site_data import RIGHTS, shard_of
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "master"
@@ -223,7 +223,7 @@ def snapshot_input(s3, run_id):
     """Paths of the snapshot files; missing ones are fetched from R2 snapshots/<run>/."""
     folder = SNAPSHOTS / run_id
     paths = {}
-    for name in ("species", "ledger", "species_decade", "unlocated", "candidates"):
+    for name in ("species", "ledger", "species_decade", "unlocated"):
         p = folder / f"{name}.parquet"
         if not p.exists() and s3:
             r2_file(s3, f"snapshots/{run_id}/{name}.parquet", p)
@@ -709,18 +709,26 @@ def waiting_genus(con, n, out: Path):
                    UNION SELECT id, name FROM evidence_r WHERE name IS NOT NULL
                    UNION SELECT coalesce(m.canonical, a.key), a.name FROM alias a LEFT JOIN idmap m ON m.id = a.key
                    WHERE a.key IS NOT NULL),
-        g AS (SELECT DISTINCT split_part(n.name, ' ', 1) AS genus, s.* FROM n JOIN site s USING (id))
-        SELECT genus, mode(gi) AS gi, count(*) AS docs,
+        g AS (SELECT DISTINCT split_part(n.name, ' ', 1) AS genus, i.kingdom, s.*
+              FROM n JOIN site s USING (id) JOIN ids i USING (id))
+        SELECT genus, kingdom, mode(gi) AS gi, count(*) AS docs,
                count(*) FILTER (WHERE status < 2) AS unid, count(*) FILTER (WHERE iucn IN {THREATENED}) AS threat,
                count(*) FILTER (WHERE (labels_mask >> {end}) & 1 = 1) AS endemic
-        FROM g GROUP BY 1""")
+        FROM g GROUP BY 1, 2""")
+    # A genus name can belong to a plant and to an animal: match the kingdom when both sides know it.
     iconic = " ".join(f"WHEN '{k}' THEN {GROUPS.index(v)}" for k, v in ICONIC_GROUP.items())
+    kingdom = " ".join(f"WHEN '{k}' THEN '{v[0]}'" for k, v in INAT_HINTS.items())
     con.sql(f"""
         CREATE OR REPLACE TABLE wait_genus AS
-        SELECT g.*, coalesce(s.gi, CASE g.iconic {iconic} ELSE {GROUPS.index("Other")} END) AS gi,
-               coalesce(s.docs, 0) AS docs, coalesce(s.unid, 0) AS unid, coalesce(s.threat, 0) AS threat,
-               coalesce(s.endemic, 0) AS endemic
-        FROM inat_genus g LEFT JOIN genus_stats s USING (genus)""")
+        WITH g AS (SELECT *, CASE iconic {kingdom} END AS hk FROM inat_genus),
+        m AS (SELECT g.genus, g.hk, arg_min(s, CASE WHEN s.kingdom = g.hk THEN 0 ELSE 1 END) AS s
+              FROM (SELECT DISTINCT genus, hk FROM g) g JOIN genus_stats s
+                ON s.genus = g.genus AND (s.kingdom IS NULL OR g.hk IS NULL OR s.kingdom = g.hk)
+              GROUP BY ALL)
+        SELECT g.* EXCLUDE (hk), coalesce(m.s.gi, CASE g.iconic {iconic} ELSE {GROUPS.index("Other")} END) AS gi,
+               coalesce(m.s.docs, 0) AS docs, coalesce(m.s.unid, 0) AS unid, coalesce(m.s.threat, 0) AS threat,
+               coalesce(m.s.endemic, 0) AS endemic
+        FROM g LEFT JOIN m ON m.genus = g.genus AND m.hk IS NOT DISTINCT FROM g.hk""")
     india, by_state = per_area(con.sql(
         "SELECT state_lgd, gi, count(DISTINCT genus), sum(n) FROM wait_genus GROUP BY ALL").fetchall(), n, 2)
     group_files(out, "wg", ((gi, [genus, taxon, int(n_india), state_pairs(states), docs, unid, threat, endemic])
@@ -764,6 +772,23 @@ def waiting(con, n, out: Path, places, coarse=None):
             "coarse": {"india": counts.get("india", {}), "by_state": {k: v for k, v in counts.items() if k != "india"}}}
 
 
+def species_files(con, out: Path):
+    """sp/<shard>.json for the species page: {key: [name, group index, sources, status, IUCN, labels,
+    states observed, states identified, iNaturalist taxon, observations waiting in India, [[state index, n]]]}.
+    Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
+    shutil.rmtree(out / "sp", ignore_errors=True)
+    parts = {}
+    for key, *row, taxon, n_india, states in con.sql("""
+            SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
+                   s.states_id_mask, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
+                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL)
+            FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
+            WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
+        parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states)]
+    for i, part in parts.items():
+        dump(part, out / "sp" / f"{i}.json")
+
+
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
     """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
     states = states_list(districts_path)
@@ -801,7 +826,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
-
+    species_files(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(f"SELECT gi, {ROW_SQL} FROM site s ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
     for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask
