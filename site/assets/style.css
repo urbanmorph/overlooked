@@ -64,13 +64,13 @@ h2 { margin: 0; font-size: 22px; font-weight: 600 }
 section { margin-top: 32px }
 
 /* Map */
-.map { position: relative; margin-top: 12px; aspect-ratio: 2711 / 3054; max-height: 640px; margin-inline: auto; display: flex; align-items: center; justify-content: center }
-.map svg { flex: 1 1 auto; align-self: stretch }
-.map svg { width: 100%; height: 100%; display: block }
-.map path { stroke: #fff; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: pointer }
-.map path:hover { stroke: var(--ink); stroke-width: 1.5 }
-.map path.sel, .map path.hl { stroke: var(--ink); stroke-width: 2.5 }
-.map path.dim { opacity: .35 }
+.mapbox { position: relative; margin-top: 12px; aspect-ratio: 2711 / 3054; max-height: 640px; margin-inline: auto; display: flex; align-items: center; justify-content: center }
+.mapbox svg { flex: 1 1 auto; align-self: stretch }
+.mapbox svg { width: 100%; height: 100%; display: block }
+.mapbox path { stroke: #fff; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: pointer }
+.mapbox path:hover { stroke: var(--ink); stroke-width: 1.5 }
+.mapbox path.sel, .mapbox path.hl { stroke: var(--ink); stroke-width: 2.5 }
+.mapbox path.dim { opacity: .35 }
 .tip { position: absolute; left: 0; top: 0; pointer-events: none; background: var(--ink); color: #fff; font-size: 13px; line-height: 1.4; padding: 6px 9px; border-radius: 6px; width: max-content; max-width: min(280px, 100%); z-index: 2 }
 .tip.touch { pointer-events: auto; font-size: 14px; padding: 10px 12px } .tip button.b { margin-top: 8px; font-weight: 600 }
 .legend { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--ink-2) }
@@ -180,6 +180,7 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--field); border-radius: 18px; font-size: 13px; cursor: pointer; background: var(--surface) }
 .yr { display: inline-flex; align-items: center; gap: 6px; font-size: 14px }
 .yr input { font: inherit; width: 6.5em; min-height: 36px; padding: 0 8px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); color: var(--ink) }
+#list tr.picked td { background: var(--chip) }
 #fyears .note { flex: 1 1 100%; margin: 2px 0 0 }
 .yr-quick { display: flex; flex-wrap: wrap; gap: 6px }
 .chip input { width: 16px; height: 16px; margin: 0 } .chip:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink) }

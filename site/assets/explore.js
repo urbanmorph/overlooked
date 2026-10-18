@@ -61,6 +61,8 @@ try {
     state: stIndex.has(url.searchParams.get('state') || '') ? url.searchParams.get('state') : null,
     filters: { sources: new Set(), status: new Set(), iucn: new Set(), labels: new Set() },
     years: parseYears(url.searchParams.get('described')),
+    district: null,   // a district chosen in search: outlined on the map; the figures stay those of its state
+    pick: null,       // a name chosen in search that has no species page: listed first in its group
   };
   const saveURL = () => {
     const u = new URL(location.href);
@@ -135,6 +137,7 @@ try {
   }
   const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(a && a / b < 0.1 ? 1 : 0)}%` : '–');
   const catOf = key => cats.find(c => c.key === key);
+  const catOfGi = gi => cats.find(c => c.gis.includes(gi));
   const gisNow = () => (st.cat ? catOf(st.cat).gis : allGis);
 
   // Value shown on the map and in the cards, by view.
@@ -160,6 +163,7 @@ try {
     });
     $('#legend').innerHTML = legendHTML(breaks, `${VIEW_TEXT[st.view].unit[0].toUpperCase()}${VIEW_TEXT[st.view].unit.slice(1)}, by state`);
     map.focusState(st.state == null ? null : +st.state);
+    map.select(st.district);
   }
 
   function paintCards() {
@@ -181,12 +185,13 @@ try {
   function paintHead() {
     const c = st.cat ? catOf(st.cat) : null, gis = gisNow(), f = fig(gis, st.state), india = !st.state;
     const v = value(f, india);
-    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
+    const district = st.district && map.info.get(st.district)?.name;
+    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}${district ? ` / ${district}` : ''}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
     $('#pq').textContent = india ? fmt(st.view === 'observed' ? f.obs : st.view === 'identified' ? f.id : f.thr) : v.big;
     $('#psub').textContent = india
       ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`
         : `of ${fmt(f.doc)} documented species are ${st.view} (${pct(st.view === 'observed' ? f.obs : f.id, f.doc)}).`)
-      : `${v.line}.`;
+      : `${v.line}.${district ? ` The figures are for all of ${stName.get(st.state)}: the list counts species by state, not by district.` : ''}`;
     const w = waitFig(gis, st.state), place = st.state ? stName.get(st.state) : 'India';
     const genus = genusFig(gis, st.state)[1], coarse = coarseRows(st.cat, st.state).reduce((a, [, n]) => a + n, 0);
     $('#pwait').hidden = st.view !== 'identified' || !w[0];
@@ -324,8 +329,11 @@ try {
       return passes(r);
     }).sort((a, b) => a[1].localeCompare(b[1]));
     $('#list-sub').textContent = `${fmt(rows.length)} species · ${c.name}${st.state ? ` · ${stName.get(st.state)}` : ''}`;
-    $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr>
-        <td>${speciesLink(r[0], r[1])}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
+    // A name chosen in search with no species page goes first, whatever the view and the state.
+    const picked = st.pick && parts.flat().find(r => !r[0] && r[1] === st.pick);
+    if (picked) rows.splice(0, rows.length, picked, ...rows.filter(r => r !== picked));
+    $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
+        <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
         <td>${iucnBadge(r[4])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
       || '<tr><td colspan="7" class="muted">No species match.</td></tr>';
     $('#more').hidden = rows.length <= shown;
@@ -341,9 +349,11 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintCards(); paintHead(); paintMap(); paintList();
+    paintCards(); paintHead(); paintMap(); await paintList();
   }
-  function setState(code) { st.state = code; shown = PAGE; paint(); }
+  function setState(code, district = null) { st.state = code; st.district = district; shown = PAGE; return paint(); }
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const bringIntoView = (el, block = 'center') => el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block });
 
   // Events.
   document.querySelector('.views').addEventListener('click', e => {
@@ -352,7 +362,7 @@ try {
   });
   $('#cards').addEventListener('click', e => {
     const b = e.target.closest('.gcard'); if (!b) return;
-    st.cat = b.dataset.cat || null; shown = PAGE; paint();
+    st.cat = b.dataset.cat || null; st.pick = null; shown = PAGE; paint();
   });
   $('#list-mode').addEventListener('click', e => {
     const b = e.target.closest('[data-list]'); if (!b) return;
@@ -420,21 +430,28 @@ try {
     const [pl, sp] = await Promise.all([places, p ? getJSON(`${base}search/${p}.json`).catch(() => ({ rows: [] })) : { rows: [] }]);
     if (my !== seq) return;
     const hits = [];
-    for (const c of cats) if (c.name.toLowerCase().includes(q)) hits.push({ html: esc(c.name), kind: 'Group', go: () => { st.cat = c.key; paint(); } });
+    for (const c of cats) if (c.name.toLowerCase().includes(q)) hits.push({ html: esc(c.name), kind: 'Group', go: async () => { st.cat = c.key; st.pick = null; shown = PAGE; await paint(); bringIntoView($('#list-h'), 'start'); } });
     for (const r of pl.rows) {
       if (hits.length > 6) break;
-      if (r[0].toLowerCase().startsWith(q)) hits.push({ html: esc(r[0]), kind: r[1] === 'state' ? 'State' : `District, ${esc(stName.get(String(r[3])) || '')}`, go: () => setState(String(r[1] === 'state' ? r[2] : r[3])) });
+      if (r[0].toLowerCase().startsWith(q)) hits.push({ html: esc(r[0]), kind: r[1] === 'state' ? 'State' : `District, ${esc(stName.get(String(r[3])) || '')}`, go: () => (r[1] === 'state' ? setState(String(r[2])) : setState(String(r[3]), r[2])) });
     }
     for (const r of sp.rows) {
       if (hits.length > 12) break;
       if (r[0].toLowerCase().startsWith(q) && passes([r[1], r[0], r[5], r[3], r[4], r[6], 0, 0, r[7]])) {
-        hits.push({ html: `<i>${esc(r[0])}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => { if (r[1]) location.href = `/species?key=${encodeURIComponent(r[1])}`; } });
+        hits.push({ html: `<i>${esc(r[0])}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(r[0], r[2])) });
       }
     }
     box.innerHTML = hits.map((h, i) => `<button type="button" role="option" data-i="${i}"><span>${h.html}</span><span class="muted">${h.kind}</span></button>`).join('')
       || '<div class="muted none">No match. Check the spelling, or clear the filters.</div>';
     box.hidden = false;
     box.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; box.hidden = true; $('#q').value = ''; hits[+b.dataset.i].go(); };
+  }
+  // A name with no species page: open its group, list it first and bring it into view.
+  async function showName(name, gi) {
+    st.cat = catOfGi(gi)?.key ?? null; st.pick = name; shown = PAGE;
+    if (st.view === 'identified') st.list = 'done';
+    await paint();
+    bringIntoView(document.querySelector('#list tr.picked'));
   }
   $('#q').addEventListener('input', runSearch);
   $('#q').addEventListener('keydown', e => { if (e.key === 'Escape') $('#hits').hidden = true; });
