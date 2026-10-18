@@ -186,3 +186,10 @@ def test_rights_travel_with_the_data():
     assert r["licence"].startswith("CC BY 4.0") and "Sathya Sankaran" in r["licence"]
     assert "Botanical Survey of India" in r["attribution"] and "Zoological Survey of India" in r["attribution"]
     assert "not an official" in r["disclaimer"]
+
+
+def test_new_species_window_is_one_constant():
+    from pipeline import layer_newspecies
+    assert layer_newspecies.FIRST_YEAR == gbif.NEW_SPECIES_FROM == 2007
+    for q in ("recent_history", "verbatim_names"):
+        assert '"year" >= 2007' in gbif.build_sql(q)

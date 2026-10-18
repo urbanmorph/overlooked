@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New species · Overlooked</title>
-<meta name="description" content="Species described from India since 2015: has anyone made a public record of them since the description?">
+<meta name="description" content="Species described as new to science from India since 2007: observed again after the description, identified, and IUCN status.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -32,9 +32,9 @@
 
 <main id="main" class="wrap">
   <section style="margin-top:40px">
-    <p class="mono note" id="runline" style="margin:0 0 8px">Module 03</p>
+    <p class="mono note" id="runline" style="margin:0 0 8px">New species</p>
     <h1 class="page">Follow-up on new species</h1>
-    <p class="lede">Scientists describe hundreds of new species from India each year. This page asks one question about each species described since 2015: is there a public record of it after the description?</p>
+    <p class="lede">Scientists describe hundreds of new species from India each year. For each one, this page asks: did anyone observe it again after the description, is the name confirmed, and what is its IUCN status?</p>
   </section>
 
   <section class="card pad" id="pending" hidden>
@@ -43,27 +43,31 @@
   </section>
 
   <div id="body" aria-busy="true">
-    <section aria-label="Key figures" class="kpis" id="kpis">
-      <div class="card kpi"><b>–</b><span>species described from India since 2015 (names from Plazi and BSI)</span></div>
-      <div class="card kpi"><b style="color:var(--quiet)">–</b><span>with no public record after the description</span></div>
-      <div class="card kpi"><b style="color:var(--accent)">–</b><span>recorded again after the description</span></div>
-      <div class="card kpi"><b>–</b><span>have any public record in India, often only the type material from the description</span></div>
+    <form class="filters" onsubmit="return false" style="margin:0 0 16px">
+      <label class="f inline">Described from <select id="f-from"></select></label>
+      <label class="f inline">to <select id="f-to"></select></label>
+    </form>
+    <section aria-label="Key figures" class="kpis tiles4" id="kpis">
+      <div class="card kpi"><b>–</b><span id="k0">species described from India</span></div>
+      <div class="card kpi"><b style="color:var(--q3)">–</b><span>not observed again after the description</span></div>
+      <div class="card kpi"><b style="color:var(--accent)">–</b><span>identified: a record with the name confirmed</span></div>
+      <div class="card kpi"><b>–</b><span id="k3">assessed by IUCN</span></div>
     </section>
 
     <section class="row">
       <div class="grow card pad">
         <h2>Which groups get a follow-up?</h2>
-        <p class="note">Share of the species described since 2015, by what happened after the description</p>
+        <p class="note">Share of the species described in these years, by what happened after the description</p>
         <div class="sbars" id="sbars"></div>
         <div class="legend">
-          <span class="lbl"><i class="sw" style="background:var(--accent);border:0"></i>Recorded again</span>
+          <span class="lbl"><i class="sw" style="background:var(--accent);border:0"></i>Observed again</span>
           <span class="lbl"><i class="sw" style="background:#8FB9AE;border:0"></i>Only in later papers</span>
-          <span class="lbl"><i class="sw" style="background:var(--q2);border:0"></i>No public record since</span>
+          <span class="lbl"><i class="sw" style="background:var(--q2);border:0"></i>Not observed since</span>
         </div>
       </div>
       <aside class="side card pad">
         <h2>By year described</h2>
-        <p class="note">Species with no public record after the description</p>
+        <p class="note">Species not observed again after the description</p>
         <div class="gbars" id="ybars" style="margin-top:14px"></div>
       </aside>
     </section>
@@ -71,13 +75,14 @@
     <section class="card">
       <form class="filters pad" onsubmit="return false" style="padding:18px">
         <label class="f">Group <select id="f-group"><option value="">All groups</option></select></label>
-        <label class="f">After the description <select id="f-status"><option value="">All</option><option value="none">No public record since</option><option value="later_papers">Only in later papers</option><option value="recorded">Recorded again</option></select></label>
-        <label class="f">Year described <select id="f-year"><option value="">All years</option></select></label>
+        <label class="f">After the description <select id="f-status"><option value="">All</option><option value="none">Not observed since</option><option value="later_papers">Only in later papers</option><option value="recorded">Observed again</option></select></label>
+        <label class="f">Name <select id="f-id"><option value="">All</option><option value="2">Identified</option><option value="1">Observed, not identified</option><option value="0">Listed only</option></select></label>
+        <label class="f">IUCN <select id="f-iucn"><option value="">All</option><option value="threat">Threatened (CR, EN, VU)</option><option value="assessed">Assessed</option><option value="NE">Not assessed</option></select></label>
         <label class="f">Species <input type="search" id="f-q" placeholder="Name" autocomplete="off"></label>
       </form>
-      <div class="tablebox"><table style="min-width:960px">
-        <thead><tr><th>Species</th><th>Group</th><th class="n">Described</th><th>Source</th><th>Type locality</th><th>After the description</th><th>Found by</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="7" class="muted" style="padding:24px 14px">Loading…</td></tr></tbody></table></div>
+      <div class="tablebox"><table style="min-width:1000px">
+        <thead><tr><th>Species</th><th>Group</th><th class="n">Described</th><th>Source</th><th>Type locality</th><th>After the description</th><th>Identified (any date)</th><th>IUCN</th><th>Waiting</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="9" class="muted" style="padding:24px 14px">Loading…</td></tr></tbody></table></div>
       <div class="pager"><span id="pinfo"></span><span class="row" style="gap:8px;margin:0">
         <button class="b" type="button" id="prev">Previous</button><button class="b" type="button" id="next">Next</button></span></div>
     </section>
@@ -86,15 +91,15 @@
       <div class="grow card pad">
         <h2>How a follow-up is found</h2>
         <ol class="plain">
-          <li>The name as published, in this month's snapshot.</li>
+          <li>The name as published, in this month's GBIF data.</li>
           <li>GBIF's match against the Catalogue of Life, which also finds synonyms.</li>
           <li>GBIF records under the name as published, when GBIF could not match it to a species.</li>
         </ol>
-        <p class="note">A follow-up is a record dated after the year of the description. Records copied from papers (Plazi) count only as "later papers". Records from the year of the description are not counted, because they are often the type material.</p>
+        <p class="note">"Observed again" means a record dated after the year of the description. Records copied from papers (Plazi) count only as "later papers". Records from the year of the description are not counted, because they are often the type material. "Identified" and "IUCN" come from the master list, as on the rest of the site.</p>
       </div>
       <div class="side card pad">
         <h2>Where the names come from</h2>
-        <p class="note" style="font-size:15px">Plazi: species with an Indian holotype, marked "sp. nov." (CC0). Botanical Survey of India: Plant Discoveries, species new to science (reproduced with acknowledgement). Journals that Plazi does not process are missing, for example most issues of the Journal of Threatened Taxa after 2020.</p>
+        <p class="note" style="font-size:15px" id="names-from">Plazi: species with an Indian holotype, marked "sp. nov." (CC0). Botanical Survey of India: Plant Discoveries, species new to science. Zoological Survey of India: Animal Discoveries, species new to science. BSI and ZSI material is reproduced with acknowledgement. Journals that Plazi does not process are missing, for example most issues of the Journal of Threatened Taxa after 2020.</p>
       </div>
     </section>
   </div>

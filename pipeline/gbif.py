@@ -40,6 +40,10 @@ def session():
     return http
 
 
+# New species: described from India since this year (BSI Plant Discoveries and ZSI Animal Discoveries start in 2007/8).
+NEW_SPECIES_FROM = 2007
+
+
 def build_sql(name, state=None):
     keys = lambda f: [f"'{r['datasetKey']}'" for r in csv.DictReader(f.open())]
     excluded = ", ".join(keys(EXCLUDED))
@@ -51,7 +55,8 @@ def build_sql(name, state=None):
     text = (QUERIES / f"{name}.sql").read_text()
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("--"))
     return " ".join(body.format(excluded=excluded, excluded_unlocated=excluded_unlocated, dna_dataset=DNA_DATASET,
-                                   region_filter=region, stateprovince_filter=text_region).split())
+                                   region_filter=region, stateprovince_filter=text_region,
+                                   first_year=NEW_SPECIES_FROM).split())
 
 
 def request_body(sql):

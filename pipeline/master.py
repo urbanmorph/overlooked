@@ -789,6 +789,18 @@ def species_files(con, out: Path):
         dump(part, out / "sp" / f"{i}.json")
 
 
+def newspecies_file(con, out: Path):
+    """ns.json for the New species page: {key: [status, IUCN index, labels, states observed, states identified,
+    observations waiting in India, iNaturalist taxon]} for species labelled new since the first year."""
+    ns = CODES.index("ns")
+    dump({key: [status, iucn, labels, n_obs, n_id, int(wait), taxon] for key, status, iucn, labels, n_obs, n_id, wait, taxon in con.sql(f"""
+            SELECT s.key, s.status, s.iucn_i, s.labels_mask, len(s.states_observed), len(s.states_identified),
+                   coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0), any_value(w.taxon)
+            FROM site s LEFT JOIN wait w USING (id)
+            WHERE s.key IS NOT NULL AND (s.labels_mask >> {ns}) & 1 = 1 GROUP BY ALL ORDER BY s.key""").fetchall()},
+         out / "ns.json")
+
+
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
     """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
     states = states_list(districts_path)
@@ -827,6 +839,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
+    newspecies_file(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(f"SELECT gi, {ROW_SQL} FROM site s ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
     for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask

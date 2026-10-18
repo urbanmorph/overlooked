@@ -1,8 +1,8 @@
-"""Module 3: follow-up on species described from India since 2015. A dated layer, like the iNaturalist one.
+"""Module 3: follow-up on species described from India since FIRST_YEAR (2007). A dated layer, like the iNaturalist one.
 
 Steps (each saved in R2 cache/newspecies/state_<month>.json, so a run can stop and continue):
   1. names     new species from Plazi (Indian holotype, "sp. nov.") and BSI Plant Discoveries (new to science)
-  2. downloads GBIF query Y (records since 2015 by species, year, kind) and query V (unmatched names as published),
+  2. downloads GBIF query Y (records since FIRST_YEAR by species, year, kind) and query V (unmatched names as published),
                one after the other
   3. match     each name to a species in the latest snapshot: exact name, then GBIF's match against the
                Catalogue of Life (synonyms), then the name as published in GBIF records
@@ -27,7 +27,7 @@ from pipeline import bsi, gbif, health
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
-FIRST_YEAR = 2015
+FIRST_YEAR = gbif.NEW_SPECIES_FROM
 COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"   # Catalogue of Life eXtended Release, as a GBIF checklist
 SP_NOV = re.compile(r"^\s*(sp\.?\s*nov\.?|nov\.?\s*sp\.?)\s*$", re.I)
 QUERIES = ["recent_history", "verbatim_names"]

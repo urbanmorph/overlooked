@@ -236,6 +236,15 @@ def test_species_files(built):
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
 
 
+def test_new_species_file(built):
+    """ns.json: for each species labelled new since the first year, what the master list knows, keyed by key."""
+    ns = json.loads((built["out"] / "ns.json").read_text())
+    iucn = built["summary"]["iucn"]
+    # [status, IUCN index, labels, states observed, states identified, observations waiting in India, taxon]
+    labels = [lab["code"] for lab in built["summary"]["labels"]]
+    assert ns == {"K4": [0, iucn.index("NE"), (1 << labels.index("chk")) | (1 << labels.index("ns")), 0, 0, 0, None]}
+
+
 def test_prefix():
     assert master.prefix("Aus bus") == "au" and master.prefix("×Cus") == "_c" and master.prefix("A") == "a_"
 
