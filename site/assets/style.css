@@ -215,3 +215,4 @@ a.idlink { white-space: nowrap; font-weight: 500 }
   .waitlist th:not(:first-child), .waitlist td:not(:first-child) { display: none }
   .waitlist .wm { display: block; margin-top: 6px; font-size: 14px; line-height: 1.8 }
 }
+@media (max-width: 600px) { .tiles4 { grid-template-columns: 1fr 1fr; gap: 10px } .tiles4 .kpi { padding: 14px } .tiles4 .kpi span { font-size: 13px } }

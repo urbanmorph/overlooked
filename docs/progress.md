@@ -25,6 +25,10 @@ Newest first. Updated as work happens.
   observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the
   first identification in India. The Identified view lists them per group and state, most useful first
   (no identification here yet, threatened, endemic), each with a link to iNaturalist's Identify page.
+- Changes page rebuilt on the master list: each month is compared with the month before (`changes.json`):
+  species identified for the first time in India or in a state, observed for the first time, added, or
+  dropped (renamed or merged), with the sources that brought the change, and the waiting backlog before
+  and now. October 2026 is the first list, so the first changes show after the November list.
 - Same menu on every page; Search Console verified, sitemap submitted.
 
 ### 17 October 2026

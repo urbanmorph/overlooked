@@ -291,3 +291,45 @@ def test_match_stops_at_deadline_with_workers(tmp_path, monkeypatch):
     http = FakeGbif()
     assert master.match_names(["A b", "C d"], {}, None, deadline=time.monotonic() - 1, http=http) == 0
     assert http.asked == []
+
+
+def test_changes_between_months(tmp_path):
+    """Species that moved since last month: added, observed, identified, identified in a new state, dropped."""
+    con = duckdb.connect()
+    g0, g1 = GROUPS[0], GROUPS[1]
+    con.sql(f"""CREATE TABLE prev AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', '{g0}', ['ZSI'], false, false, []::INTEGER[]),
+        ('K2', 'Bus cus', '{g0}', ['GBIF'], true, false, []::INTEGER[]),
+        ('K3', 'Cus dus', '{g1}', ['GBIF'], true, true, [32]),
+        ('K4', 'Dus eus', '{g1}', ['GBIF'], true, true, [32]),
+        (NULL, 'Old name', '{g1}', ['ZSI'], false, false, []::INTEGER[]))
+        t(key, name, "group", sources, observed, identified, states_identified)""")  # as in master.parquet
+    cols = "key, name, gi, sources, observed, identified, states_identified"
+    prev = tmp_path / "prev.parquet"
+    con.sql(f"COPY prev TO '{prev}' (FORMAT parquet)")
+    con.sql(f"""CREATE TABLE master AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', 0, ['ZSI', 'iNaturalist'], true, false, []::INTEGER[]),
+        ('K2', 'Bus cus', 0, ['GBIF', 'iNaturalist'], true, true, [29]),
+        ('K3', 'Cus dus', 1, ['GBIF'], true, true, [29, 32]),
+        ('K4', 'Dus eus', 1, ['GBIF'], true, true, [32]),
+        ('K5', 'Eus fus', 1, ['BSI'], false, false, []::INTEGER[])) t({cols})""")
+    ch = master.changes(con, prev, "2026-10", "2026-11", n_groups=2)
+    assert ch["from"] == "2026-10" and ch["to"] == "2026-11"
+    assert ch["counts"] == {"identified": 1, "state": 1, "observed": 1, "documented": 1, "dropped": 1}
+    # per group: [added, newly observed, newly identified, identified in a new state]
+    assert ch["groups"] == [[0, 1, 1, 0], [1, 0, 0, 1]]
+    assert sorted(ch["rows"]) == sorted([
+        ["identified", "K2", "Bus cus", 0, [29], ["iNaturalist"]],
+        ["observed", "K1", "Aus bus", 0, [], ["iNaturalist"]],
+        ["state", "K3", "Cus dus", 1, [29], []],
+        ["documented", "K5", "Eus fus", 1, [], ["BSI"]],
+        ["dropped", "", "Old name", 1, [], []]])
+    assert master.changes(con, None, None, "2026-11", n_groups=2) == {"from": None, "to": "2026-11"}
+
+
+def test_first_month_has_no_changes(built):
+    assert json.loads((built["out"] / "changes.json").read_text()) == {"from": None, "to": "2026-10"}
+
+
+def test_previous_month():
+    assert master.previous_month("2026-11") == "2026-10" and master.previous_month("2027-01") == "2026-12"

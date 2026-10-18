@@ -749,10 +749,75 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None):
     return summary
 
 
+# ---------------------------------------------------------------- changes since last month
+
+CHANGE_KINDS = ("identified", "state", "observed", "documented", "dropped")
+
+
+def changes(con, prev_parquet, prev_month, month, n_groups=len(GROUPS)):
+    """Species that moved between last month's master list (a master.parquet) and this one (table master).
+    Kinds: identified (first identification in India), state (identified in a state for the first time),
+    observed (first observation), documented (new on the list), dropped (no longer on the list: renamed or merged).
+    rows: [kind, key, name, group index, [states new for the species], [sources new for the species]]."""
+    if not prev_parquet:
+        return {"from": None, "to": month}
+    rows = con.sql(f"""
+        WITH p AS (SELECT *, coalesce(key, 'n:' || name) AS id, list_position({GROUPS!r}, "group") - 1 AS gi
+                   FROM '{prev_parquet}'),
+        c AS (SELECT key, name, gi, sources, observed, identified, states_identified,
+                     coalesce(key, 'n:' || name) AS id FROM master),
+        j AS (SELECT c.*, p.id IS NOT NULL AS was, p.observed AS p_obs, p.identified AS p_id,
+                     list_filter(c.states_identified, s -> NOT list_contains(coalesce(p.states_identified, []), s)) AS new_states,
+                     list_filter(c.sources, s -> NOT list_contains(coalesce(p.sources, []), s)) AS new_sources
+              FROM c LEFT JOIN p USING (id))
+        SELECT CASE WHEN NOT was THEN 'documented'
+                    WHEN identified AND NOT p_id THEN 'identified'
+                    WHEN observed AND NOT p_obs THEN 'observed'
+                    WHEN len(new_states) > 0 THEN 'state' END AS kind,
+               coalesce(key, ''), name, gi, new_states, new_sources
+        FROM j WHERE kind IS NOT NULL
+        UNION ALL
+        SELECT 'dropped', coalesce(key, ''), name, gi, [], [] FROM p WHERE id NOT IN (SELECT id FROM c)
+        ORDER BY 1, 3""").fetchall()
+    counts = dict.fromkeys(CHANGE_KINDS, 0)
+    groups = [[0, 0, 0, 0] for _ in range(n_groups)]
+    col = {"documented": 0, "observed": 1, "identified": 2, "state": 3}
+    for kind, _, _, gi, _, _ in rows:
+        counts[kind] += 1
+        if kind in col and gi is not None and 0 <= gi < n_groups:
+            groups[gi][col[kind]] += 1
+    return {"from": prev_month, "to": month, "counts": counts, "groups": groups,
+            "rows": [[k, key, name, gi, list(st), list(src)] for k, key, name, gi, st, src in rows]}
+
+
+def previous_month(month):
+    y, m = map(int, month.split("-"))
+    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+
+
+def previous_layer(s3, month):
+    """Last month's master list: {"parquet", "month", "summary"} from local files or R2, or None."""
+    from pipeline import r2
+    pm = previous_month(month)
+    local = LAYERS / "master" / pm
+    parquet = local / "master.parquet"
+    if not parquet.exists():
+        parquet = r2_file(s3, f"layers/master/{pm}/master.parquet", CACHE / f"master_{pm}.parquet")
+    if not parquet:
+        return None
+    summary = (json.loads((local / "summary.json").read_text()) if (local / "summary.json").exists()
+               else r2.get_json(s3, f"layers/master/{pm}/summary.json") if s3 else None)
+    return {"parquet": parquet, "month": pm, "summary": summary}
+
+
+def waiting_total(summary):
+    return sum(g[1] for g in ((summary or {}).get("waiting") or {}).get("india", [])) if summary else None
+
+
 # ---------------------------------------------------------------- build
 
 def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=None, deadline=None, http=None,
-          match=True):
+          match=True, prev=None):
     """Load every input present, match names, flag, label and write the layer. inputs: {name: path or doc or None}."""
     notes = []
     start(con)
@@ -800,6 +865,10 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state) TO '{out / 'master_state.parquet'}' "
             "(FORMAT parquet, COMPRESSION zstd)")
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"))
+    ch = changes(con, prev and prev["parquet"], prev and prev["month"], meta["month"])
+    if prev:
+        ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
+    dump(ch, out / "changes.json")
     summary["merged_ids"] = merged
     summary["names_pending_match"] = len(pending)
     return summary
@@ -855,7 +924,9 @@ def run(a):
     from pipeline import districts
     districts.ensure(health.ua())
     iucn_meta = iucn.table(con, http, s3)
-    fp_before = fingerprint(paths, inputs, cache, iucn_meta.get("etag"))
+    prev = previous_layer(s3, month)
+    extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
+    fp_before = fingerprint(paths, inputs, cache, extra)
     from pipeline import r2
     remote = r2.get_json(s3, f"layers/master/{month}/manifest.json") if s3 else None
     local = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else None
@@ -867,8 +938,9 @@ def run(a):
     else:
         deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
         meta = {"month": month, "snapshot": snapshot, "built": now()}
-        summary = build(con, paths, out, meta, districts.PATH, inputs, cache, s3, deadline, http, match=not a.no_match)
-        manifest = {**meta, "inputs": fingerprint(paths, inputs, cache, iucn_meta.get("etag")), "names_pending_match": summary["names_pending_match"],
+        summary = build(con, paths, out, meta, districts.PATH, inputs, cache, s3, deadline, http, match=not a.no_match,
+                        prev=prev)
+        manifest = {**meta, "inputs": fingerprint(paths, inputs, cache, extra), "names_pending_match": summary["names_pending_match"],
                     "merged_ids": summary["merged_ids"], "totals": summary["totals"],
                     "sources": {"snapshot": snapshot, "inat_species_counts": inat_month, "newspecies": ns_month,
                                 "zsi": bool(inputs["zsi"]), "wcvp": bool(inputs["wcvp"]), "bsi_checklist": bool(inputs["bsi"]),
