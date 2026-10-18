@@ -49,8 +49,12 @@ def inputs(tmp_path):
         t(species, family, genus, endemic_india)""", tmp_path / "wcvp.parquet")
     dist = write(con, """SELECT * FROM (VALUES (101, 32, 'ERNAKULAM', 'KERALA'), (201, 29, 'MYSURU', 'KARNATAKA'))
         t(dist_lgd, state_lgd, dtname, stname)""", tmp_path / "districts.parquet")
-    inat_doc = {"complete": True, "lists": {"32": {"research": [[1, "Aus bus", "Aves", 3]], "needs_id": []},
-                                            "29": {"research": [], "needs_id": [[2, "Zus zus", "Aves", 1]]}}}
+    inat_doc = {"complete": True, "places": {"india": 6681, "32": 7, "29": 8},
+                "lists": {"32": {"research": [[1, "Aus bus", "Aves", 3]],
+                                 "needs_id": [[31, "Hus ius minor", "Aves", 2], [3, "Hus ius", "Aves", 4]]},
+                          "29": {"research": [], "needs_id": [[2, "Zus zus", "Aves", 1]]},
+                          "india": {"research": [[1, "Aus bus", "Aves", 3]],
+                                    "needs_id": [[2, "Zus zus", "Aves", 1], [3, "Hus ius", "Aves", 6]]}}}
     ns_doc = layer_newspecies.compact([{"name": "Gus hus", "year": 2020, "sources": ["Plazi"], "journal": "J",
                                          "state": "", "link": "https://x/1", "group": "Birds", "key": "K4",
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
@@ -170,6 +174,20 @@ def test_site_files(built):
     assert json.loads((out / "search" / "xu.json").read_text())["rows"][0][1] == ""
     places = json.loads((out / "search" / "places.json").read_text())["rows"]
     assert ["Kerala", "state", 32, 32] in places and ["Mysuru", "district", 201, 29] in places
+
+
+def test_waiting_for_a_name(built):
+    """iNaturalist needs-ID species per area: counts per group, and a file per group with the taxon to identify."""
+    out, w = built["out"], built["summary"]["waiting"]
+    birds = GROUPS.index("Birds")
+    assert w["places"] == {"india": 6681, "32": 7, "29": 8}
+    # [species waiting, observations waiting, species with no identification in that area]
+    assert w["india"][birds] == [2, 7, 1]           # Zus zus (never identified) and Hus ius
+    assert w["by_state"]["29"][birds] == [1, 1, 1]
+    assert w["by_state"]["32"][birds] == [1, 6, 0]  # Hus ius and its subspecies; identified in Kerala by GBIF
+    rows = json.loads((out / "w" / f"{birds}.json").read_text())["rows"]
+    # [key, name, iNaturalist taxon (the species, not a subspecies), observations in India, [[state index, n]]]
+    assert rows == [["G1", "Hus ius", 3, 6, [[1, 6]]], ["", "Zus zus", 2, 1, [[0, 1]]]]
 
 
 def test_prefix():

@@ -261,6 +261,7 @@ def start(con):
     con.sql(f"CREATE OR REPLACE TABLE names_in ({NAMES_COLS})")
     con.sql(f"CREATE OR REPLACE TABLE evidence ({EVIDENCE_COLS})")
     con.sql("CREATE OR REPLACE TABLE alias (name VARCHAR, key VARCHAR, display VARCHAR, prio INTEGER)")
+    con.sql("CREATE OR REPLACE TABLE inat_wait (name VARCHAR, raw VARCHAR, state_lgd INTEGER, taxon BIGINT, n BIGINT)")
 
 
 def insert(con, table, select, cols, rows):
@@ -344,13 +345,16 @@ def load_bsi(con, path):
 
 def load_inat(con, doc):
     """iNaturalist species lists per state: research grade = identified; needs ID = observed."""
-    rows, names = [], {}
+    rows, names, wait = [], {}, []
     for code, lists in doc["lists"].items():
         state = None if code == "india" else int(code)
         for quality, label, ident in (("research", "rg", True), ("needs_id", "nid", False)):
-            for _, name, iconic, _ in lists.get(quality, []):
+            for taxon, name, iconic, n in lists.get(quality, []):
                 rows.append([name, state, label, ident])
                 names.setdefault(name, iconic)
+                if quality == "needs_id":
+                    wait.append([name, state, taxon, n])
+    insert(con, "inat_wait", "SELECT binomial(n), n, s::INTEGER, t::BIGINT, c::BIGINT", ["n", "s", "t", "c"], wait)
     insert(con, "evidence", "SELECT 'iNaturalist', binomial(n), NULL, s::INTEGER, l, true, i, true",
            ["n", "s", "l", "i"], rows)
     insert(con, "names_in", """SELECT 'iNaturalist', binomial(n), NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, NULL,
@@ -649,8 +653,47 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
-def site_files(con, out: Path, meta, districts_path, notes):
-    """summary.json, g/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
+def waiting(con, n, out: Path, places):
+    """iNaturalist observations that wait for a name (needs ID), per species and area.
+    Returns the summary part: per group [species, observations, species with no identification in that area],
+    for India and per state. Writes w/<gi>.json: [key, name, iNaturalist taxon, observations in India,
+    [[state index, observations], ...]], so the site can link each species to iNaturalist's Identify page."""
+    con.sql("""
+        CREATE OR REPLACE TABLE wait AS
+        WITH m AS (SELECT DISTINCT name, id FROM evidence_r WHERE source = 'iNaturalist' AND label = 'nid'),
+        w AS (SELECT m.id, w.* FROM inat_wait w JOIN m USING (name)),
+        t AS (SELECT id, arg_min(taxon, CASE WHEN raw = name THEN 0 ELSE 1 END) AS taxon FROM w GROUP BY id)
+        SELECT w.id, w.state_lgd, any_value(t.taxon) AS taxon, sum(w.n) AS n
+        FROM w JOIN t USING (id) GROUP BY w.id, w.state_lgd
+    """)
+    india = [[0, 0, 0] for _ in range(n)]
+    for gi, sp, obs, first in con.sql("""
+            SELECT s.gi, count(*), sum(w.n), count(*) FILTER (WHERE s.status < 2)
+            FROM wait w JOIN site s USING (id) WHERE w.state_lgd IS NULL GROUP BY ALL""").fetchall():
+        india[gi] = [sp, int(obs), first]
+    by_state = {}
+    for st, gi, sp, obs, first in con.sql("""
+            SELECT w.state_lgd, s.gi, count(*), sum(w.n),
+                   count(*) FILTER (WHERE NOT list_contains(s.states_identified, w.state_lgd))
+            FROM wait w JOIN site s USING (id) WHERE w.state_lgd IS NOT NULL GROUP BY ALL""").fetchall():
+        by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [sp, int(obs), first]
+    shutil.rmtree(out / "w", ignore_errors=True)
+    rows = con.sql("""
+        SELECT s.gi, coalesce(s.key, ''), s.name, any_value(w.taxon),
+               coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
+               list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL)
+        FROM wait w JOIN site s USING (id) LEFT JOIN state_bit b USING (state_lgd)
+        GROUP BY s.gi, s.key, s.name ORDER BY s.gi, s.name""").fetchall()
+    files = {}
+    for gi, key, name, taxon, n_india, states in rows:
+        files.setdefault(gi, []).append([key, name, taxon, int(n_india), [[b, int(c)] for b, c in states or []]])
+    for gi, r in files.items():
+        dump({"rows": r}, out / "w" / f"{gi}.json")
+    return {"places": places, "india": india, "by_state": by_state}
+
+
+def site_files(con, out: Path, meta, districts_path, notes, places=None):
+    """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
     con.execute("CREATE OR REPLACE TABLE state_bit AS SELECT unnest($1) AS state_lgd, unnest($2) AS b",
@@ -684,6 +727,7 @@ def site_files(con, out: Path, meta, districts_path, notes):
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
+               "waiting": waiting(con, n, out, places or {}),
                "totals": totals, "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
 
@@ -755,7 +799,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                        states_identified FROM master) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state) TO '{out / 'master_state.parquet'}' "
             "(FORMAT parquet, COMPRESSION zstd)")
-    summary = site_files(con, out, meta, districts_path, notes)
+    summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"))
     summary["merged_ids"] = merged
     summary["names_pending_match"] = len(pending)
     return summary

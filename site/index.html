@@ -69,6 +69,7 @@
         <div class="grow">
           <div class="muted crumb" id="crumb">India</div>
           <p class="headline"><b class="mono" id="pq">–</b> <span id="psub">Loading…</span></p>
+          <p class="pwait" id="pwait" hidden></p>
         </div>
         <div class="ex-actions" id="sel-actions" hidden>
           <button type="button" class="b" id="clear-state">All of India</button>
@@ -83,10 +84,15 @@
     <div class="bar-head">
       <h2 id="list-h" style="font-size:20px">Species</h2>
       <span class="muted" id="list-sub"></span>
+      <div class="seg" id="list-mode" role="group" aria-label="Which species to list" hidden>
+        <button type="button" class="b" data-list="wait" aria-pressed="true">Wait for a name</button>
+        <button type="button" class="b" data-list="done" aria-pressed="false">Identified</button>
+      </div>
     </div>
+    <p class="pad muted wait-help" id="wait-help" hidden>Observations on iNaturalist that the observer named to species and that nobody has confirmed yet. Species at the top matter most: no identification here yet, threatened, or endemic. Open them on iNaturalist to agree or to give a better name (you need an iNaturalist account).</p>
     <div class="tablebox">
       <table class="sp-table">
-        <thead><tr><th>Species</th><th>Group</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr></thead>
+        <thead id="list-head"><tr><th>Species</th><th>Group</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr></thead>
         <tbody id="list"><tr><td colspan="6" class="muted">Choose a group to list its species.</td></tr></tbody>
       </table>
     </div>

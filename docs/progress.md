@@ -18,6 +18,15 @@ Newest first. Updated as work happens.
 
 ## Log
 
+### 18 October 2026
+
+- Wait for a name: the master list now writes `w/<group>.json` and `summary.waiting` from the iNaturalist
+  needs-ID species lists. 9,76,938 observations of 34,866 species wait for a name (named to species by the
+  observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the
+  first identification in India. The Identified view lists them per group and state, most useful first
+  (no identification here yet, threatened, endemic), each with a link to iNaturalist's Identify page.
+- Same menu on every page; Search Console verified, sitemap submitted.
+
 ### 17 October 2026
 
 - Master list (`pipeline/master.py`, plan section 1c): every species documented from India across ZSI,

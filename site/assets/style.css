@@ -199,3 +199,19 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .iucn { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 3px; padding: 1px 6px; white-space: nowrap; background: var(--chip); color: var(--ink-2) }
 .i-CR { background: #6E1A1D; color: #fff } .i-EN { background: #B03A3E; color: #fff } .i-VU { background: #F2C14E; color: #16201C }
 .i-NT { background: #DCEEE8; color: #063F33 } .i-LC { background: #E9ECE8; color: #3E4A44 } .i-DD { background: #E3ECF7; color: #173A75 }
+
+/* Wait for a name: list mode, help text, priority tags and the link to iNaturalist */
+.seg { display: flex; gap: 4px; margin-left: auto }
+.seg .b[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+.pwait { margin: 6px 0 0; font-size: 14px; color: var(--muted) } .pwait b { color: var(--ink) }
+.wait-help { padding-top: 0; margin: 0; font-size: 14px }
+.why { display: inline-block; margin: 0 4px 2px 0; padding: 1px 6px; border-radius: 4px; font-size: 12px; background: var(--q0); color: var(--q4) }
+.why.first { background: var(--q3); color: #fff }
+a.idlink { white-space: nowrap; font-weight: 500 }
+.gwait { display: block; font-size: 12px; color: var(--muted); margin-top: 2px }
+.wm { display: none }
+@media (max-width: 600px) {
+  .sp-table.waitlist { min-width: 0 }
+  .waitlist th:not(:first-child), .waitlist td:not(:first-child) { display: none }
+  .waitlist .wm { display: block; margin-top: 6px; font-size: 14px; line-height: 1.8 }
+}

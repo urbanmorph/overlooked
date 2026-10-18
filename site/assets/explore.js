@@ -25,6 +25,7 @@ const VIEW_TEXT = {
   iucn: { card: 'threatened species', unit: 'threatened species observed' },
 };
 const PAGE = 50;
+const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
 
 try {
   const latest = await getJSON('layers/master/latest.json');
@@ -41,13 +42,14 @@ try {
   const url = new URL(location.href);
   const st = {
     view: ['observed', 'identified', 'iucn'].includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'observed',
+    list: url.searchParams.get('list') === 'done' ? 'done' : 'wait',
     cat: cats.some(c => c.key === url.searchParams.get('group')) ? url.searchParams.get('group') : null,
     state: stIndex.has(url.searchParams.get('state') || '') ? url.searchParams.get('state') : null,
     filters: { sources: new Set(), status: new Set(), iucn: new Set(), labels: new Set() },
   };
   const saveURL = () => {
     const u = new URL(location.href);
-    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['group', st.cat], ['state', st.state]]) {
+    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'identified' && st.list === 'done' ? 'done' : null], ['group', st.cat], ['state', st.state]]) {
       if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
     }
     history.replaceState(null, '', u);
@@ -68,6 +70,12 @@ try {
       }
     }
     return { doc, obs, id, thr, assessed, thrObs };
+  }
+  // iNaturalist observations that wait for a name: [species, observations, species with no identification here].
+  const W = S.waiting || { india: [], by_state: {}, places: {} };
+  function waitFig(gis, state) {
+    const src = state == null ? W.india : W.by_state[state] || [];
+    return gis.reduce((a, gi) => { const v = src[gi] || [0, 0, 0]; return [a[0] + v[0], a[1] + v[1], a[2] + v[2]]; }, [0, 0, 0]);
   }
   const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(a && a / b < 0.1 ? 1 : 0)}%` : '–');
   const catOf = key => cats.find(c => c.key === key);
@@ -108,7 +116,7 @@ try {
       const share = st.view === 'iucn' ? (f.doc ? f.thr / f.doc : 0) : (f.doc ? (st.view === 'observed' ? f.obs : f.id) / f.doc : 0);
       return `<button type="button" class="gcard" data-cat="${c.key ?? ''}" aria-pressed="${(c.key ?? null) === st.cat}">
         <span class="gtop"><b>${esc(c.name)}</b><span class="mono">${v.big}</span></span>
-        <span class="gline">${esc(v.line)}</span>
+        <span class="gline">${esc(v.line)}</span>${st.view === 'identified' && waitFig(c.gis, st.state)[0] ? `<span class="gwait">${fmt(waitFig(c.gis, st.state)[0])} species wait for a name</span>` : ''}
         <span class="gbar" aria-hidden="true"><i style="width:${Math.min(100, 100 * share).toFixed(1)}%"></i></span>
       </button>`;
     }).join('');
@@ -123,6 +131,11 @@ try {
       ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} are assessed by IUCN.`
         : `of ${fmt(f.doc)} documented species are ${st.view} (${pct(st.view === 'observed' ? f.obs : f.id, f.doc)}).`)
       : `${v.line}.`;
+    const w = waitFig(gis, st.state), place = st.state ? stName.get(st.state) : 'India';
+    $('#pwait').hidden = st.view !== 'identified' || !w[0];
+    $('#pwait').innerHTML = `<b>${fmt(w[1])}</b> observations of <b>${fmt(w[0])}</b> species wait for a name on iNaturalist. `
+      + `For <b>${fmt(w[2])}</b> of these species, one confirmation gives the first identification in ${esc(place)}.`
+      + (c ? '' : ' Choose a group to see them.');
     $('#sel-actions').hidden = !st.state;
     document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === st.view)));
   }
@@ -142,11 +155,58 @@ try {
   const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
   const iucnBadge = i => `<span class="iucn i-${esc(S.iucn[i])}" title="IUCN Red List">${esc(S.iucn[i] === 'NE' ? 'Not assessed' : S.iucn[i])}</span>`;
   const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
+  const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
+  const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
+  const waitFile = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }));
+  const endBit = S.labels.findIndex(l => l.code === 'end');
+
+  // Species with observations that wait for a name, most useful first.
+  let listSeq = 0;
+  async function paintWait(c, my) {
+    const si = st.state ? stIndex.get(st.state) : null, place = st.state ? stName.get(st.state) : 'India';
+    const [g, w] = await Promise.all([Promise.all(c.gis.map(gi => groupFile(gi).then(d => d.rows.map(r => [...r, gi])))),
+      Promise.all(c.gis.map(gi => waitFile(gi).then(d => d.rows)))]);
+    if (my !== listSeq) return;
+    const byId = new Map(g.flat().map(r => [r[0] || `n:${r[1]}`, r]));
+    const pid = W.places[st.state ?? 'india'] ?? W.places.india;
+    const rows = [];
+    for (const [key, name, taxon, nIndia, states] of w.flat()) {
+      const r = byId.get(key || `n:${name}`);
+      if (!r || !passes(r, st.filters)) continue;
+      const n = si == null ? nIndia : (states.find(x => x[0] === si) || [0, 0])[1];
+      if (!n) continue;
+      const first = si == null ? r[3] < 2 : !bit(r[7], si), never = r[3] < 2;
+      const threat = THREAT.has(S.iucn[r[4]]), endemic = endBit >= 0 && bit(r[5], endBit);
+      rows.push({ r, n, taxon, first, never, threat, endemic, score: never * 8 + first * 4 + threat * 2 + endemic });
+    }
+    rows.sort((a, b) => b.score - a.score || b.n - a.n || a.r[1].localeCompare(b.r[1]));
+    $('#list-sub').textContent = `${fmt(rows.length)} species wait for a name · ${c.name}${st.state ? ` · ${place}` : ''}`;
+    $('#list').innerHTML = rows.slice(0, shown).map(({ r, n, taxon, first, never, threat, endemic }) => {
+      const why = [never ? '<span class="why first">No identification in India yet</span>'
+        : first ? `<span class="why first">First identification in ${esc(place)}</span>` : '',
+        threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
+      const href = `${IDENTIFY}?quality_grade=needs_id&taxon_id=${encodeURIComponent(taxon)}&place_id=${encodeURIComponent(pid)}`;
+      const link = `<a class="idlink" href="${href}" target="_blank" rel="noopener">Identify on iNaturalist</a>`;
+      return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(r[4])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
+        <td>${esc(S.groups[r[8]])}</td><td>${why || '<span class="muted">–</span>'}</td>
+        <td>${iucnBadge(r[4])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">No species wait for a name here.</td></tr>';
+    $('#more').hidden = rows.length <= shown;
+  }
+
   async function paintList() {
     const c = st.cat ? catOf(st.cat) : null;
+    const wait = st.view === 'identified' && st.list === 'wait', my = ++listSeq;
+    $('#list-mode').hidden = st.view !== 'identified';
+    document.querySelectorAll('#list-mode [data-list]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.list === st.list)));
+    $('#wait-help').hidden = !wait || !c;
+    $('#list-head').innerHTML = wait ? HEAD_WAIT : HEAD_ALL;
+    $('#list').closest('table').classList.toggle('waitlist', wait);
     if (!c) { $('#list').innerHTML = '<tr><td colspan="6" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
     $('#list').innerHTML = '<tr><td colspan="6" class="muted">Loading…</td></tr>';
+    if (wait) return paintWait(c, my);
     const parts = await Promise.all(c.gis.map(gi => groupFile(gi).then(d => d.rows.map(r => [...r, gi]))));
+    if (my !== listSeq) return;
     const si = st.state ? stIndex.get(st.state) : null;
     const rows = parts.flat().filter(r => {
       if (si != null) {
@@ -177,6 +237,10 @@ try {
   $('#cards').addEventListener('click', e => {
     const b = e.target.closest('.gcard'); if (!b) return;
     st.cat = b.dataset.cat || null; shown = PAGE; paint();
+  });
+  $('#list-mode').addEventListener('click', e => {
+    const b = e.target.closest('[data-list]'); if (!b) return;
+    st.list = b.dataset.list; shown = PAGE; saveURL(); paintList();
   });
   $('#clear-state').addEventListener('click', () => setState(null));
   $('#more').addEventListener('click', () => { shown += PAGE * 4; paintList(); });
