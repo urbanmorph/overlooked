@@ -8,7 +8,7 @@ Approved 16 October 2026.
 |---|---|---|---|
 | 1 | Last-seen ledger | For each species and LGD district: the first and latest year of a public record. Which species are quiet since a chosen year? | District map, district summary, species table, species page |
 | 2 | Change feed | What changed since last month? | Monthly list of changes, with the reason for each |
-| 3 | Follow-up on new species | Species described from India since 2015: any public record since the paper? | Shares by group, table of species, how each was matched |
+| 3 | Follow-up on new species | Species described from India since 2007: any public record since the paper? | Shares by group, table of species, how each was matched |
 
 Out of scope for now: modules 4 to 6, user accounts, any user input, IUCN categories (section 11).
 
@@ -48,7 +48,7 @@ Rules:
 
 Question: which species are documented from India, and for each one, is it observed, is it identified, and what is its IUCN category? The same three things per state, where the place is known.
 
-- **Documented:** on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India), GBIF, iNaturalist, new species since 2015 (Plazi, BSI Plant Discoveries). A species on a BSI or ZSI checklist counts as documented.
+- **Documented:** on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India), GBIF, iNaturalist, new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries). A species on a BSI or ZSI checklist counts as documented.
 - **Observed:** at least one observation in any source: a GBIF record of any kind (photo, sighting, specimen, sound, DNA sample, record cited from a paper), or an iNaturalist observation of any quality grade.
 - **Identified:** at least one observation confirmed to species: a GBIF record named to species (labelled by its basis of record) or an iNaturalist research-grade observation. An iNaturalist "needs ID" observation with a species name proposed is observed, not identified. A checklist entry is not an observation.
 - We never write "not recorded since 1980" on these pages. A species is documented, observed or identified.
@@ -58,7 +58,7 @@ Labels (several per species; the search filters on them):
 | Kind | Labels |
 |---|---|
 | Identification | research grade (iNaturalist), needs ID (iNaturalist), human observation, specimen, from a paper (GBIF MATERIAL_CITATION), DNA sequence or sample (MATERIAL_SAMPLE), machine observation, other record (GBIF OCCURRENCE: kind not given), checklist only |
-| Other | location missing (only records with no coordinates, query L), DNA only, endemic to India (WCVP for plants; ZSI checklists that mark endemics with `*`; BSI checklist status), new species since 2015, name not matched |
+| Other | location missing (only records with no coordinates, query L), DNA only, endemic to India (WCVP for plants; ZSI checklists that mark endemics with `*`; BSI checklist status), new species since 2007, name not matched |
 | Sources | ZSI, BSI, WCVP, GBIF, iNaturalist, Plazi, IUCN |
 | IUCN | CR, EN, VU, NT, LC, DD, EW, EX, or NE (not assessed) |
 

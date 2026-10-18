@@ -17,7 +17,7 @@ All data is static JSON and Parquet under https://overlooked-india.pages.dev/dat
 - {base}changes.json — species that moved since last month: rows [kind, key, name, group, new states, new sources]; kinds identified (first identification in India), state (first identification in a state), observed, documented (added), dropped (renamed or merged); counts per kind and per group
 - {base}search/{two letters}.json — search index by the first two letters of the name; {base}search/places.json — states and districts
 - /data/latest.json — the current GBIF snapshot (district ledger, species history, records without a species name, records without coordinates); its manifest lists every file and the GBIF download DOIs
-- /data/layers/inat/latest.json — iNaturalist species lists per state (species, genus, above genus); /data/layers/newspecies/latest.json — species described from India since 2015
+- /data/layers/inat/latest.json — iNaturalist species lists per state (species, genus, above genus); /data/layers/newspecies/latest.json — species described from India since 2007
 
 ## Rights
 
@@ -30,6 +30,6 @@ For the status of a species, people should consult BSI, ZSI, the IUCN Red List a
 - / — map of India, groups, search with filters by source, status, IUCN category and label; in the Identified view, the observations that wait for a name, with links to iNaturalist's Identify page
 - /species?key={key} — one species: sources, status, IUCN, where it is observed and identified, observations that wait for a name, GBIF records by decade and district
 - /changes — what changed since last month
-- /new-species — species described from India since 2015 and their later records
+- /new-species — species described from India since 2007 and their later records
 - /method — sources, terms, definitions, downloads
 - Code (MIT): https://github.com/urbanmorph/overlooked

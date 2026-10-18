@@ -388,3 +388,17 @@ def test_first_month_has_no_changes(built):
 
 def test_previous_month():
     assert master.previous_month("2026-11") == "2026-10" and master.previous_month("2027-01") == "2026-12"
+
+
+def test_new_species_from_every_source_and_the_whole_window():
+    """Every name the new-species layer gives (ZSI Animal Discoveries too) is documented, labelled new from the
+    layer's first year."""
+    con = duckdb.connect()
+    master.start(con)
+    row = {"journal": "J", "state": "", "link": "https://x/1", "group": "Birds", "matched_by": "exact name",
+           "status": "none", "latest_after": None, "any_record": False}
+    master.load_newspecies(con, layer_newspecies.compact([
+        {**row, "name": "Aus bus", "year": 2008, "sources": ["ZSI Animal Discoveries"], "key": "K1"},
+        {**row, "name": "Cus dus", "year": 2010, "sources": ["Plazi", "BSI Plant Discoveries"], "key": "K2"}]))
+    got = con.sql("SELECT source, name, key, new FROM names_in ORDER BY name, source").fetchall()
+    assert got == [("ZSI", "Aus bus", "K1", True), ("BSI", "Cus dus", "K2", True), ("Plazi", "Cus dus", "K2", True)]

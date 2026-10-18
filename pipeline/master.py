@@ -3,7 +3,7 @@
 Per species (and per state where the place is known) we track three things: observed, identified and
 the IUCN category.
   documented  on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India),
-              GBIF, iNaturalist, new species since 2015 (Plazi, BSI Plant Discoveries)
+              GBIF, iNaturalist, new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries)
   observed    at least one observation in any source: a GBIF record of any kind (photo, sighting, specimen,
               sound, DNA sample, record cited from a paper), or an iNaturalist observation of any grade
   identified  at least one observation confirmed to species: a GBIF record named to species (labelled by
@@ -54,6 +54,7 @@ import duckdb
 import requests
 
 from pipeline import health, iucn
+from pipeline.gbif import NEW_SPECIES_FROM
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
@@ -86,7 +87,7 @@ LABELS = [
     ("lm", "Location missing", "other"),
     ("do", "DNA only", "other"),
     ("end", "Endemic to India", "other"),
-    ("ns", "New species since 2015", "other"),
+    ("ns", f"New species since {NEW_SPECIES_FROM}", "other"),
     ("nm", "Name not matched", "other"),
 ]
 CODES = [c for c, _, _ in LABELS]
@@ -95,7 +96,6 @@ IUCN_CATS = ["CR", "EN", "VU", "NT", "LC", "DD", "NE", "EW", "EX"]
 THREATENED = ("CR", "EN", "VU")
 BASIS_LABEL = {"HUMAN_OBSERVATION": "ho", "OBSERVATION": "ho", "PRESERVED_SPECIMEN": "sp", "MATERIAL_CITATION": "pap",
                "MATERIAL_SAMPLE": "dna", "MACHINE_OBSERVATION": "mo", "OCCURRENCE": "oc"}
-NEW_SINCE = 2015
 
 # Classification hints from a ZSI checklist file name: (pattern, kingdom, phylum, class, order).
 # Used only when the name has no better classification (GBIF, GBIF match, IUCN, genus or family lookup).
@@ -377,13 +377,13 @@ def load_inat_genus(con, doc):
 
 
 def load_newspecies(con, doc):
-    """Species described from India since 2015 (Plazi; BSI Plant Discoveries)."""
+    """Species described from India since the new-species layer's first year (Plazi; BSI and ZSI Discoveries)."""
     rows = []
     for r in expand(doc):
         grp = r["group"] if r["group"] in GROUPS else None
-        for src, tag in (("Plazi", "Plazi"), ("BSI", "BSI Plant Discoveries")):
+        for src, tag in (("Plazi", "Plazi"), ("BSI", "BSI Plant Discoveries"), ("ZSI", "ZSI Animal Discoveries")):
             if tag in r["sources"]:
-                rows.append([src, r["name"], r["key"], grp, (r["year"] or 0) >= NEW_SINCE])
+                rows.append([src, r["name"], r["key"], grp, (r["year"] or 0) >= NEW_SPECIES_FROM])
     insert(con, "names_in", """SELECT src, binomial(n), k::VARCHAR, NULL, NULL, NULL, NULL, NULL, NULL, g::VARCHAR,
                                       false, new, 5""", ["src", "n", "k", "g", "new"], rows)
 
