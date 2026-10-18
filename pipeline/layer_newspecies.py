@@ -1,7 +1,8 @@
 """Module 3: follow-up on species described from India since FIRST_YEAR (2007). A dated layer, like the iNaturalist one.
 
 Steps (each saved in R2 cache/newspecies/state_<month>.json, so a run can stop and continue):
-  1. names     new species from Plazi (Indian holotype, "sp. nov.") and BSI Plant Discoveries (new to science)
+  1. names     new species from Plazi (Indian holotype, "sp. nov."), BSI Plant Discoveries and ZSI Animal
+               Discoveries (new to science)
   2. downloads GBIF query Y (records since FIRST_YEAR by species, year, kind) and query V (unmatched names as published),
                one after the other
   3. match     each name to a species in the latest snapshot: exact name, then GBIF's match against the
@@ -23,7 +24,7 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import bsi, gbif, health
+from pipeline import bsi, gbif, health, zsi_discoveries
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
@@ -83,6 +84,11 @@ def bsi_names(http, s3):
     return out
 
 
+def group_hint(n):
+    """Overlooked group from the BSI or ZSI section, for names not matched to a species."""
+    return BSI_GROUP.get(n.get("bsi_group", "")) or zsi_discoveries.ZSI_GROUP.get(n.get("zsi_group", ""))
+
+
 def merge(names):
     """One row per name: earliest year; all sources kept."""
     by = {}
@@ -96,6 +102,9 @@ def merge(names):
         if n["year"] < cur["year"]:
             cur.update(year=n["year"], journal=n["journal"] or cur["journal"], link=n["link"])
         cur["state"] = cur["state"] or n["state"]
+        for k in ("bsi_group", "zsi_group"):  # section hints, whichever source listed the name first
+            if n.get(k) and not cur.get(k):
+                cur[k] = n[k]
     return sorted(by.values(), key=lambda r: (r["year"], r["name"]))
 
 
@@ -163,12 +172,12 @@ def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, 
         any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
         any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
         status = "recorded" if obs else ("later_papers" if papers else "none")
-        grp = group_of.get(key) or BSI_GROUP.get(n.get("bsi_group", ""))
+        grp = group_of.get(key) or group_hint(n)
         if not grp:
             m = gbif_match(http, n["name"], mcache, need_classification=True)
             grp = group_from(con, (m or {}).get("classification")) or "Not matched yet"
         out.append({**{k: n[k] for k in ("name", "year", "sources", "journal", "state", "link")}, "group": grp,
-                    "bsi_group": n.get("bsi_group", ""), "key": key, "matched_by": how if (key or rows) else "not found",
+                    "key": key, "matched_by": how if (key or rows) else "not found",
                     "status": status, "latest_after": latest, "records_after": obs, "papers_after": papers,
                     "any_record": any_record})
         if time.monotonic() > next_save:
@@ -243,6 +252,18 @@ def expand(doc):
     return out
 
 
+def check_window(state):
+    """A state built for another first year (names and GBIF queries Y and V) starts the month again.
+    Returns True when it reset the state."""
+    if state.get("window") == FIRST_YEAR:
+        return False
+    for k in ("names", "names_at", "plazi", "done"):
+        state.pop(k, None)
+    state["downloads"] = {q: {"status": "WAITING"} for q in QUERIES}
+    state["window"] = FIRST_YEAR
+    return True
+
+
 def run(publish, force=False, minutes=None):
     from pipeline import r2
     deadline = time.monotonic() + minutes * 60 if minutes else None
@@ -255,6 +276,9 @@ def run(publish, force=False, minutes=None):
     state_key = f"cache/newspecies/state_{month}.json"
     state = (r2.get_json(s3, state_key) if s3 else None) or {"month": month, "downloads": {q: {"status": "WAITING"} for q in QUERIES}}
     save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{month}.json").write_text(json.dumps(state)))
+    if check_window(state):
+        print(f"new-species window is now {FIRST_YEAR} onwards; names and GBIF downloads start again")
+        save()
     if force:
         state.pop("done", None)
     if state.get("done"):
@@ -263,7 +287,8 @@ def run(publish, force=False, minutes=None):
 
     # 1. Names (once a month).
     if "names" not in state:
-        names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3))
+        names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3)
+                      + zsi_discoveries.names(plain, s3, FIRST_YEAR))
         state["names"] = names
         state["names_at"] = now()
         state.pop("plazi", None)
@@ -336,7 +361,8 @@ def run(publish, force=False, minutes=None):
     result = {"month": month, "built": now(), "snapshot": snapshot_run, "first_year": FIRST_YEAR,
               "downloads": [{"query": q, "key": d[q]["key"], "doi": d[q]["doi"], "created": metas[q].get("created"),
                              "records": metas[q].get("totalRecords")} for q in QUERIES],
-              "sources": ["Plazi TreatmentBank (CC0)", "Botanical Survey of India, Plant Discoveries (reproduced with acknowledgement)"],
+              "sources": ["Plazi TreatmentBank (CC0)", "Botanical Survey of India, Plant Discoveries (reproduced with acknowledgement)",
+                          "Zoological Survey of India, Animal Discoveries (reproduced with acknowledgement)"],
               **compact(out)}
     folder = ROOT / "data" / "layers" / "newspecies" / month
     folder.mkdir(parents=True, exist_ok=True)

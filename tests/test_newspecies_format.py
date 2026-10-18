@@ -55,3 +55,26 @@ def test_compact_is_smaller():
     old = len(json.dumps({"species": rows}, separators=(",", ":")))
     new = len(json.dumps(compact(rows), separators=(",", ":")))
     assert new < old / 3
+
+
+def test_merge_keeps_group_hints_from_any_source():
+    from pipeline.layer_newspecies import group_hint, merge
+    plazi = {"name": "Aa bb", "year": 2021, "source": "Plazi", "journal": "Zootaxa", "state": "", "link": PLAZI}
+    bsi = {"name": "Aa bb", "year": 2020, "source": "BSI Plant Discoveries", "journal": "", "state": "Goa",
+           "bsi_group": "FUNGI", "link": BSI}
+    zsi = {"name": "Cc dd", "year": 2019, "source": "ZSI Animal Discoveries", "journal": "", "state": "",
+           "zsi_group": "Pisces", "link": "https://zsi.gov.in/x.pdf"}
+    rows = {r["name"]: r for r in merge([plazi, bsi, zsi])}
+    a = rows["Aa bb"]
+    assert a["sources"] == ["Plazi", "BSI Plant Discoveries"] and a["year"] == 2020 and a["state"] == "Goa"
+    assert group_hint(a) == "Fungi" and group_hint(rows["Cc dd"]) == "Fish" and group_hint(plazi) is None
+
+
+def test_a_new_window_starts_the_month_again():
+    from pipeline import layer_newspecies as ns
+    old = {"month": "2026-10", "names": [1], "names_at": "x", "done": "y",
+           "downloads": {q: {"key": "k", "status": "SUCCEEDED"} for q in ns.QUERIES}}
+    assert ns.check_window(old) is True
+    assert old["window"] == ns.FIRST_YEAR and "names" not in old and "done" not in old
+    assert all(d == {"status": "WAITING"} for d in old["downloads"].values())
+    assert ns.check_window(old) is False    # same window: nothing to redo

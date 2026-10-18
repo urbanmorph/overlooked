@@ -25,6 +25,11 @@ Newest first. Updated as work happens.
   observer, not confirmed; fnf counted 9,74,192). For 12,654 of these species one confirmation gives the
   first identification in India. The Identified view lists them per group and state, most useful first
   (no identification here yet, threatened, endemic), each with a link to iNaturalist's Identify page.
+- New species from 2007 (one constant, `gbif.NEW_SPECIES_FROM`): BSI Plant Discoveries 2007 to 2025 (2013 and 2014
+  editions found and OCR'd; place words and host plants no longer read as species names, about 300 author-name
+  headings replaced by the right names in 2015 to 2025), ZSI Animal Discoveries 2009 to 2024 (4,548 new animal
+  species; 2007 and 2008 are not posted), Plazi from 2007. The New species page has a year range and shows
+  identified and IUCN from the master list (`ns.json`). A state built for another window starts the month again.
 - Retired the "last seen" model: the Last seen and Waiting for a name pages (redirected to the front page),
   the GBIF change feed (`changes.py`), the GBIF genus candidates (`candidates.py`), the quiet statistics and
   per-district ledger files in `site_data`, and the iNaturalist quiet check and backlog fetch (the daily
