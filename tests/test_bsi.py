@@ -367,3 +367,28 @@ def test_2014_first_time_reported_and_variety_after_author(tmp_path, monkeypatch
         ("Hyphodontia barbajovis", "new_record", "species"),
         ("Amaranthus tricolor var. acutus", "new_to_science", "infraspecific"),
     ]
+
+
+# ---------- 2015+: description text and place names are not headings ----------
+
+def test_description_tail_is_not_a_heading():
+    # 2015: "The species has been published by ..." follows a description that ends "(CAL)."; it is no entry.
+    tail = ("India based on the collection made from Dombang and Samthang, North district of Sikkim, India at 2890m. "
+            "The specimens are deposited in Central National Herbarium, Botanical Survey of India, Howrah (CAL).")
+    assert bsi.find_heading(tail) is None
+    assert bsi.find_heading("Holotype is deposited in Madras Herbarium, Botanical Survey of India, Southern "
+                            "Regional Centre, Coimbatore, Tamil Nadu (MH), Isotypes are in CAL, BSID.") is None
+
+
+def test_place_name_is_not_a_genus():
+    # 2022: a section intro ends just before a new genus.
+    text = "India during the year 2022. Johanseniella Pal & Singh, F.E.M.S. Microbiol. Lett. 369:5.2022"
+    assert bsi.find_heading(text)[1] == "Johanseniella"
+    assert bsi.entry(2015, "India based", None, "new_to_science", "", "")["name_check"] == "needs_review"
+
+
+def test_heading_followed_by_description_is_kept():
+    # 2025: the heading is cited first; a description sentence after it does not reject it.
+    text = ("Graphis moriensis R.Adhikari & Nayaka, The Bryologist 128(3): 554. 2025 (Graphidaceae) Nadia District, "
+            "West Bengal. Holotype is deposited in CSIR-National Botanical Research Institute, Lucknow (LWG).")
+    assert bsi.find_heading(text)[1] == "Graphis moriensis"

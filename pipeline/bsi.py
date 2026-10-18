@@ -229,8 +229,20 @@ NAME = re.compile(r"([A-Z][a-z]+)(?:\s+(×?\s*[a-z][a-z-]+))?(?:\s+(var|subsp|f)
 # described in the reports won't be here, so the check is a preference, not a filter.
 KNOWN_GENERA_FILE = REF / "known_genera.txt"
 KNOWN_GENERA = set(KNOWN_GENERA_FILE.read_text().split()) if KNOWN_GENERA_FILE.exists() else set()
-NOT_EPITHET = {"of", "de", "in", "at", "and", "from", "the", "et", "ex", "for", "to", "on", "by", "with", "near"}
-NOT_GENUS = {"The", "This", "These", "It", "In", "A", "An", "Its", "Dr", "Prof", "Mr", "Mrs", "Ms", "Shri"}
+NOT_EPITHET = {"of", "de", "in", "at", "and", "from", "the", "et", "ex", "for", "to", "on", "by", "with", "near",
+               # words after a place or a sentence start ("India based on", "Many more are", "State wise")
+               "based", "district", "during", "has", "having", "while", "spanning", "through", "together",
+               "more", "wise", "this", "laboratory", "subsp", "var", "is", "are", "was"}
+NOT_GENUS = {"The", "This", "These", "It", "In", "A", "An", "Its", "Dr", "Prof", "Mr", "Mrs", "Ms", "Shri",
+             # Places and words that start sentences of a description; India, Kerala, Odisha and Karnataka
+             # are also genus names elsewhere ("India based on the collection made ...").
+             "India", "Holotype", "West", "East", "North", "South", "Western", "Eastern", "Central", "Southern",
+             "Northern", "Botanical", "Herbarium", "National", "Survey", "Department", "University", "Mycology",
+             "Many", "State", "Using", "As", "Led"} | {w for s in STATES for w in s.split()}
+# A description sentence before any citation year or family: the tail of the previous entry's description
+# ("India based on the collection made ... deposited in ... (CAL)."), not a heading.
+DESCRIPTION = re.compile(r"\b(?:deposited|holotype|isotypes?|collections? made)\b", re.I)
+CITED = re.compile(r"\b(?:19|20)\d\d\b|\([A-Z][A-Za-z]*(?:aceae|ACEAE)\)")
 
 
 def find_heading(text, line_starts=()):
@@ -246,17 +258,20 @@ def find_heading(text, line_starts=()):
     sentence_starts = [0] + [m.end() for m in re.finditer(r"[.)]\s+", text)]
     # Fallback for source typos (a missing full stop before the name): any word start.
     word_starts = [m.start() for m in re.finditer(r"\b[A-Z]", text)]
-    # OCR of scanned editions leaves junk without full stops before the heading: line starts.
+    # Junk before a heading (OCR, section introductions) often has no full stop: line starts.
     passes = [(sentence_starts, True, True), (word_starts, True, True),
-              (sentence_starts, True, False), (list(line_starts), True, False), (list(line_starts), False, False),
+              (sentence_starts, True, False), (line_starts, True, False), (line_starts, False, False),
               (sentence_starts, False, False)]
     for starts, need_epithet, need_known in passes:
         for st in reversed(starts):
             m = NAME.match(text, st)
             if not m or m.group(1) in NOT_GENUS:
                 continue
-            if not need_epithet and line_starts and text[m.end():m.end() + 1] == ".":
+            if not need_epithet and text[m.end():m.end() + 1] == ".":
                 continue   # a journal abbreviation ("Nordic J. Bot.31: 162"), not a genus
+            cited = CITED.search(text, st)
+            if DESCRIPTION.search(text, st, cited.start() if cited else len(text)):
+                continue
             if need_known and KNOWN_GENERA and m.group(1) not in KNOWN_GENERA:
                 continue
             if need_epithet and (not m.group(2) or m.group(2) in NOT_EPITHET):
@@ -268,10 +283,9 @@ def find_heading(text, line_starts=()):
     return None
 
 
-# 2013-2014 (mostly scanned, bilingual) differ from 2015+ in these ways: OCR junk before a heading has no
-# full stop, so a heading may also start at a line start; microbe descriptions start "A Gram-stain-negative
-# ..."; a variety's name has the species author before "var.". Not applied from 2015 so those parses stay
-# as they are (line starts would fix about 50 author-name headings there; to apply, delete their caches).
+# 2013-2014 (mostly scanned, bilingual) differ from 2015+: microbe descriptions start "A Gram-stain-negative
+# ...", the "T" of type strains is a superscript on its own line, and a variety's name has the species
+# author before "var.".
 EARLY_PROSE_LAST = 2014
 EARLY_BODY_START = re.compile(BODY_START.pattern + r"|^An? [^.]{0,60}\b(?:[Gg]ram|bacteri|rod.shaped|strain)")
 
@@ -280,13 +294,11 @@ def entry(year, name, group, kind, heading, family, states=(), iucn="", text="")
     rank = "genus" if " " not in name else ("infraspecific" if re.search(r"\s(var|subsp|f)\.\s", name) else "species")
     genus, _, epithet = name.partition(" ")
     epithet = epithet.split(" ")[0]
-    if year <= EARLY_PROSE_LAST and epithet in NOT_EPITHET | {"district", "based"}:
-        # A sentence fragment ("India based on ..."; India is also a genus). Kept to 2007-2014 so the
-        # 2015+ parses stay as they are; their caches hold 57 "India based" entries marked "ok".
-        name_check = "needs_review"
+    if genus in NOT_GENUS or epithet in NOT_EPITHET:
+        name_check = "needs_review"    # a sentence fragment ("India based on ...")
     elif genus in KNOWN_GENERA:
         name_check = "ok"
-    elif epithet and epithet not in {"is", "distributed"} and len(genus) > 3 and len(epithet) > 3:
+    elif epithet and epithet != "distributed" and len(genus) > 3 and len(epithet) > 3:
         name_check = "unknown_genus"   # often a genuinely new genus; verify
     else:
         name_check = "needs_review"    # author surname, sentence fragment or OCR junk
@@ -421,7 +433,7 @@ def parse(pdf_path, year):
         # 2013 sets the "T" of type strains as a superscript, which lands on a line of its own.
         window = [l for l, _ in lines[lo:i] if not (early and len(l) < 3)]
         offsets = [sum(len(l) + 1 for l in window[:j]) for j in range(len(window))]
-        head = find_heading(" ".join(window), offsets if early else ())
+        head = find_heading(" ".join(window), offsets)
         if head is None:
             continue
         end = starts[k + 1] if k + 1 < len(starts) else len(lines)
