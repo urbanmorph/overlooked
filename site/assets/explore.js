@@ -184,7 +184,7 @@ try {
     $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
     $('#pq').textContent = india ? fmt(st.view === 'observed' ? f.obs : st.view === 'identified' ? f.id : f.thr) : v.big;
     $('#psub').textContent = india
-      ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} are assessed by IUCN.`
+      ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`
         : `of ${fmt(f.doc)} documented species are ${st.view} (${pct(st.view === 'observed' ? f.obs : f.id, f.doc)}).`)
       : `${v.line}.`;
     const w = waitFig(gis, st.state), place = st.state ? stName.get(st.state) : 'India';
