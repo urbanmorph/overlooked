@@ -72,6 +72,11 @@ FERN = ("Plantae", "Tracheophyta", "Polypodiopsida", "Polypodiales", "Pteridacea
 def test_unlocated_query_filters():
     sql = gbif.build_sql("unlocated_cube")
     assert "hascoordinate = FALSE" in sql and "stateprovince" in sql and "datasetkey NOT IN ('" in sql
+    # Records that cannot go in a district: no coordinates, coordinates over 25 km uncertain, or flagged by GBIF;
+    # but not coordinates that GBIF finds outside India, and not sequences with no coordinates.
+    assert "coordinateuncertaintyinmeters > 25000" in sql and "hasgeospatialissues = TRUE" in sql
+    assert "'COUNTRY_COORDINATE_MISMATCH'" in sql and "AS problem" in sql
+    assert "hascoordinate = TRUE OR datasetkey NOT IN ('d8cd16ba-bb74-4420-821e-083f2bac17c2')" in sql
     assert "level1name" not in sql
     kerala = gbif.build_sql("unlocated_cube", "Kerala")
     assert "stateprovince = 'Kerala'" in kerala and "level1name" not in kerala
@@ -135,8 +140,8 @@ def test_unlocated_tables_and_json(tmp_path):
     obj = site_data.unlocated_json(con, tmp_path, titles=lambda keys: {"ds1": "Herbarium one"})
     saved = json.loads((tmp_path / "unlocated.json").read_text())
     assert saved == obj
-    assert saved["india"] == {"r": [11, 11], "s": [2, 2]}
-    assert saved["states"]["none"] == {"r": [4, 4], "s": [1, 1]}
+    assert saved["india"] == {"r": [11, 11], "s": [2, 2], "p": {"none": 11}}
+    assert saved["states"]["none"] == {"r": [4, 4], "s": [1, 1], "p": {"none": 4}}
     assert saved["states"]["21"]["r"][0] == 2
     assert saved["holders"][0] == ["ds1", "Herbarium one", 9, 2]
     assert saved["holders"][1] == ["ds2", None, 2, 1]
@@ -172,3 +177,25 @@ def test_checks_new_outputs():
     assert not checks.run(now, manifest, {"species": 100, "ledger_rows": 1000})   # previous month lacks them
     assert checks.run(now, manifest, {**base, "unlocated_records": 700})
     assert not checks.run(now, manifest, {**base, "unlocated_records": 900})
+
+
+def test_unlocated_counts_each_problem(tmp_path):
+    """No coordinates, coordinates too coarse, coordinates flagged: records per problem, for India and per state.
+    An older download has no problem column: all its records have no coordinates."""
+    from pipeline import site_data, unlocated
+    head = L_HEAD.rstrip("\n").replace("\tn_records", "\tproblem\tn_records") + "\n"
+    tsv = tmp_path / "l.tsv"
+    tsv.write_text(head
+                   + f"D1\tDendrobium one\tDendrobium\tSPECIES\t{ORCH}\tKerala\tds1\tHUMAN_OBSERVATION\t2020\t2024\tcoarse\t4\n"
+                   + f"D1\tDendrobium one\tDendrobium\tSPECIES\t{ORCH}\tKerala\tds1\tPRESERVED_SPECIMEN\t1900\t1950\tnone\t5\n"
+                   + f"D2\tDendrobium two\tDendrobium\tSPECIES\t{ORCH}\t\tds2\tPRESERVED_SPECIMEN\t1910\t1910\tissue\t1\n")
+    con = duckdb.connect()
+    _ledger(con, [("D1", 101, 32, 1900, 2020, 1)], [("D1", "Dendrobium one", *ORCHID, "Dendrobium")])
+    assert unlocated.build(con, tsv) == 10
+    saved = site_data.unlocated_json(con, tmp_path)
+    assert saved["india"]["p"] == {"none": 5, "coarse": 4, "issue": 1}
+    assert saved["states"]["32"]["p"] == {"none": 5, "coarse": 4}
+    old = tmp_path / "old.tsv"
+    old.write_text(L_HEAD + f"D1\tDendrobium one\tDendrobium\tSPECIES\t{ORCH}\tKerala\tds1\tPRESERVED_SPECIMEN\t1900\t1950\t5\n")
+    unlocated.build(con, old)
+    assert site_data.unlocated_json(con, tmp_path)["india"]["p"] == {"none": 5}

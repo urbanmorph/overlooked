@@ -62,7 +62,11 @@ def inputs(tmp_path):
                                         {"name": "Qus rus", "year": 2015, "sources": ["ZSI Animal Discoveries"], "journal": "",
                                          "state": "", "link": "https://x/2", "group": "Birds", "key": "K7",
                                          "matched_by": "exact name", "status": "none", "latest_after": None,
-                                         "any_record": True}])
+                                         "any_record": True},
+                                        {"name": "Wus xus", "year": 2021, "sources": ["Plazi"], "journal": "J",
+                                         "state": "", "link": "https://x/3", "group": "Birds", "key": None,
+                                         "matched_by": "name as published in GBIF", "status": "recorded",
+                                         "latest_after": 2023, "any_record": True}])
     col = write(con, """SELECT * FROM (VALUES ('K1', 1758, '(Linnaeus, 1758)'), ('K2', NULL, '(L.) DC.'),
         ('G1', 1849, 'Moore, 1849')) t(id, year, authority)""", tmp_path / "col_years.parquet")
     wcvp_y = write(con, """SELECT * FROM (VALUES ('Cus dus', 1753, '(L.) DC.'), ('Aus bus', 1700, 'X'))
@@ -130,7 +134,7 @@ def built(inputs, tmp_path, monkeypatch):
 
 def test_documented_observed_identified(built):
     t = built["summary"]["totals"]
-    assert t == {"documented": 10, "observed": 5, "identified": 4}
+    assert t == {"documented": 11, "observed": 6, "identified": 4}   # Wus xus: observed, by name
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
     assert r["Aus bus"]["identified"] and r["Aus bus"]["states_identified"] == [32]
@@ -177,7 +181,7 @@ def test_groups_from_classification_or_hints(built):
 def test_site_files(built):
     out, s = built["out"], built["summary"]
     birds = GROUPS.index("Birds")
-    assert s["india"][birds][:3] == [5, 3, 2]                # Aus, Gus, Hus, Qus, Zus
+    assert s["india"][birds][:3] == [6, 4, 2]                # Aus, Gus, Hus, Qus, Wus, Zus
     assert s["india"][birds][3][s["iucn"].index("EN")] == 1 and s["india"][birds][4] == 1
     assert [st["code"] for st in s["states"]] == ["29", "32"]
     assert {"licence", "attribution", "disclaimer"} <= set(s)
@@ -262,7 +266,7 @@ def test_year_described_from_the_first_source_that_has_one(built):
     assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
     assert years["Eus fus"] is None
     d = built["summary"]["described"]
-    assert d["from"] == 1753 and d["to"] == 2020 and d["unknown"] == 5
+    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 5   # Wus xus: its paper, 2021
 
 
 def test_prefix():
@@ -432,3 +436,13 @@ def test_a_snapshot_with_no_unlocated_file_is_reported(tmp_path, monkeypatch, ca
         (tmp_path / "2026-10" / f"{n}.parquet").write_bytes(b"x")
     assert master.snapshot_input(None, "2026-10")["unlocated"] is None
     assert "warning: snapshot 2026-10 has no unlocated.parquet" in capsys.readouterr().out
+
+
+def test_records_under_the_name_as_published_count_as_observed(built):
+    """GBIF has no key for the name yet, but has records under it after the description: observed in India
+    (no state), with a label that says why."""
+    rows = {n: r for n, *r in duckdb.sql(f"""SELECT name, observed, identified, states_observed, labels
+                                             FROM '{built['out'] / 'master.parquet'}'""").fetchall()}
+    observed, identified, states, labels = rows["Wus xus"]
+    assert observed and not identified and not states
+    assert "vn" in labels and "chk" not in labels and "lm" not in labels

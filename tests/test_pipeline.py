@@ -149,11 +149,12 @@ HOST = "393b8c26-e4e0-4dd0-a218-93fc074ebf4e"     # INSDC Host Organism Sequence
 
 
 def test_sequence_datasets_scope():
-    """Host-organism sequences are left out everywhere; sequences are left out of the no-coordinates
-    query only, and query A keeps a latest year without them."""
+    """Host-organism sequences are left out everywhere; sequences with no coordinates are left out of query L
+    (with coordinates they count, as in query A), and query A keeps a latest year without them."""
     for q in ("ledger_cube", "species_history", "unresolved_cube", "unlocated_cube"):
         assert HOST in gbif.build_sql(q)
-    assert DNA in gbif.build_sql("unlocated_cube").split("NOT IN")[1]
+    assert DNA not in gbif.build_sql("unlocated_cube").split("NOT IN")[1]
+    assert f"hascoordinate = TRUE OR datasetkey NOT IN ('{DNA}')" in gbif.build_sql("unlocated_cube")
     assert DNA not in gbif.build_sql("ledger_cube").split("NOT IN")[1]
     assert "last_year_not_dna" in gbif.build_sql("ledger_cube")
 

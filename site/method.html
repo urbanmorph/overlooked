@@ -62,7 +62,9 @@
         <dt>IUCN status</dt><dd>The category on the IUCN Red List (CR, EN, VU, NT, LC, DD), or not assessed. Threatened means CR, EN or VU.</dd>
         <dt>Waiting for a name</dt><dd>An iNaturalist observation with no agreed name yet. The observer may have named it to species, to genus only, or only to a family or a higher level.</dd>
         <dt>Name not matched</dt><dd>A source name that does not match a Catalogue of Life name. It stays on the list under its own name, with this label.</dd>
-        <dt>District and state</dt><dd>LGD boundaries. A GBIF record goes to a district by its coordinates, rounded to 3 decimals (about 110 m). A point less than 5 km from land goes to the nearest district. A record with no coordinates goes to a state when its state name is clear.</dd>
+        <dt>District and state</dt><dd>LGD boundaries. A GBIF record goes to a district by its coordinates, rounded to 3 decimals (about 110 m). A point less than 5 km from land goes to the nearest district. A record that cannot go in a district goes to a state when its state name is clear, else it counts only for India. These records have no coordinates, coordinates that are uncertain by more than 25 km, or coordinates that GBIF marks as possibly wrong. GBIF records with coordinates outside India are not used. DNA sequences with no coordinates are not used, because their dates are often the date the sequence was sent.</dd>
+        <dt>No exact location</dt><dd>The species is observed in India, but no record of it can go in a district (see District and state).</dd>
+        <dt>Recorded under the name as published</dt><dd>GBIF has records of the species from India after its description, but only under the name as the paper gives it: GBIF has not added the name to its species list yet. The species counts as observed in India, in no state.</dd>
       </dl>
     </div>
     <div class="side card pad">

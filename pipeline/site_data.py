@@ -88,8 +88,8 @@ def unresolved_json(con, out: Path):
 
 
 def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
-    """Records with no coordinates, by state ("none" for no place) and group: records (r) and species (s),
-    arrays indexed [0 = all groups, 1 + group index]. Top dataset holders, and species known in India only
+    """Records that cannot be placed in a district, by state ("none" for no place) and group: records (r) and
+    species (s), arrays indexed [0 = all groups, 1 + group index]; records per problem (p: none, issue, coarse). Top dataset holders, and species known in India only
     from these records (no record with coordinates in the ledger or species table).
     titles: a function from dataset keys to {key: title}, or None to leave titles out."""
     groups = [r[0] for r in con.sql("SELECT grp FROM unlocated GROUP BY grp ORDER BY sum(n_records) DESC, grp").fetchall()]
@@ -104,6 +104,9 @@ def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
             d = res.setdefault(str(key), {"r": [0] * n, "s": [0] * n})
             k = 0 if g is None else gi[g] + 1
             d["r"][k], d["s"][k] = int(recs), sp
+        for key, problem, recs in con.sql(f"""SELECT area, problem, sum(n_records) FROM (SELECT {area} AS area, * FROM unlocated)
+                                              GROUP BY ALL ORDER BY 3 DESC""").fetchall():
+            res[str(key)].setdefault("p", {})[problem] = int(recs)
         return res
 
     holders = con.sql(f"""SELECT datasetkey, sum(n_records), count(DISTINCT species_key) FROM unlocated

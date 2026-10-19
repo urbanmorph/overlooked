@@ -85,11 +85,12 @@ LABELS = [
     ("mo", "Machine observation", "id"),
     ("oc", "Other record (kind not given)", "id"),
     ("chk", "Checklist only", "id"),
-    ("lm", "Location missing", "other"),
+    ("lm", "No exact location", "other"),
     ("do", "DNA only", "other"),
     ("end", "Endemic to India", "other"),
     ("nra", "No record since it was described", "other"),
     ("nm", "Name not matched", "other"),
+    ("vn", "Recorded under the name as published", "other"),
 ]
 CODES = [c for c, _, _ in LABELS]
 # NE = not assessed. EW and EX come last so the first seven indices stay fixed.
@@ -392,17 +393,22 @@ def load_inat_genus(con, doc):
 def load_newspecies(con, doc):
     """Species described from India since the new-species layer's first year (Plazi; BSI and ZSI Discoveries).
     Table ns_info keeps each paper: year, sources, journal, link, and records after the description."""
-    rows, info = [], []
+    rows, info, seen = [], [], []
     for r in expand(doc):
         grp = r["group"] if r["group"] in GROUPS else None
         for src, tag in (("Plazi", "Plazi"), ("BSI", "BSI Plant Discoveries"), ("ZSI", "ZSI Animal Discoveries")):
             if tag in r["sources"]:
                 rows.append([src, r["name"], r["key"], grp, (r["year"] or 0) >= NEW_SPECIES_FROM])
+        # GBIF has no key for the name yet, but records under the name as published after the description.
+        if r["status"] == "recorded" and r["matched_by"] == "name as published in GBIF":
+            seen.append([r["name"]])
         info.append([r["name"], r["year"], json.dumps([r["sources"], r["journal"] or None, r["link"], r["status"],
                                                       r["latest_after"], r["year"]], ensure_ascii=False)])
     insert(con, "names_in", """SELECT src, binomial(n), k::VARCHAR, NULL, NULL, NULL, NULL, NULL, NULL, g::VARCHAR,
                                       false, new, 5""", ["src", "n", "k", "g", "new"], rows)
     insert(con, "ns_info", "SELECT binomial(n), y::INTEGER, d", ["n", "y", "d"], info)
+    # Observed in India, in no state; located stays unknown, as the layer does not keep the coordinates.
+    insert(con, "evidence", "SELECT 'GBIF', binomial(n), NULL, NULL, 'vn', true, false, NULL", ["n"], seen)
 
 
 def load_described(con, paths):
@@ -652,6 +658,7 @@ def flags(con):
         CREATE OR REPLACE TABLE id_flags AS
         SELECT i.id, coalesce(bool_or(e.observed), false) AS observed, coalesce(bool_or(e.identified), false) AS identified,
                coalesce(bool_or(e.located), false) AS located,
+               coalesce(bool_or(NOT e.located), false) AS unplaced,   -- a record known to have no exact location
                list(DISTINCT e.label) FILTER (WHERE e.label IS NOT NULL) AS ev_labels
         FROM ids i LEFT JOIN evidence_r e USING (id) GROUP BY i.id
     """)
@@ -660,7 +667,7 @@ def flags(con):
         WITH l AS (
             SELECT id, unnest(ev_labels) AS code FROM id_flags
             UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed
-            UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located
+            UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located AND unplaced
             UNION SELECT id, 'end' FROM names_in_r WHERE endemic
             -- Checked only where the paper is the description: same year as the year described.
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'

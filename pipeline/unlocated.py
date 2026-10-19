@@ -1,4 +1,5 @@
-"""Records with no coordinates (query L), placed in states by the state text as published.
+"""Records that cannot be placed in a district (query L): no coordinates, flagged or too coarse coordinates.
+Placed in states by the state text as published.
 
 A record is placed in an LGD state when its stateprovince text names exactly one state or union
 territory (pipeline/ref/state_names.csv: official names, old names, common spellings). Cities
@@ -6,7 +7,7 @@ territory (pipeline/ref/state_names.csv: official names, old names, common spell
 states stay unplaced: "no place".
 
 Creates table unlocated: species_key, name, genus, taxonrank, grp, stateprovince, state_lgd,
-datasetkey, basis, first_year, last_year, n_records.
+datasetkey, basis, problem, first_year, last_year, n_records.
 """
 
 import csv
@@ -28,7 +29,7 @@ TITLE_KEY = "cache/gbif_datasets.json"
 
 TYPES = {"specieskey": "VARCHAR", "species": "VARCHAR", "genus": "VARCHAR", "taxonrank": "VARCHAR",
          "kingdom": "VARCHAR", "phylum": "VARCHAR", "class": "VARCHAR", "order": "VARCHAR", "family": "VARCHAR",
-         "stateprovince": "VARCHAR", "datasetkey": "VARCHAR", "basisofrecord": "VARCHAR",
+         "stateprovince": "VARCHAR", "datasetkey": "VARCHAR", "basisofrecord": "VARCHAR", "problem": "VARCHAR",
          "first_year": "INTEGER", "last_year": "INTEGER", "n_records": "BIGINT"}
 
 # Words around a state name that do not change it: "State of Kerala", "Andaman Is.", "Puducherry UT".
@@ -81,9 +82,10 @@ def build(con, tsv, names_path=STATE_NAMES):
         CREATE OR REPLACE TABLE unlocated AS
         SELECT l.specieskey AS species_key, any_value(l.species) AS name, l.genus, lower(l.taxonrank) AS taxonrank,
                {GROUP_SQL} AS grp, l.stateprovince, m.state_lgd, l.datasetkey, l.basisofrecord AS basis,
+               coalesce(l.problem, 'none') AS problem,
                min(l.first_year) AS first_year, max(l.last_year) AS last_year, sum(l.n_records) AS n_records
         FROM lcube l LEFT JOIN state_map m USING (stateprovince)
-        GROUP BY species_key, l.genus, taxonrank, grp, l.stateprovince, m.state_lgd, l.datasetkey, basis
+        GROUP BY species_key, l.genus, taxonrank, grp, l.stateprovince, m.state_lgd, l.datasetkey, basis, problem
         ORDER BY state_lgd NULLS LAST, grp, species_key, datasetkey
     """)
     return con.sql("SELECT coalesce(sum(n_records), 0) FROM unlocated").fetchone()[0]
