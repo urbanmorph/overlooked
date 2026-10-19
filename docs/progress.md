@@ -35,6 +35,11 @@ Newest first. Updated as work happens.
 - New species is no longer a category. Labels renamed: "No record since it was described" (only when the paper is
   the description), "No exact location". New label "Recorded under the name as published" (35 species). The
   new-species layer ignores INSDC sequences with no coordinates and matches names as published by whole words.
+- Every species is tagged by the location problems of its GBIF records: no coordinates (65,385 species), coordinates
+  uncertain by more than 25 km (12,514), coordinates GBIF marks as possibly wrong (975; such a record may not be
+  from India). The species page has a "Next step" block: what a person can do and where (add a record, identify on
+  iNaturalist, ask a specialist, correct records on GBIF with a link per problem, check the name, IUCN assessment,
+  state forest department).
 - Map fills its card again (its CSS had targeted the wrong class); search fixes; review: one helper fetches a GBIF
   download once.
 
