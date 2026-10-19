@@ -26,6 +26,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pipeline import boundaries as boundary_map
 import hashlib
 
+from pipeline.util import now
+
 from pipeline import (checks, districts, gbif, health, ledger, names, site_data, unlocated,
                       unresolved)
 
@@ -41,9 +43,6 @@ QUERIES = ["ledger_cube", "species_history", "unresolved_cube", "unlocated_cube"
 DONE = "SUCCEEDED"
 FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
-
-def now():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def default_run_id(state=None):

@@ -33,6 +33,9 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
+from pipeline import util
+from pipeline.util import log
+
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "bsi" / "checklists"
 OUT = ROOT / "data" / "bsi"
@@ -87,9 +90,6 @@ CHECKLISTS = [
 ]
 
 
-def log(*a):
-    print(*a, flush=True)
-
 
 # ---------- download and OCR (cached locally and in R2, resumable) ----------
 
@@ -103,21 +103,11 @@ def fetch_pdf(http, spec, s3=None):
     from pipeline import r2
     dest = pdf_path(spec)
     key = f"{R2_DIR}/checklists/{dest.name}"
-    if not dest.exists() and s3 is not None and r2.exists(s3, key):
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        s3.download_file(r2.bucket(), key, str(dest))
+    if r2.restore(s3, key, dest):
         log(f"{spec['key']}: PDF from R2")
     if not dest.exists():
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        part = dest.with_suffix(".part")
-        with http.get(spec["url"], stream=True, timeout=600) as r:
-            r.raise_for_status()
-            if "pdf" not in r.headers.get("Content-Type", "").lower():
-                raise RuntimeError(f"{spec['url']} did not return a PDF")
-            with open(part, "wb") as f:
-                for chunk in r.iter_content(1 << 20):
-                    f.write(chunk)
-        part.rename(dest)
+        if not util.stream(http, spec["url"], dest, kind="pdf"):
+            raise RuntimeError(f"{spec['url']} did not return a PDF")
         log(f"{spec['key']}: downloaded {dest.stat().st_size:,} bytes from BSI")
         time.sleep(1)
     if s3 is not None:

@@ -26,6 +26,8 @@ from pathlib import Path
 
 import duckdb
 
+from pipeline import util
+
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "described"
 COL_DATASET = "https://api.checklistbank.org/dataset/3LXR"
@@ -90,23 +92,6 @@ def wcvp_years(zpath: Path, out: Path):
     return out
 
 
-def download(http, url, dest: Path):
-    """Stream url to dest (through a .part file), with a progress line every 50 MB."""
-    part = dest.with_suffix(".part")
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    got, step = 0, 50 << 20
-    with http.get(url, stream=True, timeout=600) as r:
-        r.raise_for_status()
-        with open(part, "wb") as f:
-            for chunk in r.iter_content(1 << 20):
-                f.write(chunk)
-                got += len(chunk)
-                if got // step > (got - len(chunk)) // step:
-                    print(f"  {dest.name}: {got >> 20} MB", flush=True)
-    part.replace(dest)
-    return dest
-
-
 def versions(http):
     """The newest release of each source: {"col": {"key", "alias"}, "wcvp": {"etag"}}; None where it does not answer."""
     out = {}
@@ -145,7 +130,8 @@ def sync(http, s3, force=False):
             paths[src] = None
             continue
         print(f"{src}: new release {new}; downloading", flush=True)
-        zpath = download(http, url, CACHE / f"{src}.zip")
+        zpath = CACHE / f"{src}.zip"
+        util.stream(http, url, zpath, progress_mb=50)
         reduce(zpath, local)
         zpath.unlink()
         meta[src] = new

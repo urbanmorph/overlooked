@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 from pipeline import bsi
+from pipeline.util import log
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "cache" / "zsi" / "discoveries"
@@ -110,9 +111,6 @@ JUNK = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")   # 2016's legacy font comes
 LIGATURES = str.maketrans({"\ufb01": "fi", "\ufb02": "fl", "\u047a": "fl", "\u00a0": " "})  # \u047a: 2021 "fl"
 
 
-def log(*a):
-    print(*a, flush=True)
-
 
 # ---------- listing, download, page text (cached locally and in R2) ----------
 
@@ -162,17 +160,11 @@ def fetch_pdf(http, url, year, s3=None):
     from pipeline import r2
     dest = pdf_file(year)
     key = f"{R2_DIR}/{dest.name}"
-    if not dest.exists() and s3 is not None and r2.exists(s3, key):
-        s3.download_file(r2.bucket(), key, str(dest))
+    if r2.restore(s3, key, dest):
         log(f"{year}: PDF from R2")
     if not dest.exists():
-        part = dest.with_suffix(".part")
-        ok = bsi.download(http, url.replace(" ", "%20"), part)
-        time.sleep(1)
-        if not ok:
-            part.unlink(missing_ok=True)
+        if not bsi.download(http, url.replace(" ", "%20"), dest):
             return None
-        part.rename(dest)
         log(f"{year}: downloaded {dest.stat().st_size:,} bytes from {url}")
     if s3 is not None:
         r2.sync_file(s3, dest, key)

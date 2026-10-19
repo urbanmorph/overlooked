@@ -6,13 +6,13 @@
   species/<shard>.json  one species' GBIF records by decade and district (species page)
 """
 
-import json
 from pathlib import Path
 
 import duckdb
 
 from pipeline import ledger
 from pipeline.groups import GROUP_SQL
+from pipeline.util import dump
 
 # PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
 RIGHTS = {
@@ -24,10 +24,6 @@ RIGHTS = {
     "disclaimer": ("Overlooked is not an official checklist or conservation assessment. For the status of a species, "
                    "consult BSI, ZSI, the IUCN Red List and the state forest department."),
 }
-
-def dump(obj, path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
 
 
 def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):

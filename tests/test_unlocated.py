@@ -64,7 +64,6 @@ def _ledger(con, rows, species):
 
 
 ORCHID = ("Plantae", "Tracheophyta", "Liliopsida", "Asparagales", "Orchidaceae")
-FERN = ("Plantae", "Tracheophyta", "Polypodiopsida", "Polypodiales", "Pteridaceae")
 
 
 # 3. Query L

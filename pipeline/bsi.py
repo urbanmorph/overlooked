@@ -21,6 +21,9 @@ from pathlib import Path
 
 import pymupdf
 
+from pipeline import util
+from pipeline.util import log
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "cache" / "bsi"
 REF = ROOT / "pipeline" / "ref"
@@ -31,10 +34,8 @@ GROUP_ALIASES = {"LICHEN": "LICHENS"}
 BANNER_GROUP = {g: g for g in GROUPS} | {"LICHEN": "LICHENS", "ANGIOSPERMS": "SEED PLANTS",
                                          "GYMNOSPERMS": "SEED PLANTS", "FUNGUS": "FUNGI", "ALGA": "ALGAE"}
 BANNER = re.compile(r"(?:^|/)\s*(" + "|".join(BANNER_GROUP) + r")\s*$", re.I)
-GROUP_LINE = re.compile(r"^\s*(?:" + "|".join(GROUPS) + r")\s*$")
 RUNNING_HEADERS = re.compile(r"^\s*(Plant Discoveries|\d{1,3}|=====PAGE \d+=====)\s*$")
 BODY_START = re.compile(r"^(This|A novel|The (?:fungal |lichen |algal |bryophyte |moss |new )?(species|genus|variety|new|taxon|subspecies|form|family|lichen|fungus|alga|strain))\b")
-HEAD_START = re.compile(r"^[A-Z][a-z]+(?:\s+(?:[a-z][a-z-]+|×\s*[a-z][a-z-]+))?\b")
 # Family in brackets; 2015 prints it in caps with stray gaps, e.g. "(O RCH ID ACEAE)".
 HEAD_END = re.compile(r"\(([A-Z][A-Za-z]*(?:\s[A-Za-z]+){0,12})\)\.?\s*$")
 # Some fungi headings omit the family and end with the citation year instead.
@@ -101,9 +102,6 @@ def collection_states(body):
         found = list(dict.fromkeys(DISTRICTS[m] for m in DISTRICT_RE.findall(text)))
     return found
 
-
-def log(*a):
-    print(*a, flush=True)
 
 
 def tesseract(page):
@@ -499,19 +497,10 @@ def seed_from_csv(path):
 
 
 def download(http, url, dest):
-    """Fetch one PDF (written to a .part file first). False when BSI does not answer with a PDF."""
+    """Fetch one PDF. False when BSI does not answer with a PDF (it answers missing files with its home page)."""
     import time
-    part = dest.with_suffix(".part")
     try:
-        with http.get(url, stream=True, timeout=600) as r:
-            r.raise_for_status()
-            if "pdf" not in r.headers.get("Content-Type", "").lower():
-                return False  # BSI answers missing files with its home page (HTTP 200)
-            with open(part, "wb") as f:
-                for chunk in r.iter_content(1 << 20):
-                    f.write(chunk)
-        part.replace(dest)
-        return True
+        return util.stream(http, url, dest, kind="pdf")
     finally:
         time.sleep(1)  # about 1 request per second
 
@@ -522,8 +511,7 @@ def fetch_edition(http, year, urls, s3=None):
     from pipeline import r2
     best = SRC / f"Plant Discoveries {year} best.pdf"
     key = f"cache/bsi/{best.name}"
-    if not best.exists() and s3 is not None and r2.exists(s3, key):
-        s3.download_file(r2.bucket(), key, str(best))
+    if r2.restore(s3, key, best):
         log(f"{year}: PDF from R2")
     if not best.exists():
         for url in urls:

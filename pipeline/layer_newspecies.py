@@ -26,6 +26,7 @@ import duckdb
 import requests
 
 from pipeline import bsi, gbif, health, zsi_discoveries
+from pipeline.util import now
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
@@ -39,9 +40,6 @@ BSI_GROUP = {"SEED PLANTS": "Plants: other flowering plants & conifers", "PTERID
              "MICROBES": "Other"}
 DONE, FAILED = "SUCCEEDED", ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
-
-def now():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def binomial(name):

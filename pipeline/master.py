@@ -60,6 +60,8 @@ from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
 from pipeline.site_data import RIGHTS, shard_of
+from pipeline.r2 import sha256
+from pipeline.util import dump, now
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "master"
@@ -148,15 +150,6 @@ BSI_HINTS = [(r"lichen", "Fungi", "Ascomycota", "Lecanoromycetes"), (r"fung", "F
              (r"", "Plantae", "Tracheophyta", None)]
 
 
-def now():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def dump(obj, path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
-
-
 def prefix(name):
     """Search file for a name: its first two letters, lower case ASCII; anything else is '_'."""
     p = "".join(c if "a" <= c <= "z" else "_" for c in (name or "").lower()[:2])
@@ -172,11 +165,6 @@ def hint_row(hints, text):
 
 
 # ---------------------------------------------------------------- inputs
-
-def sha256(path: Path):
-    from pipeline import r2
-    return r2.sha256(path)
-
 
 def r2_file(s3, key, dest: Path):
     """Download an R2 object to dest if it is missing or differs. Returns dest, or None if R2 has no such object."""

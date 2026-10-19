@@ -47,6 +47,15 @@ def get_json(s3, key):
         raise
 
 
+def restore(s3, key, dest: Path):
+    """Download key to dest when dest is absent and R2 holds it. True when it downloaded."""
+    if dest.exists() or s3 is None or not exists(s3, key):
+        return False
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    s3.download_file(bucket(), key, str(dest))
+    return True
+
+
 def put_json(s3, obj, key):
     s3.put_object(Bucket=bucket(), Key=key, Body=json.dumps(obj, indent=1).encode(),
                   ContentType="application/json", CacheControl=SHORT)

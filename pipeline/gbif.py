@@ -20,6 +20,8 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+from pipeline import util
+
 ROOT = Path(__file__).resolve().parent.parent
 QUERIES = ROOT / "pipeline" / "queries"
 EXCLUDED = ROOT / "pipeline" / "ref" / "excluded_datasets.csv"
@@ -91,15 +93,8 @@ def wait(http, key, every=60):
 
 
 def fetch(http, meta):
-    RAW.mkdir(parents=True, exist_ok=True)
     dest = RAW / f"{meta['key']}.zip"
-    part = dest.with_suffix(".zip.part")  # renamed only when complete, so a cut download is never used
-    with http.get(meta["downloadLink"], stream=True, timeout=600) as r:
-        r.raise_for_status()
-        with open(part, "wb") as f:
-            for chunk in r.iter_content(1 << 20):
-                f.write(chunk)
-    part.replace(dest)
+    util.stream(http, meta["downloadLink"], dest)
     (RAW / f"{meta['key']}.json").write_text(json.dumps(
         {k: meta.get(k) for k in ("key", "doi", "created", "modified", "totalRecords", "size")}, indent=1))
     print(f"saved {dest} ({dest.stat().st_size / 1e6:.1f} MB), doi:{meta['doi']}")
