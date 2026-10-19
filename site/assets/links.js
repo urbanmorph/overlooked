@@ -8,12 +8,16 @@ export function gbifKeyOf(match) {
   return (match.synonym ? match.acceptedUsageKey : match.usageKey) ?? null;
 }
 
-// GBIF records of the species from India; with noExactLocation, also the ones with no coordinates, to correct.
-export function gbifIndiaLinks(key, noExactLocation) {
+// GBIF filters for the location problems a species is labelled with. GBIF has none for coarse coordinates.
+const PROBLEM_FILTER = [['lnc', 'has_coordinate=false', 'GBIF: records from India with no coordinates'],
+  ['lfl', 'has_geospatial_issue=true', 'GBIF: records from India with coordinates marked as possibly wrong']];
+
+// GBIF records of the species from India, then the ones with each location problem in codes (a Set of label codes).
+export function gbifIndiaLinks(key, codes = new Set()) {
   if (key == null) return [];
   const all = `${GBIF_SEARCH}?country=IN&taxon_key=${encodeURIComponent(key)}`;
   return [{ href: all, text: 'GBIF: records from India' },
-    ...(noExactLocation ? [{ href: `${all}&has_coordinate=false`, text: 'GBIF: records from India with no coordinates (correct them at the source)' }] : [])];
+    ...PROBLEM_FILTER.filter(([c]) => codes.has(c)).map(([, f, text]) => ({ href: `${all}&${f}`, text }))];
 }
 
 const INAT_UPLOAD = 'https://www.inaturalist.org/observations/upload';
@@ -26,7 +30,7 @@ const IUCN_PROCESS = 'https://www.iucnredlist.org/assessment/process';
 // Returns [{text, links: [{href, text}]}], the first step first.
 export function nextSteps(sp) {
   const out = [], c = sp.codes, q = encodeURIComponent(sp.name);
-  const gbifAll = gbifIndiaLinks(sp.gbifKey, true);
+  const gbif = gbifIndiaLinks(sp.gbifKey, c);
   if (sp.status === 0) {
     out.push({ text: c.has('nra') ? 'No observation is in the sources, and nobody has recorded it since it was described. Look for it where the description found it, and add what you find.'
       : 'No observation is in the sources. If you find it, add an observation, or publish the specimen records of your collection.',
@@ -36,11 +40,11 @@ export function nextSteps(sp) {
   if (sp.wait && sp.identify) {
     out.push({ text: `${sp.wait.toLocaleString('en-IN')} ${sp.wait === 1 ? 'observation on iNaturalist waits for a name. If you know the group, identify it.' : 'observations on iNaturalist wait for a name. If you know the group, identify them.'}`, links: [{ href: sp.identify, text: 'Identify on iNaturalist' }] });
   } else if (sp.status === 1) {
-    out.push({ text: 'The records do not confirm the name yet. A specialist of the group can check the specimens or photos.', links: gbifAll.slice(0, 1) });
+    out.push({ text: 'The records do not confirm the name yet. A specialist of the group can check the specimens or photos.', links: gbif.slice(0, 1) });
   }
   if (c.has('lnc') || c.has('lco') || c.has('lfl') || c.has('lm')) {
     out.push({ text: `Some records from India have no exact location, so they are not on the map.${c.has('lfl') ? ' Some coordinates may be wrong: such a record may not be from India.' : ''} The publisher of each record can correct it on GBIF.`,
-      links: gbifAll.slice(1) });
+      links: gbif.length > 1 ? gbif.slice(1) : gbif });
   }
   if (c.has('nm')) out.push({ text: 'The name does not match the Catalogue of Life. A taxonomist can check the name.', links: [{ href: `https://www.catalogueoflife.org/data/search?q=${q}`, text: 'Search the Catalogue of Life' }] });
   const end = c.has('end') ? ' It is endemic to India, so records from India decide its assessment.' : '';

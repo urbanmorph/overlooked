@@ -11,12 +11,13 @@ test('GBIF key only for an exact match of the name', () => {
   assert.equal(gbifKeyOf(null), null);
 });
 
-test('records from India, and the ones with no exact location when the species has that label', () => {
+test('records from India, and a link for each location problem the species has', () => {
   const all = 'https://www.gbif.org/occurrence/search?country=IN&taxon_key=5';
-  assert.deepEqual(gbifIndiaLinks(5, false).map(l => l.href), [all]);
-  const links = gbifIndiaLinks(5, true);
-  assert.deepEqual(links.map(l => l.href), [all, `${all}&has_coordinate=false`]);
-  assert.deepEqual(gbifIndiaLinks(null, true), []);
+  assert.deepEqual(gbifIndiaLinks(5).map(l => l.href), [all]);
+  assert.deepEqual(gbifIndiaLinks(5, new Set(['lnc', 'lfl'])).map(l => l.href),
+    [all, `${all}&has_coordinate=false`, `${all}&has_geospatial_issue=true`]);
+  assert.deepEqual(gbifIndiaLinks(5, new Set(['lfl'])).map(l => l.href), [all, `${all}&has_geospatial_issue=true`]);
+  assert.deepEqual(gbifIndiaLinks(null, new Set(['lnc'])), []);
 });
 
 const base = { status: 2, iucn: 'LC', codes: new Set(), wait: 0, identify: 'ID', gbifKey: 5, name: 'Aus bus', paper: null };
@@ -37,7 +38,9 @@ test('observed but not identified: identify on iNaturalist, or ask a specialist'
 
 test('records with no exact location: correct them on GBIF; flagged ones may not be from India', () => {
   const s = steps({ codes: new Set(['lnc', 'lfl']) }).find(x => /exact location/.test(x.text));
-  assert.ok(s.links[0].href.endsWith('taxon_key=5&has_coordinate=false'));
+  assert.deepEqual(s.links.map(l => l.href.split('taxon_key=5')[1]), ['&has_coordinate=false', '&has_geospatial_issue=true']);
+  // Coordinates too coarse: GBIF has no filter for that, so the step links all records from India.
+  assert.ok(steps({ codes: new Set(['lco']) }).find(x => /exact location/.test(x.text)).links[0].href.endsWith('taxon_key=5'));
   assert.match(s.text, /may not be from India/);
   assert.ok(!texts({ codes: new Set() }).includes('exact location'));
 });

@@ -151,10 +151,9 @@ try {
     `<a href="https://indiabiodiversity.org/species/list?query=${q}">India Biodiversity Portal</a>`,
   ].map(x => `<li>${x}</li>`).join('');
   // GBIF's own key gives direct links to the records from India. If GBIF does not answer, the name search stays.
-  const lm = S.labels.findIndex(l => l.code === 'lm');
   fetch(`https://api.gbif.org/v1/species/match?strict=true&name=${q}`).then(r => (r.ok ? r.json() : null)).then(m => {
-    const links = gbifIndiaLinks(gbifKeyOf(m), lm >= 0 && bit(labels, lm));
-    if (gbifKeyOf(m) != null) showNext(gbifKeyOf(m));
+    const key = gbifKeyOf(m), links = gbifIndiaLinks(key, codes);
+    if (key != null) showNext(key);
     if (links.length) $('#gbif-links').innerHTML = links.map(l => `<a href="${esc(l.href)}">${esc(l.text)}</a>`).join('<br>');
   }).catch(() => {});
   $('#source').innerHTML = `${esc(S.disclaimer || '')} ${sourceLine(snapSummary)}`;
