@@ -27,6 +27,10 @@ export async function snapshot() {
 const nf = new Intl.NumberFormat('en-IN');
 export const fmt = n => (n == null ? '–' : nf.format(n));
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
+export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
+// One label chip per bit set in mask.
+export const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
 export const $ = (sel, el = document) => el.querySelector(sel);
 
 export function monthName(iso) {
@@ -80,4 +84,4 @@ function setupNav() {
   addEventListener('resize', edges);
   document.fonts?.ready.then(edges);
 }
-setupNav();
+if (typeof document !== 'undefined') setupNav();   // not in node tests

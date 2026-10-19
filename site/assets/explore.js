@@ -3,7 +3,7 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, showLoadError } from './common.js';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 import { fixSection } from './fix.js';
 
@@ -213,7 +213,6 @@ try {
   // the group index is added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
   const G = 9;
   const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => [...r, gi]));
-  const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;   // masks can pass 32 bits
   function passes(r, f = st.filters, y = st.years) {
     const [, , src, status, iucn, labels, , , year] = r;
     if ((y.from || y.to) && (year == null || year < (y.from || 0) || year > (y.to || 9999))) return false;
@@ -223,7 +222,6 @@ try {
     if (f.labels.size && ![...f.labels].every(i => bit(labels, i))) return false;
     return true;
   }
-  const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
   const iucnBadge = i => `<span class="iucn i-${esc(S.iucn[i])}" title="IUCN Red List">${esc(S.iucn[i] === 'NE' ? 'Not assessed' : S.iucn[i])}</span>`;
   const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
   const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Described</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';

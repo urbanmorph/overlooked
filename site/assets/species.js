@@ -2,7 +2,7 @@
 // waiting observations),
 // where it is observed and identified, and its GBIF records when the snapshot has them.
 
-import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap } from './map.js';
 import { gbifKeyOf, gbifIndiaLinks, nextSteps } from './links.js';
 
@@ -27,7 +27,6 @@ const BASIS = [
 ];
 const KIND = Object.fromEntries(BASIS);
 const KIND_ORDER = [['Specimen', '#16201C'], ['From a paper', '#8A9690'], ['Observation', '#2F5DA8'], ['Other', '#C5CCC7']];
-const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;   // masks can pass 32 bits
 
 // Show every Nth decade label, counted back from the latest, so that labels never overlap at the measured column width.
 function thinLabels(box) {
@@ -88,7 +87,7 @@ try {
   // Status, IUCN, sources, labels and what waits for a name.
   const nId = states.filter(s => s.id).length, nObs = states.filter(s => s.obs).length;
   const cat = S.iucn[iucn];
-  const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).filter(Boolean).join('') || '<span class="muted">–</span>';
+  const chips = (mask, names) => tags(mask, names) || '<span class="muted">–</span>';
   const identify = place => `${IDENTIFY}?quality_grade=needs_id&taxon_id=${encodeURIComponent(taxon)}&place_id=${encodeURIComponent(place)}`;
   $('#status').innerHTML = `<div class="muted crumb">In India</div>
     <p class="sp-big">${STATUS[status]}</p><p class="note" style="margin:4px 0 12px">${STATUS_TEXT[status]}</p>
@@ -100,8 +99,8 @@ try {
     </dl>
     ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${paper[5]}`}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
       ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.` : ''}</p>` : ''}
-    <div class="note" style="margin:12px 0 4px">Sources</div><div>${tags(sources, S.sources)}</div>
-    <div class="note" style="margin:12px 0 4px">Labels</div><div>${tags(labels, S.labels.map(l => l.name))}</div>
+    <div class="note" style="margin:12px 0 4px">Sources</div><div>${chips(sources, S.sources)}</div>
+    <div class="note" style="margin:12px 0 4px">Labels</div><div>${chips(labels, S.labels.map(l => l.name))}</div>
     <div class="sp-wait" id="next"></div>`;
   // Next step: what a person can do for this species, and where. GBIF links fill in when GBIF gives its key.
   const codes = new Set(S.labels.filter((l, i) => bit(labels, i)).map(l => l.code));

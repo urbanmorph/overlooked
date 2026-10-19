@@ -113,7 +113,6 @@ dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) } dl.stats 
 .mod { display: flex; flex-direction: column; gap: 8px; padding: 22px; text-decoration: none; color: var(--ink) }
 .mod .mono { font-size: 13px; color: var(--muted) } .mod b { font-size: 19px; font-weight: 600 } .mod span { font-size: 15px; color: var(--ink-2); line-height: 1.5 }
 .mod.later { border-style: dashed; background: transparent }
-.tag { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
 .act { background: var(--ink); color: #F5F6F3; border-radius: 12px; padding: 28px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between }
 .act p { margin: 8px 0 0; color: #C9D1CC } .act .links { display: flex; flex-wrap: wrap; gap: 10px }
 .act a { color: #F5F6F3; text-decoration: none; padding: 12px 16px; border: 1px solid #6C7A72; border-radius: 8px; font-size: 15px }
@@ -198,7 +197,7 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .ex-map[data-view="identified"] { --q0: #E3ECF7; --q1: #B9CDEA; --q2: #7FA2D6; --q3: #2F5DA8; --q4: #173A75 }
 .ex-map[data-view="iucn"] { --q0: #F7E3E3; --q1: #EDB8B8; --q2: #D9787A; --q3: #B03A3E; --q4: #6E1A1D }
 .sp-table { width: 100%; min-width: 900px }
-.tag { display: inline-block; font-size: 12px; background: var(--chip); color: var(--ink-2); border-radius: 3px; padding: 1px 6px; margin: 1px 4px 1px 0; white-space: nowrap }
+.tag { display: inline-block; max-width: 100%; font-size: 12px; background: var(--chip); color: var(--ink-2); border-radius: 3px; padding: 1px 6px; margin: 1px 4px 1px 0 }
 .iucn { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 3px; padding: 1px 6px; white-space: nowrap; background: var(--chip); color: var(--ink-2) }
 .i-CR { background: #6E1A1D; color: #fff } .i-EN { background: #B03A3E; color: #fff } .i-VU { background: #F2C14E; color: #16201C }
 .i-NT { background: #DCEEE8; color: #063F33 } .i-LC { background: #E9ECE8; color: #3E4A44 } .i-DD { background: #E3ECF7; color: #173A75 }
@@ -210,7 +209,7 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .wait-help { padding-top: 0; margin: 0; font-size: 14px }
 .why { display: inline-block; margin: 0 4px 2px 0; padding: 1px 6px; border-radius: 4px; font-size: 12px; background: var(--q0); color: var(--q4) }
 .why.first { background: var(--q3); color: #fff }
-a.idlink { white-space: nowrap; font-weight: 500 }
+a.idlink { font-weight: 500; overflow-wrap: anywhere }
 .gwait { display: block; font-size: 12px; color: var(--muted); margin-top: 2px }
 .wm { display: none }
 @media (max-width: 600px) {
