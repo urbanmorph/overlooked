@@ -16,7 +16,8 @@ All data is static JSON and Parquet under https://overlooked-india.pages.dev/dat
 - {base}sp/{shard}.json — one object per species key: name, group, sources, status, IUCN, labels, states observed and identified, iNaturalist taxon and observations waiting, year described, authority, and for a species described since 2007 its paper [sources, journal, link, records after the description, latest year]; shard = FNV-1a 32-bit hash of the key, modulo 512
 - {base}changes.json — species that moved since last month: rows [kind, key, name, group, new states, new sources]; kinds identified (first identification in India), state (first identification in a state), observed, documented (added), dropped (renamed or merged); counts per kind and per group
 - {base}search/{two letters}.json — search index by the first two letters of the name; {base}search/places.json — states and districts
-- /data/latest.json — the current GBIF snapshot (district ledger, species history, records without a species name, records without coordinates); its manifest lists every file and the GBIF download DOIs
+- /data/latest.json — the current GBIF snapshot (district ledger, species history, records without a species name, records that cannot go in a district); its manifest lists every file and the GBIF download DOIs
+- {snapshot}unlocated.json — GBIF records from India that cannot go in a district (no coordinates, coordinates uncertain by more than 25 km, or coordinates GBIF marks as possibly wrong): records and species per group for India and per state, records per problem, the datasets that hold most of them, and the species known from India only in such records. {snapshot}unresolved.json — records not named to species. The front page shows both as "Records to fix", for data publishers
 - /data/layers/inat/latest.json — iNaturalist species lists per state (species, genus, above genus); /data/layers/newspecies/latest.json — species described from India since 2007
 
 ## Rights

@@ -64,8 +64,7 @@ h2 { margin: 0; font-size: 22px; font-weight: 600 }
 section { margin-top: 32px }
 
 /* Map */
-.mapbox { position: relative; margin-top: 12px; aspect-ratio: 2711 / 3054; max-height: 640px; margin-inline: auto; display: flex; align-items: center; justify-content: center }
-.mapbox svg { flex: 1 1 auto; align-self: stretch }
+.mapbox { position: relative; margin-top: 12px; width: 100%; aspect-ratio: 2711 / 3054; max-height: clamp(420px, calc(100vh - 340px), 760px) }
 .mapbox svg { width: 100%; height: 100%; display: block }
 .mapbox path { stroke: #fff; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: pointer }
 .mapbox path:hover { stroke: var(--ink); stroke-width: 1.5 }
@@ -98,7 +97,6 @@ th[aria-sort=ascending] button::after { content: " ↑" } th[aria-sort=descendin
 td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); font-size: 15px; vertical-align: top }
 td.n, th.n { text-align: right }
 td.sp a { font-style: italic }
-.yr { font-family: var(--mono); font-weight: 500 } .yr.q { color: var(--quiet) }
 .muted { color: var(--muted) }
 .bar { height: 10px; background: #EEF0ED; border-radius: 2px } .bar i { display: block; height: 10px; border-radius: 2px; background: var(--q2) }
 .gbars { display: flex; flex-direction: column; gap: 6px; font-size: 14px }
@@ -225,3 +223,7 @@ a.idlink { white-space: nowrap; font-weight: 500 }
 .sp-status { flex: 1 1 300px; align-self: stretch } .sp-big { margin: 4px 0 0; font-size: 26px; font-weight: 600 }
 .sp-wait { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line-2) } .sp-wait .idlink { display: inline-block; margin-top: 4px }
 .sp-main .ex-map { --none: var(--zero) }
+/* Records to fix */
+#fix { margin-top: 16px }
+.fix-h { font-size: 16px; margin: 0; padding-bottom: 8px }
+.fix-kpis .kpi { border: 1px solid var(--line); box-shadow: none }
