@@ -18,8 +18,8 @@ const STATUS_TEXT = [
   'Someone observed it in India and the name is confirmed.',
 ];
 const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
-const AFTER = { recorded: 'Recorded again after that year', later_papers: 'After that year, only in papers',
-  none: 'No GBIF record after that year' };
+const AFTER = { recorded: y => `Recorded again after ${y}`, later_papers: y => `After ${y}, only in papers`,
+  none: y => `No GBIF record after ${y}` };
 const BASIS = [
   ['PRESERVED_SPECIMEN', 'Specimen'], ['MATERIAL_SAMPLE', 'Specimen'], ['MATERIAL_CITATION', 'From a paper'],
   ['HUMAN_OBSERVATION', 'Observation'], ['MACHINE_OBSERVATION', 'Observation'], ['OBSERVATION', 'Observation'], ['OCCURRENCE', 'Other'],
@@ -97,8 +97,8 @@ try {
       <dt>Identified in</dt><dd>${fmt(nId)} state${nId === 1 ? '' : 's'}</dd>
       <dt>Observed in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
     </dl>
-    ${paper ? `<p class="note" style="margin:12px 0 0">Listed as a new species from India in ${paper[5]}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
-      ${esc(AFTER[paper[3]] || '')}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.</p>` : ''}
+    ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${paper[5]}`}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
+      ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.` : ''}</p>` : ''}
     <div class="note" style="margin:12px 0 4px">Sources</div><div>${tags(sources, S.sources)}</div>
     <div class="note" style="margin:12px 0 4px">Labels</div><div>${tags(labels, S.labels.map(l => l.name))}</div>
     ${waitIndia ? `<p class="sp-wait"><b class="mono">${fmt(waitIndia)}</b> observation${waitIndia === 1 ? '' : 's'} on iNaturalist wait for a name.

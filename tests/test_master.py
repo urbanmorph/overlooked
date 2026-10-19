@@ -61,7 +61,7 @@ def inputs(tmp_path):
                                          "any_record": False},
                                         {"name": "Qus rus", "year": 2015, "sources": ["ZSI Animal Discoveries"], "journal": "",
                                          "state": "", "link": "https://x/2", "group": "Birds", "key": "K7",
-                                         "matched_by": "exact name", "status": "recorded", "latest_after": 2016,
+                                         "matched_by": "exact name", "status": "none", "latest_after": None,
                                          "any_record": True}])
     col = write(con, """SELECT * FROM (VALUES ('K1', 1758, '(Linnaeus, 1758)'), ('K2', NULL, '(L.) DC.'),
         ('G1', 1849, 'Moore, 1849')) t(id, year, authority)""", tmp_path / "col_years.parquet")
@@ -256,6 +256,9 @@ def test_year_described_from_the_first_source_that_has_one(built):
     assert years["Hus ius"] == 1849        # Catalogue of Life, over ZSI's 1850
     assert years["Aus bus"] == 1758        # Catalogue of Life; WCVP is not asked for an animal
     assert years["Qus rus"] == 1920        # ZSI authority, over a paper of 2015: an older name listed as new
+    labels = dict(duckdb.sql(f"SELECT name, labels FROM '{built['out'] / 'master.parquet'}'").fetchall())
+    assert "nra" in labels["Gus hus"]      # no record since the description
+    assert "nra" not in labels["Qus rus"]  # listed in 2015 but described in 1920: records since 1920 are not checked
     assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
     assert years["Eus fus"] is None
     d = built["summary"]["described"]

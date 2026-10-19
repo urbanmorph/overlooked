@@ -88,7 +88,7 @@ LABELS = [
     ("lm", "Location missing", "other"),
     ("do", "DNA only", "other"),
     ("end", "Endemic to India", "other"),
-    ("nra", "New species: no record after the description", "other"),
+    ("nra", "No record since it was described", "other"),
     ("nm", "Name not matched", "other"),
 ]
 CODES = [c for c, _, _ in LABELS]
@@ -662,7 +662,9 @@ def flags(con):
             UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed
             UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located
             UNION SELECT id, 'end' FROM names_in_r WHERE endemic
+            -- Checked only where the paper is the description: same year as the year described.
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
+                                                AND json_extract(paper, '$[5]')::INTEGER = year
             UNION SELECT id, 'nm' FROM ids WHERE starts_with(id, 'n:')
             UNION SELECT id, 'do' FROM id_flags
                   WHERE observed AND NOT list_has_any(ev_labels, ['rg', 'nid'])
@@ -985,7 +987,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     if inputs.get("bsi"):
         load_bsi(con, inputs["bsi"])
     else:
-        notes.append("BSI checklists are not loaded yet; BSI counts only BSI Plant Discoveries (new species).")
+        notes.append("BSI checklists are not loaded yet; BSI counts only the yearly BSI Plant Discoveries editions.")
     if inputs.get("inat"):
         load_inat(con, inputs["inat"])
         if not inputs["inat"].get("complete"):
