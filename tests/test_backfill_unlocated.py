@@ -15,3 +15,5 @@ def test_next_step_restarts_where_it_stopped():
     assert bu.next_step({"key": "k", "status": "RUNNING"}, published=False) == "wait"
     assert bu.next_step({"key": "k", "status": "SUCCEEDED"}, published=False) == "build"
     assert bu.next_step({"key": "k", "status": "FAILED"}, published=False) == "submit"   # ask again
+    assert bu.next_step({"key": "k", "status": "SUCCEEDED", "built": "k"}, published=False) == "publish"
+    assert bu.next_step({"key": "k2", "status": "SUCCEEDED", "built": "k"}, published=False) == "build"

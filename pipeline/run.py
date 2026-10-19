@@ -35,7 +35,7 @@ SNAPSHOTS = ROOT / "data" / "snapshots"
 SITE_DATA = ROOT / "site" / "data"
 
 # Query A (ledger), C (species history and names), U (records not named to species, module 5) and
-# L (records with no coordinates). B and D were dropped: effort comes from the ledger itself, and names
+# L (records that cannot go in a district). B and D were dropped: effort comes from the ledger itself, and names
 # come with query C. A new query goes last: a run already started downloads it after the others.
 QUERIES = ["ledger_cube", "species_history", "unresolved_cube", "unlocated_cube"]
 DONE = "SUCCEEDED"
@@ -180,9 +180,7 @@ def build(args):
         return
 
     for name, meta in metas.items():
-        z = gbif.RAW / f"{meta['key']}.zip"
-        if not (z.exists() and (not meta.get("size") or z.stat().st_size == meta["size"])):
-            gbif.fetch(http, meta)
+        gbif.ensure(http, meta)
         state["downloads"][name]["doi"] = meta["doi"]
 
     out = SNAPSHOTS / run_id

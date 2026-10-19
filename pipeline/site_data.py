@@ -2,7 +2,7 @@
 
   summary.json          snapshot figures, groups, rights
   unresolved.json       records not named to species, by group and area (method page)
-  unlocated.json        records without coordinates, by group and area (method page)
+  unlocated.json        records that cannot go in a district, by group and area (Records to fix)
   species/<shard>.json  one species' GBIF records by decade and district (species page)
 """
 
@@ -89,8 +89,8 @@ def unresolved_json(con, out: Path):
 
 def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
     """Records that cannot be placed in a district, by state ("none" for no place) and group: records (r) and
-    species (s), arrays indexed [0 = all groups, 1 + group index]; records per problem (p: none, issue, coarse). Top dataset holders, and species known in India only
-    from these records (no record with coordinates in the ledger or species table).
+    species (s), arrays indexed [0 = all groups, 1 + group index]; records per problem (p: none, issue, coarse).
+    Top dataset holders, and species known in India only from these records (no record with coordinates in the ledger or species table).
     titles: a function from dataset keys to {key: title}, or None to leave titles out."""
     groups = [r[0] for r in con.sql("SELECT grp FROM unlocated GROUP BY grp ORDER BY sum(n_records) DESC, grp").fetchall()]
     gi, n = {g: i for i, g in enumerate(groups)}, len(groups) + 1

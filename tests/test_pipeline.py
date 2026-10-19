@@ -194,3 +194,20 @@ def test_new_species_window_is_one_constant():
     assert layer_newspecies.FIRST_YEAR == gbif.NEW_SPECIES_FROM == 2007
     for q in ("recent_history", "verbatim_names"):
         assert '"year" >= 2007' in gbif.build_sql(q)
+
+
+def test_ensure_fetches_a_download_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(gbif, "RAW", tmp_path)
+    got = []
+    monkeypatch.setattr(gbif, "fetch", lambda http, meta: got.append(meta["key"]))
+    gbif.ensure(None, {"key": "k", "size": 3})
+    (tmp_path / "k.zip").write_bytes(b"abc")
+    gbif.ensure(None, {"key": "k", "size": 3})        # complete: not fetched again
+    gbif.ensure(None, {"key": "k", "size": 9})        # cut short: fetched again
+    gbif.ensure(None, {"key": "k"})                   # GBIF gives no size: the file is kept
+    assert got == ["k", "k"]
+
+
+def test_no_unused_placeholders_in_queries():
+    for q in (gbif.QUERIES).glob("*.sql"):
+        assert "{excluded_unlocated}" not in q.read_text()

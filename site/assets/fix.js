@@ -28,8 +28,9 @@ export async function fixSection(snap) {
       const a = (state ? u.states[state] : u.india) || { r: [], s: [] };
       const recs = sumBy(a.r, u.groups, keep, 1), none = state ? 0 : sumBy(u.states.none?.r || [], u.groups, keep, 1);
       // Per problem: known for all groups only.
-      const parts = keep ? [] : Object.entries(a.p || {}).filter(([k]) => PROBLEM[k]).map(([k, n]) => `${fmt(n)} ${PROBLEM[k]}`);
-      tiles.push([recs, `records that cannot go on the map.${parts.length > 1 ? ` ${parts.join(', ')}.` : parts.length ? ` All ${PROBLEM[Object.keys(a.p)[0]]}.` : ''}${none ? ` ${fmt(none)} do not name one state.` : ''}`]);
+      const kinds = keep ? [] : Object.entries(a.p || {}).filter(([k]) => PROBLEM[k]);
+      const parts = kinds.length === 1 ? `All ${PROBLEM[kinds[0][0]]}.` : kinds.map(([k, n]) => `${fmt(n)} ${PROBLEM[k]}`).join(', ') + (kinds.length ? '.' : '');
+      tiles.push([recs, `records that cannot go on the map. ${parts}${none ? ` ${fmt(none)} do not name one state.` : ''}`]);
     }
     if (un) {
       const a = (state ? un.states[state] : un.india) || { n: 0, g: [] };

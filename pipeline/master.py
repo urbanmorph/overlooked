@@ -234,7 +234,7 @@ def snapshot_input(s3, run_id):
     if missing:
         raise SystemExit(f"snapshot {run_id}: {missing} not found locally or in R2")
     if not paths["unlocated"]:
-        print(f"warning: snapshot {run_id} has no unlocated.parquet; GBIF records with no coordinates count nowhere",
+        print(f"warning: snapshot {run_id} has no unlocated.parquet; GBIF records that cannot go in a district count nowhere",
               flush=True)
     return paths
 
@@ -288,7 +288,7 @@ def insert(con, table, select, cols, rows):
 
 
 def load_gbif(con, paths):
-    """GBIF species (records with coordinates), their kinds of record, states, and records with no coordinates."""
+    """GBIF species (records with coordinates), their kinds of record, states, and records that cannot go in a district."""
     basis = " ".join(f"WHEN '{b}' THEN '{c}'" for b, c in BASIS_LABEL.items())
     con.sql(f"""INSERT INTO names_in SELECT 'GBIF', name, species_key, kingdom, phylum, class, "order", family, genus,
                 NULL, false, false, 0 FROM '{paths["species"]}'""")

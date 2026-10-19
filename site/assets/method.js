@@ -4,7 +4,7 @@ const QUERY = {
   ledger_cube: 'Species at each place, first and latest year',
   species_history: 'Species names and history by decade',
   unresolved_cube: 'Records with no species name (genus or higher)',
-  unlocated_cube: 'Records with no coordinates',
+  unlocated_cube: 'Records that cannot go in a district',
 };
 const SOURCE = {
   gbif_api: 'GBIF API', gbif_downloads: 'GBIF downloads', r2: 'Overlooked data store', lgd_boundaries: 'LGD boundaries (bharatlas)',

@@ -47,7 +47,6 @@ NEW_SPECIES_FROM = 2007
 def build_sql(name, state=None):
     keys = lambda f: [f"'{r['datasetKey']}'" for r in csv.DictReader(f.open())]
     excluded = ", ".join(keys(EXCLUDED))
-    excluded_unlocated = ", ".join(keys(EXCLUDED) + keys(EXCLUDED_UNLOCATED))
     sequence_datasets = ", ".join(keys(EXCLUDED_UNLOCATED))
     # GADM state name is only for test runs. The real runs place cells in LGD districts later.
     region = f"AND level1name = '{state}'" if state else ""
@@ -55,7 +54,7 @@ def build_sql(name, state=None):
     text_region = f"AND stateprovince = '{state}'" if state else ""
     text = (QUERIES / f"{name}.sql").read_text()
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("--"))
-    return " ".join(body.format(excluded=excluded, excluded_unlocated=excluded_unlocated,
+    return " ".join(body.format(excluded=excluded,
                                    sequence_datasets=sequence_datasets, dna_dataset=DNA_DATASET,
                                    region_filter=region, stateprovince_filter=text_region,
                                    first_year=NEW_SPECIES_FROM).split())
@@ -105,6 +104,14 @@ def fetch(http, meta):
         {k: meta.get(k) for k in ("key", "doi", "created", "modified", "totalRecords", "size")}, indent=1))
     print(f"saved {dest} ({dest.stat().st_size / 1e6:.1f} MB), doi:{meta['doi']}")
     return dest
+
+
+def ensure(http, meta):
+    """The download's zip in data/raw: fetched unless a complete copy is there (same size as GBIF gives)."""
+    z = RAW / f"{meta['key']}.zip"
+    if not (z.exists() and (not meta.get("size") or z.stat().st_size == meta["size"])):
+        fetch(http, meta)
+    return z
 
 
 def main():

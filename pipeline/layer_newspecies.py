@@ -354,8 +354,7 @@ def run(publish, force=False, minutes=None):
     for q in QUERIES:
         meta = http.get(f"{gbif.API}/{d[q]['key']}", timeout=60).json()
         metas[q] = meta
-        if not (gbif.RAW / f"{meta['key']}.zip").exists():
-            gbif.fetch(http, meta)
+        gbif.ensure(http, meta)
         d[q]["doi"] = meta["doi"]
     from pipeline.ledger import unpack
     con = duckdb.connect()

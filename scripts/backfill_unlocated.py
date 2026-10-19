@@ -1,4 +1,4 @@
-"""Add query L (records with no coordinates) to a snapshot published before the query existed.
+"""Add query L (records that cannot go in a district) to a snapshot published before the query existed.
 
 Requests the GBIF download, waits for it, and builds unlocated.json and unlocated.parquet from it and from
 the snapshot's own published Parquet files. Only new files are written; a published file is never changed.
@@ -30,15 +30,15 @@ def next_step(state, published):
         return "done"
     if not state.get("key") or state.get("status") in ("FAILED", "KILLED", "CANCELLED"):
         return "submit"
-    return "build" if state.get("status") == "SUCCEEDED" else "wait"
+    if state.get("status") != "SUCCEEDED":
+        return "wait"
+    return "publish" if state.get("built") == state["key"] else "build"
 
 
 def ensure_zip(http, key):
     """The download's zip in data/raw, fetched once. Returns the GBIF metadata."""
     meta = http.get(f"{gbif.API}/{key}", timeout=60).json()
-    z = gbif.RAW / f"{key}.zip"
-    if not (z.exists() and (not meta.get("size") or z.stat().st_size == meta["size"])):
-        gbif.fetch(http, meta)
+    gbif.ensure(http, meta)
     return meta
 
 
@@ -111,7 +111,11 @@ def main():
             state["status"] = gbif.wait(http, state["key"])["status"]
             save()
             continue
-        out = build(http, s3, a.run_id, state["key"], work)
+        out = work / "out"
+        if step == "build" or not all((out / f).exists() for f in FILES):  # built on another machine
+            build(http, s3, a.run_id, state["key"], work)
+            state["built"] = state["key"]
+            save()
         if not a.publish:
             print(f"built {out}; not published", flush=True)
             return
@@ -119,6 +123,7 @@ def main():
             if not r2.exists(s3, prefix + f):  # never change a published file
                 r2.sync_file(s3, out / f, prefix + f)
                 print(f"uploaded {prefix + f}", flush=True)
+        return
 
 
 if __name__ == "__main__":
