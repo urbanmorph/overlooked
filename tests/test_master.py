@@ -446,3 +446,30 @@ def test_records_under_the_name_as_published_count_as_observed(built):
     observed, identified, states, labels = rows["Wus xus"]
     assert observed and not identified and not states
     assert "vn" in labels and "chk" not in labels and "lm" not in labels
+
+
+def test_records_that_cannot_go_in_a_district_are_tagged_by_problem(inputs, tmp_path, monkeypatch):
+    """A species known only from such records is documented and observed, with the label No exact location and a
+    label for each problem; a species with exact records too gets the problem label but not No exact location."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    unl = tmp_path / "unlocated.parquet"
+    con.sql(f"""COPY (SELECT * FROM (VALUES
+        ('U1', 'Mus nus', 'Mus', 'species', 'Birds', 'Kerala', 32, 'd1', 'PRESERVED_SPECIMEN', 'issue', 1900, 1910, 4),
+        ('U1', 'Mus nus', 'Mus', 'species', 'Birds', NULL, NULL, 'd1', 'PRESERVED_SPECIMEN', 'none', 1900, 1900, 1),
+        ('K3', 'Gus hus', 'Gus', 'species', 'Birds', NULL, NULL, 'd2', 'HUMAN_OBSERVATION', 'coarse', 2012, 2012, 1))
+        t(species_key, name, genus, taxonrank, grp, stateprovince, state_lgd, datasetkey, basis, problem,
+          first_year, last_year, n_records)) TO '{unl}' (FORMAT parquet)""")
+    paths = {**inputs["paths"], "unlocated": unl}
+    out = tmp_path / "out_u"
+    master.build(con, paths, out, {"month": "2026-10", "snapshot": "2026-10", "built": "x"},
+                 inputs["districts"], inputs["inputs"], cache={}, http=FakeGbif())
+    rows = {k: (o, s, set(lab)) for k, o, s, lab in duckdb.sql(
+        f"SELECT key, observed, states_observed, labels FROM '{out / 'master.parquet'}'").fetchall()}
+    observed, states, labels = rows["U1"]
+    assert observed and states == [32]
+    assert {"sp", "lm", "lnc", "lfl"} <= labels and "lco" not in labels
+    assert "lco" in rows["K3"][2] and "lm" not in rows["K3"][2]
+    codes = [c for c, _, _ in master.LABELS]
+    assert codes[:15] == ["rg", "nid", "ho", "sp", "pap", "dna", "mo", "oc", "chk", "lm", "do", "end", "nra", "nm", "vn"]

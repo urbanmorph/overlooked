@@ -4,7 +4,7 @@
 
 import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap } from './map.js';
-import { gbifKeyOf, gbifIndiaLinks } from './links.js';
+import { gbifKeyOf, gbifIndiaLinks, nextSteps } from './links.js';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -102,8 +102,17 @@ try {
       ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.` : ''}</p>` : ''}
     <div class="note" style="margin:12px 0 4px">Sources</div><div>${tags(sources, S.sources)}</div>
     <div class="note" style="margin:12px 0 4px">Labels</div><div>${tags(labels, S.labels.map(l => l.name))}</div>
-    ${waitIndia ? `<p class="sp-wait"><b class="mono">${fmt(waitIndia)}</b> observation${waitIndia === 1 ? '' : 's'} on iNaturalist wait for a name.
-      <a class="idlink" href="${identify(S.waiting.places.india)}" target="_blank" rel="noopener">Identify on iNaturalist</a></p>` : ''}`;
+    <div class="sp-wait" id="next"></div>`;
+  // Next step: what a person can do for this species, and where. GBIF links fill in when GBIF gives its key.
+  const codes = new Set(S.labels.filter((l, i) => bit(labels, i)).map(l => l.code));
+  const showNext = gbifKey => {
+    const steps = nextSteps({ status, iucn: cat, codes, wait: waitIndia, identify: taxon ? identify(S.waiting.places.india) : null,
+      gbifKey, name, paper: paper?.[2] });
+    $('#next').hidden = !steps.length;
+    $('#next').innerHTML = `<div class="note" style="margin:0 0 4px">Next step</div><ol class="next-steps">${steps.map(s => `<li>${esc(s.text)}${s.links.length ? `<br>${s.links.map(l =>
+      `<a class="idlink" href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.text)}</a>`).join(' · ')}` : ''}</li>`).join('')}</ol>`;
+  };
+  showNext(null);
 
   // Map: each state shaded by what is known there.
   const byState = new Map(states.map(s => [Number(s.code), s]));
@@ -145,6 +154,7 @@ try {
   const lm = S.labels.findIndex(l => l.code === 'lm');
   fetch(`https://api.gbif.org/v1/species/match?strict=true&name=${q}`).then(r => (r.ok ? r.json() : null)).then(m => {
     const links = gbifIndiaLinks(gbifKeyOf(m), lm >= 0 && bit(labels, lm));
+    if (gbifKeyOf(m) != null) showNext(gbifKeyOf(m));
     if (links.length) $('#gbif-links').innerHTML = links.map(l => `<a href="${esc(l.href)}">${esc(l.text)}</a>`).join('<br>');
   }).catch(() => {});
   $('#source').innerHTML = `${esc(S.disclaimer || '')} ${sourceLine(snapSummary)}`;

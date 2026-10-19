@@ -91,7 +91,12 @@ LABELS = [
     ("nra", "No record since it was described", "other"),
     ("nm", "Name not matched", "other"),
     ("vn", "Recorded under the name as published", "other"),
+    ("lnc", "Records with no coordinates", "other"),
+    ("lco", "Records with coordinates uncertain by more than 25 km", "other"),
+    ("lfl", "Records with coordinates that GBIF marks as possibly wrong", "other"),
 ]
+# Query L: why a record cannot go in a district.
+PROBLEM_LABEL = {"none": "lnc", "coarse": "lco", "issue": "lfl"}
 CODES = [c for c, _, _ in LABELS]
 # NE = not assessed. EW and EX come last so the first seven indices stay fixed.
 IUCN_CATS = ["CR", "EN", "VU", "NT", "LC", "DD", "NE", "EW", "EX"]
@@ -309,6 +314,9 @@ def load_gbif(con, paths):
         con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd,
                     CASE basis {basis} ELSE 'oc' END, true, true, false
                     FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL""")
+        problem = " ".join(f"WHEN '{p}' THEN '{c}'" for p, c in PROBLEM_LABEL.items())
+        con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, NULL, CASE problem {problem} END,
+                    true, true, false FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL""")
     return "last_year_not_dna" in cols
 
 
