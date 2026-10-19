@@ -1,7 +1,7 @@
 // Tests for the action links on the species page (site/assets/links.js). Run: node --test tests/links.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gbifKeyOf, gbifIndiaLinks, nextSteps } from '../site/assets/links.js';
+import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from '../site/assets/links.js';
 
 test('GBIF key only for an exact match of the name', () => {
   assert.equal(gbifKeyOf({ matchType: 'EXACT', usageKey: 5 }), 5);
@@ -70,4 +70,8 @@ test('identified species with observations still waiting: the identify step stay
 test('one observation waits, several wait', () => {
   assert.match(texts({ status: 1, wait: 1 }), /^1 observation on iNaturalist waits for a name\. If you know the group, identify it\./);
   assert.match(texts({ status: 1, wait: 1200 }), /^1,200 observations on iNaturalist wait/);
+});
+
+test('GBIF name search uses the site-wide search: species/search ignores q and lists every taxon', () => {
+  assert.equal(gbifNameSearch('Tyto novaehollandiae'), 'https://www.gbif.org/search?q=Tyto%20novaehollandiae');
 });

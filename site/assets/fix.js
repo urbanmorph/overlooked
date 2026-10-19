@@ -51,7 +51,7 @@ export async function fixSection(snap) {
     $('#fix-only').innerHTML = only.length ? `<h3 class="pad fix-h">Species known from India only in records that cannot go on the map</h3>
       <div class="tablebox"><table class="sp-table"><thead><tr><th>Species</th><th>Group</th><th>Records</th><th>Years</th><th>States named</th></tr></thead><tbody>
       ${only.slice(0, ONLY).map(([k, name, gi, n, first, last, states]) => `<tr>
-        <td><a href="https://www.gbif.org/species/${encodeURIComponent(k)}"><i>${esc(name)}</i></a></td><td>${esc(u.groups[gi])}</td>
+        <td><a href="/species?key=${encodeURIComponent(k)}"><i>${esc(name)}</i></a></td><td>${esc(u.groups[gi])}</td>
         <td class="mono">${fmt(n)}</td><td class="mono">${first == null ? '–' : first === last ? first : `${first}–${last}`}</td><td class="mono">${fmt(states)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="pad muted note" style="padding-top:8px">Most records first. Exact coordinates on these records put the species on the map. Some of these records can give the wrong country: correct that too.${onlyN > ONLY ? ` The first ${ONLY} of ${fmt(onlyN)}.` : ''}</p>` : '';

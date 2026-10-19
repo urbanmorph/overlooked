@@ -20,6 +20,9 @@ export function gbifIndiaLinks(key, codes = new Set()) {
     ...PROBLEM_FILTER.filter(([c]) => codes.has(c)).map(([, f, text]) => ({ href: `${all}&${f}`, text }))];
 }
 
+// GBIF's site-wide search finds a name; its species search ignores q and lists every taxon.
+export const gbifNameSearch = name => `https://www.gbif.org/search?q=${encodeURIComponent(name)}`;
+
 const INAT_UPLOAD = 'https://www.inaturalist.org/observations/upload';
 const GBIF_PUBLISH = 'https://www.gbif.org/become-a-publisher';
 const IUCN_PROCESS = 'https://www.iucnredlist.org/assessment/process';

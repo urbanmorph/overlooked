@@ -4,7 +4,7 @@
 
 import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap } from './map.js';
-import { gbifKeyOf, gbifIndiaLinks, nextSteps } from './links.js';
+import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -144,7 +144,7 @@ try {
   const q = encodeURIComponent(name);
   $('#links').innerHTML = [
     `<a href="https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(key)}">Catalogue of Life</a>`,
-    `<span id="gbif-links"><a href="https://www.gbif.org/species/search?q=${q}">GBIF: search this name</a></span>`,
+    `<span id="gbif-links"><a href="${esc(gbifNameSearch(name))}">GBIF: search this name</a></span>`,
     taxon ? `<a href="https://www.inaturalist.org/taxa/${encodeURIComponent(taxon)}">iNaturalist</a>` : `<a href="https://www.inaturalist.org/taxa/search?q=${q}">iNaturalist: search this name</a>`,
     `<a href="https://www.iucnredlist.org/search?query=${q}">IUCN Red List</a>`,
     `<a href="https://indiabiodiversity.org/species/list?query=${q}">India Biodiversity Portal</a>`,
