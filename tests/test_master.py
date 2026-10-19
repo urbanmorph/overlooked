@@ -419,3 +419,13 @@ def test_new_species_from_every_source_and_the_whole_window():
         {**row, "name": "Cus dus", "year": 2010, "sources": ["Plazi", "BSI Plant Discoveries"], "key": "K2"}]))
     got = con.sql("SELECT source, name, key, new FROM names_in ORDER BY name, source").fetchall()
     assert got == [("ZSI", "Aus bus", "K1", True), ("BSI", "Cus dus", "K2", True), ("Plazi", "Cus dus", "K2", True)]
+
+
+def test_a_snapshot_with_no_unlocated_file_is_reported(tmp_path, monkeypatch, capsys):
+    """Records with no coordinates count as observed; without the file they count nowhere, so say so."""
+    monkeypatch.setattr(master, "SNAPSHOTS", tmp_path)
+    (tmp_path / "2026-10").mkdir()
+    for n in ("species", "ledger", "species_decade"):
+        (tmp_path / "2026-10" / f"{n}.parquet").write_bytes(b"x")
+    assert master.snapshot_input(None, "2026-10")["unlocated"] is None
+    assert "warning: snapshot 2026-10 has no unlocated.parquet" in capsys.readouterr().out

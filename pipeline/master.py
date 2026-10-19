@@ -232,6 +232,9 @@ def snapshot_input(s3, run_id):
     missing = [n for n in ("species", "ledger", "species_decade") if not paths[n]]
     if missing:
         raise SystemExit(f"snapshot {run_id}: {missing} not found locally or in R2")
+    if not paths["unlocated"]:
+        print(f"warning: snapshot {run_id} has no unlocated.parquet; GBIF records with no coordinates count nowhere",
+              flush=True)
     return paths
 
 

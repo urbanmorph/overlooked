@@ -48,13 +48,15 @@ def build_sql(name, state=None):
     keys = lambda f: [f"'{r['datasetKey']}'" for r in csv.DictReader(f.open())]
     excluded = ", ".join(keys(EXCLUDED))
     excluded_unlocated = ", ".join(keys(EXCLUDED) + keys(EXCLUDED_UNLOCATED))
+    sequence_datasets = ", ".join(keys(EXCLUDED_UNLOCATED))
     # GADM state name is only for test runs. The real runs place cells in LGD districts later.
     region = f"AND level1name = '{state}'" if state else ""
     # Records with no coordinates have no GADM name; a test run selects them by the state text.
     text_region = f"AND stateprovince = '{state}'" if state else ""
     text = (QUERIES / f"{name}.sql").read_text()
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("--"))
-    return " ".join(body.format(excluded=excluded, excluded_unlocated=excluded_unlocated, dna_dataset=DNA_DATASET,
+    return " ".join(body.format(excluded=excluded, excluded_unlocated=excluded_unlocated,
+                                   sequence_datasets=sequence_datasets, dna_dataset=DNA_DATASET,
                                    region_filter=region, stateprovince_filter=text_region,
                                    first_year=NEW_SPECIES_FROM).split())
 

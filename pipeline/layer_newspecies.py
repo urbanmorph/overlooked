@@ -15,6 +15,7 @@ Usage: python -m pipeline.layer_newspecies [--publish] [--force] [--minutes 200]
 """
 
 import argparse
+import hashlib
 import json
 import re
 import time
@@ -93,6 +94,8 @@ def merge(names):
     """One row per name: earliest year; all sources kept."""
     by = {}
     for n in names:
+        if len((n["name"].split() + ["", ""])[1]) < 2:   # "Cryptocephalus s": a cut name, not a species
+            continue
         cur = by.get(n["name"])
         if not cur:
             by[n["name"]] = dict(n, sources=[n["source"]])
@@ -140,11 +143,23 @@ def group_from(con, c):
 
 
 def after(rows):
-    """Records after the description year: (observations, records from papers, latest year)."""
+    """Records after the description year: (observations, records from papers, latest year).
+    rows: (year, basis of record, records, sequence_only); sequences with no coordinates do not count."""
+    rows = [(y, b, n) for y, b, n, seq in rows if not seq]
     obs = sum(n for y, b, n in rows if b != "MATERIAL_CITATION")
     papers = sum(n for y, b, n in rows if b == "MATERIAL_CITATION")
     latest = max((y for y, b, n in rows if b != "MATERIAL_CITATION"), default=None)
     return obs, papers, latest
+
+
+# The name as published, then the end of the text or a space: "Choroterpes latus Kluge, 2023", not "C. latusoides".
+V_NAME = "(lower(v_scientificname) = lower(?) OR starts_with(lower(v_scientificname), lower(?) || ' '))"
+
+
+def verbatim_rows(con, name, year):
+    """Query V rows for a name as published, after the description year."""
+    return con.execute(f"""SELECT year, basisofrecord, n_records, sequence_only FROM v
+                           WHERE year > ? AND {V_NAME} ORDER BY year, basisofrecord""", [year, name, name]).fetchall()
 
 
 def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline, save_cache):
@@ -159,18 +174,18 @@ def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, 
             m = gbif_match(http, n["name"], mcache)
             if m and m.get("key"):
                 key, how = m["key"], "synonym" if m["synonym"] else "exact name (GBIF match)"
-        rows = con.execute("SELECT year, basisofrecord, n_records FROM y WHERE specieskey = ? AND year > ?",
+        rows = con.execute("SELECT year, basisofrecord, n_records, sequence_only FROM y WHERE specieskey = ? AND year > ?",
                            [key, n["year"]]).fetchall() if key else []
         if not rows:
-            vrows = con.execute("""SELECT year, basisofrecord, n_records FROM v
-                                   WHERE year > ? AND lower(v_scientificname) LIKE lower(?) || '%'""",
-                                [n["year"], n["name"]]).fetchall()
+            vrows = verbatim_rows(con, n["name"], n["year"])
             if vrows:
                 rows, how = vrows, "name as published in GBIF"
         obs, papers, latest = after(rows)
         # Any public record in India at all, including the type material from the description itself.
-        any_record = bool(key and (key in in_snapshot or con.execute("SELECT 1 FROM y WHERE specieskey = ? LIMIT 1", [key]).fetchone()))
-        any_record = any_record or bool(con.execute("SELECT 1 FROM v WHERE lower(v_scientificname) LIKE lower(?) || '%' LIMIT 1", [n["name"]]).fetchone())
+        any_record = bool(key and (key in in_snapshot or con.execute(
+            "SELECT 1 FROM y WHERE specieskey = ? AND NOT sequence_only LIMIT 1", [key]).fetchone()))
+        any_record = any_record or bool(con.execute(
+            f"SELECT 1 FROM v WHERE NOT sequence_only AND {V_NAME} LIMIT 1", [n["name"], n["name"]]).fetchone())
         status = "recorded" if obs else ("later_papers" if papers else "none")
         grp = group_of.get(key) or group_hint(n)
         if not grp:
@@ -264,6 +279,18 @@ def check_window(state):
     return True
 
 
+def check_queries(state):
+    """Downloads made with another text of queries Y or V are made again; the names stay.
+    Returns True when it reset the downloads."""
+    fp = hashlib.sha256("\n".join(gbif.build_sql(q) for q in QUERIES).encode()).hexdigest()[:16]
+    if state.get("queries") == fp:
+        return False
+    state["downloads"] = {q: {"status": "WAITING"} for q in QUERIES}
+    state.pop("done", None)
+    state["queries"] = fp
+    return True
+
+
 def run(publish, force=False, minutes=None):
     from pipeline import r2
     deadline = time.monotonic() + minutes * 60 if minutes else None
@@ -278,6 +305,9 @@ def run(publish, force=False, minutes=None):
     save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{month}.json").write_text(json.dumps(state)))
     if check_window(state):
         print(f"new-species window is now {FIRST_YEAR} onwards; names and GBIF downloads start again")
+        save()
+    if check_queries(state):
+        print("the GBIF queries changed; the downloads start again")
         save()
     if force:
         state.pop("done", None)
@@ -330,9 +360,11 @@ def run(publish, force=False, minutes=None):
     from pipeline.ledger import unpack
     con = duckdb.connect()
     con.sql(f"""CREATE TABLE y AS SELECT * FROM read_csv('{unpack(d['recent_history']['key'])}', delim='\t', header=true, quote='',
-                columns={{'specieskey':'VARCHAR','year':'INTEGER','basisofrecord':'VARCHAR','n_records':'BIGINT'}})""")
+                columns={{'specieskey':'VARCHAR','year':'INTEGER','basisofrecord':'VARCHAR','sequence_only':'BOOLEAN',
+                         'n_records':'BIGINT'}})""")
     con.sql(f"""CREATE TABLE v AS SELECT * FROM read_csv('{unpack(d['verbatim_names']['key'])}', delim='\t', header=true, quote='',
-                columns={{'v_scientificname':'VARCHAR','year':'INTEGER','basisofrecord':'VARCHAR','n_records':'BIGINT'}})""")
+                columns={{'v_scientificname':'VARCHAR','year':'INTEGER','basisofrecord':'VARCHAR','sequence_only':'BOOLEAN',
+                         'n_records':'BIGINT'}})""")
     species_by_name = {}
     if s3:
         latest = r2.get_json(s3, "latest.json")
