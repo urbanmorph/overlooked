@@ -7,13 +7,14 @@ Newest first. Updated as work happens.
 | Area | State |
 |---|---|
 | Repository, licence, secrets | Done. Public repo `urbanmorph/overlooked` (MIT). Actions secrets: GBIF and bucket-scoped R2 keys only. |
-| Cloudflare | **Live: https://overlooked-india.pages.dev** (16 October 2026). R2 bucket `overlooked-data` holds snapshot `2026-10`. |
+| Cloudflare | **Live: https://overlooked-india.pages.dev** since 16 October 2026. R2 bucket `overlooked-data` holds snapshot `2026-10`. |
 | Plan | `docs/plan.md`, approved 16 October 2026, updated as decisions change. |
-| Module 1: last-seen ledger | **Live** on the first all-India snapshot (2026-10). |
-| Module 2: change feed | Built and live; shows its first changes after the 1 November run. |
-| Module 5: identification backlog | Brought forward. iNaturalist layer (backlog by state and group, identifiers, direct check of quiet species) and GBIF query U built; backlog page and ledger note built; testing. |
-| Module 3: new species | **Live.** 4,157 species described from India since 2015; 390 recorded again after the description; 3,760 (90%) with no public record since; 2,066 (50%) with any public record in India, often only the type material. |
-| Monthly run (GitHub Actions) | Workflows in place, tested end to end on Kerala. Schedules off until `PIPELINE_ENABLED` is set. |
+| Master list (the site model) | **Live.** 1,74,155 species documented from India (ZSI, BSI, Kew WCVP, GBIF, iNaturalist, Plazi, IUCN Red List; names from the Catalogue of Life); 1,08,173 observed, 97,586 identified, IUCN status per species. Rebuilt daily (`master.yml`), skipped when no input changed. |
+| Explore (front page) | **Live.** Map by state, groups, search, filters (year described, source, status, IUCN, label), species list with labels. Wait for a name (iNaturalist) in the Identified view. Records to fix for data publishers (11,48,847 GBIF records that cannot go in a district, records not named to species). |
+| Species page | **Live.** Sources, status, IUCN, states, GBIF records by decade and district, and a Next step block with links to act (add a record, identify, correct records on GBIF, check the name, IUCN, state forest department). |
+| Change feed | Built and live; shows its first changes after the 1 November run. |
+| Layers | iNaturalist (daily), new species since 2007 (daily, ZSI and BSI Discoveries), described years (COL, WCVP), BSI national checklists. |
+| Monthly run (GitHub Actions) | **On** (`PIPELINE_ENABLED`). Downloads requested on the 1st at 02:17 UTC; build every 6 hours on days 1 to 10 until the snapshot is out. |
 | Source limits | Documented in `docs/sources.md`. Pipeline follows them (GBIF downloads one at a time, crons off the hour). |
 
 ## Log

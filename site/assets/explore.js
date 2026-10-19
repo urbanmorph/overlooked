@@ -465,7 +465,7 @@ try {
   $('#q').addEventListener('keydown', e => { if (e.key === 'Escape') $('#hits').hidden = true; });
   document.addEventListener('pointerdown', e => { if (!e.target.closest('.search')) $('#hits').hidden = true; });
 
-  if (S.notes?.length) $('#source').insertAdjacentHTML('beforeend', `<div class="muted" style="margin-top:6px">${S.notes.map(esc).join(' ')}</div>`);
+  if (S.notes?.length) $('footer .sources').insertAdjacentHTML('beforeend', `<div class="muted" style="margin-top:6px">${S.notes.map(esc).join(' ')}</div>`);
   filtersChanged();
 } catch (err) {
   showLoadError(err);

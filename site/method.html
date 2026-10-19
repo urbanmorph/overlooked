@@ -5,17 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sources and method · Overlooked</title>
 <meta name="description" content="How Overlooked builds each monthly snapshot, the sources it uses, their terms, and how to download the data.">
+<!-- part:head -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/style.css">
+<!-- /part:head -->
 <link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
 <link rel="modulepreload" href="/assets/common.js">
 <script type="module" src="/assets/method.js"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Dataset","name":"Overlooked: species of India, observed and identified","description":"A monthly master list of species documented from India from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, Plazi and the IUCN Red List, with observed, identified and IUCN status by group and state.","url":"https://overlooked-india.pages.dev/method","license":"https://creativecommons.org/licenses/by/4.0/","creator":{"@type":"Person","name":"Sathya Sankaran"},"creditText":"Overlooked (overlooked-india.pages.dev), CC BY 4.0, Sathya Sankaran. Sources: GBIF.org, iNaturalist, Botanical Survey of India, Zoological Survey of India, Royal Botanic Gardens Kew, Plazi, IUCN Red List, Catalogue of Life.","isAccessibleForFree":true,"spatialCoverage":{"@type":"Place","name":"India"},"temporalCoverage":"../..","distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/layers/master/latest.json"},{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/latest.json"}]}</script>
 </head>
 <body>
+<!-- part:noscript -->
 <noscript><div class="wrap" style="padding:16px 0"><b>This page needs JavaScript to draw the map and lists.</b> The same data is open without it: see <a href="/llms.txt">the data guide</a>, the files under <a href="/data/layers/master/latest.json">/data/</a>, and <a href="/method">Sources and method</a>.</div></noscript>
+<!-- /part:noscript -->
+<!-- part:header -->
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="wrap">
@@ -30,6 +35,7 @@
     </nav>
   </div>
 </header>
+<!-- /part:header -->
 
 <main id="main" class="wrap">
   <section style="margin-top:40px">
@@ -141,11 +147,20 @@
   </section>
 </main>
 
+<!-- part:footer -->
 <footer>
   <div class="wrap">
-    <span>Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences.</span>
-    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a>
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · Local Government Directory, via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
   </div>
 </footer>
+<!-- /part:footer -->
 </body>
 </html>

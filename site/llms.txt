@@ -6,7 +6,7 @@ Overlooked builds a master list of species documented from India from the Zoolog
 
 ## Open data (no key, CORS)
 
-All data is static JSON and Parquet under https://overlooked-india.pages.dev/data/ . Monthly files never change after they are published.
+All data is static JSON and Parquet under https://overlooked-india.pages.dev/data/ . Monthly files never change after they are published; a correction adds new files.
 
 - /data/layers/master/latest.json — names the current month of the master list (`base`)
 - {base}summary.json — totals by group, for India and per state; sources, labels, IUCN categories, states; `described` (range of years described, species with no year); licence, attribution, disclaimer

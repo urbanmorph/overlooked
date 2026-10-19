@@ -5,16 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changes · Overlooked</title>
 <meta name="description" content="Each month: species of India identified for the first time, identified in a new state, observed for the first time, or added to the list.">
+<!-- part:head -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 28 28%27%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%2712%27 fill=%27none%27 stroke=%27%2316201C%27 stroke-width=%272%27/%3E%3Ccircle cx=%2714%27 cy=%2714%27 r=%275%27 fill=%27none%27 stroke=%27%23B4480E%27 stroke-width=%272%27 stroke-dasharray=%273 3%27/%3E%3C/svg%3E">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/style.css">
+<!-- /part:head -->
 <link rel="preload" href="/data/layers/master/latest.json" as="fetch" crossorigin>
 <link rel="modulepreload" href="/assets/common.js">
 <script type="module" src="/assets/changes.js"></script>
 </head>
 <body>
+<!-- part:noscript -->
 <noscript><div class="wrap" style="padding:16px 0"><b>This page needs JavaScript to draw the map and lists.</b> The same data is open without it: see <a href="/llms.txt">the data guide</a>, the files under <a href="/data/layers/master/latest.json">/data/</a>, and <a href="/method">Sources and method</a>.</div></noscript>
+<!-- /part:noscript -->
+<!-- part:header -->
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="wrap">
@@ -29,6 +34,7 @@
     </nav>
   </div>
 </header>
+<!-- /part:header -->
 
 <main id="main" class="wrap">
   <section style="margin-top:40px">
@@ -62,11 +68,20 @@
   </div>
 </main>
 
+<!-- part:footer -->
 <footer>
   <div class="wrap">
-    <span>Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences.</span>
-    <a href="https://github.com/urbanmorph/overlooked">Code on GitHub (MIT)</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a>
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · Local Government Directory, via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
   </div>
 </footer>
+<!-- /part:footer -->
 </body>
 </html>
