@@ -2,7 +2,7 @@
 
 Newest first. Updated as work happens.
 
-## Status (16 October 2026)
+## Status (19 October 2026)
 
 | Area | State |
 |---|---|
@@ -17,6 +17,26 @@ Newest first. Updated as work happens.
 | Source limits | Documented in `docs/sources.md`. Pipeline follows them (GBIF downloads one at a time, crons off the hour). |
 
 ## Log
+
+### 19 October 2026
+
+- Records that cannot go in a district now count. Query L covers India records with no coordinates, coordinates
+  uncertain by more than 25 km, or coordinates GBIF flags; it leaves out coordinates GBIF finds outside India and
+  INSDC sequences with no coordinates. Backfilled for snapshot 2026-10 as new files only
+  (`scripts/backfill_unlocated.py`, doi:10.15468/dl.tnbsse): 11,48,847 records (9,63,107 no coordinates, 1,64,308
+  coarse, 21,432 flagged). The owner chose to count them as observed and documented. Master list rebuilt:
+  1,74,155 documented (was 1,54,355), 1,08,172 observed (was 74,023), 97,586 identified; 34,126 species have the
+  label "No exact location". Some of these records are not from India (for example American mosquitoes in a
+  VectorBase dataset); the Records to fix table asks publishers to correct the country too.
+- Records to fix on the front page, for data publishers: these records and the records not named to species, by
+  state and group, the datasets that hold most of them and the species known only from them, with GBIF links.
+  The species page links to the species' GBIF records from India, and to the ones with no coordinates when it has
+  the label "No exact location".
+- New species is no longer a category. Labels renamed: "No record since it was described" (only when the paper is
+  the description), "No exact location". New label "Recorded under the name as published" (35 species). The
+  new-species layer ignores INSDC sequences with no coordinates and matches names as published by whole words.
+- Map fills its card again (its CSS had targeted the wrong class); search fixes; review: one helper fetches a GBIF
+  download once.
 
 ### 18 October 2026
 
