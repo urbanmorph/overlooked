@@ -986,7 +986,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     if not has_dna:
         notes.append("The label \"DNA only\" uses the record type only: this month's GBIF data does not mark DNA sequences.")
     if not paths.get("unlocated"):
-        notes.append("This month's GBIF data does not include records without coordinates, so no species has the label \"location missing\" yet.")
+        notes.append("This month's GBIF data does not include records that cannot go in a district, so no species has the label \"No exact location\" yet.")
     if inputs.get("zsi"):
         load_zsi(con, inputs["zsi"])
     if inputs.get("wcvp"):

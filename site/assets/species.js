@@ -4,6 +4,7 @@
 
 import { snapshot, getJSON, fmt, esc, $, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap } from './map.js';
+import { gbifKeyOf, gbifIndiaLinks } from './links.js';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -135,11 +136,17 @@ try {
   const q = encodeURIComponent(name);
   $('#links').innerHTML = [
     `<a href="https://www.catalogueoflife.org/data/taxon/${encodeURIComponent(key)}">Catalogue of Life</a>`,
-    `<a href="https://www.gbif.org/species/search?q=${q}">GBIF: search this name</a>`,
+    `<span id="gbif-links"><a href="https://www.gbif.org/species/search?q=${q}">GBIF: search this name</a></span>`,
     taxon ? `<a href="https://www.inaturalist.org/taxa/${encodeURIComponent(taxon)}">iNaturalist</a>` : `<a href="https://www.inaturalist.org/taxa/search?q=${q}">iNaturalist: search this name</a>`,
     `<a href="https://www.iucnredlist.org/search?query=${q}">IUCN Red List</a>`,
     `<a href="https://indiabiodiversity.org/species/list?query=${q}">India Biodiversity Portal</a>`,
   ].map(x => `<li>${x}</li>`).join('');
+  // GBIF's own key gives direct links to the records from India. If GBIF does not answer, the name search stays.
+  const lm = S.labels.findIndex(l => l.code === 'lm');
+  fetch(`https://api.gbif.org/v1/species/match?strict=true&name=${q}`).then(r => (r.ok ? r.json() : null)).then(m => {
+    const links = gbifIndiaLinks(gbifKeyOf(m), lm >= 0 && bit(labels, lm));
+    if (links.length) $('#gbif-links').innerHTML = links.map(l => `<a href="${esc(l.href)}">${esc(l.text)}</a>`).join('<br>');
+  }).catch(() => {});
   $('#source').innerHTML = `${esc(S.disclaimer || '')} ${sourceLine(snapSummary)}`;
 } catch (err) {
   showLoadError(err);

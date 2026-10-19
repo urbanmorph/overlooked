@@ -58,7 +58,7 @@ def build(http, s3, run_id, key, work: Path):
     print(f"merged duplicate keys for {names.merge_duplicates(con)} names", flush=True)
     meta = ensure_zip(http, key)
     n = unlocated.build(con, ledger.unpack(key))
-    print(f"{n} records with no coordinates", flush=True)
+    print(f"{n} records that cannot go in a district", flush=True)
     out = work / "out"
     out.mkdir(parents=True, exist_ok=True)
     con.sql(f"COPY unlocated TO '{out / 'unlocated.parquet'}' (FORMAT parquet, COMPRESSION zstd)")

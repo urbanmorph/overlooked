@@ -5,6 +5,7 @@
 
 import { getJSON, snapshot, fmt, esc, $, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
+import { fixSection } from './fix.js';
 
 // Top-level groups for the cards, built from the 28 pipeline groups by name.
 const CATS = [
@@ -44,7 +45,9 @@ function parseYears(v) {
 try {
   const latest = await getJSON('layers/master/latest.json');
   const base = latest.base;
-  const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snapshot().then(s => s.boundaries())]);
+  const snap = await snapshot();
+  const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
+  const fix = fixSection(snap);
   const stIndex = new Map(S.states.map((s, i) => [String(s.code), i]));
   const stName = new Map(S.states.map(s => [String(s.code), s.name]));
   const cats = CATS.map(([key, name, test]) => ({ key, name, gis: S.groups.map((g, i) => (test(g) ? i : -1)).filter(i => i >= 0) }))
@@ -349,7 +352,12 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintCards(); paintHead(); paintMap(); await paintList();
+    paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
+  }
+  // Records to fix: GBIF counts, so they follow the state and group but not the filters.
+  function paintFix() {
+    const c = st.cat ? catOf(st.cat) : null, names = c && new Set(c.gis.map(gi => S.groups[gi]));
+    fix.then(f => f.paint(st.state, names && (g => names.has(g)), st.state ? stName.get(st.state) : 'India', c ? c.name : 'All groups'));
   }
   function setState(code, district = null) { st.state = code; st.district = district; shown = PAGE; return paint(); }
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
