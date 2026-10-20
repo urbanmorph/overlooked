@@ -1,4 +1,4 @@
-grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
-all,20000,19875,9753,1888,8234,49.1,9.5,41.4,83.8,15632,963,78.7,11694,14.1,61.8,66.8
-holdout,9932,9873,4841,901,4131,49.0,9.1,41.8,84.3,7740,487,78.4,5769,14.1,60.7,67.4
-dev,10068,10002,4912,987,4103,49.1,9.9,41.0,83.3,7892,476,78.9,5925,14.2,64.3,66.3
+grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,pct_right_first,right_single,pct_right_single,n_set,mean_set_size,median_set_size,max_set_size,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
+all,20000,19875,10116,1633,8126,50.9,8.2,40.9,86.1,49.0,7775,39.1,2686,1.36,1.0,8,15648,955,78.7,11802,14.3,62.2,73.5
+holdout,9932,9873,5023,768,4082,50.9,7.8,41.3,86.7,48.9,3857,39.1,1324,1.36,1.0,8,7747,485,78.5,5818,14.3,60.8,73.7
+dev,10068,10002,5093,865,4044,50.9,8.6,40.4,85.5,49.1,3918,39.2,1362,1.36,1.0,8,7901,470,79.0,5984,14.4,66.4,73.2

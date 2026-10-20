@@ -21,7 +21,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from pipeline import districts, r2, util  # noqa: E402
+from pipeline import districts, r2, util
 
 BASE = "https://pub-0429b8e3b5a946e69ea007df844a6f1c.r2.dev"
 LAYERS = {

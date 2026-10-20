@@ -1,4 +1,4 @@
-grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
-none,18308,86.1,7165,3730,7413,39.1,59.5,38.1,55.6,30.5,32.9,22.9,958957.0
-coarse,1438,94.8,631,502,305,43.9,78.8,38.9,96.1,34.1,38.5,79.1,164130.0
-issue,254,84.3,109,8,137,42.9,46.1,19.5,19.7,15.5,15.6,18.8,22000.0
+grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_district_single,mean_set_size,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
+none,18308,86.1,7389,3592,7327,40.4,60.0,39.6,21.2,1.68,56.5,32.3,34.4,22.9,958957.0
+coarse,1438,94.8,650,491,297,45.2,79.3,39.1,32.1,1.58,96.2,34.3,38.7,79.1,164130.0
+issue,254,84.3,109,8,137,42.9,46.1,19.5,15.8,1.06,19.7,15.5,15.6,18.8,22000.0

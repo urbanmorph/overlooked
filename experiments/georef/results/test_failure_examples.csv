@@ -1,61 +1,60 @@
 reason,kind,locality,verbatimlocality,county,stateprovince,matched,proposed_dist,proposed,true_dist,truth,err_km,confidence,gbifid
-none: name in several districts,material citation,"Adarsh Nagar, Kanakpur, Sachin",,,,"",,,459,Surat,,,4426849876
-none: name in several districts,material citation,Coimbatore,formerly Madras,,Tamil Nadu,"",,,569,Coimbatore,,,5177995681
-none: name in several districts,material citation,Coimbatore,formerly Madras,,Tamil Nadu,"",,,569,Coimbatore,,,5177995587
-none: name in several districts,material citation,Coimbatore,formerly Madras,,Tamil Nadu,"",,,569,Coimbatore,,,5177995684
-none: name in several districts,material citation,Vijayanagar Bellary,,,Karnataka,"",,,528,Ballari,,,4163028435
-none: name in several districts,material citation,Vijayanagar Bellary,,,Karnataka,"",,,528,Ballari,,,4163028474
 none: name in several districts,material citation,"Tirupattur Forest Division, Tamil Nadu",,,,"",,,732,Tirupathur,,,4426849125
+none: name in several districts,material citation,Coimbatore,formerly Madras,,Tamil Nadu,"",,,569,Coimbatore,,,5177995587
 none: name in several districts,material citation,"Adarsh Nagar, Kanakpur, Sachin",,,,"",,,459,Surat,,,4426849875
-none: name in several districts,observation,,"VGHJ+M23 SOBHA FOREST VIEW, Lingadeeranahalli, Hosahalli, कर्नाटक 560062, India",,Karnataka,"",,,525,Bengaluru Urban,,,3759558120
-none: name in several districts,observation,,"Q2GF+5P, Singavaram, Andhra Pradesh 521207, India",,Andhra Pradesh,"",,,748,Eluru,,,5935171780
-none: name in several districts,observation,,"Pakarbera, Jharkhand, India",,Jharkhand,"",,,325,Dhanbad,,,2005263740
-none: name in several districts,observation,,"Sri Ram Nagar, Vatluru, Andhra Pradesh, India",,Andhra Pradesh,"",,,748,Eluru,,,5176757680
-none: name in several districts,observation,,"Adyar River scenic Trail run, River Rd, River View Colony, Tulasingapuram, Nandambakkam, Tamil Nadu 600125, India",,Tamil Nadu,"",,,574,Kanchipuram,,,6579070880
+none: name in several districts,material citation,"Adarsh Nagar, Kanakpur, Sachin",,,,"",,,459,Surat,,,4426849876
+none: name in several districts,material citation,Vijayanagar Bellary,,,Karnataka,"",,,528,Ballari,,,4163028474
+none: name in several districts,material citation,Vijayanagar Bellary,,,Karnataka,"",,,528,Ballari,,,4163028435
+none: name in several districts,material citation,"Tura, Garo Hills",,,Meghalaya,"",,,278,West Garo Hills,,,4163028356
+none: name in several districts,material citation,Coimbatore,formerly Madras,,Tamil Nadu,"",,,569,Coimbatore,,,5177995681
 none: name in several districts,observation,Pench NP,,,Madhya Pradesh,"",,,428,Seoni,,,2841621960
-none: name in several districts,observation,Kallar,,,,"",,,569,Coimbatore,,,5100923240
 none: name in several districts,observation,,"Khandige Wildlife Preservation, behind Bio-Diversity park, Sirumalai, Tamil Nadu 624003, India",,Tamil Nadu,"",,,572,Dindigul,,,6413178500
+none: name in several districts,observation,,"Adyar River scenic Trail run, River Rd, River View Colony, Tulasingapuram, Nandambakkam, Tamil Nadu 600125, India",,Tamil Nadu,"",,,574,Kanchipuram,,,6579070880
+none: name in several districts,observation,,"Sri Ram Nagar, Vatluru, Andhra Pradesh, India",,Andhra Pradesh,"",,,748,Eluru,,,5176757680
+none: name in several districts,observation,,"Pakarbera, Jharkhand, India",,Jharkhand,"",,,325,Dhanbad,,,2005263740
+none: name in several districts,observation,,"Q2GF+5P, Singavaram, Andhra Pradesh 521207, India",,Andhra Pradesh,"",,,748,Eluru,,,5935171780
+none: name in several districts,observation,,"VGHJ+M23 SOBHA FOREST VIEW, Lingadeeranahalli, Hosahalli, कर्नाटक 560062, India",,Karnataka,"",,,525,Bengaluru Urban,,,3759558120
+none: name in several districts,observation,Kallar,,,,"",,,569,Coimbatore,,,5100923240
 none: name in several districts,other,Kedaruath [Kedarnath],,,,"",,,54,Rudra Prayag,,,4854770082
+none: name in several districts,specimen,,Rajpipla,,,"",,,452,Narmada,,,4029454848
 none: name in several districts,specimen,,Shahapura,,,"",,,783,Jaipur Gramin,,,4029452910
+none: name in several districts,specimen,,"Godavari, India",,,"",,,745,Alluri Sitharama Raju,,,3024456725
 none: name in several districts,specimen,Palasbari,,,Assam,"",,,291,Kamrup,,,665838447
+none: name in several districts,specimen,,"Panchmarhi Town, Satpura Tiger Reserve, Madhya Pradesh",,Madhya Pradesh,"",,,409,Narmadapuram,,,3798428504
 none: name in several districts,specimen,"India, Dibrugor, river Brahmaputra",,,,"",,,286,Dibrugarh,,,2283472250
 none: name in several districts,specimen,,Harni,,,"",,,461,Vadodara,,,4029450627
-none: name in several districts,specimen,,Rajpipla,,,"",,,452,Narmada,,,4029454848
-none: name in several districts,specimen,,"Godavari, India",,,"",,,745,Alluri Sitharama Raju,,,3024456725
-none: name in several districts,specimen,,"Panchmarhi Town, Satpura Tiger Reserve, Madhya Pradesh",,Madhya Pradesh,"",,,409,Narmadapuram,,,3798428504
 none: name in several districts,specimen,Malabar Coast,Malabar Coast India,,,"",,,555,Ernakulam,,,2027318972
 none: no place name found,material citation,Kelchi,,,,"",,,262,Champhai,,,4426849054
+none: no place name found,material citation,Tuithing,,,,"",,,262,Champhai,,,4426849052
 none: no place name found,material citation,Tuithoh,,,,"",,,262,Champhai,,,4426849050
+none: no place name found,material citation,"Prayagraj, Utter Pradesh, India",,,Jammu and Kashmir,"",,,128,Banda,,,5178012320
 none: no place name found,material citation,Tuithoh,,,,"",,,262,Champhai,,,4426849051
 none: no place name found,material citation,Tuithing,,,,"",,,262,Champhai,,,4426849045
-none: no place name found,material citation,"Prayagraj, Utter Pradesh, India",,,Jammu and Kashmir,"",,,128,Banda,,,5178012320
-none: no place name found,material citation,Tuithing,,,,"",,,262,Champhai,,,4426849052
 none: no place name found,material citation,Kelchi,,,,"",,,262,Champhai,,,4426849049
 none: no place name found,observation,Kathlekan,,,,"",,,550,Uttara Kannada,,,6184320260
-none: no place name found,observation,Agumbe,,,,"",,,547,Shivamogga,,,6184314140
 none: no place name found,observation,Jammu and Kashmir,,,Jammu and Kashmir,"",,,9,Leh Ladakh,,,2839701080
-none: no place name found,observation,Panathiar,,,Karnataka,"",,,569,Coimbatore,,,6359116020
-none: no place name found,observation,Pookala,,,,"",,,541,Kodagu,,,6184309480
 none: no place name found,observation,India,,,Jammu and Kashmir,"",,,9,Leh Ladakh,,,5067492680
+none: no place name found,observation,Pookala,,,,"",,,541,Kodagu,,,6184309480
 none: no place name found,observation,Walakad,,,,"",,,563,Palakkad,,,6184301140
+none: no place name found,observation,Agumbe,,,,"",,,547,Shivamogga,,,6184314140
+none: no place name found,observation,Panathiar,,,Karnataka,"",,,569,Coimbatore,,,6359116020
 none: no place name found,observation,,"88X4+385, Kavadigundla, Andhra Pradesh 507135, India",,Andhra Pradesh,"",,,690,Bhadradri Kothagudem,,,4853139880
-none: no place name found,specimen,,"Blair, India",,,"",,,602,South Andamans,,,3024467622
-none: no place name found,specimen,,Merveille � Lake estate,,,"",,,596,Villupuram,,,4035426926
 none: no place name found,specimen,,University campus,,,"",,,461,Vadodara,,,4029461199
 none: no place name found,specimen,,Race course,,,"",,,461,Vadodara,,,4029471706
 none: no place name found,specimen,,Race course,,,"",,,461,Vadodara,,,4029453149
 none: no place name found,specimen,,Saputara road side and on hills,,,"",,,444,Dang,,,4029471839
 none: no place name found,specimen,,Harni fields,,,"",,,461,Vadodara,,,4029462353
 none: no place name found,specimen,,Pichavaram Mangrove Forest,,,"",,,570,Cuddalore,,,4035422144
-none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012340
-none: state only,material citation,Uttarakhand,,,,"",,,49,Dehradun,,,4426849949
-none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012373
-none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012347
+none: no place name found,specimen,,Merveille � Lake estate,,,"",,,596,Villupuram,,,4035426926
+none: no place name found,specimen,,"Blair, India",,,"",,,602,South Andamans,,,3024467622
 none: state only,material citation,"Assam, India",,,Assam,"",,,709,Hojai,,,5178012362
 none: state only,material citation,"Agumbe, Karnataka, Western Ghats",,,,"",,,547,Shivamogga,,,4426848946
 none: state only,material citation,"Agumbe, Karnataka, Western Ghats",,,,"",,,547,Shivamogga,,,4426848947
+none: state only,material citation,Uttarakhand,,,,"",,,49,Dehradun,,,4426849949
 none: state only,material citation,"Agumbe, Karnataka, Western Ghats",,,,"",,,547,Shivamogga,,,4426848945
-none: state only,observation,Selaliparai 1,SEL1_07U,,Tamil Nadu,"",,,569,Coimbatore,,,6481833200
+none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012347
+none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012373
+none: state only,material citation,"Manipur, India",,,Manipur,"",,,256,Imphal West,,,5178012340
 none: state only,observation,,"Rose Quartz Block, Hafeezpet, Madeenaguda, Telangana 500050, India",,Telangana,"",,,518,Ranga Reddy,,,4162228340
 none: state only,observation,,Makunda Christian Leprosy and General Hospital,,Assam,"",,,293,Karimganj,,,3070402560
 none: state only,observation,,Dosdewa Forest trail,,Assam,"",,,293,Karimganj,,,5231287520
@@ -63,89 +62,105 @@ none: state only,observation,,pavalathanoor lake,,Tamil Nadu,"",,,584,Salem,,,62
 none: state only,observation,,"Beer Chhapar Rural, Rajasthan, India",,Rajasthan,"",,,96,Churu,,,5230434000
 none: state only,observation,,"Nelliampathi, Kerala 678508, India",,Kerala,"",,,563,Palakkad,,,3013907960
 none: state only,observation,Assam,,,Assam,"",,,301,Sonitpur,,,2843301980
+none: state only,observation,Selaliparai 1,SEL1_07U,,Tamil Nadu,"",,,569,Coimbatore,,,6481833200
+none: state only,specimen,,Puducherry,,,"",,,600,Pondicherry,,,3770740795
 none: state only,specimen,"Lorhat, Assam",,,,"",,,709,Hojai,,,4099927798
-none: state only,specimen,Ajwa,,Vadodora,Gujarat,"",,,461,Vadodara,,,2604909772
 none: state only,specimen,Himalayas,"Himalayas, India, Sikkim",,,"",,,226,Mangan,,,3025923344
-none: state only,specimen,Dom Kho,,,Arunachal Pradesh,"",,,242,West Kameng,,,4875928877
 none: state only,specimen,,"Andaman, India",,,"",,,632,North And Middle Andaman,,,4951476176
 none: state only,specimen,,"Muthialpet, Pondicherry",,,"",,,600,Pondicherry,,,4035430254
-none: state only,specimen,,Puducherry,,,"",,,600,Pondicherry,,,3770740795
+none: state only,specimen,Dom Kho,,,Arunachal Pradesh,"",,,242,West Kameng,,,4875928877
 none: state only,specimen,3 KM SE ARAKU,3 KM SE ARAKU,,Andhra Pradesh,"",,,745,Alluri Sitharama Raju,,,5099607724
-wrong: neighbouring district,material citation,"Yellampet village, Gunti Thanda, Machareddy Mandal, Nizamabad district, Telangana state",,,,nizamabad,516,Nizamabad,685,Kamareddy,47.4,high,4426848866
-wrong: neighbouring district,material citation,Bannerghatta Biological Park,,,,bannerghatta,631,Ramanagara,525,Bengaluru Urban,32.2,low,4426849892
-wrong: neighbouring district,material citation,"Sailam, Aizawl District",,,,aizawl,261,Aizawl,268,Serchhip,61.7,high,4426848583
-wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849179
+none: state only,specimen,Ajwa,,Vadodora,Gujarat,"",,,461,Vadodara,,,2604909772
 wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849183
-wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849176
+wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849181
 wrong: neighbouring district,material citation,"Mettupalayam, Nilgiris, Tamil Nadu",,,,nilgiris,587,The Nilgiris,569,Coimbatore,22.0,high,4426848418
-wrong: neighbouring district,material citation,Bombay,,,Maharashtra,bombay,482,Mumbai,483,Mumbai Suburban,12.6,high,5177995583
-wrong: neighbouring district,observation,,"Chikkavaram, Andhra Pradesh, India",,Andhra Pradesh,chikkavaram,510,Krishna,748,Eluru,3.5,medium,3343915340
-wrong: neighbouring district,observation,,"6B, IIT Area, Powai, Mumbai, Maharashtra 400076, India",,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,20.1,high,5206431800
-wrong: neighbouring district,observation,,"Thane Creek Flamingo Sanctuary, Mangrove forest, Coastal marine Biodiversity center, Airoli Creek, Diva Nagar Rd, Mulund East, Thane, Maharashtra 400708, India",,Maharashtra,thane creek flamingo,483,Mumbai Suburban,497,Thane,5.3,medium,4607162600
-wrong: neighbouring district,observation,,"Malad, Marve Village, Malad West, Mumbai, Maharashtra, India",,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,25.3,high,3947787400
+wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849176
+wrong: neighbouring district,material citation,Bannerghatta Biological Park,,,,bannerghatta,631,Ramanagara,525,Bengaluru Urban,32.2,low,4426849892
+wrong: neighbouring district,material citation,"Dhamapur, Kolhapur District, Maharastra",,,,dhamapur,480,Kolhapur,495,Sindhudurg,58.0,high,4426849179
+wrong: neighbouring district,observation,"Pakhibitan, Ecopark, Newtown",,North 24 Parganas,West Bengal,north parganas,303,24 Paraganas North,304,24 Paraganas South,34.1,high,4144807900
 wrong: neighbouring district,observation,"Pakhibitan, Ecopark, Newtown",,North 24 Parganas,West Bengal,north parganas,303,24 Paraganas North,304,24 Paraganas South,34.1,high,4130673260
-wrong: neighbouring district,observation,,"Krishna, Andhra Pradesh, India",,Andhra Pradesh,krishna,510,Krishna,749,Ntr,75.1,high,3468903460
 wrong: neighbouring district,observation,"Pakhibitan, Ecopark, Newtown",,North 24 Parganas,West Bengal,north parganas,303,24 Paraganas North,304,24 Paraganas South,34.1,high,4130674880
+wrong: neighbouring district,observation,,"F7V8+GM6 Butterfly Park, Asola Bhatti Wildlife Sanctuary Delhi, Asola Wild Life Sanctuary, Asola, New Delhi, Delhi 110044, India",,NCT of Delhi,asola,83,South,670,South East,5.9,medium,5828696600
+wrong: neighbouring district,observation,,Dry or mixed forest,,,nilgiris,587,The Nilgiris,569,Coimbatore,117.0,high,6168472920
+wrong: neighbouring district,observation,,"Thane Creek Flamingo Sanctuary, Mangrove forest, Coastal marine Biodiversity center, Airoli Creek, Diva Nagar Rd, Mulund East, Thane, Maharashtra 400708, India",,Maharashtra,thane creek flamingo,483,Mumbai Suburban,497,Thane,5.3,medium,4607162600
 wrong: neighbouring district,observation,"Pakhibitan, Ecopark, Newtown",,North 24 Parganas,West Bengal,north parganas,303,24 Paraganas North,304,24 Paraganas South,34.1,high,5283988680
-wrong: neighbouring district,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756340
-wrong: neighbouring district,other,Aksa Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,22.8,high,5886756359
-wrong: neighbouring district,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756318
-wrong: neighbouring district,other,Manori Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,26.7,high,5886756332
-wrong: neighbouring district,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756320
-wrong: neighbouring district,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756330
-wrong: neighbouring district,other,Manori Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,26.7,high,5886756306
-wrong: neighbouring district,other,Aksa Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,22.8,high,5886756351
-wrong: neighbouring district,specimen,,"Subathu,Simla hills.",,,simla,23,Shimla,25,Solan,74.8,high,4029467523
-wrong: neighbouring district,specimen,Nichlaul,,[Gorakhpur District],[Uttar Pradesh]United Provinces,gorakhpur,148,Gorakhpur,164,Maharajganj,80.2,high,1987515997
-wrong: neighbouring district,specimen,Kulu,,,,kulu,20,Kullu,22,Mandi,46.6,high,3023322611
-wrong: neighbouring district,specimen,,Anaimalai,,,anaimalai,569,Coimbatore,634,Tiruppur,27.0,low,4035441061
+wrong: neighbouring district,observation,"Pakhibitan, Ecopark, Newtown",,North 24 Parganas,West Bengal,north parganas,303,24 Paraganas North,304,24 Paraganas South,34.1,high,4122350080
+wrong: neighbouring district,specimen,Kalakad Sanctuary,,Tirunelveli,Tamil Nadu,kalakad,592,Tirunelveli,575,Kanniyakumari,12.9,high,3022695277
 wrong: neighbouring district,specimen,Kalakad Sanctuary,,Tirunelveli dist.,Tamil Nadu,kalakad,592,Tirunelveli,575,Kanniyakumari,12.9,high,3022669977
-wrong: neighbouring district,specimen,"Chanda Dist, Allapalli",,,Maharashtra,chanda,473,Chandrapur,475,Gadchiroli,95.8,high,665914775
-wrong: neighbouring district,specimen,,"Open waste land, soil sandy, Vasad (Kheda Dt)",,,kheda,450,Kheda,440,Anand,44.6,high,4029470830
-wrong: neighbouring district,specimen,,"Kanheri Caves, Bombay",,Maharashtra,bombay,482,Mumbai,483,Mumbai Suburban,27.4,high,3798424014
-wrong: other district in the same state,material citation,"Prayagraj, Utter Pradesh, India",,,Utter Pradesh,prayagraj,120,Prayagraj,128,Banda,107.8,high,5178012327
-wrong: other district in the same state,material citation,"Prayagraj, Utter Pradesh, India",,,Utter Pradesh,prayagraj,120,Prayagraj,128,Banda,107.8,high,5178012329
+wrong: neighbouring district,specimen,,Christian mission gothada savli,,,savli,461,Vadodara,454,Panch Mahals,44.0,low,4029463990
+wrong: neighbouring district,specimen,,Varachha,,,varachha,452,Narmada,459,Surat,87.3,low,4029459444
+wrong: neighbouring district,specimen,,Varachha,,,varachha,452,Narmada,459,Surat,87.3,low,4029469597
+wrong: neighbouring district,specimen,"Kempty Falls, Mussoorie area",,Dehradun,Uttarakhand,dehradun; mussoorie,49,Dehradun,55,Tehri Garhwal,16.7,high,2005522336
+wrong: neighbouring district,specimen,,"Panchgani, Satara (17.554° N, 73.483° E, 1323m asl)",,Maharashtra,panchgani,494,Satara,492,Ratnagiri,53.4,high,3798428487
+wrong: neighbouring district,specimen,Kulu,,,,kulu,20,Kullu,22,Mandi,46.6,high,3023322611
 wrong: other district in the same state,material citation,,Bay of Bengal,,,nicobar,603,Nicobars,602,South Andamans,441.2,high,5177995688
 wrong: other district in the same state,material citation,"Long Island, Adaman and Nicobar Islands",,,,nicobar,603,Nicobars,632,North And Middle Andaman,606.0,high,4426848667
 wrong: other district in the same state,material citation,"Long Island, Adaman and Nicobar Islands",,,,nicobar,603,Nicobars,632,North And Middle Andaman,606.0,high,4426848670
 wrong: other district in the same state,material citation,"Long Island, Adaman and Nicobar Islands",,,,nicobar,603,Nicobars,632,North And Middle Andaman,606.0,high,4426848646
 wrong: other district in the same state,material citation,"Long Island, Adaman and Nicobar Islands",,,,nicobar,603,Nicobars,632,North And Middle Andaman,606.0,high,4426848990
 wrong: other district in the same state,material citation,"Long Island, Adaman and Nicobar Islands",,,,nicobar,603,Nicobars,632,North And Middle Andaman,606.0,high,4426848978
-wrong: other district in the same state,observation,Opposite Bhesan road sewage treatment plant,,,Gujarat,bhesan,448,Junagadh,459,Surat,214.3,medium,4524741560
-wrong: other district in the same state,observation,Annāmalai Reserved Forest,,,Tamil Nadu,annamalai,569,Coimbatore,593,Tiruvannamalai,304.6,medium,3948930000
-wrong: other district in the same state,observation,,"Belur, Karnataka 580011, India",,Karnataka,belur,539,Hassan,536,Dharwad,285.9,medium,6130821320
-wrong: other district in the same state,observation,,"Navi Mumbai, Maharashtra, India",,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.0,high,3858942460
+wrong: other district in the same state,material citation,"Prayagraj, Utter Pradesh, India",,,Utter Pradesh,prayagraj,120,Prayagraj,128,Banda,107.8,high,5178012327
+wrong: other district in the same state,material citation,"Prayagraj, Utter Pradesh, India",,,Utter Pradesh,prayagraj,120,Prayagraj,128,Banda,107.8,high,5178012329
 wrong: other district in the same state,observation,,"58 Anand Market MN college Visnagar, Parishram Society, Visnagar, Gujarat 384315, India",,Gujarat,anand,440,Anand,451,Mahesana,143.3,high,6551684820
-wrong: other district in the same state,observation,,"Shahapur Dam, Shahapur, Maharashtra, India",,Maharashtra,shahapur,497,Thane,478,Jalgaon,282.3,medium,4945471900
+wrong: other district in the same state,observation,Opposite Bhesan road sewage treatment plant,,,Gujarat,bhesan,448,Junagadh,459,Surat,214.3,medium,4524741560
 wrong: other district in the same state,observation,,"Kushalgarh, Rajasthan 323307, India",,Rajasthan,kushalgarh,88,Banswara,95,Chittorgarh,205.4,medium,6131632440
 wrong: other district in the same state,observation,,"Hyderabad, Telangana, India",,Telangana,hyderabad,507,Hyderabad,691,Sangareddy,24.2,high,6451802560
-wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756317
-wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756344
-wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756341
+wrong: other district in the same state,observation,,"Garhwal Division, Uttarakhand, India",,Uttarakhand,garhwal,47,Chamoli,49,Dehradun,187.1,high,4507939320
+wrong: other district in the same state,observation,,"Belur, Karnataka 580011, India",,Karnataka,belur,539,Hassan,536,Dharwad,285.9,medium,6130821320
+wrong: other district in the same state,observation,,"Navi Mumbai, Maharashtra, India",,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.0,high,3858942460
+wrong: other district in the same state,observation,Annāmalai Reserved Forest,,,Tamil Nadu,annamalai,569,Coimbatore,593,Tiruvannamalai,304.6,medium,3948930000
 wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756336
-wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756329
+wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756341
 wrong: other district in the same state,other,"Kothamangalam, E of",,,,kothamangalam,555,Ernakulam,563,Palakkad,78.6,medium,4997697234
-wrong: other district in the same state,specimen,"Bombay, Elephanta Caves",,,Maharashtra,bombay,482,Mumbai,491,Raigad,9.8,high,665727753
-wrong: other district in the same state,specimen,,"Castle Rock, Anmode Road, Mysore",,Karnataka,mysore,545,Mysuru,550,Uttara Kannada,433.2,high,3798430404
-wrong: other district in the same state,specimen,,"Panchgani, Poona Dist., Bombay",,Maharashtra,poona,490,Pune,492,Ratnagiri,129.9,high,3798425176
-wrong: other district in the same state,specimen,,Rapar,,,rapar,449,Kachchh,461,Vadodara,292.4,low,4029465357
-wrong: other district in the same state,specimen,Phalodi | Jodhpur,,Jodhpur,Rajasthan,jodhpur,107,Jodhpur,772,Phalodi,115.9,high,5213820357
+wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756344
+wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756317
+wrong: other district in the same state,other,Elephanta caves,,Mumbai,Maharashtra,mumbai,482,Mumbai,491,Raigad,11.8,high,5886756329
+wrong: other district in the same state,specimen,Ukhal,,Pauri Garhwal District,Uttarakhand,ukhal,52,Pauri Garhwal,46,Bageshwar,95.5,high,4875895668
 wrong: other district in the same state,specimen,Jammu & Kashmir. Lake Vishansar,,,,jammu,5,Jammu,623,Bandipora,180.9,high,2572973702
+wrong: other district in the same state,specimen,,"Castle Rock, Anmode Road, Mysore",,Karnataka,mysore,545,Mysuru,550,Uttara Kannada,433.2,high,3798430404
+wrong: other district in the same state,specimen,"Bombay, Elephanta Caves",,,Maharashtra,bombay,482,Mumbai,491,Raigad,9.8,high,665727753
+wrong: other district in the same state,specimen,,Rapar,,,rapar,449,Kachchh,461,Vadodara,292.4,low,4029465357
 wrong: other district in the same state,specimen,,Bombay godbander,,,bombay,482,Mumbai,497,Thane,33.7,high,4029456081
+wrong: other district in the same state,specimen,,"Panchgani, Poona Dist., Bombay",,Maharashtra,poona,490,Pune,492,Ratnagiri,129.9,high,3798425176
 wrong: other district in the same state,specimen,,Virpur,,,virpur,669,Mahisagar,457,Rajkot,320.7,low,4029467248
+wrong: same name in another state,observation,KS_Pandaravarai,,Coimbatore,Tamil Nadu,coimbatore,569,Coimbatore,563,Palakkad,45.6,high,4089157000
 wrong: same name in another state,observation,KS_Pandaravarai,,Coimbatore,Tamil Nadu,coimbatore,569,Coimbatore,563,Palakkad,45.6,high,4089158560
+wrong: same name in another state,observation,,"Udumbanchola, Idukki, KL, IN",,Tamil Nadu,idukki,597,Virudhunagar,556,Idukki,32.2,medium,4872282580
 wrong: same name in another state,observation,,"Badhaiya Mohalla, Ambedkar Colony, Jabalpur, GCF Jabalpur, Madhya Pradesh 482002, India",,Madhya Pradesh,mohalla,761,Mohla Manpur Ambagarh Chouki,411,Jabalpur,305.3,medium,4177380600
 wrong: same name in another state,observation,,"Sukhna Lake Nature Trail, Chandigarh",,Haryana,sukhna lake,70,Panchkula,44,Chandigarh,3.5,medium,4055075560
 wrong: same name in another state,observation,,"Viluppuram, IN-AP, IN",,Tamil Nadu,viluppuram,596,Villupuram,600,Pondicherry,30.1,high,4438660600
-wrong: same name in another state,observation,KS_Pandaravarai,,Coimbatore,Tamil Nadu,coimbatore,569,Coimbatore,563,Palakkad,45.6,high,4089157000
 wrong: same name in another state,observation,,"Udumbanchola, Idukki, KL, IN",,Tamil Nadu,idukki,597,Virudhunagar,556,Idukki,32.2,medium,3698101740
 wrong: same name in another state,observation,,"KK Road, Kumily, KL, IN",,Tamil Nadu,kumily,730,Chengalpattu,556,Idukki,480.6,medium,4116633740
-wrong: same name in another state,observation,,"Udumbanchola, Idukki, KL, IN",,Tamil Nadu,idukki,597,Virudhunagar,556,Idukki,32.2,medium,4872282580
-wrong: same name in another state,specimen,,Dwarka,,,dwarka,84,South West,674,Devbhumi Dwarka,1075.3,low,4029464661
-wrong: same name in another state,specimen,,On the way of vakasthala,,,way,494,Satara,668,Chhotaudepur,485.5,low,4029467879
-wrong: same name in another state,specimen,,"Luni forest, Panvad",,,luni,107,Jodhpur,668,Chhotaudepur,440.3,low,4029456765
 wrong: same name in another state,specimen,,Dwarka,,,dwarka,84,South West,674,Devbhumi Dwarka,1075.3,low,4029451024
+wrong: same name in another state,specimen,,Panjim 54 km to,,,panjim,551,North Goa,550,Uttara Kannada,31.1,low,4035443542
+wrong: same name in another state,specimen,,Dwarka,,,dwarka,84,South West,674,Devbhumi Dwarka,1075.3,low,4029464661
 wrong: same name in another state,specimen,Karaikal,,,Pondicherry,karaikal,598,Karaikal,590,Thiruvarur,12.8,high,894559870
 wrong: same name in another state,specimen,Karaikal,karikal,,Pondicherry,karaikal,598,Karaikal,590,Thiruvarur,12.8,high,856595351
-wrong: same name in another state,specimen,,Panjim 54 km to,,,panjim,551,North Goa,550,Uttara Kannada,31.1,low,4035443542
 wrong: same name in another state,specimen,,Kavdi,,,kavdi,154,Amroha,668,Chhotaudepur,832.7,low,4029453411
+wrong: same name in another state,specimen,,On the way of vakasthala,,,way,494,Satara,668,Chhotaudepur,485.5,low,4029467879
+wrong: same name in another state,specimen,,"Luni forest, Panvad",,,luni,107,Jodhpur,668,Chhotaudepur,440.3,low,4029456765
+wrong: true district carved from the answer,material citation,"Sailam, Aizawl District",,,,aizawl,261,Aizawl,268,Serchhip,61.7,high,4426848583
+wrong: true district carved from the answer,observation,,"Borivali, Mumbai, Maharashtra, IN",,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,27.7,high,6566604140
+wrong: true district carved from the answer,observation,,"G2QR+VXR, Visakhapatnam, Dosuru, Andhra Pradesh 531011, India",,Andhra Pradesh,visakhapatnam,520,Visakhapatanam,744,Anakapalli,38.8,high,5938035820
+wrong: true district carved from the answer,observation,,"Malad, Marve Village, Malad West, Mumbai, Maharashtra, India",,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,25.3,high,3947787400
+wrong: true district carved from the answer,observation,,"6B, IIT Area, Powai, Mumbai, Maharashtra 400076, India",,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,20.1,high,5206431800
+wrong: true district carved from the answer,observation,,"Chikkavaram, Andhra Pradesh, India",,Andhra Pradesh,chikkavaram,510,Krishna,748,Eluru,3.5,medium,3343915340
+wrong: true district carved from the answer,observation,,"Valley Apartments, P Janardhan Reddy Nagar, Gachibowli, Hyderabad, Telangana 500081, India",,Telangana,hyderabad,507,Hyderabad,518,Ranga Reddy,11.5,high,5176344420
+wrong: true district carved from the answer,observation,,"24, P Janardhan Reddy Nagar, Gachibowli, Hyderabad, Telangana 500032, India",,Telangana,hyderabad,507,Hyderabad,518,Ranga Reddy,11.5,high,5291819440
+wrong: true district carved from the answer,observation,,"Bangalore Division, Karnataka, India",,Karnataka,bangalore,525,Bengaluru Urban,631,Ramanagara,26.4,high,6131084920
+wrong: true district carved from the answer,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756330
+wrong: true district carved from the answer,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756320
+wrong: true district carved from the answer,other,Manori Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,26.7,high,5886756332
+wrong: true district carved from the answer,other,Aksa Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,22.8,high,5886756359
+wrong: true district carved from the answer,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756318
+wrong: true district carved from the answer,other,Aksa Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,22.8,high,5886756351
+wrong: true district carved from the answer,other,Versova Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,17.4,high,5886756340
+wrong: true district carved from the answer,other,Manori Beach,,Mumbai,Maharashtra,mumbai,482,Mumbai,483,Mumbai Suburban,26.7,high,5886756306
+wrong: true district carved from the answer,specimen,,Nanathapara-Chinnar,,,chinnar,556,Idukki,564,Pathanamthitta,116.3,low,4035429667
+wrong: true district carved from the answer,specimen,,Anaimalai,,,anaimalai,569,Coimbatore,634,Tiruppur,27.0,low,4035442989
+wrong: true district carved from the answer,specimen,Dehing Patkai National Park,,Dibrugarh,Assam,dibrugarh,286,Dibrugarh,302,Tinsukia,49.8,high,5917395303
+wrong: true district carved from the answer,specimen,,Anaimalai,,,anaimalai,569,Coimbatore,634,Tiruppur,27.0,low,4035441061
+wrong: true district carved from the answer,specimen,,"Kanayar, Devarmalai-Sivagiri Hill Complex, Kollam District, Kerala, India (9.1249° N, 77.1736° E)",,Kerala,kollam,559,Kollam,564,Pathanamthitta,38.8,high,3798428941
+wrong: true district carved from the answer,specimen,Phulera | Jaipur,,Jaipur,Rajasthan,phulera,102,Jaipur,769,Dudu,40.5,high,5213820304
+wrong: true district carved from the answer,specimen,Sambhar lake | Jaipur,,Jaipur,Rajasthan,sambhar lake,102,Jaipur,769,Dudu,41.7,high,5213820371
+wrong: true district carved from the answer,specimen,,"Open waste land, soil sandy, Vasad (Kheda Dt)",,,kheda,450,Kheda,440,Anand,44.6,high,4029470830

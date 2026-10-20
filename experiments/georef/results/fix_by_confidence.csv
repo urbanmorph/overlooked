@@ -1,5 +1,5 @@
-grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
-high,6136,100.0,6136,0,0,100.0,100.0,100.0,100.0,100.0,100.0,40.5,351437.0
-low,1079,100.0,1079,0,0,100.0,100.0,100.0,100.0,,,9.9,51781.0
-medium,690,100.0,690,0,0,100.0,100.0,100.0,100.0,,100.0,59.8,30747.0
-no district,12095,78.0,0,4240,7855,0.0,35.1,,36.7,,,26.4,711122.0
+grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_district_single,mean_set_size,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
+high,6458,100.0,6458,0,0,100.0,100.0,100.0,51.1,1.81,100.0,100.0,100.0,39.8,369775.0
+low,1071,100.0,1071,0,0,100.0,100.0,100.0,84.0,1.15,100.0,,,10.0,51204.0
+medium,619,100.0,619,0,0,100.0,100.0,100.0,100.0,1.0,100.0,,100.0,57.7,27459.0
+no district,11852,77.5,0,4091,7761,0.0,34.5,,,,36.7,,,26.6,696649.0

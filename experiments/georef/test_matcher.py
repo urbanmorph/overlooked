@@ -1,7 +1,17 @@
 """Tests for the place-name matcher. Run: .venv/bin/python -m pytest experiments/georef -q"""
 
 import pytest
-from matcher import Entry, Gazetteer, haversine_km, match, normalise, phrases, sound_key, strip_generic
+from matcher import (
+    Entry,
+    Gazetteer,
+    haversine_km,
+    load_splits,
+    match,
+    normalise,
+    phrases,
+    sound_key,
+    strip_generic,
+)
 
 # A small gazetteer: (kind, name, state_lgd, dist_lgd, lat, lon, radius_km)
 ROWS = [
@@ -251,3 +261,103 @@ def test_state_with_postcode_is_not_read_as_places():
 
 def test_short_state_name_alone():
     assert match(rec(locality="Goa", verbatimlocality="Goa, India"), Gazetteer([]), state_names={"goa": 30}).state_lgd == 30
+
+
+# --- district splits: an old district name means the district and the districts carved from it ---
+
+# (parent, child, year): Jaipur gave Dudu (2023); Hyderabad gave Ranga Reddy (1978), which gave Medchal (2016).
+SPLITS = [(102, 769, 2023), (507, 518, 1978), (518, 700, 2016), (560, 580, None)]
+
+
+@pytest.fixture(scope="module")
+def split_gaz():
+    rows = [Entry("district", "Jaipur", 8, 102, 26.9, 75.8, 40), Entry("district", "Dudu", 8, 769, 26.6, 75.3, 30),
+            Entry("alias", "Jeypore", 8, 102, 26.9, 75.8, 40), Entry("village", "Sambhar", 8, 102, 26.9, 75.2, 3),
+            Entry("district", "Hyderabad", 36, 507, 17.4, 78.5, 15),
+            Entry("district", "Ranga Reddy", 36, 518, 17.2, 78.2, 40),
+            Entry("district", "Medchal Malkajgiri", 36, 700, 17.6, 78.5, 25),
+            Entry("district", "Coimbatore", 33, 560, 11.0, 76.9, 40), Entry("district", "Tiruppur", 33, 580, 11.1, 77.3, 40),
+            Entry("district", "Idukki", 32, 556, 9.9, 77.0, 30)]
+    return Gazetteer(rows, splits=SPLITS)
+
+
+def test_parent_district_name_gives_parent_and_children(split_gaz):
+    r = match(rec(locality="Jaipur"), split_gaz)
+    assert r.dist_lgd == 102 and r.districts == [102, 769]
+
+
+def test_alias_of_parent_gives_the_set_too(split_gaz):
+    assert match(rec(locality="Jeypore"), split_gaz).districts == [102, 769]
+
+
+def test_record_made_after_the_split_keeps_the_parent_only(split_gaz):
+    assert match(rec(locality="Jaipur", year=2024), split_gaz).districts == [102]
+    assert match(rec(locality="Jaipur", year=2023), split_gaz).districts == [102, 769]
+
+
+def test_splits_follow_children_of_children_made_after_the_record(split_gaz):
+    assert match(rec(locality="Hyderabad"), split_gaz).districts == [507, 518, 700]
+    assert match(rec(locality="Hyderabad", year="1970"), split_gaz).districts == [507, 518, 700]
+    assert match(rec(locality="Hyderabad", year=1990), split_gaz).districts == [507]
+
+
+def test_split_with_unknown_year_always_applies(split_gaz):
+    assert match(rec(county="Coimbatore", year=2020), split_gaz).districts == [560, 580]
+
+
+def test_village_in_parent_keeps_one_district(split_gaz):
+    # A village names a place inside today's district: no set.
+    assert match(rec(locality="Sambhar"), split_gaz).districts == [102]
+
+
+def test_no_split_gives_one_district_and_no_answer_gives_none(split_gaz):
+    assert match(rec(locality="Idukki"), split_gaz).districts == [556]
+    assert match(rec(locality="no locality data"), split_gaz).districts == []
+
+
+def test_set_radius_covers_the_children(split_gaz):
+    r = match(rec(locality="Jaipur"), split_gaz)
+    assert r.radius_km >= haversine_km(26.9, 75.8, 26.6, 75.3) + 30
+    assert (r.lat, r.lon) == (26.9, 75.8)
+
+
+def test_split_cycle_does_not_loop():
+    g = Gazetteer([Entry("district", "Mehrauli", 7, 83, 28.5, 77.2, 10), Entry("district", "Saket", 7, 670, 28.55, 77.27, 8)],
+                  splits=[(83, 670, 2012), (670, 83, None)])
+    assert match(rec(locality="Mehrauli"), g).districts == [83, 670]
+
+
+def test_load_splits(tmp_path):
+    f = tmp_path / "s.csv"
+    f.write_text("parent,parent_lgd,parent_state_lgd,child,child_lgd,child_state_lgd,year,source\n"
+                 "Jaipur,102,8,Dudu,769,8,2023,https://example.org\nCoimbatore,560,33,Tiruppur,580,33,,https://x\n")
+    assert load_splits(f) == [(102, 769, 2023), (560, 580, None)]
+
+
+def test_load_splits_old_district_without_lgd_code(tmp_path):
+    f = tmp_path / "s.csv"
+    f.write_text("parent,parent_lgd,parent_state_lgd,child,child_lgd,child_state_lgd,year,source\n"
+                 "Khasi Hills,,17,East Khasi Hills,272,17,1976,https://x\n")
+    assert load_splits(f) == [(("Khasi Hills", 17), 272, 1976)]
+
+
+# An old district that LGD no longer has: its name gives all its successors.
+OLD = [(("Khasi Hills", 17), 272, 1976), (("Khasi Hills", 17), 279, 1976), (272, 274, 1992)]
+
+
+@pytest.fixture(scope="module")
+def old_gaz():
+    rows = [Entry("district", "East Khasi Hills", 17, 272, 25.5, 91.9, 30),
+            Entry("district", "West Khasi Hills", 17, 279, 25.5, 91.3, 35),
+            Entry("district", "Ri Bhoi", 17, 274, 25.8, 92.0, 30), Entry("alias", "Shillong", 17, 272, 25.57, 91.88, 30)]
+    return Gazetteer(rows, splits=OLD)
+
+
+def test_old_district_name_gives_its_successors(old_gaz):
+    r = match(rec(locality="Khasi Hills"), old_gaz)
+    assert r.dist_lgd == 272 and r.districts == [272, 279, 274] and r.state_lgd == 17
+    assert match(rec(locality="Khasi Hills", year=2000), old_gaz).districts == [272, 279]
+
+
+def test_old_district_name_with_a_present_place_gives_that_place(old_gaz):
+    assert match(rec(locality="Shillong", county="Khasi Hills", year=2000), old_gaz).districts == [272]

@@ -1,0 +1,516 @@
+parent,parent_lgd,parent_state_lgd,child,child_lgd,child_state_lgd,year,source
+Srinagar,13,1,Budgam,2,1,1979,https://en.wikipedia.org/wiki/Budgam_district
+Baramulla,3,1,Kupwara,8,1,1979,https://en.wikipedia.org/wiki/Kupwara_district
+Anantnag,1,1,Pulwama,11,1,1979,https://en.wikipedia.org/wiki/Pulwama_district
+Jammu,5,1,Samba,624,1,2006,https://en.wikipedia.org/wiki/Samba_district
+Kathua,7,1,Samba,624,1,2006,https://en.wikipedia.org/wiki/Samba_district
+Baramulla,3,1,Bandipora,623,1,2007,https://en.wikipedia.org/wiki/Bandipora_district
+Srinagar,13,1,Ganderbal,626,1,2007,https://ganderbal.nic.in/history/
+Doda,4,1,Kishtwar,620,1,2007,https://kishtwar.nic.in/about-district/
+Anantnag,1,1,Kulgam,622,1,2007,https://en.wikipedia.org/wiki/Kulgam_district
+Doda,4,1,Ramban,621,1,2007,https://en.wikipedia.org/wiki/Ramban_district
+Udhampur,14,1,Reasi,627,1,2007,https://dcmsme.gov.in/old/dips/DPS_Reasi.pdf
+Pulwama,11,1,Shopian,625,1,2007,https://shopian.nic.in/history/
+Kangra,18,2,Hamirpur,17,2,1972,"https://en.wikipedia.org/wiki/Hamirpur_district,_Himachal_Pradesh"
+Shimla,23,2,Solan,25,2,1972,https://hpsolan.nic.in/history/
+Kangra,18,2,Una,26,2,1972,https://hpuna.nic.in/about-district/
+Bathinda,28,3,Faridkot,29,3,1972,https://en.wikipedia.org/wiki/Faridkot_district
+Ferozepur,31,3,Faridkot,29,3,1972,https://en.wikipedia.org/wiki/Faridkot_district
+Patiala,41,3,Fatehgarh Sahib,30,3,1992,"https://en.wikipedia.org/wiki/List_of_districts_of_Punjab,_India | https://en.wikipedia.org/wiki/Fatehgarh_Sahib_district"
+Rupnagar,42,3,Fatehgarh Sahib,30,3,1992,"https://en.wikipedia.org/wiki/List_of_districts_of_Punjab,_India | https://en.wikipedia.org/wiki/Fatehgarh_Sahib_district"
+Bathinda,28,3,Mansa,37,3,1992,"https://en.wikipedia.org/wiki/List_of_districts_of_Punjab,_India"
+Faridkot,29,3,Moga,38,3,1995,https://en.wikipedia.org/wiki/Moga_district
+Ferozepur,31,3,Moga,38,3,1995,https://en.wikipedia.org/wiki/Moga_district
+Hoshiarpur,33,3,Shahid Bhagat Singh Nagar,40,3,1995,https://en.wikipedia.org/wiki/Shaheed_Bhagat_Singh_Nagar_district
+Jalandhar,34,3,Shahid Bhagat Singh Nagar,40,3,1995,https://en.wikipedia.org/wiki/Shaheed_Bhagat_Singh_Nagar_district
+Faridkot,29,3,Sri Muktsar Sahib,39,3,1995,https://en.wikipedia.org/wiki/Sri_Muktsar_Sahib_district
+Sangrur,43,3,Barnala,605,3,2006,https://en.wikipedia.org/wiki/Barnala_district
+Patiala,41,3,S.A.S Nagar,608,3,2006,https://en.wikipedia.org/wiki/Mohali_district
+Rupnagar,42,3,S.A.S Nagar,608,3,2006,https://en.wikipedia.org/wiki/Mohali_district
+Amritsar,27,3,Tarn Taran,609,3,2006,https://en.wikipedia.org/wiki/Tarn_Taran_district
+Ferozepur,31,3,Fazilka,651,3,2011,https://en.wikipedia.org/wiki/Fazilka_district
+Gurdaspur,32,3,Pathankot,662,3,2011,https://en.wikipedia.org/wiki/Pathankot_district
+Sangrur,43,3,Malerkotla,737,3,2021,"https://en.wikipedia.org/wiki/List_of_districts_of_Punjab,_India"
+Garhwal,,5,Chamoli,47,5,1960,https://en.wikipedia.org/wiki/Chamoli_district
+Garhwal,,5,Pauri Garhwal,52,5,1960,https://en.wikipedia.org/wiki/Chamoli_district
+Saharanpur,177,9,Haridwar,50,5,1988,https://en.wikipedia.org/wiki/Haridwar_district
+Nainital,51,5,Udam Singh Nagar,56,5,1995,https://en.wikipedia.org/wiki/Udham_Singh_Nagar_district
+Almora,45,5,Bageshwar,46,5,1997,https://en.wikipedia.org/wiki/Bageshwar_district
+Nainital,51,5,Champawat,48,5,1997,http://www.statoids.com/yin.html
+Pithoragarh,53,5,Champawat,48,5,1997,http://www.statoids.com/yin.html
+Chamoli,47,5,Rudra Prayag,54,5,1997,https://en.wikipedia.org/wiki/Rudraprayag_district
+Pauri Garhwal,52,5,Rudra Prayag,54,5,1997,https://en.wikipedia.org/wiki/Rudraprayag_district
+Tehri Garhwal,55,5,Rudra Prayag,54,5,1997,https://en.wikipedia.org/wiki/Rudraprayag_district
+Hisar,63,6,Bhiwani,59,6,1972,https://cdnbbsr.s3waas.gov.in/s3d79c6256b9bdac53a55801a066b70da3/uploads/2020/10/2020101286.pdf
+Mahendragarh,69,6,Bhiwani,59,6,1972,https://cdnbbsr.s3waas.gov.in/s3d79c6256b9bdac53a55801a066b70da3/uploads/2020/10/2020101286.pdf
+Rohtak,73,6,Sonipat,75,6,1972,https://en.wikipedia.org/wiki/Sonipat_district
+Karnal,67,6,Kurukshetra,68,6,1973,https://en.wikipedia.org/wiki/Kurukshetra_district
+Hisar,63,6,Sirsa,74,6,1975,https://en.wikipedia.org/wiki/Sirsa_district
+Gurugram,62,6,Faridabad,60,6,1979,https://en.wikipedia.org/wiki/Faridabad_district
+Jind,65,6,Kaithal,66,6,1989,https://en.bharatpedia.org/wiki/Kaithal_district
+Kurukshetra,68,6,Kaithal,66,6,1989,https://en.bharatpedia.org/wiki/Kaithal_district
+Karnal,67,6,Panipat,71,6,1989,https://en.wikipedia.org/wiki/Panipat_district
+Mahendragarh,69,6,Rewari,72,6,1989,https://mahendragarh.gov.in/?p=2733
+Rohtak,73,6,Rewari,72,6,1989,https://mahendragarh.gov.in/?p=2733
+Ambala,58,6,Yamunanagar,76,6,1989,https://en.wikipedia.org/wiki/Yamunanagar
+Ambala,58,6,Panchkula,70,6,1995,https://en.wikipedia.org/wiki/Panchkula_district
+Hisar,63,6,Fatehabad,61,6,1997,https://en.wikipedia.org/wiki/Fatehabad_district
+Rohtak,73,6,Jhajjar,64,6,1997,https://en.wikipedia.org/wiki/Jhajjar_district
+Faridabad,60,6,Nuh,604,6,2005,https://en.wikipedia.org/wiki/Nuh_district
+Gurugram,62,6,Nuh,604,6,2005,https://en.wikipedia.org/wiki/Nuh_district
+Faridabad,60,6,Palwal,619,6,2008,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=4775
+Nuh,604,6,Palwal,619,6,2008,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=4775
+Bhiwani,59,6,Charki Dadri,701,6,2016,https://en.wikipedia.org/wiki/Charkhi_Dadri_district
+Bharatpur,91,8,Dholpur,98,8,1982,https://en.wikipedia.org/wiki/Dholpur_district
+Kota,109,8,Baran,89,8,1991,https://en.wikipedia.org/wiki/Baran_district
+Jaipur,102,8,Dausa,97,8,1991,https://en.wikipedia.org/wiki/Dausa_district
+Udaipur,117,8,Rajsamand,112,8,1991,https://en.wikipedia.org/wiki/Rajsamand_district
+Ganganagar,100,8,Hanumangarh,101,8,1994,https://en.wikipedia.org/wiki/Hanumangarh_district
+Sawai Madhopur,113,8,Karauli,108,8,1997,https://rajras.in/ras/pre/rajasthan/districts/karauli/
+Banswara,88,8,Pratapgarh,629,8,2008,"https://en.wikipedia.org/wiki/Pratapgarh_district,_Rajasthan"
+Chittorgarh,95,8,Pratapgarh,629,8,2008,"https://en.wikipedia.org/wiki/Pratapgarh_district,_Rajasthan"
+Udaipur,117,8,Pratapgarh,629,8,2008,"https://en.wikipedia.org/wiki/Pratapgarh_district,_Rajasthan"
+Bikaner,93,8,Anoopgarh,776,8,2023,https://en.wikipedia.org/wiki/Anupgarh_district
+Ganganagar,100,8,Anoopgarh,776,8,2023,https://en.wikipedia.org/wiki/Anupgarh_district
+Barmer,90,8,Balotra,775,8,2023,https://en.wikipedia.org/wiki/Balotra_district
+Ajmer,86,8,Beawar,774,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Bhilwara,92,8,Beawar,774,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Pali,111,8,Beawar,774,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Bharatpur,91,8,Deeg,767,8,2023,https://en.wikipedia.org/wiki/Deeg_district
+Nagaur,110,8,Didwana Kuchaman,768,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Jaipur,102,8,Dudu,769,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Karauli,108,8,Gangapurcity,771,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Sawai Madhopur,113,8,Gangapurcity,771,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Jaipur,102,8,Jaipur Gramin,783,8,2023,https://en.wikipedia.org/wiki/Jaipur_Gramin_district
+Jodhpur,107,8,Jodhpur Gramin,778,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Ajmer,86,8,Kekri,781,8,2023,https://en.wikipedia.org/wiki/Kekri_district
+Tonk,116,8,Kekri,781,8,2023,https://en.wikipedia.org/wiki/Kekri_district
+Alwar,87,8,Khairthal-Tijara,770,8,2023,https://en.wikipedia.org/wiki/Khairthal-Tijara_district
+Alwar,87,8,Kotputli-Behror,782,8,2023,https://en.wikipedia.org/wiki/Kotputli-Behror_district
+Jaipur,102,8,Kotputli-Behror,782,8,2023,https://en.wikipedia.org/wiki/Kotputli-Behror_district
+Jhunjhunu,106,8,Neem Ka Thana,773,8,2023,https://en.wikipedia.org/wiki/Neem_Ka_Thana_district
+Sikar,114,8,Neem Ka Thana,773,8,2023,https://en.wikipedia.org/wiki/Neem_Ka_Thana_district
+Jodhpur,107,8,Phalodi,772,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Udaipur,117,8,Salumbar,777,8,2023,https://en.wikipedia.org/wiki/Salumbar_district
+Jalore,104,8,Sanchor,779,8,2023,https://en.wikipedia.org/wiki/Sanchore_district
+Bhilwara,92,8,Shahpura,780,8,2023,https://rajras.in/formation-of-new-districts-in-rajasthan/
+Jhansi,153,9,Lalitpur,161,9,1974,http://www.statoids.com/yin.html
+Bulandshahr,134,9,Ghaziabad,145,9,1976,http://www.statoids.com/yin.html
+Meerut,169,9,Ghaziabad,145,9,1976,http://www.statoids.com/yin.html
+Kanpur,,9,Kanpur Dehat,156,9,1981,http://www.statoids.com/yin.html
+Kanpur Nagar,157,9,Kanpur Dehat,156,9,1981,http://www.statoids.com/yin.html
+Kanpur,,9,Kanpur Nagar,157,9,1981,http://www.statoids.com/yin.html
+Azamgarh,123,9,Mau,168,9,1988,https://en.wikipedia.org/wiki/Mau_district
+Ballia,126,9,Mau,168,9,1988,http://www.statoids.com/yin.html
+Basti,131,9,Siddharth Nagar,182,9,1988,http://www.statoids.com/yin.html
+Agra,118,9,Firozabad,143,9,1989,http://www.statoids.com/yin.html
+Mainpuri,166,9,Firozabad,143,9,1989,http://www.statoids.com/yin.html
+Gorakhpur,148,9,Maharajganj,164,9,1989,https://en.wikipedia.org/wiki/Maharajganj_district
+Mirzapur,170,9,Sonbhadra,184,9,1989,http://www.statoids.com/yin.html
+Varanasi,187,9,Bhadohi,179,9,1994,https://en.wikipedia.org/wiki/Bhadohi_district
+Deoria,137,9,Kushi Nagar,160,9,1994,https://en.wikipedia.org/wiki/Kushinagar_district
+Ayodhya,140,9,Ambedkar Nagar,121,9,1995,https://en.wikipedia.org/wiki/Ambedkar_Nagar_district
+Hamirpur,149,9,Mahoba,165,9,1995,http://www.statoids.com/yin.html
+Moradabad,171,9,Amroha,154,9,1997,https://en.wikipedia.org/wiki/Amroha_district
+Etawah,139,9,Auraiya,122,9,1997,https://en.wikipedia.org/wiki/Auraiya_district
+Meerut,169,9,Baghpat,124,9,1997,https://en.wikipedia.org/wiki/Baghpat_district
+Gonda,147,9,Balrampur,127,9,1997,"https://en.wikipedia.org/wiki/Balrampur_district,_Uttar_Pradesh"
+Varanasi,187,9,Chandauli,135,9,1997,http://www.statoids.com/yin.html
+Banda,128,9,Chitrakoot,136,9,1997,http://www.statoids.com/yin.html
+Bulandshahr,134,9,Gautam Buddha Nagar,144,9,1997,https://en.wikipedia.org/wiki/Gautam_Buddh_Nagar_district
+Ghaziabad,145,9,Gautam Buddha Nagar,144,9,1997,https://en.wikipedia.org/wiki/Gautam_Buddh_Nagar_district
+Agra,118,9,Hathras,163,9,1997,https://en.wikipedia.org/wiki/Hathras_district
+Aligarh,119,9,Hathras,163,9,1997,https://en.wikipedia.org/wiki/Hathras_district
+Mathura,167,9,Hathras,163,9,1997,https://en.wikipedia.org/wiki/Hathras_district
+Farrukhabad,141,9,Kannauj,155,9,1997,https://en.wikipedia.org/wiki/Kannauj_district
+Prayagraj,120,9,Kaushambi,158,9,1997,https://en.wikipedia.org/wiki/Kaushambi_district
+Basti,131,9,Sant Kabeer Nagar,178,9,1997,http://www.statoids.com/yin.html
+Siddharth Nagar,182,9,Sant Kabeer Nagar,178,9,1997,http://www.statoids.com/yin.html
+Bahraich,125,9,Shravasti,181,9,1997,https://en.wikipedia.org/wiki/Shravasti_district
+Etah,138,9,Kasganj,633,9,2008,https://en.wikipedia.org/wiki/Kasganj_district
+Rae Bareli,175,9,Amethi,640,9,2010,https://en.wikipedia.org/wiki/Amethi_district
+Sultanpur,185,9,Amethi,640,9,2010,https://en.wikipedia.org/wiki/Amethi_district
+Ghaziabad,145,9,Hapur,661,9,2011,https://en.wikipedia.org/wiki/Hapur_district
+Budaun,133,9,Sambhal,659,9,2011,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7030
+Moradabad,171,9,Sambhal,659,9,2011,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7030
+Muzaffarnagar,172,9,Shamli,660,9,2011,https://en.wikipedia.org/wiki/Shamli_district
+Munger,207,10,Begusarai,191,10,1972,http://www.statoids.com/yin.html
+Shahabad,,10,Bhojpur,193,10,1972,"https://en.wikipedia.org/wiki/Bhojpur_district,_India"
+Darbhanga,195,10,Madhubani,206,10,1972,https://en.wikipedia.org/wiki/Madhubani_district
+Patna,212,10,Nalanda,209,10,1972,https://en.wikipedia.org/wiki/Nalanda_district
+Champaran,,10,Pashchim Champaran,211,10,1972,https://en.wikipedia.org/wiki/East_Champaran_district
+Champaran,,10,Purbi Champaran,213,10,1972,https://en.wikipedia.org/wiki/East_Champaran_district
+Shahabad,,10,Rohtas,215,10,1972,"https://en.wikipedia.org/wiki/Bhojpur_district,_India"
+Darbhanga,195,10,Samastipur,217,10,1972,https://en.wikipedia.org/wiki/Samastipur_district
+Muzaffarpur,208,10,Sitamarhi,221,10,1972,https://en.wikipedia.org/wiki/Sitamarhi_district
+Saran,218,10,Siwan,222,10,1972,https://en.wikipedia.org/wiki/Siwan_district
+Muzaffarpur,208,10,Vaishali,224,10,1972,https://en.wikipedia.org/wiki/Vaishali_district
+Gaya,196,10,Aurangabad,189,10,1973,"https://en.wikipedia.org/wiki/Aurangabad_district,_Bihar"
+Saran,218,10,Gopalganj,197,10,1973,https://gopalganj.dcourts.gov.in/?p=5859
+Purnia,214,10,Katihar,201,10,1973,https://katihar.nic.in/history/
+Gaya,196,10,Nawada,210,10,1973,http://www.statoids.com/yin.html
+Munger,207,10,Khagaria,202,10,1981,http://www.statoids.com/yin.html
+Saharsa,216,10,Madhepura,205,10,1981,https://en.wikipedia.org/wiki/Madhepura_district
+Gaya,196,10,Jehanabad,199,10,1986,http://www.statoids.com/yin.html
+Purnia,214,10,Araria,188,10,1990,https://en.wikipedia.org/wiki/Araria_district
+Purnia,214,10,Kishanganj,203,10,1990,https://en.wikipedia.org/wiki/Kishanganj_district
+Bhagalpur,192,10,Banka,190,10,1991,http://www.statoids.com/yin.html
+Bhojpur,193,10,Buxar,194,10,1991,https://en.wikipedia.org/wiki/Buxar_district
+Munger,207,10,Jamui,198,10,1991,https://en.wikipedia.org/wiki/Jamui_district
+Rohtas,215,10,Kaimur (Bhabua),200,10,1991,https://en.wikipedia.org/wiki/Kaimur_district
+Saharsa,216,10,Supaul,223,10,1991,https://en.wikipedia.org/wiki/Supaul_district
+Munger,207,10,Lakhisarai,204,10,1994,https://en.wikipedia.org/wiki/Lakhisarai_district
+Munger,207,10,Sheikhpura,219,10,1994,https://en.wikipedia.org/wiki/Sheikhpura_district
+Sitamarhi,221,10,Sheohar,220,10,1994,https://en.wikipedia.org/wiki/Sitamarhi_district
+Jehanabad,199,10,Arwal,611,10,2001,https://en.wikipedia.org/wiki/Arwal_district
+East Sikkim,,11,Gangtok,225,11,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Sikkim
+West Sikkim,,11,Gyalshing,228,11,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Sikkim
+East Sikkim,,11,Pakyong,741,11,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Sikkim
+Gangtok,225,11,Pakyong,741,11,2021,https://en.wikipedia.org/wiki/Pakyong_district
+Gyalshing,228,11,Soreng,742,11,2021,https://en.wikipedia.org/wiki/Soreng_district
+West Sikkim,,11,Soreng,742,11,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Sikkim
+Lohit,234,12,Dibang Valley,230,12,1980,https://en.wikipedia.org/wiki/Dibang_Valley_district
+Kameng,,12,East Kameng,231,12,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Subansiri,,12,Lower Subansiri,236,12,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Subansiri,,12,Upper Subansiri,241,12,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Kameng,,12,West Kameng,242,12,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+West Kameng,242,12,Tawang,238,12,1984,https://tawang.nic.in/about-district/
+Tirap,239,12,Changlang,229,12,1987,https://en.wikipedia.org/wiki/Changlang_district
+Lower Subansiri,236,12,Papum Pare,237,12,1992,https://papumpare.nic.in/about-district/
+East Siang,232,12,Upper Siang,240,12,1994,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Lower Subansiri,236,12,Kurung Kumey,233,12,2001,https://en.wikipedia.org/wiki/Kurung_Kumey_district
+Dibang Valley,230,12,Lower Dibang Valley,235,12,2001,https://en.wikipedia.org/wiki/Lower_Dibang_Valley_district
+Lohit,234,12,Anjaw,628,12,2004,https://en.wikipedia.org/wiki/Anjaw_district
+Tirap,239,12,Longding,666,12,2012,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Lohit,234,12,Namsai,678,12,2014,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Kurung Kumey,233,12,Kra Daadi,677,12,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+East Siang,232,12,Siang,679,12,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+West Siang,243,12,Siang,679,12,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Lower Subansiri,236,12,Kamle,718,12,2017,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Upper Subansiri,241,12,Kamle,718,12,2017,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+East Siang,232,12,Lower Siang,719,12,2017,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+West Siang,243,12,Lower Siang,719,12,2017,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Lower Siang,719,12,Leparada,724,12,2018,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+East Kameng,231,12,Pakke Kessang,723,12,2018,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+West Siang,243,12,Shi Yomi,725,12,2018,https://en.wikipedia.org/wiki/List_of_districts_of_Arunachal_Pradesh
+Papum Pare,237,12,Itanagar capital complex,766,12,,https://www.india.gov.in/census-papum-pare-district-arunachal-pradesh
+Tuensang,249,13,Mon,247,13,1973,https://en.wikipedia.org/wiki/Mon_district
+Kohima,245,13,Phek,248,13,1973,https://en.wikipedia.org/wiki/Phek_district
+Mokokchung,246,13,Wokha,250,13,1973,https://en.wikipedia.org/wiki/Wokha_district
+Mokokchung,246,13,Zunheboto,251,13,1973,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Kohima,245,13,Dimapur,244,13,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Tuensang,249,13,Kiphire,614,13,2003,https://en.wikipedia.org/wiki/Kiphire_district
+Tuensang,249,13,Longleng,615,13,2003,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Kohima,245,13,Peren,613,13,2003,https://en.wikipedia.org/wiki/Peren_district
+Tuensang,249,13,Noklak,736,13,2017,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Dimapur,244,13,Chumoukedima,758,13,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Dimapur,244,13,Niuland,764,13,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Kohima,245,13,Tseminyu,757,13,2021,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Tuensang,249,13,Shamator,765,13,2022,https://en.wikipedia.org/wiki/List_of_districts_of_Nagaland
+Imphal,,14,Imphal East,255,14,1997,https://en.wikipedia.org/wiki/Imphal_East_district
+Imphal,,14,Imphal West,256,14,1997,https://en.wikipedia.org/wiki/Imphal_East_district
+Imphal East,255,14,Jiribam,713,14,2016,https://en.wikipedia.org/wiki/Jiribam_district
+Thoubal,259,14,Kakching,711,14,2016,https://en.wikipedia.org/wiki/Kakching_district
+Ukhrul,260,14,Kamjong,717,14,2016,https://en.wikipedia.org/wiki/Kamjong_district
+Senapati,257,14,Kangpokpi,712,14,2016,https://en.wikipedia.org/wiki/Kangpokpi_district
+Tamenglong,258,14,Noney,714,14,2016,https://en.wikipedia.org/wiki/Noney_district
+Churachandpur,254,14,Pherzawl,715,14,2016,https://en.wikipedia.org/wiki/Pherzawl_district
+Chandel,253,14,Tengnoupal,716,14,2016,https://en.wikipedia.org/wiki/Tengnoupal_district
+Aizawl,261,15,Champhai,262,15,1998,https://mizoramassembly.in/storage/Assembly/Gazette/EO/GZEO27_ISS115.pdf
+Aizawl,261,15,Kolasib,263,15,1998,https://kolasib.nic.in/about-district/
+Chhimtuipui,,15,Lawngtlai,264,15,1998,https://en.wikipedia.org/wiki/Lawngtlai_district
+Saiha,267,15,Lawngtlai,264,15,1998,https://en.wikipedia.org/wiki/Lawngtlai_district
+Aizawl,261,15,Mamit,266,15,1998,https://mamit.nic.in/history/
+Chhimtuipui,,15,Saiha,267,15,1998,https://en.wikipedia.org/wiki/Siaha_district
+Aizawl,261,15,Serchhip,268,15,1998,https://en.wikipedia.org/wiki/Serchhip_district
+Lunglei,265,15,Hnahthial,726,15,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Mizoram
+Champhai,262,15,Khawzawl,728,15,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Mizoram
+Aizawl,261,15,Saitual,727,15,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Mizoram
+Champhai,262,15,Saitual,727,15,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Mizoram
+North Tripura,270,16,Dhalai,269,16,1995,https://en.wikipedia.org/wiki/Dhalai_district
+South Tripura,271,16,Dhalai,269,16,1995,https://en.wikipedia.org/wiki/Dhalai_district
+South Tripura,271,16,Gomati,654,16,2012,https://gomati.nic.in/about-district/
+West Tripura,272,16,Khowai,652,16,2012,https://en.wikipedia.org/wiki/Khowai_district
+West Tripura,272,16,Sepahijala,653,16,2012,https://en.wikipedia.org/wiki/Sipahijala_district
+North Tripura,270,16,Unakoti,655,16,2012,https://en.wikipedia.org/wiki/Unakoti_district
+Garo Hills,,17,East Garo Hills,273,17,1976,https://en.wikipedia.org/wiki/East_Garo_Hills_district
+Khasi Hills,,17,East Khasi Hills,274,17,1976,https://en.wikipedia.org/wiki/West_Khasi_Hills_district
+Garo Hills,,17,West Garo Hills,278,17,1976,https://en.wikipedia.org/wiki/East_Garo_Hills_district
+Khasi Hills,,17,West Khasi Hills,279,17,1976,https://en.wikipedia.org/wiki/West_Khasi_Hills_district
+East Khasi Hills,274,17,Ri Bhoi,276,17,1992,https://en.wikipedia.org/wiki/Ri-Bhoi_district
+West Garo Hills,278,17,South Garo Hills,277,17,1992,https://megpolice.gov.in/node/1279
+Jaintia Hills,,17,East Jaintia Hills,657,17,2012,https://en.wikipedia.org/wiki/West_Jaintia_Hills_district
+West Jaintia Hills,275,17,East Jaintia Hills,657,17,2012,https://en.wikipedia.org/wiki/East_Jaintia_Hills_district
+East Garo Hills,273,17,North Garo Hills,656,17,2012,https://en.wikipedia.org/wiki/North_Garo_Hills_district
+West Garo Hills,278,17,South West Garo Hills,663,17,2012,https://en.wikipedia.org/wiki/South_West_Garo_Hills_district
+West Khasi Hills,279,17,South West Khasi Hills,658,17,2012,https://en.wikipedia.org/wiki/South_West_Khasi_Hills_district
+Jaintia Hills,,17,West Jaintia Hills,275,17,2012,https://en.wikipedia.org/wiki/West_Jaintia_Hills_district
+West Khasi Hills,279,17,Eastern West Khasi Hills,740,17,2021,https://en.wikipedia.org/wiki/Eastern_West_Khasi_Hills_district
+United Mikir and North Cachar Hills,,18,Dima Hasao,299,18,1970,https://en.wikipedia.org/wiki/Karbi_Anglong_district
+United Mikir and North Cachar Hills,,18,Karbi Anglong,292,18,1970,https://en.wikipedia.org/wiki/Karbi_Anglong_district
+Lakhimpur,295,18,Dibrugarh,286,18,1971,https://en.wikipedia.org/wiki/Dibrugarh_district
+Kamrup,291,18,Barpeta,280,18,1983,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Goalpara,287,18,Dhubri,285,18,1983,https://en.wikipedia.org/wiki/Dhubri_district
+Sivasagar,300,18,Jorhat,290,18,1983,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Cachar,282,18,Karimganj,293,18,1983,https://en.wikipedia.org/wiki/Karimganj_district
+Goalpara,287,18,Kokrajhar,294,18,1983,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Darrang,283,18,Sonitpur,301,18,1983,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Kamrup,291,18,Nalbari,298,18,1985,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Sivasagar,300,18,Golaghat,288,18,1987,https://en.wikipedia.org/wiki/Golaghat_district
+Goalpara,287,18,Bongaigaon,281,18,1989,https://en.wikipedia.org/wiki/Bongaigaon_district
+Kokrajhar,294,18,Bongaigaon,281,18,1989,https://en.wikipedia.org/wiki/Bongaigaon_district
+Lakhimpur,295,18,Dhemaji,284,18,1989,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Cachar,282,18,Hailakandi,289,18,1989,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Nagaon,297,18,Marigaon,296,18,1989,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Dibrugarh,286,18,Tinsukia,302,18,1989,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Kamrup,291,18,Kamrup Metro,618,18,2003,https://en.wikipedia.org/wiki/Kamrup_Metropolitan_district
+Barpeta,280,18,Baksa,616,18,2004,https://en.wikipedia.org/wiki/Baksa_district
+Kamrup,291,18,Baksa,616,18,2004,https://en.wikipedia.org/wiki/Baksa_district
+Nalbari,298,18,Baksa,616,18,2004,https://en.wikipedia.org/wiki/Baksa_district
+Barpeta,280,18,Chirang,612,18,2004,https://chirang.assam.gov.in/about-us/history
+Bongaigaon,281,18,Chirang,612,18,2004,https://chirang.assam.gov.in/about-us/history
+Kokrajhar,294,18,Chirang,612,18,2004,https://chirang.assam.gov.in/about-us/history
+Darrang,283,18,Udalguri,617,18,2004,https://udalguri.assam.gov.in/node/1011
+Sonitpur,301,18,Biswanath,705,18,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Sivasagar,300,18,Charaideo,708,18,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Nagaon,297,18,Hojai,709,18,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Dhubri,285,18,South Salmara Mancachar,707,18,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Karbi Anglong,292,18,West Karbi Anglong,710,18,2015,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Jorhat,290,18,Majuli,706,18,2016,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Barpeta,280,18,Bajali,739,18,2020,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Baksa,616,18,Tamulpur,756,18,2022,https://en.wikipedia.org/wiki/List_of_districts_of_Assam
+Manbhum,,20,Purulia,321,19,1956,https://en.wikipedia.org/wiki/Manbhum
+24 Parganas,,19,24 Paraganas North,303,19,1986,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+24 Parganas,,19,24 Paraganas South,304,19,1986,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+West Dinajpur,,19,Dinajpur Dakshin,310,19,1992,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+West Dinajpur,,19,Dinajpur Uttar,311,19,1992,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Midnapore,,19,Medinipur East,317,19,2002,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Midnapore,,19,Medinipur West,318,19,2002,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Jalpaiguri,314,19,Alipurduar,664,19,2014,https://en.wikipedia.org/wiki/Alipurduar_district
+Medinipur West,318,19,Jhargram,703,19,2017,https://en.wikipedia.org/wiki/Jhargram_district
+Darjeeling,309,19,Kalimpong,702,19,2017,https://en.wikipedia.org/wiki/Kalimpong_district
+Bardhaman,,19,Paschim Bardhaman,704,19,2017,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Burdwan,,19,Paschim Bardhaman,704,19,2017,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Purba Bardhaman,306,19,Paschim Bardhaman,704,19,2017,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Bardhaman,,19,Purba Bardhaman,306,19,2017,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Burdwan,,19,Purba Bardhaman,306,19,2017,https://en.wikipedia.org/wiki/List_of_districts_of_West_Bengal
+Manbhum,,20,Dhanbad,325,20,1956,https://en.wikipedia.org/wiki/Manbhum
+Hazaribagh,332,20,Giridih,329,20,1972,https://en.wikipedia.org/wiki/Giridih_district
+Santhal Parganas,,20,Deoghar,324,20,1983,http://www.statoids.com/yin.html
+Santhal Parganas,,20,Dumka,326,20,1983,http://www.statoids.com/yin.html
+Santhal Parganas,,20,Godda,330,20,1983,http://www.statoids.com/yin.html
+Ranchi,339,20,Gumla,331,20,1983,https://en.wikipedia.org/wiki/Lohardaga_district
+Ranchi,339,20,Lohardaga,336,20,1983,https://en.wikipedia.org/wiki/Lohardaga_district
+Santhal Parganas,,20,Sahebganj,340,20,1983,http://www.statoids.com/yin.html
+Singhbhum,,20,East Singhbum,327,20,1990,https://en.wikipedia.org/wiki/West_Singhbhum_district
+Singhbhum,,20,West Singhbhum,343,20,1990,https://en.wikipedia.org/wiki/West_Singhbhum_district
+Dhanbad,325,20,Bokaro,322,20,1991,https://en.wikipedia.org/wiki/Bokaro_district
+Giridih,329,20,Bokaro,322,20,1991,https://en.wikipedia.org/wiki/Bokaro_district
+Hazaribagh,332,20,Chatra,323,20,1991,https://en.wikipedia.org/wiki/Chatra_district
+Palamu,338,20,Garhwa,328,20,1991,https://en.wikipedia.org/wiki/Garhwa_district
+Hazaribagh,332,20,Koderma,334,20,1994,https://en.wikipedia.org/wiki/Koderma_district
+Sahebganj,340,20,Pakur,337,20,1994,https://en.wikipedia.org/wiki/Pakur_district
+Dumka,326,20,Jamtara,333,20,2001,http://www.statoids.com/yin.html
+Palamu,338,20,Latehar,335,20,2001,https://en.wikipedia.org/wiki/Latehar_district
+West Singhbhum,343,20,Saraikela Kharsawan,341,20,2001,https://en.wikipedia.org/wiki/Seraikela_Kharsawan_district
+Gumla,331,20,Simdega,342,20,2001,https://en.wikipedia.org/wiki/Simdega_district
+Ranchi,339,20,Khunti,606,20,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Jharkhand
+Hazaribagh,332,20,Ramgarh,607,20,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Jharkhand
+Ganjam,354,21,Gajapati,353,21,1992,https://en.wikipedia.org/wiki/Gajapati_district
+Koraput,363,21,Malkangiri,364,21,1992,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Koraput,363,21,Nabarangpur,366,21,1992,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Koraput,363,21,Rayagada,370,21,1992,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Dhenkanal,352,21,Anugul,344,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Sambalpur,371,21,Bargarh,347,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Baleshwar,346,21,Bhadrak,348,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Cuttack,350,21,Jagatsinghapur,355,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Cuttack,350,21,Jajapur,356,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Cuttack,350,21,Kendrapara,360,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Puri,369,21,Khordha,362,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Puri,369,21,Nayagarh,367,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Kalahandi,358,21,Nuapada,368,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Balangir,345,21,Sonepur,372,21,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Kandhamal,359,21,Boudh,349,21,1994,https://en.wikipedia.org/wiki/Boudh_district
+Sambalpur,371,21,Deogarh,351,21,1994,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Sambalpur,371,21,Jharsuguda,357,21,1994,https://en.wikipedia.org/wiki/List_of_districts_of_Odisha
+Durg,378,22,Rajnandgaon,388,22,1973,https://en.wikipedia.org/wiki/Rajnandgaon_district
+Bastar,374,22,Dantewada,376,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Raipur,387,22,Dhamtari,377,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Bilaspur,375,22,Janjgir-Champa,379,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Raigarh,386,22,Jashpur,380,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Bilaspur,375,22,Kabirdham,382,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Rajnandgaon,388,22,Kabirdham,382,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Bastar,374,22,Kanker,381,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Bilaspur,375,22,Korba,383,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Surguja,389,22,Korea,384,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Raipur,387,22,Mahasamund,385,22,1998,https://en.wikipedia.org/wiki/List_of_districts_of_Chhattisgarh
+Dantewada,376,22,Bijapur,636,22,2007,http://www.statoids.com/yin.html
+Bastar,374,22,Narayanpur,637,22,2007,http://www.statoids.com/yin.html
+Durg,378,22,Balod,646,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Raipur,387,22,Baloda Bazar,644,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Surguja,389,22,Balrampur,649,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Durg,378,22,Bemetara,650,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Raipur,387,22,Gariyaband,645,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Bastar,374,22,Kondagaon,643,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Bilaspur,375,22,Mungeli,647,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Dantewada,376,22,Sukma,642,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Surguja,389,22,Surajpur,648,22,2012,https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=7617
+Bilaspur,375,22,Gaurella Pendra Marwahi,734,22,2020,https://en.wikipedia.org/wiki/Gaurela-Pendra-Marwahi_district
+Rajnandgaon,388,22,Khairgarh Chhuikhadan Gandai,759,22,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12434
+Korea,384,22,Manendragarh Chirimiri Bharatpur,760,22,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12434
+Rajnandgaon,388,22,Mohla Manpur Ambagarh Chouki,761,22,2022,https://en.wikipedia.org/wiki/Mohla-Manpur-Ambagarh_Chowki_district
+Janjgir-Champa,379,22,Sakti,762,22,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12434
+Baloda Bazar,644,22,Sarangarh Bilaigarh,763,22,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12434
+Raigarh,386,22,Sarangarh Bilaigarh,763,22,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12434
+Sehore,427,23,Bhopal,396,23,1972,https://en.wikipedia.org/wiki/Bhopal_district
+Khargone,414,23,Barwani,393,23,1998,http://www.statoids.com/yin.html
+Mandla,415,23,Dindori,404,23,1998,http://www.statoids.com/yin.html
+Narmadapuram,409,23,Harda,408,23,1998,http://www.statoids.com/yin.html
+Jabalpur,411,23,Katni,413,23,1998,http://www.statoids.com/yin.html
+Mandsaur,416,23,Neemuch,419,23,1998,https://en.wikipedia.org/wiki/Neemuch_district
+Morena,417,23,Sheopur,431,23,1998,https://en.wikipedia.org/wiki/Sheopur_district
+Shahdol,429,23,Umaria,436,23,1998,https://en.wikipedia.org/wiki/Umaria_district
+Shahdol,429,23,Anuppur,390,23,2003,https://en.wikipedia.org/wiki/Anuppur_district
+Guna,406,23,Ashoknagar,391,23,2003,https://en.wikipedia.org/wiki/Ashoknagar_district
+East Nimar,405,23,Burhanpur,397,23,2003,https://en.wikipedia.org/wiki/Burhanpur_district
+Jhabua,412,23,Alirajpur,639,23,2008,https://en.wikipedia.org/wiki/Alirajpur_district
+Sidhi,433,23,Singrauli,638,23,2008,http://www.statoids.com/yin.html
+Shajapur,430,23,Agar Malwa,667,23,2013,https://en.wikipedia.org/wiki/Agar_Malwa_district
+Tikamgarh,434,23,Niwari,722,23,2018,https://en.wikipedia.org/wiki/Niwari_district
+Kheda,450,24,Anand,440,24,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Panch Mahals,454,24,Dohad,445,24,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Bharuch,442,24,Narmada,452,24,1997,https://en.wikipedia.org/wiki/Narmada_district
+Vadodara,461,24,Narmada,452,24,1997,https://en.wikipedia.org/wiki/Narmada_district
+Valsad,462,24,Navsari,453,24,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Banas Kantha,441,24,Patan,455,24,1997,https://en.wikipedia.org/wiki/Patan_district
+Mahesana,451,24,Patan,455,24,1997,https://en.wikipedia.org/wiki/Patan_district
+Junagadh,448,24,Porbandar,456,24,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Surat,459,24,Tapi,641,24,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Sabar Kantha,458,24,Arvalli,672,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Ahmadabad,438,24,Botad,676,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Bhavnagar,443,24,Botad,676,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Vadodara,461,24,Chhotaudepur,668,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Jamnagar,447,24,Devbhumi Dwarka,674,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Junagadh,448,24,Gir Somnath,675,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Kheda,450,24,Mahisagar,669,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Panch Mahals,454,24,Mahisagar,669,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Rajkot,457,24,Morbi,673,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Surendranagar,460,24,Morbi,673,24,2013,https://en.wikipedia.org/wiki/List_of_districts_of_Gujarat
+Aurangabad,469,27,Jalna,479,27,1981,https://en.wikipedia.org/wiki/Jalna_district
+Parbhani,489,27,Jalna,479,27,1981,https://en.wikipedia.org/wiki/Jalna_district
+Ratnagiri,492,27,Sindhudurg,495,27,1981,https://en.wikipedia.org/wiki/Sindhudurg_district
+Chandrapur,473,27,Gadchiroli,475,27,1982,https://en.wikipedia.org/wiki/Gadchiroli_district
+Osmanabad,488,27,Latur,481,27,1982,https://en.wikipedia.org/wiki/Latur_district
+Mumbai,482,27,Mumbai Suburban,483,27,1990,https://en.wikipedia.org/wiki/Mumbai_Suburban_district
+Dhule,474,27,Nandurbar,486,27,1998,https://en.wikipedia.org/wiki/Nandurbar_district
+Akola,467,27,Washim,499,27,1998,https://en.wikipedia.org/wiki/Washim_district
+Bhandara,471,27,Gondia,476,27,1999,https://gondia.gov.in/about-district/ | https://en.wikipedia.org/wiki/List_of_districts_of_Maharashtra
+Parbhani,489,27,Hingoli,477,27,1999,https://en.wikipedia.org/wiki/Hingoli_district
+Thane,497,27,Palghar,665,27,2014,https://en.wikipedia.org/wiki/Palghar_district
+Guntur,506,28,Prakasam,517,28,1970,https://en.wikipedia.org/wiki/Prakasam_district
+Kurnool,511,28,Prakasam,517,28,1970,https://en.wikipedia.org/wiki/Prakasam_district
+Spsr Nellore,515,28,Prakasam,517,28,1970,https://en.wikipedia.org/wiki/Prakasam_district
+Srikakulam,519,28,Vizianagaram,521,28,1979,https://en.wikipedia.org/wiki/Vizianagaram_district
+Visakhapatanam,520,28,Vizianagaram,521,28,1979,https://en.wikipedia.org/wiki/Vizianagaram_district
+East Godavari,505,28,Alluri Sitharama Raju,745,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Visakhapatanam,520,28,Alluri Sitharama Raju,745,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Visakhapatanam,520,28,Anakapalli,744,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Chittoor,503,28,Annamayya,753,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Y.S.R.,504,28,Annamayya,753,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Guntur,506,28,Bapatla,750,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Prakasam,517,28,Bapatla,750,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Krishna,510,28,Eluru,748,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+West Godavari,523,28,Eluru,748,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+East Godavari,505,28,Kakinada,746,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+East Godavari,505,28,Konaseema,747,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Kurnool,511,28,Nandyal,755,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Krishna,510,28,Ntr,749,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Guntur,506,28,Palnadu,751,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Srikakulam,519,28,Parvathipuram Manyam,743,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Vizianagaram,521,28,Parvathipuram Manyam,743,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Anantapur,502,28,Sri Sathya Sai,754,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Chittoor,503,28,Tirupati,752,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Spsr Nellore,515,28,Tirupati,752,28,2022,https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12353
+Bengaluru Urban,525,29,Bengaluru Rural,526,29,1986,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Vijayapura,530,29,Bagalkote,524,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Mysuru,545,29,Chamarajanagara,531,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Ballari,528,29,Davangere,535,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Chitradurga,533,29,Davangere,535,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Shivamogga,547,29,Davangere,535,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Dharwad,536,29,Gadag,537,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Dharwad,536,29,Haveri,540,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Raichur,546,29,Koppal,543,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Dakshina Kannada,534,29,Udupi,549,29,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Kolar,542,29,Chikkaballapura,630,29,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Bengaluru Rural,526,29,Ramanagara,631,29,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Kalaburagi,538,29,Yadgir,635,29,2009,https://en.wikipedia.org/wiki/List_of_districts_of_Karnataka
+Ballari,528,29,Vijayanagar,738,29,2021,https://en.wikipedia.org/wiki/Vijayanagara_district
+Ernakulam,555,32,Idukki,556,32,1972,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Kottayam,560,32,Idukki,556,32,1972,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Kannur,557,32,Wayanad,567,32,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Kozhikode,561,32,Wayanad,567,32,1980,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Alappuzha,554,32,Pathanamthitta,564,32,1982,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Idukki,556,32,Pathanamthitta,564,32,1982,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Kollam,559,32,Pathanamthitta,564,32,1982,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Kannur,557,32,Kasaragod,558,32,1984,https://en.wikipedia.org/wiki/List_of_districts_of_Kerala
+Thanjavur,586,33,Pudukkottai,582,33,1974,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Tiruchirappalli,591,33,Pudukkottai,582,33,1974,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Coimbatore,569,33,Erode,573,33,1979,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Madurai,578,33,Dindigul,572,33,1985,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Ramanathapuram,583,33,Sivaganga,585,33,1985,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Ramanathapuram,583,33,Virudhunagar,597,33,1985,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Tirunelveli,592,33,Tuticorin,594,33,1986,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Vellore,595,33,Tiruvannamalai,593,33,1989,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Thanjavur,586,33,Nagapattinam,579,33,1991,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Cuddalore,570,33,Villupuram,596,33,1993,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Tiruchirappalli,591,33,Karur,576,33,1995,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Tiruchirappalli,591,33,Perambalur,581,33,1995,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Madurai,578,33,Theni,588,33,1996,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Salem,584,33,Namakkal,580,33,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Chennai,568,33,Thiruvallur,589,33,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Kanchipuram,574,33,Thiruvallur,589,33,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Nagapattinam,579,33,Thiruvarur,590,33,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Thanjavur,586,33,Thiruvarur,590,33,1997,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Dharmapuri,571,33,Krishnagiri,577,33,2004,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Perambalur,581,33,Ariyalur,610,33,2007,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Coimbatore,569,33,Tiruppur,634,33,2009,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Erode,573,33,Tiruppur,634,33,2009,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Kanchipuram,574,33,Chengalpattu,730,33,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Villupuram,596,33,Kallakurichi,729,33,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Vellore,595,33,Ranipet,731,33,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Tirunelveli,592,33,Tenkasi,733,33,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Vellore,595,33,Tirupathur,732,33,2019,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Nagapattinam,579,33,Mayiladuthurai,735,33,2020,https://en.wikipedia.org/wiki/List_of_districts_of_Tamil_Nadu
+Hyderabad,507,36,Ranga Reddy,518,36,1978,https://en.wikipedia.org/wiki/Ranga_Reddy_district
+Khammam,509,36,Bhadradri Kothagudem,690,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Hanumakonda,686,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Warangal,522,36,Hanumakonda,686,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Jagitial,681,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Nalgonda,514,36,Jangoan,689,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Warangal,522,36,Jangoan,689,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Jayashankar Bhupalapally,687,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Khammam,509,36,Jayashankar Bhupalapally,687,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Warangal,522,36,Jayashankar Bhupalapally,687,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Mahabubnagar,512,36,Jogulamba Gadwal,695,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Nizamabad,516,36,Kamareddy,685,36,2016,https://kamareddy.telangana.gov.in/history/
+Adilabad,501,36,Kumuram Bheem Asifabad,699,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Khammam,509,36,Mahabubabad,688,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Warangal,522,36,Mahabubabad,688,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Adilabad,501,36,Mancherial,684,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Ranga Reddy,518,36,Medchal Malkajgiri,700,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Mahabubnagar,512,36,Nagarkurnool,694,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Adilabad,501,36,Nirmal,680,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Peddapalli,682,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Rajanna Sircilla,683,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Medak,513,36,Sangareddy,691,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Karimnagar,508,36,Siddipet,692,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Medak,513,36,Siddipet,692,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Warangal,522,36,Siddipet,692,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Nalgonda,514,36,Suryapet,696,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Mahabubnagar,512,36,Vikarabad,698,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Ranga Reddy,518,36,Vikarabad,698,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Mahabubnagar,512,36,Wanaparthy,693,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Nalgonda,514,36,Yadadri Bhuvanagiri,697,36,2016,https://www.rbi.org.in/commonman/english/scripts/Notification.aspx?Id=2193
+Jayashankar Bhupalapally,687,36,Mulugu,720,36,2019,https://rbi.org.in/commonman/English/Scripts/Notification.aspx?Id=2991
+Mahabubnagar,512,36,Narayanpet,721,36,2019,https://rbi.org.in/commonman/English/Scripts/Notification.aspx?Id=2991
+Leh Ladakh,9,37,Kargil,6,37,1979,https://en.wikipedia.org/wiki/Kargil_district

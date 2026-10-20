@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from pipeline import gbif, util  # noqa: E402
+from pipeline import gbif, util
 
 STATE = ROOT / "data" / "georef" / "download.json"
 # build_sql reads pipeline/queries/<name>.sql; this relative name points it at the experiment's query.

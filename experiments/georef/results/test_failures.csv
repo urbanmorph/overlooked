@@ -1,21 +1,24 @@
 reason,kind,n
-none: state only,material citation,34
-wrong: neighbouring district,material citation,9
+none: state only,material citation,33
+none: name in several districts,material citation,10
 wrong: other district in the same state,material citation,9
-none: name in several districts,material citation,8
 none: no place name found,material citation,7
-none: state only,observation,1965
+wrong: neighbouring district,material citation,6
+wrong: true district carved from the answer,material citation,1
+none: state only,observation,1964
 none: no place name found,observation,646
 none: name in several districts,observation,510
-wrong: neighbouring district,observation,353
-wrong: other district in the same state,observation,93
+wrong: neighbouring district,observation,201
+wrong: true district carved from the answer,observation,130
+wrong: other district in the same state,observation,92
 wrong: same name in another state,observation,53
-wrong: neighbouring district,other,15
+wrong: true district carved from the answer,other,15
 wrong: other district in the same state,other,6
 none: name in several districts,other,1
-none: no place name found,specimen,2335
-none: state only,specimen,1446
-none: name in several districts,specimen,1282
-wrong: neighbouring district,specimen,721
-wrong: same name in another state,specimen,403
-wrong: other district in the same state,specimen,226
+none: no place name found,specimen,2324
+none: state only,specimen,1355
+none: name in several districts,specimen,1276
+wrong: neighbouring district,specimen,434
+wrong: same name in another state,specimen,405
+wrong: other district in the same state,specimen,213
+wrong: true district carved from the answer,specimen,68

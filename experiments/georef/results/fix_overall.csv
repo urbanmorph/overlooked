@@ -1,2 +1,2 @@
-grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
-all,20000,86.7,7905,4240,7855,39.5,60.7,37.9,60.7,30.7,33.4,30.9,1145087.0
+grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_district_single,mean_set_size,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
+all,20000,86.7,8148,4091,7761,40.7,61.2,39.2,22.7,1.66,61.5,32.3,34.7,30.9,1145087.0

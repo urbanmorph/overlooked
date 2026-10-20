@@ -15,10 +15,16 @@ def test_caps_take_everything_when_total_is_large():
 
 
 def test_outcome():
-    assert outcome(5, 5) == "right"
-    assert outcome(5, 6) == "wrong"
-    assert outcome(None, 6) == "none"
-    assert outcome(5, None) == "no truth"
+    assert outcome([5], 5) == "right"
+    assert outcome([5], 6) == "wrong"
+    assert outcome([], 6) == "none"
+    assert outcome([5], None) == "no truth"
+
+
+def test_outcome_of_a_district_set():
+    # Right when the true district is anywhere in the set (parent and the districts carved from it).
+    assert outcome([102, 769], 769) == "right"
+    assert outcome([102, 769], 110) == "wrong"
 
 
 def test_kind_of():

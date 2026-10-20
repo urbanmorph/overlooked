@@ -14,8 +14,13 @@ Rules:
   (one name, several districts) gives no district, and the candidates are kept.
 - The point is the most specific matched place in the winning district (village, then protected area, then
   subdistrict or block, then district), with its radius.
+- A district name (or an old name of it) means the district as it was when the record was made: the answer is the
+  district and the districts carved from it after the record's year (all of them when the year is unknown), from
+  a table of district splits. An old district that no longer exists ("Khasi Hills") gives all its successors.
+  A village, subdistrict, block or protected area keeps one district.
 """
 
+import csv
 import math
 import re
 import sys
@@ -27,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from pipeline import unlocated  # noqa: E402
+from pipeline import unlocated
 
 FIELDS = ("stateprovince", "county", "municipality", "locality", "verbatimlocality", "highergeography",
           "island", "islandgroup", "waterbody", "eventremarks")
@@ -76,11 +81,13 @@ LATER = {1: {37}, 28: {36}, 9: {5}, 10: {20}, 23: {22}, 18: {17, 15, 13, 12}, 3:
 # "60 km SW of X": the place is not X itself. 5 km or more (3 miles) lowers the confidence.
 OFFSET = re.compile(r"(?i)\b(\d+(?:\.\d+)?)\s*(km|kms|kilometers|kilometres|mi|miles?)\b")
 
-LEVEL = {"district": 0, "alias": 0, "subdistrict": 1, "block": 1, "pa": 1, "village": 2}
-KIND_RANK = {"village": 0, "pa": 1, "subdistrict": 2, "block": 2, "district": 3, "alias": 3}
-WEIGHT = {"district": 2.0, "alias": 2.0, "pa": 2.0, "subdistrict": 1.5, "block": 1.5, "village": 1.0}
-PART_KINDS = {"district", "alias", "subdistrict", "block", "pa"}
-HINT_KINDS = {"district": {"district", "alias"}, "subdistrict": {"subdistrict", "block"}, "pa": {"pa"},
+# "old": an old district that LGD no longer has, filed under its first successor.
+DISTRICT_KINDS = {"district", "alias", "old"}
+LEVEL = {"district": 0, "alias": 0, "old": 0, "subdistrict": 1, "block": 1, "pa": 1, "village": 2}
+KIND_RANK = {"village": 0, "pa": 1, "subdistrict": 2, "block": 2, "district": 3, "alias": 3, "old": 4}
+WEIGHT = {"district": 2.0, "alias": 2.0, "old": 2.0, "pa": 2.0, "subdistrict": 1.5, "block": 1.5, "village": 1.0}
+PART_KINDS = DISTRICT_KINDS | {"subdistrict", "block", "pa"}
+HINT_KINDS = {"district": DISTRICT_KINDS, "subdistrict": {"subdistrict", "block"}, "pa": {"pa"},
               "village": {"village"}}
 
 
@@ -162,9 +169,36 @@ class Entry:
     radius_km: float | None
 
 
+def load_splits(path):
+    """(parent, child dist_lgd, year or None) rows of a district split table. The parent is its dist_lgd, or
+    (name, state_lgd) for an old district that LGD no longer has."""
+    with open(path, newline="") as f:
+        return [(int(r["parent_lgd"]) if r["parent_lgd"] else (r["parent"], int(r["parent_state_lgd"])),
+                 int(r["child_lgd"]), int(r["year"]) if r["year"] else None)
+                for r in csv.DictReader(f)]
+
+
 class Gazetteer:
-    def __init__(self, entries):
+    def __init__(self, entries, splits=()):
         self.index = defaultdict(list)
+        self.district = {}
+        self.children = defaultdict(list)
+        self.successors = defaultdict(list)  # first successor of an old district: all its successors
+        old = defaultdict(list)
+        for parent, child, year in splits:
+            if isinstance(parent, tuple):
+                old[parent].append(child)
+            else:
+                self.children[parent].append((child, year))
+        entries = list(entries)
+        for e in entries:
+            if e.kind == "district":
+                self.district[e.dist_lgd] = e
+        for (name, state), kids in old.items():
+            first = self.district.get(kids[0])
+            if first is not None:
+                entries.append(Entry("old", name, state, first.dist_lgd, first.lat, first.lon, first.radius_km))
+                self.successors[first.dist_lgd] += [k for k in kids if k not in self.successors[first.dist_lgd]]
         for e in entries:
             if e.kind == "state":
                 continue
@@ -179,6 +213,16 @@ class Gazetteer:
     def lookup(self, key):
         return self.index.get(key, [])
 
+    def district_set(self, start, year=None):
+        """The districts in start and the districts carved from them after the year (or ever, when the year is
+        unknown), following children of children."""
+        out = list(start)
+        for dist in out:  # grows while it is read
+            for child, made in self.children.get(dist, ()):
+                if child not in out and (year is None or made is None or year <= made):
+                    out.append(child)
+        return out
+
 
 @dataclass
 class Result:
@@ -191,6 +235,7 @@ class Result:
     confidence: str | None = None
     candidates: list = field(default_factory=list)
     matched: str = ""
+    districts: list = field(default_factory=list)  # the answer: dist_lgd alone, or with the districts split from it
 
 
 _STATE_NAMES = None
@@ -235,8 +280,15 @@ def offset(rec):
     return False
 
 
+def record_year(rec):
+    try:
+        return int(rec.get("year"))
+    except (TypeError, ValueError):
+        return None
+
+
 def match(rec, gaz, state_names=None):
-    """Propose a district (and point) for one record, a dict of text fields (keys as in FIELDS)."""
+    """Propose a district (and point) for one record, a dict of text fields (keys as in FIELDS) and its year."""
     state_names = default_state_names() if state_names is None else state_names
     phrase_lists = [(f, phrases(without_states(rec[f], state_names))) for f in FIELDS if rec.get(f)]
     states = state_evidence(rec, phrase_lists, state_names)
@@ -257,7 +309,7 @@ def match(rec, gaz, state_names=None):
                 entries = [e for e in entries if e.kind in PART_KINDS and len(key) >= 5]
             elif len(key) < 4:
                 entries = [e for e in entries if e.kind in PART_KINDS]
-            wanted = HINT_KINDS.get(p.hint) or ({"district", "alias"} if f == "county" else None)
+            wanted = HINT_KINDS.get(p.hint) or (DISTRICT_KINDS if f == "county" else None)
             if wanted and any(e.kind in wanted for e in entries):
                 entries = [e for e in entries if e.kind in wanted]
             if allowed:
@@ -279,7 +331,22 @@ def match(rec, gaz, state_names=None):
     r = decide([v[:3] for v in votes], states, allowed)
     if r.confidence and offset(rec):
         r.confidence = "low"
+    if r.dist_lgd is not None:
+        r.districts = [r.dist_lgd]
+        if r.kind in DISTRICT_KINDS:
+            with_children(r, gaz, record_year(rec))
     return r
+
+
+def with_children(r, gaz, year):
+    """The district set for a district name (or an old district's successors); the radius grows to cover the
+    districts carved from it."""
+    start = gaz.successors[r.dist_lgd] if r.kind == "old" else [r.dist_lgd]
+    r.districts = gaz.district_set(start, year)
+    for d in r.districts[1:]:
+        e = gaz.district.get(d)
+        if e is not None:
+            r.radius_km = max(r.radius_km, haversine_km(r.lat, r.lon, e.lat, e.lon) + e.radius_km)
 
 
 def decide(votes, states, allowed=frozenset()):
@@ -289,7 +356,7 @@ def decide(votes, states, allowed=frozenset()):
         for d in {e.dist_lgd for e in entries if e.dist_lgd is not None}:
             score[d] += w
             support[d] += 1
-            if any(e.kind in ("district", "alias") and e.dist_lgd == d for e in entries):
+            if any(e.kind in DISTRICT_KINDS and e.dist_lgd == d for e in entries):
                 strong.add(d)
     ranked = sorted(score, key=lambda d: -score[d])
     if ranked and (len(ranked) == 1 or score[ranked[0]] > score[ranked[1]]):

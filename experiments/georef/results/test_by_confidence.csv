@@ -1,5 +1,5 @@
-grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
-high,8580,8557,7227,1330,0,84.5,15.5,0.0,84.5,8376,181,97.9,8580,17.4,57.0,69.5
-low,1606,1582,1184,398,0,74.8,25.2,0.0,74.8,1324,258,83.7,1606,10.1,734.4,55.4
-medium,1508,1502,1342,160,0,89.3,10.7,0.0,89.3,1485,17,98.9,1508,5.5,35.6,63.8
-no answer,8306,8234,0,0,8234,0.0,0.0,100.0,,4447,507,54.0,0,,,
+grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,pct_right_first,right_single,pct_right_single,n_set,mean_set_size,median_set_size,max_set_size,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
+high,8727,8704,7620,1084,0,87.5,12.5,0.0,87.5,83.3,5333,61.3,2596,1.47,1.0,8,8521,183,97.9,8727,17.7,57.3,78.0
+low,1602,1578,1185,393,0,75.1,24.9,0.0,75.1,74.8,1131,71.7,90,1.08,1.0,6,1320,258,83.7,1602,10.1,734.4,57.9
+medium,1473,1467,1311,156,0,89.4,10.6,0.0,89.4,89.4,1311,89.4,0,1.0,1.0,1,1450,17,98.8,1473,5.4,32.2,63.9
+no answer,8198,8126,0,0,8126,0.0,0.0,100.0,,0.0,0,0.0,0,,,0,4357,497,53.6,0,,,

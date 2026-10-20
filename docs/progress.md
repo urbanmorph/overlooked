@@ -28,6 +28,15 @@ Newest first. Updated as work happens.
   37.9%, state or better 60.7% (today 30.9%). Most wrong answers are districts split after the record was made, or
   city against suburb. High or medium answers placed at a village, block, subdistrict or protected area: 92.4% right
   on the hold-out half, for 16% of records. A proposal is a suggestion for the publisher, never a fix.
+- Georeferencing, district splits (`ref/district_splits.csv`, 515 rows, 1970 to 2023, one source per row, mostly
+  Wikipedia and Statoids; LGD has no parent data). A district name now gives the district and the districts made
+  from it after the record's year. Right 50.9% (was 49.1%), wrong 8.2% (was 9.5%), 86.1% right when it names
+  one; but right with a single district fell to 39.1%, and 73% of the new sets were right with the parent alone.
+  Records to fix: district 39.2%, state or better 61.5%. Splits explain 25% of the wrong answers, not most: the
+  rest are city names (Mumbai, Hyderabad) and villages filed under their old district. Next: place villages in
+  today's district by their point.
+- Species health, first measure (plan section 6b): a state file per species in each snapshot and a list of
+  changes against the previous one, with flags for changes in the sources. October is the baseline.
 - Model check, corpus v0, shortlist module: see plan section 1d.
 - BSI papers link to the PDF of their year, not BSI's listing page. The new-species layer checks each listed
   file with one HEAD request, keeps the larger PDF when a year has two, and keeps the answers in

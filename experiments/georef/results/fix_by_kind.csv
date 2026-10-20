@@ -1,5 +1,5 @@
-grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
-specimen,17150,87.1,6684,3385,7081,39.0,58.7,40.0,56.4,32.0,34.4,21.3,923349.0
-observation,1092,77.7,493,263,336,45.1,69.2,34.7,95.1,31.8,34.6,88.9,161152.0
-other,188,66.5,68,50,70,36.2,62.8,10.6,23.2,4.1,10.5,6.1,37554.0
-material citation,1570,91.2,660,542,368,42.0,76.6,19.7,53.9,15.2,18.7,48.6,23031.0
+grp,n,pct_any_text,district,state_only,nothing,pct_district,pct_state_or_better,wpct_district,wpct_district_single,mean_set_size,wpct_state_or_better,wpct_district_high,wpct_district_high_medium,wpct_state_today,records_represented
+specimen,17150,87.1,6914,3247,6989,40.3,59.2,41.6,22.0,1.71,57.4,33.8,36.1,21.3,923349.0
+observation,1092,77.7,494,263,335,45.2,69.3,34.7,31.8,1.17,95.2,31.8,34.7,88.9,161152.0
+other,188,66.5,71,47,70,37.8,62.8,10.7,4.8,2.58,23.2,6.4,10.7,6.1,37554.0
+material citation,1570,91.2,669,534,367,42.6,76.6,19.9,13.8,1.47,54.0,15.6,18.9,48.6,23031.0
