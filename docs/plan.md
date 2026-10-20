@@ -43,6 +43,7 @@ Rules:
 - An iNaturalist observation that is not in GBIF is never counted as a public record. The ledger shows it as a separate note: "iNaturalist: observed in India on <date> (<quality>, <licence>)".
 - iNaturalist results have their own as-of date. They live in a separate, dated layer (`layers/inat/<date>/` in R2), because they can finish after the GBIF snapshot is published, and snapshots never change.
 - The India Biodiversity Portal: we do not contact it. Its GBIF dataset is included as it is (records stop in 2024), and the site says so.
+  **Update 20 October 2026:** IBP is to be the Indian home of module 6 (section 1d); we will contact it.
 
 ## 1c. Master list (17 October 2026)
 
@@ -107,6 +108,75 @@ No application server and no database. The one Pages Function only streams files
 - **Address:** `overlooked-india.pages.dev` (free as of 16 October 2026; `overlooked.pages.dev` is taken). A custom domain can be added later without code changes.
 - **Data on the same origin:** the bucket stays private. The function answers `GET` and `HEAD` with `Range`, `ETag` and long cache headers for `snapshots/` (files never change), short cache for `latest.json`. No CORS needed, and the rate-limited `r2.dev` URL is not used. Requests count toward the Workers allowance of the paid plan.
 - **Local work:** `wrangler pages dev` with the R2 binding, or Parquet files on disk.
+
+## 1d. Module 6: shortlists for taxonomists (planned 20 October 2026)
+
+Question: which waiting observations can a taxonomist confirm quickly, and with which few names to check?
+
+**Rule.** A model only makes a shortlist. A taxonomist approves every name, on iNaturalist or on the India
+Biodiversity Portal. We never post an identification, and a machine suggestion never changes a status, a count or a
+label on the site. iNaturalist forbids identifications that a program posts without a person.
+
+**What the backlog is** (iNaturalist, India, October 2026 layer): 9,76,938 observations named to species but not
+confirmed, 8,55,929 named to genus only, 10,41,700 named above genus. Largest: other flowering plants 3,90,350,
+moths 1,47,788, butterflies 75,463, birds 52,711, spiders 45,936.
+
+**What we know already** (fnf pilot, 15 October 2026, BioCLIP 2 zero-shot, 17,626 photos, 24 groups, candidates =
+species with an Indian GBIF record):
+- On research-grade photos: right species first 62.6%, right genus first 78.4%, right species in the top five 80.6%.
+- 14 of 24 groups had a cut-off with 95% right on research-grade photos; on the real queue the same cut-offs gave
+  78.5% (408 of 520). The cut-offs were chosen and tested on the same photos.
+- No safe cut-off for true bugs, beetles, fungi, lichens. The model knows about half the Indian species of fungi,
+  spiders and beetles.
+
+### Parts
+
+| Part | What | Where it lives |
+|---|---|---|
+| Corpus | Indian photos confirmed by experts: observation and photo IDs, licence, confirmed name (matched to the Catalogue of Life), district, date, who confirmed it, an "identifiable from a photo?" flag per group, and image embeddings. References, not copies, except photos we have rights to. | Indian copy at the India Biodiversity Portal; mirrors abroad |
+| Models | Open weights only (licence checked). An open model for embeddings, plus a small classifier per group trained on the corpus. Specialist models where they exist and allow use. | Same |
+| Calibration | Per group, on photos the cut-offs never saw: how long a shortlist must be so the right name is in it 90% or 95% of the time (split conformal sets). A group that cannot reach 95% with a short list gets genus or family only, or "needs an expert". | Results in `experiments/model_check/`, then the corpus release notes |
+| Queue page | Waiting observations by group and state. Order: value of a confirmation (first record in a state, threatened, endemic, listed only) times how easy it is. Two lists: "Quick to confirm" (shortlist shown) and "For an expert" (only group or genus shown, so the guess does not bias). Each row links to the observation. Bands, not raw scores. | Site (Cloudflare), data from the Indian copy |
+| Species page | "N observations on iNaturalist may show this species. Machine shortlist, not a record." Link to the queue. For species listed only or with no recent record, only above the strictest cut-off, worded "needs an expert to check". | Site |
+
+### Homes (sovereignty)
+
+- **Indian primary: the India Biodiversity Portal (IBP).** IBP is the organisation that holds the reference copy
+  (corpus, embeddings, model weights, release records) and publishes the dataset and weights on AIKosh (IndiaAI),
+  which accepts only organisations. Compute: IndiaAI compute through a partner, or an Indian provider.
+- **Global mirror:** Cloudflare (site and queue), Hugging Face (weights, embeddings), Zenodo (a DOI per release).
+  Copies go one way, India to mirror, checked by checksum. Exact locations of sensitive species stay in India only.
+- iNaturalist and GBIF stay sources: we link to them and do not host their photos again.
+- **To ask IBP:** restart its GBIF dataset (it stops in 2024), so names that taxonomists approve on IBP reach GBIF
+  and this site.
+
+### Legal questions (before any release abroad)
+
+The Biological Diversity (Amendment) Act 2023, s.4: no sharing or transfer of "any result of the research on any
+biological resource" from India to a foreign person or body without prior NBA approval, with an exception for
+publication and dissemination of knowledge under Central Government guidelines. Photos and occurrence records are
+probably not "biological resources", but a labelled corpus or a trained model could be read as a result of research.
+To ask a lawyer or the NBA:
+1. Is a labelled photo corpus, its embeddings or a trained model a "result of the research" under s.4?
+2. Is open publication (CC BY, MIT) on foreign platforms a transfer, or exempt dissemination? Which guidelines apply?
+3. Does training on foreign compute fall outside the "research in India" exemption (NBA regulations 2025, reg. 14(1))?
+4. Is NBA registration needed (s.4, second proviso)?
+5. Do State Biodiversity Boards or the Wildlife (Protection) Act limit publishing places of Schedule I species?
+6. DPDP Act: iNaturalist observer names in the corpus, before the cross-border rules apply (expected May 2027).
+
+### Steps
+
+1. Model check on the fnf answer key (running): every open model on the same 5,604 Indian photos; top-k, shortlist
+   size at 90% and 95%, by group; what a trained classifier adds. Results below.
+2. Corpus v0 from existing research-grade observations with open licences (no new expert work). Names matched
+   through the GBIF backbone so synonyms are not errors. A held-out test set, split by observation.
+3. Re-run the check on v0 with a fresh test set; time a few identifiers with and without shortlists.
+4. Talk to IBP (host, GBIF dataset) and ask the legal questions. No release abroad before the answers.
+5. Queue page for the groups that pass; species-page block last.
+
+### Model results
+
+Pending: the check is running (20 October 2026). This part is filled in when it ends.
 
 ## 3. Data from GBIF
 
