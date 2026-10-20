@@ -418,3 +418,63 @@ def test_recheck_outcome():
     # research grade at a species that is not a candidate: counted, and a miss
     r = recheck_outcome(frozen, {"quality_grade": "research", "taxon_id": 99}, None)
     assert r["reached_rg"] is True and r["in_set90"] is False and r["first"] is False
+
+
+# --- live shortlist files ---------------------------------------------------------------------------------
+
+
+def live_obs(**kw):
+    o = {
+        "id": 5, "observed_on": "2026-09-30", "place_guess": "Kodagu, Karnataka", "obscured": False,
+        "created_at": "2026-10-01T00:00:00+00:00", "taxon": {"name": "Halyomorpha", "rank": "genus"},
+        "photos": [{"url": "https://inaturalist-open-data.s3.amazonaws.com/photos/1/square.jpg",
+                    "attribution": "(c) name, some rights reserved (CC BY)", "license_code": "cc-by"}],
+    }  # fmt: skip
+    return {**o, **kw}
+
+
+def test_public_row_quick_caps_and_fields():
+    from logic import public_row
+
+    r = public_row(live_obs(), "quick", ["A a", "A b", "A c", "A d"], ["A", "B", "C", "D", "E", "F"], state="29")
+    assert list(r) == ["id", "url", "photo", "attribution", "licence", "observed", "place", "state", "now", "band",
+                       "names", "genera"]  # fmt: skip
+    assert r["url"] == "https://www.inaturalist.org/observations/5"
+    assert r["photo"] == "https://inaturalist-open-data.s3.amazonaws.com/photos/1/medium.jpg"
+    assert r["names"] == ["A a", "A b", "A c"] and r["genera"] == ["A", "B", "C", "D", "E"]
+    assert r["now"] == {"name": "Halyomorpha", "rank": "genus"} and r["state"] == "29"
+
+
+def test_public_row_genus_has_no_names_and_obscured_has_no_state():
+    from logic import public_row
+
+    r = public_row(live_obs(obscured=True), "genus", ["A a"], ["A"], state="29")
+    assert r["names"] == [] and r["genera"] == ["A"] and r["state"] is None
+
+
+def test_live_order_quick_first_then_oldest():
+    from logic import live_order
+
+    rows = [
+        {"id": 3, "band": "genus", "created_at": "2026-08-01T00:00:00+00:00"},
+        {"id": 2, "band": "quick", "created_at": "2026-09-01T00:00:00+00:00"},
+        {"id": 1, "band": "quick", "created_at": "2026-07-01T00:00:00+00:00"},
+        {"id": 4, "band": "quick", "created_at": "2026-07-01T00:00:00+00:00"},
+    ]
+    assert [r["id"] for r in live_order(rows)] == [1, 4, 2, 3]
+
+
+def test_paginate_by_bytes():
+    from logic import compact, paginate
+
+    rows = [{"id": i, "pad": "x" * 50} for i in range(100)]
+    pages = paginate(rows, lambda rs: compact({"rows": rs}), max_bytes=1000)
+    assert sum(len(p) for p in pages) == 100 and [r["id"] for p in pages for r in p] == list(range(100))
+    assert all(len(compact({"rows": p}).encode()) <= 1000 for p in pages)
+    assert paginate([], lambda rs: compact({"rows": rs}), 1000) == [[]]
+
+
+def test_compact_is_deterministic_and_unicode():
+    from logic import compact
+
+    assert compact({"a": "é", "b": [1, 2]}) == '{"a":"é","b":[1,2]}'

@@ -21,7 +21,7 @@ The contract between the shortlist job (made on this machine: the model and corp
 {"run": "2026-10-21", "built": "2026-10-21T10:00:00Z",
  "model": "BioCLIP 2.5 + corpus v0 classifier", "corpus": "v0", "calibration": "ce7c9b55be8e",
  "rows": 12345,
- "groups": [{"key": "true-bugs", "name": "True bugs", "verdict": "Quick to confirm", "rows": 950,
+ "groups": [{"key": "true-bugs", "name": "True bugs", "verdict": "Quick to confirm", "rows": 950, "pages": 2,
              "t1": {"n": 121, "top1": 90.1, "cov90": 94.0}}]}
 ```
 
@@ -37,6 +37,10 @@ The contract between the shortlist job (made on this machine: the model and corp
    "band": "quick", "names": ["Halyomorpha halys", "Halyomorpha picus"], "genera": ["Halyomorpha"]}]}
 ```
 
+- **Pages.** A group file stays under 300 KB. A larger group is split in priority order: page 1 is
+  `<run>/g/<key>.json`, page n is `<run>/g/<key>.<n>.json` (n = 2, 3, ...). When a group has more than one page,
+  each page file also has `"page": n` and `"pages": N` before `"rows"`. latest.json gives `pages` per group (1 when
+  not split). At about 450 bytes a row, a page holds about 650 rows.
 - `band`: `quick` (Quick to confirm: up to 3 species) or `genus` (Genus first: up to 5 genera). Rows with no
   usable list (band "For an expert") are not published. A group's `rows` in latest.json counts published rows.
 - `t1.cov90`: coverage of the 90% set at the group's level: species for Quick to confirm, genus for Genus first.

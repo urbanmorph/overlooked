@@ -503,6 +503,33 @@ Run times (queue check): growing T1 3 min (32 requests); queue sample 6 min (85 
 rows 15 min; their features 11 min; evaluation 6.4 min; gate and freeze under 1 min. iNaturalist
 requests on 20 October 2026 in all: 249. Disk: `data/corpus_v0/` is now 17 GB (photos 15 GB).
 
+## Live shortlists for the experimental page (20 October 2026)
+
+Contract: `docs/shortlist_data.md`. `live.py draw` took the current India needs-ID queue for the 19 groups that
+passed the gate, with the same window and filters as the frozen sample (created in the last 120 days, named to a
+candidate species or a genus with candidates, open-licence first photo), up to 1,000 per group. It excluded every
+frozen id and the pilot's rows: 14,786 observations, 396 iNaturalist requests that day in all at that point.
+
+- **Bats: none.** All 61 bats in the window are in the frozen test, which must never be shown. Large mammals (61),
+  orchids (47) and rodents and shrews (92) are small for the same reason.
+- `live.py build`: best method per group and the frozen calibration (`ce7c9b55be8e`). The model was refitted by
+  `evaluate.py`; its T1 and frozen-sample probabilities are bit-identical to those calibrated (largest difference 0).
+- Band from the group's verdict: quick (1 to 3 species) or genus (up to 5 genera). The 944 rows with no usable list
+  ("For an expert") are not published: **13,842 rows** (8,908 quick, 4,934 genus).
+- LGD state from the coordinates with `pipeline.places` and the pipeline's district file. It is null for the 747
+  obscured rows. No coordinates are published.
+- **Order** within a group: `pipeline.shortlist.priority(value({}), band)`. No value flags (first in state,
+  threatened, endemic, listed only) are computed for queue rows, so this is quick before genus. Ties go oldest
+  waiting first (created date), then id.
+- Files: `data/shortlist/2026-10-20/latest.json` and `g/<key>.json`, compact JSON, 6.32 MB in all. Each group file
+  is under 300 KB; groups over that are split into pages (`g/<key>.2.json`; the contract was updated). A second
+  build is byte-identical.
+- `shown.parquet` (local only) holds every published id with its full shortlist. Its SHA-256 is in `shown.sha256`.
+  `recheck.py --shown 2026-10-20` scores it (70 requests); a test run on the day: 15 of 13,842 already research
+  grade.
+- `publish_live.py <run>` would copy the JSON files to R2 `layers/shortlist/`, latest.json last, never
+  shown.parquet. **Not run**: the owner decides.
+
 ## Limits
 
 - **Research grade is a proxy for "an expert confirmed it".** Research grade needs 2 agreeing identifiers (median identifiers other than the observer in T1: 1). Some of these identifiers are not experts, and research-grade names can be wrong.

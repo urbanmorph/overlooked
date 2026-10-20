@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML } from '../site/assets/shortlist.js';
+import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML, groupFiles } from '../site/assets/shortlist.js';
 
 const FIX = new URL('./fixtures/shortlist/layers/shortlist/', import.meta.url);
 const latest = JSON.parse(readFileSync(new URL('latest.json', FIX)));
@@ -77,4 +77,11 @@ test('fixture follows the contract: groups, keys, bands, list lengths', () => {
     assert.ok(r.names.length <= 3 && r.genera.length <= 5);
     assert.ok(r.state === null || /^\d{1,3}$/.test(r.state));
   }
+});
+
+test('groupFiles: every page file of a group, the first without a number', () => {
+  assert.deepEqual(groupFiles('2026-10-20', { key: 'true-bugs', pages: 2 }),
+    ['layers/shortlist/2026-10-20/g/true-bugs.json', 'layers/shortlist/2026-10-20/g/true-bugs.2.json']);
+  assert.deepEqual(groupFiles('2026-10-20', { key: 'birds' }), ['layers/shortlist/2026-10-20/g/birds.json']);
+  assert.deepEqual(groupFiles('2026-10-20', null), []);
 });

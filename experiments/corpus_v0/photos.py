@@ -26,7 +26,8 @@ def photo_path(photo_id, url):
 
 def wanted():
     """All photos the corpus, T1 and the queue sample need: photo_id, url (medium, open-data bucket)."""
-    files = [f for f in ("corpus.parquet", "t1.parquet", "queue_sample.parquet") if (DATA / f).exists()]
+    files = ("corpus.parquet", "t1.parquet", "queue_sample.parquet", "live_sample.parquet")
+    files = [f for f in files if (DATA / f).exists()]
     frames = [pd.read_parquet(DATA / f, columns=["photo_id", "url"]) for f in files]
     w = pd.concat(frames).drop_duplicates("photo_id")
     return w[w.url.str.startswith(BUCKET)]

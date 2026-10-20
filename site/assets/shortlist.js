@@ -38,6 +38,13 @@ export function bandCounts(rows) {
   return c;
 }
 
+/** The files that hold a group's rows: groups over 300 KB are split into pages (<key>.json, <key>.2.json, ...). */
+export function groupFiles(run, g) {
+  if (!g) return [];
+  const base = `layers/shortlist/${encodeURIComponent(run)}/g/${encodeURIComponent(g.key)}`;
+  return Array.from({ length: g.pages || 1 }, (_, i) => `${base}${i ? `.${i + 1}` : ''}.json`);
+}
+
 /** The counted link to an observation, or null for an id that is not an iNaturalist observation id. */
 export function goHref(id, group) {
   const s = String(id ?? '');
@@ -127,9 +134,9 @@ async function main() {
       $('#pinfo').textContent = '';
       $('#more').hidden = true;
       const group = st.group;
-      const data = group ? await getJSON(`layers/shortlist/${encodeURIComponent(latest.run)}/g/${encodeURIComponent(group)}.json`) : { rows: [] };
+      const pages = await Promise.all(groupFiles(latest.run, groups.find(g => g.key === group)).map(getJSON));
       if (group !== st.group) return;   // another group was chosen while this one loaded
-      rows = data.rows;
+      rows = pages.flatMap(p => p.rows);
       render();
     }
 

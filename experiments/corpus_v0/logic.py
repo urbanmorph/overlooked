@@ -316,3 +316,61 @@ def recheck_outcome(frozen, now, final_species):
         "in_top5": final_species in top[:5],
         "genus_in_shown": g in split(frozen["shown_genera"]),
     }
+
+
+# --- live shortlist files (docs/shortlist_data.md) ------------------------------------------------------
+
+MAX_NAMES, MAX_GENERA_SHOWN = 3, 5
+EASE_OF = {"quick": "Quick to confirm", "genus": "For an expert", "expert": "For an expert"}  # shortlist.EASE keys
+
+
+def compact(obj):
+    """Compact JSON, keys in insertion order, UTF-8 kept: the same object always gives the same bytes."""
+    import json
+
+    return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
+
+
+def public_row(o, band, names, genera, state):
+    """One row of a group file, as the contract: no coordinates, no probabilities. o: the iNaturalist API
+    observation; state: its LGD state code (dropped when the location is obscured)."""
+    ph, t = (o.get("photos") or [{}])[0], o.get("taxon") or {}
+    return {
+        "id": o["id"],
+        "url": f"https://www.inaturalist.org/observations/{o['id']}",
+        "photo": medium_from_api_url(ph.get("url")),
+        "attribution": ph.get("attribution"),
+        "licence": ph.get("license_code"),
+        "observed": o.get("observed_on"),
+        "place": o.get("place_guess"),
+        "state": None if o.get("obscured") else state,
+        "now": {"name": t.get("name"), "rank": t.get("rank")},
+        "band": band,
+        "names": list(names)[:MAX_NAMES] if band == "quick" else [],
+        "genera": list(genera)[:MAX_GENERA_SHOWN],
+    }
+
+
+def live_order(rows):
+    """Most useful first: pipeline.shortlist priority (value with no flags is 1, so the band's ease: quick before
+    genus), then the longest waiting (oldest created), then id."""
+    from pipeline.shortlist import priority, value
+
+    return sorted(rows, key=lambda r: (-priority(value({}), EASE_OF[r["band"]]), r["created_at"], r["id"]))
+
+
+def paginate(rows, encode, max_bytes):
+    """Split rows in order into pages whose encoded size is at most max_bytes (a row alone may exceed it).
+    encode(rows) must embed the rows as one compact JSON list, so a page's size is the size of encode([]) plus
+    each row's compact size plus one comma between rows (exact, no re-encoding)."""
+    base = len(encode([]).encode())
+    pages, cur, size = [], [], base
+    for r in rows:
+        n = len(compact(r).encode())
+        if cur and size + n + 1 > max_bytes:
+            pages.append(cur)
+            cur, size = [], base
+        size += n + (1 if cur else 0)
+        cur.append(r)
+    pages.append(cur)
+    return pages

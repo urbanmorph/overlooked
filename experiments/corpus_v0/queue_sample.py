@@ -93,15 +93,18 @@ def row(o, group, cand, how):
     }
 
 
-def main():
-    state = read_json(STATE) or {"drawn": date.today().isoformat(), "groups": {}}
+def draw(state_path, groups, per_group, max_pages, exclude, make_row=row):
+    """Random pages of the needs-ID queue per group (window and filters above) until per_group rows are kept or
+    max_pages are drawn. Ids in `exclude` are never kept. State (date, rows per group) is saved after every
+    request, so a stopped run continues with the same window. Returns the state."""
+    state = read_json(state_path) or {"drawn": date.today().isoformat(), "groups": {}}
     d1 = (date.fromisoformat(state["drawn"]) - timedelta(days=DAYS)).isoformat()
     cand = candidates()
     by_group = cand.groupby("group").species.apply(set).to_dict()
     genera = cand.assign(g=cand.species.str.split().str[0]).groupby("group").g.apply(set).to_dict()
-    pilot = set(pd.read_csv(PILOT, usecols=["id"]).id)
     try:
-        for group, (inc, exc) in GROUPS.items():
+        for group in groups:
+            inc, exc = GROUPS[group]
             g = state["groups"].setdefault(group, {"pages": 0, "total": None, "rows": {}})
             q = {
                 "place_id": 6681, "verifiable": "true", "quality_grade": "needs_id", "created_d1": d1,
@@ -110,28 +113,34 @@ def main():
             }  # fmt: skip
             if exc:
                 q["without_taxon_id"] = ",".join(str(TAXA[n]) for n in exc)
-            while len(g["rows"]) < PER_GROUP and g["pages"] < MAX_PAGES:
-                if g["total"] is not None and g["pages"] * 200 >= 3 * g["total"]:
-                    break  # a small group: random pages have seen it all several times over
+            while len(g["rows"]) < per_group and g["pages"] < max_pages:
+                if g["total"] is not None and (g["total"] <= 200 or g["pages"] * 200 >= 3 * g["total"]):
+                    break  # one page held the whole group, or random pages have seen it all several times over
                 js = inat.search({**q, "page": g["pages"] + 1})
                 g["pages"] += 1
                 g["total"] = js.get("total_results", 0)
-                res = [o for o in js.get("results", []) if o["id"] not in pilot]
+                res = [o for o in js.get("results", []) if o["id"] not in exclude]
                 names = {binomial(o["taxon"]["name"]) for o in res if o.get("taxon")} - {None}
                 acc = accepted_names(sorted(names)) if names else {}
                 for o in res:
                     t, ph = o.get("taxon") or {}, (o.get("photos") or [{}])[0]
                     if str(o["id"]) in g["rows"] or ph.get("license_code") not in LICENCES:
                         continue
+                    if o.get("quality_grade") != "needs_id":
+                        continue
                     c, how = queue_match(group, t.get("name"), t.get("rank"), by_group, genera, acc)
                     if c and medium_from_api_url(ph.get("url")):
-                        g["rows"][str(o["id"])] = row(o, group, c, how)
-                atomic_write_json(STATE, state)
-                if g["total"] <= 200:
-                    break
+                        g["rows"][str(o["id"])] = make_row(o, group, c, how)
+                atomic_write_json(state_path, state)
             log(f"{group}: {len(g['rows'])} kept from {g['pages']} pages ({g['total']} in the queue window)")
     finally:
-        atomic_write_json(STATE, state)
+        atomic_write_json(state_path, state)
+    return state
+
+
+def main():
+    pilot = set(pd.read_csv(PILOT, usecols=["id"]).id)
+    state = draw(STATE, list(GROUPS), PER_GROUP, MAX_PAGES, pilot)
     rows = [r for g in state["groups"].values() for r in list(g["rows"].values())[:PER_GROUP]]
     df = pd.DataFrame(rows).drop_duplicates("obs_id")
     df["drawn"] = state["drawn"]

@@ -203,14 +203,19 @@ def rank_of(p, cand, name):
     return 1 + int((p > p[i]).sum())
 
 
-def save_scores(group, models, scorer, F, fpos, cand, g, qg):
-    """The best method's probabilities for this group's T1 rows and queue-sample rows (scores/<group>.npz), for the
-    gate and the frozen sample."""
+def save_scores(group, models, scorer, F, fpos, cand, g, sets):
+    """The best method's probabilities for this group's T1 rows and for each extra set (scores/<group>.npz:
+    q_ the frozen queue sample, l_ the live set), for gate.py, freeze.py and live.py."""
     from pipeline.shortlist import slug
 
     best = models["best"]
     pt1, cl = method_probs(models, scorer, F, fpos, g.photo_id.tolist(), cand)[best]
-    pq, _ = method_probs(models, scorer, F, fpos, qg.photo_id.tolist(), cand)[best]
+    extra = {}
+    for k, s in sets.items():
+        extra[f"{k}_probs"] = method_probs(models, scorer, F, fpos, s.photo_id.tolist(), cand)[best][0].astype(
+            np.float32
+        )
+        extra[f"{k}_obs"] = s.obs_id.to_numpy(np.int64)
     atomic_savez(
         SCORES / f"{slug(group)}.npz",
         group=np.array(group),
@@ -221,8 +226,7 @@ def save_scores(group, models, scorer, F, fpos, cand, g, qg):
         t1_observer=g.observer.fillna("").to_numpy().astype(str),
         t1_rg_at=g.rg_at.fillna("").to_numpy().astype(str) if "rg_at" in g else np.array([], str),
         t1_obs=g.obs_id.to_numpy(np.int64),
-        q_probs=pq.astype(np.float32),
-        q_obs=qg.obs_id.to_numpy(np.int64),
+        **extra,
     )
 
 
@@ -277,6 +281,9 @@ def main():
     qs_path = DATA / "queue_sample.parquet"
     qs = pd.read_parquet(qs_path) if qs_path.exists() else pd.DataFrame(columns=["group", "photo_id", "obs_id"])
     qs = qs[qs.photo_id.isin(fpos)].reset_index(drop=True)
+    lv_path = DATA / "live_sample.parquet"
+    lv = pd.read_parquet(lv_path) if lv_path.exists() else qs.iloc[:0]
+    lv = lv[lv.photo_id.isin(fpos)].reset_index(drop=True)
     SCORES.mkdir(exist_ok=True)
     scorer = Scorer("bioclip-2.5-filled", {"feats": F}, np.arange(len(F)))
 
@@ -292,7 +299,7 @@ def main():
         choices.append(choice)
         seen = set(cg.species)
         g = t1[t1.group == group]
-        save_scores(group, models, scorer, F, fpos, cand, g, qs[qs.group == group])
+        save_scores(group, models, scorer, F, fpos, cand, g, {"q": qs[qs.group == group], "l": lv[lv.group == group]})
         if g.empty:
             log(f"{group}: no T1 rows; queue-sample scores only ({time.time() - tg:.0f} s)")
             continue
