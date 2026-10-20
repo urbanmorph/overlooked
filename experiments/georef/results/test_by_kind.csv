@@ -1,0 +1,5 @@
+grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
+specimen,12590,12479,6066,1350,5063,48.6,10.8,40.6,81.8,9013,678,72.2,7468,16.7,85.6,65.7
+observation,7184,7170,3550,499,3121,49.5,7.0,43.5,87.7,6402,284,89.3,4050,10.6,46.6,69.8
+material citation,186,186,119,18,49,64.0,9.7,26.3,86.9,177,1,95.2,137,24.4,57.2,46.7
+other,40,40,18,21,1,45.0,52.5,2.5,46.2,40,0,100.0,39,17.4,26.7,46.2

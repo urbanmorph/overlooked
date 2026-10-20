@@ -1,0 +1,4 @@
+grp,n,n_with_district,district_right,district_wrong,district_none,pct_right,pct_wrong,pct_none,precision_pct,state_right,state_wrong,pct_state_right,n_point,median_km,p90_km,pct_within_radius
+all,20000,19875,9753,1888,8234,49.1,9.5,41.4,83.8,15632,963,78.7,11694,14.1,61.8,66.8
+holdout,9932,9873,4841,901,4131,49.0,9.1,41.8,84.3,7740,487,78.4,5769,14.1,60.7,67.4
+dev,10068,10002,4912,987,4103,49.1,9.9,41.0,83.3,7892,476,78.9,5925,14.2,64.3,66.3

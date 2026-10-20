@@ -1,0 +1,118 @@
+placed,confidence,kind,locality,verbatimlocality,county,stateprovince,matched,district,state_lgd,radius_km,n_candidates,gbifid
+district,high,material citation,Nilgiri (= Nilgira) Hills,,,Southern India,nilgiri,The Nilgiris,33,27.8,0,3756529984
+district,low,material citation,Sandesh Gawas,,,,sandesh,Bhojpur,10,6.5,0,4853595344
+district,medium,material citation,Salim Ali Bird Sanctuary,,,Goa,tiswadi,North Goa,30,8.1,0,2235592056
+district,medium,material citation,Palampur,,,Himachal Pradesh,palampur,Kangra,2,11.7,0,2350485664
+district,high,material citation,Camp,,,Arunachal Pradesh,tawang,Tawang,12,28.0,0,3006007304
+district,high,material citation,Ukhrul,,,Manipur,ukhrul,Ukhrul,14,27.2,0,4935565312
+district,high,material citation,Bombay,,,Bombay,bombay,Mumbai,27,4.5,0,5062171360
+district,medium,material citation,Mudigere,,,Karnataka,mudigere,Chikkamagaluru,29,15.2,0,3083795344
+district,low,material citation,Cinchona,,,,anamalai,Coimbatore,33,18.2,0,5213732432
+district,medium,material citation,Attappadi,,,Kerala,attappadi,Palakkad,32,15.3,0,4148293312
+district,high,observation,,"Hathikhira Tea Estate, Karimganj District, Assam",,Assam,karimganj,Karimganj,18,24.0,0,4465407312
+district,medium,observation,,Baramati Outskirts,,Maharashtra,baramati,Pune,27,21.0,0,3994042552
+district,high,observation,,"Tirunelveli, IN-AP, IN",,Tamil Nadu,tirunelveli,Tirunelveli,33,35.2,0,4522774216
+district,high,observation,,"Leh (Ladakh), IN-JK, IN",,Jammu and Kashmir,leh,Leh Ladakh,37,221.4,0,6578928312
+district,high,observation,,"Pune, IN-MH, IN",,Maharashtra,pune,Pune,27,70.6,0,4978532952
+district,high,observation,,"Jaipur, IN-RJ, IN",,Rajasthan,jaipur,Jaipur,8,26.0,0,4597463480
+district,high,observation,,"Darjiling, IN-WB, IN",,West Bengal,darjiling,Darjeeling,19,25.5,0,4936779336
+district,high,observation,,"Erode, IN-AP, IN",,Tamil Nadu,erode,Erode,33,40.3,0,6234781504
+district,high,observation,Rewa,,,Madhya Pradesh,rewa,Rewa,23,44.8,0,3030817240
+district,high,observation,Taglang P.; Leh/Zanskar/State of Jammu and Kashmīr,,,,leh,Leh Ladakh,37,221.4,0,615395976
+district,high,other,"Karamlats Vy., Leh ; Leh/State of Jammu and Kashmīr",,,,leh,Leh Ladakh,37,221.4,0,615261400
+district,high,other,Leh/State of Jammu and Kashmīr,,,,leh,Leh Ladakh,37,221.4,0,615273544
+district,medium,other,Vernague [Verinag]; Kashmir/State of Jammu and Kashmīr,,,,verinag,Anantnag,1,3.6,0,615298272
+district,medium,other,"Banihal; Kashmir, Kashmir South/State of Jammu and Kashmīr",,,,banihal,Ramban,1,14.3,0,615391400
+district,medium,other,Nubra/State of Jammu and Kashmīr,,,,nubra,Leh Ladakh,37,68.9,0,615397704
+district,medium,other,Zanskar/State of Jammu and Kashmīr,,,,zanskar,Kargil,37,45.9,0,615362520
+district,medium,other,Mitsahoi; Dras/State of Jammu and Kashmīr,,,,dras,Kargil,37,22.4,0,615378344
+district,medium,other,Dishergarh,,,"Burdwan dist., West Bengal",burdwan,Purba Bardhaman,19,2.1,0,501935304
+district,medium,other,Durgapur Barrage,,,"Burdwan dist., West Bengal",burdwan,Purba Bardhaman,19,2.1,0,501935224
+district,medium,other,"Apa Tani valley, Subansiri area",,,Assam,subansiri,Lakhimpur,18,9.4,0,501935040
+district,high,specimen,Allahabad,,,,allahabad,Prayagraj,9,41.7,0,1057135320
+district,high,specimen,"In pond at Nildungri, Sambalpur district, Orissa.",,,,sambalpur,Sambalpur,21,45.8,0,3005662120
+district,high,specimen,Madras State. Manauli Island.,,,,madras,Chennai,33,10.3,0,2452227432
+district,low,specimen,4 mi. E Mussoorie,Asia | India | Uttar Pradesh State | 4 mi. E Mussoorie,,Uttar Pradesh State,mussoorie,Dehradun,5,31.4,0,919403808
+district,high,specimen,"Hassan District, Mysore. Hassan.",,,,hassan,Hassan,29,46.6,0,1852149128
+district,high,specimen,N.W. India. District Dehra Dun.,,,,dehra dun,Dehradun,5,31.4,0,3043541368
+district,low,specimen,Alibag Arabische See,,,,alibag,Raigad,27,12.9,0,3774831768
+district,high,specimen,Shillong,Shillong,East Khasi Hills District,Meghalaya (梅加拉亞邦),east khasi; shillong,East Khasi Hills,17,30.3,0,1822004792
+district,low,specimen,Sambhar,; India; ; ; ; ; ; ; ; ; Sambhar,,,sambhar,Jaipur,8,18.0,0,859035360
+district,high,specimen,Hab. Mont. Nilghiri & Kurg. Regio trop.,,,,nilghiri,The Nilgiris,33,27.8,0,2516294792
+nothing,"",material citation,Bababoodun,,,,"",,,,0,3783285304
+nothing,"",material citation,India,,,,"",,,,0,4899431312
+nothing,"",material citation,Pond,,,N,"",,,,0,2313474696
+nothing,"",material citation,Sinyaev,,,,"",,,,0,3017711424
+nothing,"",material citation,Nov,,,,"",,,,0,2451575656
+nothing,"",material citation,India,,,,"",,,,0,3757556416
+nothing,"",material citation,One,,,,"",,,,0,1300284088
+nothing,"",material citation,southeastern Asia,,,,"",,,,0,3898227312
+nothing,"",material citation,Material,,,,"",,,,0,4104585336
+nothing,"",material citation,India,,,,"",,,,0,4951537304
+nothing,"",observation,Baga,,,,"",,,,20,3440367704
+nothing,"",observation,Indien: occid.,,,,"",,,,0,5060924960
+nothing,"",observation,Girjapuri Barrage,"Girjapuri Barrage, Girjapuri, Uttah Pradesh, India",,,"",,,,0,2862789568
+nothing,"",observation,chilapata forest,,,,"",,,,0,3948918344
+nothing,"",observation,India (W),"W India, India",,,"",,,,0,2862882864
+nothing,"",observation,Pilang Valley,"Pilang Valley, Northwestern India, India",,,"",,,,0,2862882616
+nothing,"",observation,Buniyar,,,,"",,,,0,6403614368
+nothing,"",observation,Morjim Beach,,,,"",,,,0,3440752696
+nothing,"",observation,Carambolim Lake,,,,"",,,,0,3440751704
+nothing,"",observation,Baga,,,,"",,,,20,3440755656
+nothing,"",other,India,,,,"",,,,0,2566053456
+nothing,"",other,India,,,,"",,,,0,2566052224
+nothing,"",other,"Numerous localities, accessed via wells, within laterite facies",,,,"",,,,0,1135158120
+nothing,"",other,India,,,,"",,,,0,2566052544
+nothing,"",other,India,,,,"",,,,0,2566052112
+nothing,"",other,S.L.,,,,"",,,,0,1840568248
+nothing,"",other,S.L.,,,,"",,,,0,1840567040
+nothing,"",specimen,,,,,"",,,,8,1057268280
+nothing,"",specimen,Khasia; Bor. Pauce,,,,"",,,,3,6160953736
+nothing,"",specimen,Pays de Kulck (Hindoustan),,,,"",,,,0,1043995024
+nothing,"",specimen,,,,,"",,,,0,1831329144
+nothing,"",specimen,Jellapur; Cashar,; India; ; ; ; ; ; Jellapur; Cashar,,,"",,,,0,2274738512
+nothing,"",specimen,,,,,"",,,,8,2446345776
+nothing,"",specimen,"India | Naga Hills, Sangiachu 4000ft",,,,"",,,,12,1919754352
+nothing,"",specimen,"Divisional Forest Nursery, Jaipur. Dehra Dun.",,,,"",,,,2,4989045256
+nothing,"",specimen,,,,,"",,,,0,1322748136
+nothing,"",specimen,"roadside, near Sisagari",,,,"",,,,0,5103964904
+state only,"",material citation,,,,Karnataka,"",,29,,0,2243026624
+state only,"",material citation,Andaman and Nicobar Islands,,,Andaman and Nicobar Islands,"",,35,,0,4853595312
+state only,"",material citation,,,,Sikkim,"",,11,,0,5858571640
+state only,"",material citation,,,,Karnataka,"",,29,,0,5858716848
+state only,"",material citation,,,,Tamil Nadu,"",,33,,0,5858686080
+state only,"",material citation,,,,Karnataka,"",,29,,0,5858742176
+state only,"",material citation,,,,Manipur,"",,14,,0,6467022312
+state only,"",material citation,,,Ladakh,,"",,37,,0,6177502464
+state only,"",material citation,Jagadiya Dam,,,Gujarat,"",,24,,0,2013965664
+state only,"",material citation,Kashmir Himalaya,,,Jammu and Kashmir,"",,1,,0,6568223824
+state only,"",observation,,India,,Karnataka,"",,29,,0,2596281560
+state only,"",observation,,India,,Karnataka,"",,29,,0,6422290808
+state only,"",observation,,"South Andaman, IN-AN, IN",,Andaman and Nicobar,"",,35,,0,6163037776
+state only,"",observation,,"Karnataka, IN",,Karnataka,"",,29,,0,5062649880
+state only,"",observation,,"Karnataka, IN",,Karnataka,"",,29,,0,2818579024
+state only,"",observation,,"Gujarat, IN",,Gujarat,"",,24,,0,6451864440
+state only,"",observation,,"Tamil Nadu, IN",,Tamil Nadu,"",,33,,0,6159177456
+state only,"",observation,,Changaram Wetlands,,Kerala,"",,32,,0,4112183904
+state only,"",observation,,"Madhya Pradesh, IN",,Madhya Pradesh,"",,23,,0,2851071376
+state only,"",observation,,"Maharashtra, IN",,Maharashtra,"",,27,,0,2803049904
+state only,"",other,,,,Maharashtra,"",,27,,0,100132880
+state only,"",other,Ke P.; Pangong/State of Jammu and Kashmīr,,,,"",,1,,0,615259904
+state only,"",other,"Apharwat; Kashmir, Pir Panjal/State of Jammu and Kashmīr",,,,"",,1,,0,615353832
+state only,"",other,Khellenmarg; Kashmir/State of Jammu and Kashmīr,,,,"",,1,,0,615413456
+state only,"",other,Jummu Hills; Kashmir/State of Jammu and Kashmīr,,,,"",,1,,0,615421752
+state only,"",other,Kashmir/State of Jammu and Kashmīr,,,,"",,1,,0,615325616
+state only,"",other,Kashmir/State of Jammu and Kashmīr,,,,"",,1,,0,615288920
+state only,"",other,"Pahlgam; Kashmir, Liddar Vy./State of Jammu and Kashmīr",,,,"",,1,,0,615309704
+state only,"",other,Durgapur barrage,,,West Bengal,"",,19,,0,501934720
+state only,"",other,,Pantok,,Sikkim,"",,11,,0,1058267008
+state only,"",specimen,North end Delhi,,,delhi,"",,7,,0,1324042176
+state only,"",specimen,Parasnath,,,,"",,20,,2,5228747440
+state only,"",specimen,New Delhi: Ridge Area,,,,"",,7,,0,4869129736
+state only,"",specimen,Londa,,,Karnataka,"",,29,,2,668405072
+state only,"",specimen,Alapalli,,Chanda,Madhya Pradesh,"",,23,,3,668227840
+state only,"",specimen,"Sholtu, 4 miles from Kilba",,,Himachal Pradesh,"",,2,,0,3901350304
+state only,"",specimen,Teesta Valley,Teesta Vall.; Sikkim,,Sikkim,"",,11,,0,2027322648
+state only,"",specimen,"Mulleria, Kaskaragod District, Kerala",,,Kerala,"",,32,,0,3969715256
+state only,"",specimen,,,,Uttaranchal,"",,5,,0,100182032
+state only,"",specimen,Sikkim,,,Sikkim,"",,11,,0,2513807720

@@ -1,0 +1,245 @@
+alias,state_lgd,district
+Bangalore,29,Bengaluru Urban
+Bengaluru,29,Bengaluru Urban
+Bangalore Rural,29,Bengaluru Rural
+Mysore,29,Mysuru
+Shimoga,29,Shivamogga
+Chikmagalur,29,Chikkamagaluru
+Chikmagalore,29,Chikkamagaluru
+Chickmagalur,29,Chikkamagaluru
+Coorg,29,Kodagu
+Mercara,29,Kodagu
+Madikeri,29,Kodagu
+South Kanara,29,Dakshina Kannada
+South Canara,29,Dakshina Kannada
+Mangalore,29,Dakshina Kannada
+Mangaluru,29,Dakshina Kannada
+North Kanara,29,Uttara Kannada
+North Canara,29,Uttara Kannada
+Karwar,29,Uttara Kannada
+Belgaum,29,Belagavi
+Bellary,29,Ballari
+Gulbarga,29,Kalaburagi
+Bijapur,29,Vijayapura
+Tumkur,29,Tumakuru
+Chamrajnagar,29,Chamarajanagara
+Chamarajanagar,29,Chamarajanagara
+Bagalkot,29,Bagalkote
+Davanagere,29,Davangere
+Chickballapur,29,Chikkaballapura
+Chikballapur,29,Chikkaballapura
+Dharwar,29,Dharwad
+Trivandrum,32,Thiruvananthapuram
+Quilon,32,Kollam
+Alleppey,32,Alappuzha
+Cochin,32,Ernakulam
+Kochi,32,Ernakulam
+Trichur,32,Thrissur
+Palghat,32,Palakkad
+Calicut,32,Kozhikode
+Cannanore,32,Kannur
+Wynaad,32,Wayanad
+Kasargod,32,Kasaragod
+Munnar,32,Idukki
+Thekkady,32,Idukki
+Ponmudi,32,Thiruvananthapuram
+Madras,33,Chennai
+Nilgiris,33,The Nilgiris
+Nilgiri,33,The Nilgiris
+Ootacamund,33,The Nilgiris
+Ooty,33,The Nilgiris
+Udhagamandalam,33,The Nilgiris
+Coonoor,33,The Nilgiris
+Kotagiri,33,The Nilgiris
+Kodaikanal,33,Dindigul
+Palni Hills,33,Dindigul
+Palani Hills,33,Dindigul
+Tanjore,33,Thanjavur
+Trichinopoly,33,Tiruchirappalli
+Trichy,33,Tiruchirappalli
+Tinnevelly,33,Tirunelveli
+Thoothukudi,33,Tuticorin
+Thoothukkudi,33,Tuticorin
+Cape Comorin,33,Kanniyakumari
+Kanyakumari,33,Kanniyakumari
+Courtallam,33,Tenkasi
+Kuttalam,33,Tenkasi
+Yercaud,33,Salem
+Shevaroy Hills,33,Salem
+Kolli Hills,33,Namakkal
+Kanchipuram,33,Kanchipuram
+Chingleput,33,Chengalpattu
+Puducherry,34,Pondicherry
+Bombay,27,Mumbai
+Poona,27,Pune
+Mahabaleshwar,27,Satara
+Matheran,27,Raigad
+Khandala,27,Pune
+Lonavla,27,Pune
+Lonavala,27,Pune
+Nasik,27,Nashik
+Kolaba,27,Raigad
+Chanda,27,Chandrapur
+Thana,27,Thane
+Bhimashankar,27,Pune
+Calcutta,19,Kolkata
+Kurseong,19,Darjeeling
+Darjiling,19,Darjeeling
+Malda,19,Maldah
+Cooch Behar,19,Coochbehar
+Sundarbans,19,24 Paraganas South
+Sunderbans,19,24 Paraganas South
+Allahabad,9,Prayagraj
+Benares,9,Varanasi
+Banaras,9,Varanasi
+Cawnpore,9,Kanpur Nagar
+Kanpur,9,Kanpur Nagar
+Faizabad,9,Ayodhya
+Lakhimpur Kheri,9,Kheri
+Dehra Dun,5,Dehradun
+Mussoorie,5,Dehradun
+Chakrata,5,Dehradun
+Naini Tal,5,Nainital
+Almorah,5,Almora
+Ranikhet,5,Almora
+Uttarkashi,5,Uttar Kashi
+Rudraprayag,5,Rudra Prayag
+Udham Singh Nagar,5,Udam Singh Nagar
+Valley of Flowers,5,Chamoli
+Simla,2,Shimla
+Kulu,2,Kullu
+Manali,2,Kullu
+Lahaul,2,Lahul And Spiti
+Lahaul and Spiti,2,Lahul And Spiti
+Lahul,2,Lahul And Spiti
+Spiti,2,Lahul And Spiti
+Dharamsala,2,Kangra
+Dharamshala,2,Kangra
+Dalhousie,2,Chamba
+Gurgaon,6,Gurugram
+Mewat,6,Nuh
+Ahmedabad,24,Ahmadabad
+Baroda,24,Vadodara
+Kutch,24,Kachchh
+Kachh,24,Kachchh
+Cutch,24,Kachchh
+Dangs,24,Dang
+The Dangs,24,Dang
+Dahod,24,Dohad
+Mehsana,24,Mahesana
+Banaskantha,24,Banas Kantha
+Sabarkantha,24,Sabar Kantha
+Panchmahal,24,Panch Mahals
+Hoshangabad,23,Narmadapuram
+Pachmarhi,23,Narmadapuram
+Khandwa,23,East Nimar
+West Nimar,23,Khargone
+Jubbulpore,23,Jabalpur
+Angul,21,Anugul
+Balasore,21,Baleshwar
+Bolangir,21,Balangir
+Keonjhar,21,Kendujhar
+Khurda,21,Khordha
+Jajpur,21,Jajapur
+Nowrangpur,21,Nabarangpur
+Phulbani,21,Kandhamal
+Subarnapur,21,Sonepur
+Vizag,28,Visakhapatanam
+Visakhapatnam,28,Visakhapatanam
+Waltair,28,Visakhapatanam
+Nellore,28,Spsr Nellore
+Cuddapah,28,Y.S.R.
+Kadapa,28,Y.S.R.
+Anantapuram,28,Anantapur
+Vijayawada,28,Ntr
+Secunderabad,36,Hyderabad
+Gauhati,18,Kamrup Metro
+Guwahati,18,Kamrup Metro
+Sibsagar,18,Sivasagar
+North Lakhimpur,18,Lakhimpur
+Mikir Hills,18,Karbi Anglong
+North Cachar Hills,18,Dima Hasao
+NC Hills,18,Dima Hasao
+Haflong,18,Dima Hasao
+Morigaon,18,Marigaon
+Shillong,17,East Khasi Hills
+Cherrapunji,17,East Khasi Hills
+Cherrapunjee,17,East Khasi Hills
+Sohra,17,East Khasi Hills
+Tura,17,West Garo Hills
+Jowai,17,West Jaintia Hills
+Itanagar,12,Itanagar capital complex
+Bomdila,12,West Kameng
+Ziro,12,Lower Subansiri
+Pasighat,12,East Siang
+Aalo,12,West Siang
+Tezu,12,Lohit
+Roing,12,Lower Dibang Valley
+East Sikkim,11,Gangtok
+West Sikkim,11,Gyalshing
+North Sikkim,11,Mangan
+South Sikkim,11,Namchi
+Lachen,11,Mangan
+Lachung,11,Mangan
+Yumthang,11,Mangan
+Gulmarg,1,Baramulla
+Pahalgam,1,Anantnag
+Leh,37,Leh Ladakh
+Port Blair,35,South Andamans
+Car Nicobar,35,Nicobars
+Great Nicobar,35,Nicobars
+Nicobar,35,Nicobars
+Middle Andaman,35,North And Middle Andaman
+North Andaman,35,North And Middle Andaman
+South Andaman,35,South Andamans
+Little Andaman,35,South Andamans
+Havelock,35,South Andamans
+Panaji,30,North Goa
+Panjim,30,North Goa
+Margao,30,South Goa
+Mormugao,30,South Goa
+Mount Abu,8,Sirohi
+Sriganganagar,8,Ganganagar
+Jalor,8,Jalore
+Chittaurgarh,8,Chittorgarh
+West Champaran,10,Pashchim Champaran
+East Champaran,10,Purbi Champaran
+Purnea,10,Purnia
+Monghyr,10,Munger
+Bhabua,10,Kaimur (Bhabua)
+Kaimur,10,Kaimur (Bhabua)
+East Singhbhum,20,East Singhbum
+Palamau,20,Palamu
+Hazaribag,20,Hazaribagh
+Sahibganj,20,Sahebganj
+Netarhat,20,Latehar
+Ropar,3,Rupnagar
+Mohali,3,S.A.S Nagar
+Nawanshahr,3,Shahid Bhagat Singh Nagar
+Muktsar,3,Sri Muktsar Sahib
+Firozpur,3,Ferozepur
+Kawardha,22,Kabirdham
+Dantewara,22,Dantewada
+Koriya,22,Korea
+Sarguja,22,Surguja
+Janjgir,22,Janjgir-Champa
+Agartala,16,West Tripura
+Silvassa,38,Dadra And Nagar Haveli
+Muttra,9,Mathura
+Botanic Garden Calcutta,19,Howrah
+Botanic Gardens Calcutta,19,Howrah
+Calcutta Botanic Garden,19,Howrah
+Royal Botanic Garden Calcutta,19,Howrah
+Indian Botanic Garden,19,Howrah
+Hort Bot Cal,19,Howrah
+Hort Bot Calc,19,Howrah
+Sibpur,19,Howrah
+Shibpur,19,Howrah
+South 24 Parganas,19,24 Paraganas South
+24 Parganas South,19,24 Paraganas South
+South 24 Pargana,19,24 Paraganas South
+24 Pargana South,19,24 Paraganas South
+North 24 Parganas,19,24 Paraganas North
+24 Parganas North,19,24 Paraganas North
+North 24 Pargana,19,24 Paraganas North
+24 Pargana North,19,24 Paraganas North

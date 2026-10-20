@@ -21,6 +21,14 @@ Newest first. Updated as work happens.
 
 ### 20 October 2026
 
+- Georeferencing test for Records to fix (`experiments/georef/`), place names only (LGD state to village and
+  protected areas from bharatlas, 244 old district names, spelling variants; no LLM). On 20,000 records with good
+  coordinates hidden: right district 49.1%, wrong 9.5%, none 41.4% (83.8% right when it names one; hold-out half
+  84.3%); right state 78.7%; median error 14.1 km. On the real records to fix (weighted to all 11,48,847): district
+  37.9%, state or better 60.7% (today 30.9%). Most wrong answers are districts split after the record was made, or
+  city against suburb. High or medium answers placed at a village, block, subdistrict or protected area: 92.4% right
+  on the hold-out half, for 16% of records. A proposal is a suggestion for the publisher, never a fix.
+- Model check, corpus v0, shortlist module: see plan section 1d.
 - BSI papers link to the PDF of their year, not BSI's listing page. The new-species layer checks each listed
   file with one HEAD request, keeps the larger PDF when a year has two, and keeps the answers in
   `cache/bsi/pdf_links.json`. A year is checked again only when its file leaves the listing.
