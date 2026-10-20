@@ -314,6 +314,10 @@ snapshots/YYYY-MM/
   unresolved.parquet                 records not named to species, per district x group x genus x rank
   candidates.parquet                 may be an overlooked species: one row per district x genus
   unlocated.parquet                  records with no coordinates, per taxon x state text x dataset x kind
+  species_state.parquet              one row per species: records, districts, years, IUCN (section 6b)
+  species_state.json                 reference year, totals, sources fingerprint
+  species_changes.parquet            one row per species x change since the previous snapshot (section 6b)
+  species_changes.json               counts by change, source shifts, largest record changes
   summary.json                       the overview figures, small, for fast first paint
   unresolved.json                    records not named to species, by area, group and rank
   candidates.json                    totals by group and state, top 2,000 rows
@@ -349,6 +353,48 @@ Computed by comparing this month's Parquet with last month's.
 - **Now quiet:** the latest record in India passed 30 years.
 - **Reason:** if the new record is dated before last month's run, it is "older record, newly published". Otherwise "new record".
 - The first run is the baseline and has no feed. The feed starts with the second run.
+
+## 6b. Species health: first measure (20 October 2026)
+
+The first step toward the larger goal: for each species, keep its state in every snapshot, and compare one month with the next. Code: `pipeline/changes.py`. The monthly build (`pipeline/run.py`) makes both files after the snapshot, from the files the run already has. It makes no new download. The site does not show them yet.
+
+**State file** (`species_state.parquet`, one row per species, with `species_state.json`):
+
+| Field | Meaning |
+|---|---|
+| `species_key`, `name`, `grp`, `kingdom`, `family` | Catalogue of Life key, name and our group |
+| `records` | GBIF records with coordinates that pass our filters |
+| `records_observation`, `records_specimen`, `records_other` | the same records by kind: observation (human or machine), specimen (preserved or sample), other (from a paper, kind not given) |
+| `records_placed` | records placed in a district |
+| `districts`, `n_districts`, `states` | LGD district codes and state codes with a record |
+| `first_year`, `last_year` | first and latest year of a placed record |
+| `districts_recent` | districts with a record in the latest 30 years |
+| `iucn` | IUCN category from the Red List copy on GBIF (NE: not assessed; empty: no Red List table that month) |
+
+`species_state.json` keeps the reference year (the year of the run), the totals, the IUCN version and a fingerprint of the sources (see below).
+
+**Change feed** (`species_changes.parquet`, one row per species and change, with `species_changes.json`). The run compares the new snapshot with the previous published snapshot. With no previous snapshot, the run writes the baseline and an empty feed. A test run (one state) is always a baseline.
+
+| Change | Rule |
+|---|---|
+| `newly_recorded` | the species key is new, and no species left with the same name |
+| `not_in_snapshot` | the species key has no record now, and no new key has its name |
+| `key_changed` | one key left and one key arrived with the same name: the same species under a new key |
+| `renamed` | same key, other name |
+| `no_recent_record` | the latest record was within 30 years last time, and is older than 30 years now |
+| `recent_record_again` | the latest record was older than 30 years last time, and is within 30 years now |
+| `districts_added`, `districts_removed` | districts with a record now, and not last time (or the reverse) |
+| `iucn_changed` | the IUCN category is different. Only when both months have the Red List table |
+
+Each row has the values before and after, a reason and flags. Reason, by year only: a record from the previous run's year or later is a "new record"; an earlier one is an "older record, newly published". All thresholds are named constants at the top of `changes.py` (`RECENT_YEARS` = 30, and the flag limits below). Two runs on the same two snapshots give the same result; the second run does nothing.
+
+**Caveat: a change in the data is not always a change in the field.** GBIF re-processes about 5% of India records each month. Datasets are added, changed or withdrawn. The Catalogue of Life renames, splits and merges species. District boundaries can change. Each of these moves records with no change in the field. So:
+
+- Each snapshot keeps a fingerprint of its sources: the rows in each GBIF download, GBIF's count of India records, a hash of each query (with the excluded datasets) and the boundary checksum.
+- If a source moved by more than 5%, or a query changed, every row gets the flag `large_source_change`. If the boundaries changed, district rows get `boundaries_changed`.
+- Species flags: `records_jump` (records changed by more than half, and by 20 or more), `kind_shift` (the share of observations moved by more than 25 points: typical of a museum or literature dataset), `many_records_at_once` (a new species with 50 records or more), `latest_record_removed` (the latest year went down: records deleted, moved or re-identified at the source), `name_changed` (IUCN is matched by name, so a new name can change the category found).
+- `species_changes.json` lists the 500 largest record changes, with their flags.
+- Limits: the snapshot has no dataset key per species, so a flag says "this coincides with a large change in the sources", not "this dataset caused it". A merge of one species into another shows only as `not_in_snapshot` plus a records jump on the other species. Dates are years only, so most `no_recent_record` rows come in January, when the reference year moves. Snapshots made before this measure (2026-10) have no query hash, so the first comparison reports the queries as unknown.
 
 ## 7. Monthly schedule (GitHub Actions)
 

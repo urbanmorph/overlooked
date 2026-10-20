@@ -11,25 +11,32 @@ A run limited to one state (a test run) gets the id <month>-<state> and is never
 """
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
 
-from concurrent.futures import ThreadPoolExecutor
-
 from pipeline import boundaries as boundary_map
-import hashlib
-
+from pipeline import (
+    changes,
+    checks,
+    districts,
+    gbif,
+    health,
+    ledger,
+    names,
+    site_data,
+    unlocated,
+    unresolved,
+)
 from pipeline.util import now
-
-from pipeline import (checks, districts, gbif, health, ledger, names, site_data, unlocated,
-                      unresolved)
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
@@ -46,7 +53,7 @@ FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
 
 def default_run_id(state=None):
-    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    month = datetime.now(UTC).strftime("%Y-%m")
     return f"{month}-{state.lower().replace(' ', '-')}" if state else month
 
 
@@ -65,7 +72,7 @@ def code_commit():
     if sha:
         return sha
     try:
-        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=False).stdout.strip()
     except OSError:
         return None
 
@@ -140,6 +147,25 @@ def inputs_fingerprint(state, boundaries):
     keys = {n: d["key"] for n, d in sorted(state["downloads"].items())}
     blob = json.dumps({"downloads": keys, "boundaries": boundaries["sha256"]}, sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+def species_feed(out, run_id, region, sources, s3):
+    """Species state of this snapshot and its changes since the previous published one (pipeline/changes.py).
+    Built into the snapshot, not on the site yet. A test run (one state) is its own baseline. Not critical: a failure
+    is a warning (None) and the snapshot is still published."""
+    try:
+        iucn_path, iucn_meta = changes.iucn_input(s3)
+        changes.state(out, run_id, sources, iucn_path, iucn_meta)
+        prev = None if region else previous_published()
+        old = None
+        if prev and prev["run_id"] != run_id:
+            old = changes.previous_state(SNAPSHOTS / prev["run_id"], f"snapshots/{prev['run_id']}", s3, iucn_path, iucn_meta)
+            if not old:
+                print(f"warning: snapshot {prev['run_id']} not found locally or in R2; species changes start again from here")
+        return changes.compare(old, out)
+    except Exception as e:  # noqa: BLE001 - any failure here only skips the feed
+        print(f"warning: species changes not built: {e}")
+        return None
 
 
 def build(args):
@@ -232,17 +258,24 @@ def build(args):
     if unresolved_records is not None:
         site_data.unresolved_json(con, out)
     unlocated_counts = {}
+    s3 = None
+    if os.environ.get("R2_ENDPOINT"):
+        from pipeline import r2
+        s3 = r2.client()
     if unlocated_records is not None:
         # Titles of the top dataset holders: one GBIF API request per dataset not yet cached (data/cache, R2 cache/).
-        s3 = None
-        if os.environ.get("R2_ENDPOINT"):
-            from pipeline import r2
-            s3 = r2.client()
         u = site_data.unlocated_json(con, out, titles=lambda keys: unlocated.dataset_titles(http, keys, s3=s3))
         unlocated_counts = {"unlocated_placed_records": sum(v["r"][0] for k, v in u["states"].items() if k != "none"),
                             "only_unlocated_species": u["only_unlocated"]["g"][0]}
 
     site_data.species_shards(con, out)
+
+    downloads = [{"query": n, "key": metas[n]["key"], "doi": metas[n]["doi"], "created": metas[n].get("created"),
+                  "records": metas[n].get("totalRecords")} for n in metas]
+    # The query text with its excluded datasets: a change here changes the records for reasons other than the field.
+    queries = {n: hashlib.sha256(gbif.build_sql(n, state["region"]).encode()).hexdigest()[:12] for n in metas}
+    feed = species_feed(out, run_id, state["region"], changes.sources({
+        "downloads": downloads, "queries": queries, "boundaries": boundaries, "health": state.get("health", [{}])[-1]}), s3)
 
     summary.update({"districts": stats["districts"], "ledger_rows": stats["ledger_rows"],
                     "unresolved_records": unresolved_records,
@@ -253,14 +286,16 @@ def build(args):
         "region": state["region"],
         "built": summary["built"],
         "code_commit": code_commit(),
-        "downloads": [{"query": n, "key": metas[n]["key"], "doi": metas[n]["doi"], "created": metas[n].get("created"),
-                       "records": metas[n].get("totalRecords")} for n in metas],
+        "downloads": downloads,
+        "queries": queries,
         "boundaries": boundaries,
         "placement": "coordinates rounded to 3 decimals; points within 5 km of a district take the nearest one",
         "stats": stats,
         "files": {p.name: p.stat().st_size for p in sorted(out.iterdir()) if p.suffix in (".parquet",)},
         "district_map": bpath,
         "inputs": fingerprint,
+        "species_changes": feed and {"from": feed["from"], "counts": feed["counts"], "flagged": feed["flagged"],
+                                     "source_shifts": feed["sources"]["shifts"]},
         "health": state.get("health", [{}])[-1],
         "licence": "Data and text: CC BY 4.0, Sathya Sankaran. GBIF records keep their dataset licences; cite the DOIs.",
     }
