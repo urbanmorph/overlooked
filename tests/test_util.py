@@ -72,3 +72,21 @@ def test_dump_is_compact_and_keeps_unicode(tmp_path):
     util.dump({"a": "é"}, tmp_path / "d" / "x.json")
     assert (tmp_path / "d" / "x.json").read_text() == '{"a":"é"}'
     assert json.loads((tmp_path / "d" / "x.json").read_text()) == {"a": "é"}
+
+
+def test_stream_refuses_an_answer_shorter_than_its_content_length(tmp_path):
+    dest = tmp_path / "f.zip"
+    short = Response(b"abcdef", kind="application/zip")
+    short.headers["Content-Length"] = "10"
+    with pytest.raises(IOError):
+        util.stream(Http(short), "u", dest)
+    assert not dest.exists()
+    full = Response(b"abcdef", kind="application/zip")
+    full.headers["Content-Length"] = "6"
+    assert util.stream(Http(full), "u", dest) is True and dest.read_bytes() == b"abcdef"
+
+
+def test_stream_does_not_compare_length_of_a_compressed_answer(tmp_path):
+    gz = Response(b"abcdef", kind="application/json")
+    gz.headers.update({"Content-Length": "4", "Content-Encoding": "gzip"})  # requests unpacks it: 6 bytes arrive
+    assert util.stream(Http(gz), "u", tmp_path / "f.json") is True
