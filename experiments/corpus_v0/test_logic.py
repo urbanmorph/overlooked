@@ -1,0 +1,294 @@
+"""Tests for corpus v0 logic. Run with the model-check venv:
+data/model_check/.venv/bin/python -m pytest experiments/corpus_v0 -q -p no:cacheprovider
+"""
+
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+import pytest
+from logic import (
+    combine_probs,
+    conformal_threshold,
+    fit_temperature,
+    hash_unit,
+    in_validation,
+    knn_class_scores,
+    match_name,
+    observer_split,
+    open_data_url,
+    research_grade_at,
+    sample_capped,
+    softmax,
+    unseen_summary,
+    waited_record,
+)
+
+# --- photo URLs -----------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url, want",
+    [
+        (
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/12345/original.jpg",
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/12345/medium.jpg",
+        ),
+        (
+            "https://static.inaturalist.org/photos/987/original.jpeg?1600000000",
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/987/medium.jpeg",
+        ),
+        ("https://inaturalist-open-data.s3.amazonaws.com/photos/5/large.png", None),
+        ("https://example.org/photos/5/original.jpg", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_open_data_url(url, want):
+    # large.png is a size we do not rewrite: only "original" URLs as GBIF publishes them are mapped
+    assert open_data_url(url) == want
+
+
+# --- observer split -------------------------------------------------------------------------------------
+
+
+def test_hash_unit_is_stable_and_in_range():
+    assert hash_unit("Some Observer") == hash_unit("Some Observer")
+    assert hash_unit("Some Observer") != hash_unit("Other Observer")
+    assert 0 <= hash_unit("x") < 1
+    assert hash_unit("x", salt="a") != hash_unit("x", salt="b")
+
+
+def test_observer_split_shares_and_consistency():
+    names = [f"observer {i}" for i in range(20000)]
+    split = [observer_split(n) for n in names]
+    share = Counter(split)["test"] / len(split)
+    assert 0.19 < share < 0.21
+    assert set(split) == {"train", "test"}
+    # every observation of one observer gets the same side
+    assert len({observer_split("observer 7") for _ in range(5)}) == 1
+
+
+def test_observer_split_empty_name_is_test():
+    # no observer name: we cannot keep it apart from training, so never train on it
+    assert observer_split("") == "test"
+    assert observer_split(None) == "test"
+
+
+# --- capped sampling ------------------------------------------------------------------------------------
+
+
+def test_sample_capped_spreads_over_observers_then_states():
+    rows = []
+    # species A: 10 obs by alice in Kerala, 10 by bob (5 Kerala, 5 Goa), 1 by carol in Assam
+    rows += [("A", "alice", "Kerala")] * 10
+    rows += [("A", "bob", "Kerala")] * 5 + [("A", "bob", "Goa")] * 5
+    rows += [("A", "carol", "Assam")]
+    # species B: 2 obs only
+    rows += [("B", "dan", "Goa")] * 2
+    df = pd.DataFrame(rows, columns=["species", "observer", "state"])
+    out = sample_capped(df, cap=4, by="species", seed=1)
+    a = out[out.species == "A"]
+    assert len(a) == 4 and len(out[out.species == "B"]) == 2
+    assert set(a.observer) == {"alice", "bob", "carol"}  # one each before anyone gets a second
+    # the 4th pick is a second photo of alice or bob; bob's second should come from a new state (Goa/Kerala)
+    assert a.observer.value_counts().max() == 2
+    bob = a[a.observer == "bob"]
+    if len(bob) == 2:
+        assert set(bob.state) == {"Kerala", "Goa"}
+
+
+def test_sample_capped_is_deterministic():
+    df = pd.DataFrame({"species": ["A"] * 50, "observer": [f"o{i % 7}" for i in range(50)], "state": "X"})
+    a = sample_capped(df, cap=10, by="species", seed=3)
+    b = sample_capped(df, cap=10, by="species", seed=3)
+    assert a.index.tolist() == b.index.tolist()
+    assert a.observer.nunique() == 7
+
+
+# --- research grade timing ------------------------------------------------------------------------------
+
+SP, GEN, FAM, OTHER_SP = 100, 10, 1, 101  # species 100 and 101 in genus 10, family 1
+
+
+def ident(user, day, taxon, current=True, disagreement=False):
+    # as the iNaturalist API gives it: an identification's ancestor_ids do not include the taxon itself
+    anc = {SP: [FAM, GEN], OTHER_SP: [FAM, GEN], GEN: [FAM], FAM: []}[taxon]
+    return {
+        "user": {"id": user},
+        "created_at": f"2024-01-{day:02d}T00:00:00+00:00",
+        "taxon": {"id": taxon, "ancestor_ids": anc},
+        "current": current,
+        "disagreement": disagreement,
+    }
+
+
+def test_rg_needs_two_agreeing():
+    ids = [ident(1, 1, SP), ident(2, 20, SP)]
+    assert research_grade_at(ids, SP).day == 20
+
+
+def test_rg_coarser_id_does_not_block_or_count():
+    ids = [ident(1, 1, SP), ident(2, 3, GEN), ident(3, 9, SP)]
+    assert research_grade_at(ids, SP).day == 9
+
+
+def test_rg_conflict_needs_more_than_two_thirds():
+    # day 5: 2 agree, 1 disagrees -> 2/3 is not more than 2/3; day 12: 3 agree vs 1 -> RG
+    ids = [ident(1, 1, SP), ident(2, 2, OTHER_SP), ident(3, 5, SP), ident(4, 12, SP)]
+    assert research_grade_at(ids, SP).day == 12
+
+
+def test_rg_explicit_ancestor_disagreement_counts_against():
+    ids = [ident(1, 1, SP), ident(2, 2, GEN, disagreement=True), ident(3, 4, SP), ident(4, 6, SP)]
+    assert research_grade_at(ids, SP).day == 6
+
+
+def test_rg_user_changes_mind_only_latest_counts():
+    # user 2 first says OTHER_SP, then on day 15 changes to SP
+    ids = [ident(1, 1, SP), ident(2, 2, OTHER_SP, current=False), ident(2, 15, SP)]
+    assert research_grade_at(ids, SP).day == 15
+
+
+def test_rg_never_reached():
+    assert research_grade_at([ident(1, 1, SP)], SP) is None
+
+
+def test_waited_record():
+    obs = {
+        "id": 9,
+        "created_at": "2024-01-01T00:00:00+00:00",
+        "user": {"id": 1},
+        "quality_grade": "research",
+        "taxon": {"id": SP, "rank": "species", "ancestor_ids": [FAM, GEN, SP]},
+        "identifications": [ident(1, 1, SP), ident(2, 2, GEN), ident(3, 31, SP)],
+    }
+    r = waited_record(obs)
+    assert r["obs_id"] == 9
+    assert r["waited_days"] == pytest.approx(30.0)
+    assert r["n_identifiers"] == 2  # users other than the observer
+    assert r["final_species_id"] == SP
+    assert r["quality_grade"] == "research"
+
+
+def test_waited_record_subspecies_uses_species_ancestor():
+    obs = {
+        "id": 9,
+        "created_at": "2024-01-01T00:00:00+00:00",
+        "user": {"id": 1},
+        "quality_grade": "research",
+        "taxon": {"id": 1000, "rank": "subspecies", "ancestor_ids": [FAM, GEN, SP, 1000], "min_species_taxon_id": SP},
+        "identifications": [ident(1, 1, SP), ident(3, 3, SP)],
+    }
+    assert waited_record(obs)["final_species_id"] == SP
+
+
+def test_waited_record_not_species():
+    obs = {
+        "id": 9,
+        "created_at": "2024-01-01T00:00:00+00:00",
+        "user": {"id": 1},
+        "quality_grade": "needs_id",
+        "taxon": {"id": GEN, "rank": "genus", "ancestor_ids": [FAM, GEN]},
+        "identifications": [ident(1, 1, GEN)],
+    }
+    r = waited_record(obs)
+    assert r["final_species_id"] is None and r["rg_at"] is None and r["waited_days"] is None
+
+
+# --- names ----------------------------------------------------------------------------------------------
+
+
+def test_match_name_exact_then_synonym():
+    cand = {"Aquila hastata", "Apis cerana"}
+    acc = {"Clanga hastata": "Aquila hastata", "Apis indica": "Apis cerana"}
+    assert match_name(["Apis cerana", "Apis cerana"], cand, acc) == ("Apis cerana", "exact")
+    assert match_name(["Clanga hastata", "Clanga hastata"], cand, acc) == ("Aquila hastata", "synonym")
+    # the GBIF species is not a candidate but the verbatim (iNaturalist) name is
+    assert match_name(["Apis indica", "Apis cerana"], cand, acc) == ("Apis cerana", "exact")
+    assert match_name(["Foo bar", None], cand, acc) == (None, None)
+    assert match_name([None, ""], cand, acc) == (None, None)
+
+
+# --- classifiers and probabilities ----------------------------------------------------------------------
+
+
+def test_softmax_rows_sum_to_one():
+    p = softmax(np.array([[1.0, 2.0, 3.0], [0.0, 0.0, 0.0]]))
+    assert np.allclose(p.sum(axis=1), 1)
+    assert np.allclose(p[1], 1 / 3)
+
+
+def test_knn_class_scores_best_similarity_per_class():
+    train = np.array([[1, 0], [0.8, 0.6], [0, 1]], dtype=np.float32)
+    ytr = np.array([0, 0, 1])
+    q = np.array([[0.6, 0.8]], dtype=np.float32)
+    s = knn_class_scores(q, train, ytr, n_classes=3)
+    assert s.shape == (1, 3)
+    assert s[0, 0] == pytest.approx(0.6 * 0.8 + 0.8 * 0.6)
+    assert s[0, 1] == pytest.approx(0.8)
+    assert s[0, 2] == -np.inf  # class with no training photo
+
+
+def test_fit_temperature_recovers_scale():
+    rng = np.random.default_rng(0)
+    true_logits = rng.normal(size=(4000, 5)) * 3
+    y = np.array([rng.choice(5, p=softmax(row[None])[0]) for row in true_logits])
+    t = fit_temperature(true_logits * 2, y)  # over-confident by a factor 2
+    assert t == pytest.approx(2.0, rel=0.15)
+
+
+def test_combine_probs_keeps_species_without_training_photos():
+    p_zs = np.array([[0.5, 0.3, 0.2]])
+    p_cl = np.array([[0.0, 0.9, 0.1]])
+    c = combine_probs(p_zs, p_cl, w=0.5)
+    assert np.allclose(c, [[0.25, 0.6, 0.15]])
+    assert c[0, 0] > 0
+
+
+def test_unseen_summary():
+    df = pd.DataFrame({"group": ["G", "G", "G", "H"], "seen": [True, False, False, True], "rank": [1, 2, np.inf, 1]})
+    s = unseen_summary(df)
+    g = s[s.group == "G"].iloc[0]
+    assert g.n == 3 and g.unseen == 2 and g.unseen_pct == pytest.approx(66.7)
+    assert g.unseen_top1 == 0.0 and g.unseen_top5 == 50.0 and g.seen_top1 == 100.0
+
+
+def test_rg_hidden_identification_does_not_count():
+    hidden = ident(2, 2, SP)
+    hidden["hidden"] = True
+    ids = [ident(1, 1, SP), hidden, ident(3, 8, SP)]
+    assert research_grade_at(ids, SP).day == 8
+
+
+# --- conformal threshold and validation split -----------------------------------------------------------
+
+
+def test_conformal_threshold_matches_split_conformal_rule():
+    # scores 1 - p(true); n = 9, level ceil(10 * 0.9) / 9 = 1.0 -> the largest score
+    p_true = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1])
+    assert conformal_threshold(p_true, 0.9) == pytest.approx(0.1)
+    # n = 19 at 0.9: level ceil(20 * 0.9) / 19 = 18/19, numpy quantile "higher" (as model_check scoring.py)
+    # -> position ceil(18 * 18/19) = 18 -> the largest score, p = 0.05 (slightly conservative)
+    p19 = np.linspace(0.95, 0.05, 19)
+    assert conformal_threshold(p19, 0.9) == pytest.approx(0.05)
+
+
+def test_conformal_threshold_too_few_rows_takes_everything():
+    assert conformal_threshold(np.array([0.9, 0.8]), 0.95) == 0.0
+
+
+def test_in_validation_by_observer():
+    obs = [f"o{i}" for i in range(5000)]
+    v = np.array([in_validation(o) for o in obs])
+    assert 0.13 < v.mean() < 0.17
+    assert in_validation("o1") == in_validation("o1")
+
+
+def test_fixed_k():
+    from logic import fixed_k
+
+    ranks = np.array([1, 1, 1, 2, 2, 3, 5, 8, 20, np.inf])
+    assert fixed_k(ranks, 0.9) == 20  # 9 of 10 within 20
+    assert fixed_k(ranks, 0.5) == 2
+    assert fixed_k(ranks, 0.95) is None  # the 10th is never in the list

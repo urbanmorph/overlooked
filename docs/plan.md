@@ -205,11 +205,14 @@ To ask a lawyer or the NBA:
 
 1. Model check on the fnf answer key (done 20 October 2026): every open model on the same 5,604 Indian photos; top-k, shortlist
    size at 90% and 95%, by group; what a trained classifier adds. Results below.
-2. Corpus v0 from existing research-grade observations with open licences (no new expert work). Names matched
-   through the GBIF backbone so synonyms are not errors. A held-out test set, split by observation.
-3. Re-run the check on v0 with a fresh test set; time a few identifiers with and without shortlists.
-4. Talk to IBP (host, GBIF dataset) and ask the legal questions. No release abroad before the answers.
-5. Queue page for the groups that pass; species-page block last.
+2. Corpus v0 from existing research-grade observations with open licences (done 20 October 2026; results below).
+   Names matched through the GBIF backbone so synonyms are not errors. Test sets split by observer.
+3. Check on the real queue before a group goes live: more "waited" test rows for the groups with fewer than 50,
+   and the observer's name test (T3) per group; time a few identifiers with and without shortlists.
+4. Talk to IBP (host, GBIF dataset) and ask the legal questions. Corpus, embeddings and model stay in India.
+5. Queue page, labelled experimental, for the groups that pass steps 2 and 3; then the species-page block. The
+   measure of use: shortlisted observations that later get a confirmed name, and how often that name was on the
+   shortlist.
 
 ### Model results
 
@@ -252,7 +255,38 @@ Not run, by access:
 - SpeciesNet (camera traps, Apache-2.0): most large Indian mammals, not blackbuck or Indian rhino.
 - Sound: Perch 2.0 Apache-2.0 (about 15,000 species); BirdNET models CC BY-NC-SA 4.0 (no commercial use).
 
-Not measured yet: the real waiting queue (the pilot showed it is harder than research-grade photos). That is step 3.
+**Corpus v0 and the real queue, 20 October 2026** (`experiments/corpus_v0/`, full tables in its README). Corpus:
+1,16,457 research-grade observations (one photo each) of 15,332 of the 33,669 candidate species (45.5%), from
+6,925 observers; data only on this machine (16 GB). Test set T1: 1,635 observations that waited 30 days or more for
+research grade, from observers not in the corpus. The method per group (BioCLIP 2.5 alone, a classifier trained on
+the corpus, or the two combined) was chosen on a separate validation set, never on T1.
+
+| Method | Right species first | In top 5 | Names for 90% | 90% set: covers, median names |
+|---|---|---|---|---|
+| BioCLIP 2.5 alone | 75.9% | 95.4% | 3 | 2 |
+| Classifier on corpus v0 | 83.9% | 94.4% | 2 | 1 |
+| Combined | 86.7% | 96.7% | 2 | 92.6%, 1 |
+
+What it means:
+- **The corpus is worth it.** BioCLIP 2.5 was trained on GBIF photos, so it saw some test photos before: alone it
+  gets 81.1% on observations confirmed by 2024 and 71.0% on those from 2025 or later. Combined gets 86.5% and 86.8%.
+  On new photos the corpus adds about 16 points. The model check figures above are too high for the same reason.
+- **The weak groups of the model check pass now:** true bugs 90.1% first (median 90% set: 1 name), flies 87.8%,
+  fungi 85.2%, beetles 85.6%. Photos of these groups show only what a photo can show; a taxonomist decides if
+  that is enough (see the band "Needs a specimen").
+- **The real queue is harder.** On 3,190 queue observations, the observer's own species name is first in 52.9%
+  and in the 90% set in 71.9% (median 2 names), against 92.6% on T1. The observer's name is not the truth, but
+  each group needs the queue check (step 3) before it goes live.
+- **Verdict per group on T1** (rules fixed before the results): *Quick to confirm*: amphibians, beetles, ferns,
+  flies, fungi, grasses and sedges, large mammals, molluscs, orchids, rodents and shrews, spiders, true bugs.
+  *Genus only*: bats, flowering plants (dicots), moths, butterflies. *For an expert*: bees, wasps and ants;
+  reptiles (68.4% first, median 90% set 11 names). Birds, dragonflies and butterflies have fewer than 40 test rows;
+  their 95% sets fail on calibration size more than on the model, so their verdicts wait for more rows.
+- **Not tested:** fish, mosses, lichens, algae (0 to 5 test rows; the corpus has 50, 1, 2 and 15 species). Lichens
+  need chemistry to name; these groups stay with experts.
+- Species with no corpus photo (3.1% of T1): combined finds 22.0% first, BioCLIP alone 36.0%. Keep BioCLIP in the
+  combination for them.
+- T2 (pilot queue rows that are research grade now): 18 of 19 right first. Too few to rely on.
 
 ## 3. Data from GBIF
 
