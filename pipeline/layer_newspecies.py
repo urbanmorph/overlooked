@@ -79,7 +79,7 @@ def bsi_names(http, s3):
             if name and e["kind"] == "new_to_science" and e["rank"] == "species" and e["name_check"] != "needs_review":
                 out.append({"name": name, "year": int(e["year"]), "source": "BSI Plant Discoveries",
                             "journal": "", "state": (e.get("states") or "").title(), "bsi_group": e.get("group") or "",
-                            "link": "https://bsi.gov.in/page/en/national-wild-life-action-plan"})
+                            "link": e["link"]})
     return out
 
 

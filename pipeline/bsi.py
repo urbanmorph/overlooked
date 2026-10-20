@@ -16,7 +16,9 @@ Usage:
 """
 
 import csv
+import json
 import re
+import time
 from pathlib import Path
 
 import pymupdf
@@ -138,9 +140,7 @@ def ocr(pdf_path, s3=None, minutes=None, ocr_page=None):
     (cache/bsi/ocr/<pdf stem>.json) every SAVE_EVERY seconds and on exit, also when the run fails.
     A new run first restores pages from R2. Returns True when every page is done, False when the
     time limit (minutes) stopped it."""
-    import json
     import tempfile
-    import time
     from pipeline import r2
     ocr_page = ocr_page or tesseract
     d = ocr_dir(pdf_path)
@@ -487,7 +487,6 @@ def cache_file(year):
 
 def seed_from_csv(path):
     """Fill the cache from an earlier parse (same parser), one file per year."""
-    import json
     rows = list(csv.DictReader(open(path)))
     years = sorted({int(r["year"]) for r in rows})
     SRC.mkdir(parents=True, exist_ok=True)
@@ -498,7 +497,6 @@ def seed_from_csv(path):
 
 def download(http, url, dest):
     """Fetch one PDF. False when BSI does not answer with a PDF (it answers missing files with its home page)."""
-    import time
     try:
         return util.stream(http, url, dest, kind="pdf")
     finally:
@@ -527,16 +525,41 @@ def fetch_edition(http, year, urls, s3=None):
     return best
 
 
+def pdf_links(http, links):
+    """{year: URL of the PDF a reader opens}: the larger file when a year has two, checked with HEAD
+    (BSI answers a missing file with its home page). Kept in pdf_links.json; a year is checked again
+    only when its URL leaves the listing. A year with no PDF has no entry."""
+    f = SRC / "pdf_links.json"
+    known = {int(y): u for y, u in json.loads(f.read_text()).items()} if f.exists() else {}
+    out = {}
+    for year, urls in sorted(links.items()):
+        if known.get(year) in urls:
+            out[year] = known[year]
+            continue
+        best = 0
+        for url in urls:
+            r = http.head(url, timeout=60, allow_redirects=True)
+            time.sleep(1)
+            size = int(r.headers.get("Content-Length") or 0)
+            if r.status_code == 200 and "pdf" in r.headers.get("Content-Type", "").lower() and size >= best:
+                out[year], best = url, size
+    SRC.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps(out, indent=1))
+    return out
+
+
 def sync(http, s3=None, minutes=None):
     """Parse every edition from FIRST_YEAR that is not in the cache. Returns {year: entries}.
     Scanned editions are OCRed first (resumable); with a time limit (minutes) an unfinished
-    edition is left for the next run."""
-    import json
-    import time
+    edition is left for the next run. Each entry gets "link": its edition's PDF (else BSI's listing page)."""
     from pipeline import r2
     SRC.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + minutes * 60 if minutes is not None else None
     links = listing(http)
+    r2.restore(s3, "cache/bsi/pdf_links.json", SRC / "pdf_links.json")
+    pdfs = pdf_links(http, links)
+    if s3 is not None:
+        r2.sync_file(s3, SRC / "pdf_links.json", "cache/bsi/pdf_links.json", immutable=False)
     out = {}
     for year in sorted(y for y in links if y >= FIRST_YEAR):
         f = cache_file(year)
@@ -558,13 +581,12 @@ def sync(http, s3=None, minutes=None):
             log(f"{year}: parsed {len(entries)} entries")
         if s3 is not None:
             r2.sync_file(s3, f, f"cache/bsi/{f.name}", immutable=False)
-        out[year] = json.loads(f.read_text())
+        out[year] = [{**e, "link": pdfs.get(year, LISTING)} for e in json.loads(f.read_text())]
     return out
 
 
 def main():
     import argparse
-    import json
     from pipeline import health
     p = argparse.ArgumentParser()
     p.add_argument("cmd", choices=["listing", "sync"])

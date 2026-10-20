@@ -19,6 +19,12 @@ Newest first. Updated as work happens.
 
 ## Log
 
+### 20 October 2026
+
+- BSI papers link to the PDF of their year, not BSI's listing page. The new-species layer checks each listed
+  file with one HEAD request, keeps the larger PDF when a year has two, and keeps the answers in
+  `cache/bsi/pdf_links.json`. A year is checked again only when its file leaves the listing.
+
 ### 19 October 2026
 
 - Records that cannot go in a district now count. Query L covers India records with no coordinates, coordinates

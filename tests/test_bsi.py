@@ -392,3 +392,40 @@ def test_heading_followed_by_description_is_kept():
     text = ("Graphis moriensis R.Adhikari & Nayaka, The Bryologist 128(3): 554. 2025 (Graphidaceae) Nadia District, "
             "West Bengal. Holotype is deposited in CSIR-National Botanical Research Institute, Lucknow (LWG).")
     assert bsi.find_heading(text)[1] == "Graphis moriensis"
+
+
+# ---------- the PDF each year links to ----------
+
+class HeadHttp:
+    """Answers HEAD with a content type and size per URL; counts the requests."""
+    def __init__(self, answers):
+        self.answers, self.asked = answers, []
+
+    def head(self, url, **kw):
+        self.asked.append(url)
+        ctype, size = self.answers[url]
+        r = FakeResponse("", ctype)
+        r.headers["Content-Length"] = str(size)
+        r.status_code = 200
+        return r
+
+
+def test_pdf_links_keep_the_larger_pdf_and_skip_pages_and_known_years(tmp_path, monkeypatch):
+    monkeypatch.setattr(bsi, "SRC", tmp_path)
+    monkeypatch.setattr(bsi.time, "sleep", lambda s: None)
+    http = HeadHttp({"a": ("application/pdf", 10), "b": ("application/pdf", 99), "c": ("text/html", 5)})
+    assert bsi.pdf_links(http, {2024: ["a", "b"], 2025: ["c"]}) == {2024: "b"}   # 2025: BSI's home page, no link
+    assert bsi.pdf_links(http, {2024: ["a", "b"]}) == {2024: "b"} and len(http.asked) == 3  # known: no new request
+    assert bsi.pdf_links(http, {2024: ["a"]}) == {2024: "a"}                       # file gone from the listing: check again
+
+
+def test_sync_links_each_entry_to_its_editions_pdf(tmp_path, monkeypatch):
+    monkeypatch.setattr(bsi, "SRC", tmp_path)
+    monkeypatch.setattr(bsi.time, "sleep", lambda s: None)
+    monkeypatch.setattr(bsi, "listing", lambda http: {2023: ["p23"], 2024: ["p24"]})
+    for y in (2023, 2024):
+        bsi.cache_file(y).write_text(json.dumps([{"name": "Aa bb", "year": y}]))
+    got = bsi.sync(HeadHttp({"p23": ("application/pdf", 1), "p24": ("text/html", 1)}))
+    assert got[2023][0]["link"] == "p23"
+    assert got[2024][0]["link"] == bsi.LISTING                       # no PDF: BSI's listing page
+    assert "link" not in json.loads(bsi.cache_file(2023).read_text())[0]   # the parsed cache stays as it was
