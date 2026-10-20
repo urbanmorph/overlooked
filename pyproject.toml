@@ -21,3 +21,5 @@ packages = ["pipeline"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+# experiments/ needs the ML environment (data/model_check/.venv); run its tests there.
+testpaths = ["tests"]
