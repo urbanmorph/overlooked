@@ -179,6 +179,11 @@ The pipeline part of the Calibration and Queue page rows. Numpy only; the model 
 - **Global mirror:** Cloudflare (site and queue), Hugging Face (weights, embeddings), Zenodo (a DOI per release).
   Copies go one way, India to mirror, checked by checksum. Exact locations of sensitive species stay in India only.
 - iNaturalist and GBIF stay sources: we link to them and do not host their photos again.
+- **Decided 20 October 2026: the live site shows shortlists only.** The site (Cloudflare) shows the likely names
+  and bands for public observations. The corpus, embeddings and model stay in India until the legal answers. The
+  shortlist page has the label "experimental": its purpose is to find out if AI can help taxonomists. The proof
+  is use: how many shortlisted observations later get a confirmed name, and how often that name was on the
+  shortlist. A domain, DOIs and work with data publishers wait for this proof.
 - **To ask IBP:** restart its GBIF dataset (it stops in 2024), so names that taxonomists approve on IBP reach GBIF
   and this site.
 
