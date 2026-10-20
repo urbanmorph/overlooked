@@ -24,6 +24,11 @@ Newest first. Updated as work happens.
 - BSI papers link to the PDF of their year, not BSI's listing page. The new-species layer checks each listed
   file with one HEAD request, keeps the larger PDF when a year has two, and keeps the answers in
   `cache/bsi/pdf_links.json`. A year is checked again only when its file leaves the listing.
+- Mobile pass at 360 px. Pages loaded data into space that had no room kept for it, so the map moved down
+  (layout shift 0.27 on the front page, 0.42 to 0.46 on species pages, 0.06 on Changes). Now main reaches
+  below the screen and, on narrow screens, the status and group cards fill the screen while they load.
+  Already fixed since the 18 October audit: self-hosted fonts, decade labels on phones, nav height (one
+  row, 107 px), no file over 200 KB. Map on phones: usable; small states are easier to reach with search.
 
 ### 19 October 2026
 

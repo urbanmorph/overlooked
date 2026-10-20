@@ -117,6 +117,11 @@ dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) } dl.stats 
 .act p { margin: 8px 0 0; color: #C9D1CC } .act .links { display: flex; flex-wrap: wrap; gap: 10px }
 .act a { color: #F5F6F3; text-decoration: none; padding: 12px 16px; border: 1px solid #6C7A72; border-radius: 8px; font-size: 15px }
 .act a.primary { background: #F5F6F3; color: var(--ink); font-weight: 600; border-color: #F5F6F3 }
+/* Space for content that loads later, so nothing on screen moves when it comes: main reaches below the
+   screen (the footer starts out of view), and on narrow screens, where the map sits under the status or the
+   group cards, those parts fill the screen while empty. */
+main { min-height: 100svh }
+@media (max-width: 939px) { .sp-status:empty, .cardlist:has(> .loading) { min-height: 100svh } }
 footer { margin-top: 56px; border-top: 1px solid var(--line); background: var(--surface) }
 footer .wrap { padding-block: 28px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; line-height: 1.6; color: var(--ink-2) }
 footer .grow { flex: 999 1 480px }
