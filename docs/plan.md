@@ -144,6 +144,33 @@ species with an Indian GBIF record):
 | Queue page | Waiting observations by group and state. Order: value of a confirmation (first record in a state, threatened, endemic, listed only) times how easy it is. Two lists: "Quick to confirm" (shortlist shown) and "For an expert" (only group or genus shown, so the guess does not bias). Each row links to the observation. Bands, not raw scores. | Site (Cloudflare), data from the Indian copy |
 | Species page | "N observations on iNaturalist may show this species. Machine shortlist, not a record." Link to the queue. For species listed only or with no recent record, only above the strictest cut-off, worded "needs an expert to check". | Site |
 
+### Shortlist module (`pipeline/shortlist.py`, 20 October 2026)
+
+The pipeline part of the Calibration and Queue page rows. Numpy only; the model code (torch, open_clip) stays in
+`experiments/` and writes score files that this module reads.
+
+- **Per observation:** candidate scores and the group's calibration give a band and names, never scores.
+  "Quick to confirm": the group passed and this set has at most 3 names (the list is shown). "For an expert": the
+  group failed, has no calibration, or this set is long or empty (genus list only, from probabilities summed per
+  genus; the group only when the genus list is long too). "Needs a specimen": the group is marked not
+  identifiable from a photo (no names).
+- **Calibration per group:** split conformal (every candidate at or above a threshold learned from the true
+  species' probabilities on held-out photos) or a fixed list length. A group passes when its sets reach the
+  target coverage (90% by default) with a median of at most 3 names. Fewer than 100 held-out photos: refused and
+  reported. The caller splits by observation and observer.
+- **Calibration file:** JSON, format version 1. Per group: method, target, threshold, k, genus threshold,
+  coverage, median and 90th percentile set size, n, model, corpus version, date, passed, and the reason when it
+  failed. Its version is a checksum of the groups.
+- **Rows for the site:** observation, group, state, band, shortlist (rank and name), genus list, model,
+  calibration version, and a value for the queue order: first record in a state > threatened > endemic > on
+  checklists only; the queue sorts by value times ease of the band.
+- **Runs:** `python -m pipeline.shortlist calibrate --heldout DIR ...` writes the calibration;
+  `python -m pipeline.shortlist score --features DIR --calibration FILE` writes one JSON file per score file and
+  a manifest of checksums. Unchanged inputs are skipped; `--minutes` stops a run cleanly and the next run
+  continues. Score files hold scores, or image features plus a linear head per group (zero-shot text vectors or a
+  trained classifier).
+- **Stays on this machine:** no corpus, embeddings or rows go to R2 or abroad before the legal answers below.
+
 ### Homes (sovereignty)
 
 - **Indian primary: the India Biodiversity Portal (IBP).** IBP is the organisation that holds the reference copy
