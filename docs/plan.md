@@ -2,6 +2,11 @@
 
 Approved 16 October 2026.
 
+**Goal (stated 20 October 2026).** The larger goal of the site is to track the health of India's species over time:
+whether each species is still there, where, and how that changes (decline and recovery). Observed, identified, IUCN
+status, the identification backlog and the records to fix are the first steps toward it. Choose features, measures,
+words and visuals that help show a species' state and trend, and that can repeat month after month.
+
 ## 1. Scope
 
 | # | Module | Question | First release shows |
