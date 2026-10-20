@@ -212,7 +212,17 @@ To ask a lawyer or the NBA:
 4. Talk to IBP (host, GBIF dataset) and ask the legal questions. Corpus, embeddings and model stay in India.
 5. Queue page, labelled experimental, for the groups that pass steps 2 and 3; then the species-page block. The
    measure of use: shortlisted observations that later get a confirmed name, and how often that name was on the
-   shortlist.
+   shortlist. First set: up to 1,000 recent observations per group (about 19,000), never the frozen test.
+6. Scale up, only if step 5 shows use. The backlog is about 29 lakh observations: 9,76,938 named to species and
+   not confirmed, 8,55,929 named to genus, 10,41,700 named above genus.
+   - Stage 1: all observations named to species in the groups that passed (most of the 9.8 lakh).
+   - Stage 2: the observations named to genus in those groups.
+   - Stage 3: the observations named above genus. These first need a group ("this is a beetle"); test that step
+     before it goes on the page.
+   - How: keep only the features (about 4 KB a photo) and delete each photo after use. All photos would need about
+     350 GB. Compute: about 100 s for 1,000 photos, so about 80 hours for 29 lakh on this machine, or much less
+     on an Indian GPU (IndiaAI compute through IBP). Not on GitHub Actions: the model stays in India.
+   - Then refresh each month with only the new observations.
 
 ### Model results
 
