@@ -32,8 +32,8 @@ def reason(r, row_species, accepted):
     return "qualifies"
 
 
-def main():
-    s = pd.read_parquet(DATA / "t1_sample.parquet")
+def history(s):
+    """The sample with each observation's history fields and why it is in T1 or not (API answers cached)."""
     obs = inat.fetch(s.obs_id.tolist(), CACHE)
     rows = []
     for oid in s.obs_id:
@@ -50,6 +50,11 @@ def main():
             index=False
         )
     ]
+    return h
+
+
+def main():
+    h = history(pd.read_parquet(DATA / "t1_sample.parquet"))
     atomic_parquet(h, DATA / "t1_history.parquet")
     t1 = h[h.why == "qualifies"].reset_index(drop=True)
     atomic_parquet(t1, DATA / "t1.parquet")

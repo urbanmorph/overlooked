@@ -292,3 +292,129 @@ def test_fixed_k():
     assert fixed_k(ranks, 0.9) == 20  # 9 of 10 within 20
     assert fixed_k(ranks, 0.5) == 2
     assert fixed_k(ranks, 0.95) is None  # the 10th is never in the list
+
+
+# --- queue check: gate, per-row conformal coverage, growing the T1 sample --------------------------------
+
+
+def gate_row(**kw):
+    base = {
+        "n": 150,
+        "sp_cov": 90.0,
+        "sp_median": 2,
+        "top1": 85.0,
+        "g_cov": 93.0,
+        "g_median": 1,
+        "new_n": 60,
+        "new_sp_cov": 89.0,
+        "new_g_cov": 92.0,
+    }
+    return {**base, **kw}
+
+
+def test_gate_levels():
+    from logic import gate
+
+    assert gate(gate_row()) == "Quick to confirm"
+    assert gate(gate_row(n=99)) == "not enough data"
+    assert gate(gate_row(top1=79.9)) == "Genus first"
+    assert gate(gate_row(sp_median=3)) == "Genus first"
+    assert gate(gate_row(sp_cov=87.9)) == "Genus first"
+    assert gate(gate_row(sp_cov=80, g_cov=87.0)) == "For an expert"
+    assert gate(gate_row(sp_cov=80, g_median=3)) == "For an expert"
+
+
+def test_gate_training_overlap_drops_one_level():
+    from logic import gate
+
+    assert gate(gate_row(new_sp_cov=84.9)) == "Genus first"
+    assert gate(gate_row(new_sp_cov=84.9, new_n=39)) == "Quick to confirm"  # too few to judge
+    assert gate(gate_row(top1=70, new_g_cov=84.0)) == "For an expert"
+    assert gate(gate_row(top1=70, new_sp_cov=10.0)) == "Genus first"  # species coverage is not the level checked
+
+
+def test_conformal_rows_matches_model_check():
+    from logic import conformal_rows
+    from scoring import _conformal
+
+    rng = np.random.default_rng(1)
+    n, c = 120, 30
+    P = [softmax(rng.normal(size=(1, c)) * 3)[0] for _ in range(n)]
+    T = [[int(rng.integers(c))] if rng.random() > 0.1 else [] for _ in range(n)]
+    obs = [f"o{int(rng.integers(40))}" for _ in range(n)]
+    cov, sizes = _conformal(P, T, obs, ["G"] * n, 0.9, 20, 0)
+    p_true = np.array([p[t].max() if t else 0.0 for p, t in zip(P, T)])
+    has = np.array([bool(t) for t in T])
+    covered, tested, sz = conformal_rows(p_true, has, P, obs, 0.9, n_splits=20, seed=0)
+    assert 100 * covered.sum() / tested.sum() == pytest.approx(cov)
+    assert sorted(sz) == sorted(sizes.tolist())
+    assert covered.shape == (n,) and (covered <= tested).all()
+
+
+def test_next_sample_size():
+    from logic import next_sample_size
+
+    assert next_sample_size(300, 120, pool=5000) == 300  # enough already
+    assert next_sample_size(300, 0, pool=250) == 300  # pool exhausted (capped at what was taken)
+    assert next_sample_size(300, 30, pool=10000) == 300 + 840  # rate 0.1: 700 more sampled x 1.2
+    assert next_sample_size(3900, 30, pool=10000) == 4000  # cap
+    assert next_sample_size(300, 95, pool=10000) == 500  # at least one step of 200
+    assert next_sample_size(4000, 30, pool=10000) == 4000
+
+
+@pytest.mark.parametrize(
+    "url, want",
+    [
+        (
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/123/square.jpg",
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/123/medium.jpg",
+        ),
+        (
+            "https://static.inaturalist.org/photos/77/square.jpeg?1700000000",
+            "https://inaturalist-open-data.s3.amazonaws.com/photos/77/medium.jpeg",
+        ),
+        ("https://example.org/photos/1/square.jpg", None),
+        (None, None),
+    ],
+)
+def test_medium_from_api_url(url, want):
+    from logic import medium_from_api_url
+
+    assert medium_from_api_url(url) == want
+
+
+def test_queue_match_species_or_genus():
+    from logic import queue_match
+
+    by_group = {"Birds": {"Apis cerana", "Corvus splendens"}}
+    genera = {"Birds": {"Apis", "Corvus"}}
+    assert queue_match("Birds", "Corvus splendens", "species", by_group, genera, {}) == ("Corvus splendens", "species")
+    assert queue_match("Birds", "Corvus splendens insolens", "subspecies", by_group, genera, {}) == (
+        "Corvus splendens",
+        "species",
+    )
+    assert queue_match("Birds", "Corvus", "genus", by_group, genera, {}) == ("Corvus", "genus")
+    assert queue_match("Birds", "Pica", "genus", by_group, genera, {}) == (None, None)
+    assert queue_match("Birds", "Corvus macro", "species", by_group, genera, {}) == (None, None)
+    assert queue_match("Birds", "Corvidae", "family", by_group, genera, {}) == (None, None)
+
+
+def test_recheck_outcome():
+    from logic import recheck_outcome
+
+    frozen = {
+        "taxon_id": 10, "shown_species": "A b|A c", "set90": "A b|A c|D e", "top_names": "A c|A b|D e",
+        "shown_genera": "A", "band": "Quick to confirm",
+    }  # fmt: skip
+    r = recheck_outcome(frozen, {"quality_grade": "research", "taxon_id": 11}, "A b")
+    assert r == {
+        "reached_rg": True, "changed_taxon": True, "final_species": "A b", "in_shown": True, "in_set90": True,
+        "first": False, "in_top5": True, "genus_in_shown": True,
+    }  # fmt: skip
+    r = recheck_outcome(frozen, {"quality_grade": "needs_id", "taxon_id": 10}, None)
+    assert r["reached_rg"] is False and r["changed_taxon"] is False and r["in_shown"] is None
+    r = recheck_outcome(frozen, {"missing": True}, None)
+    assert r["reached_rg"] is False and r["changed_taxon"] is None
+    # research grade at a species that is not a candidate: counted, and a miss
+    r = recheck_outcome(frozen, {"quality_grade": "research", "taxon_id": 99}, None)
+    assert r["reached_rg"] is True and r["in_set90"] is False and r["first"] is False

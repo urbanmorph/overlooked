@@ -1,21 +1,21 @@
 group,method,T1 n,species k90,90% set median,95% set median,genus k90,genus 95% set median,T3 name in 90% set,verdict
-Amphibians,combined,85,2,2,4,1,1,61.6,Quick to confirm
+Amphibians,combined,154,3,2,3,1,1,59.7,Quick to confirm
 Bats,classifier,176,1,1,54,1,1,41.4,genus only
-"Bees, wasps & ants",combined,45,2,1,1011,1,331,71.3,expert only
-Beetles,combined,90,2,2,3,1,2,76.1,Quick to confirm
-Birds,combined,29,2,2,1476,2,511,57.5,expert only (provisional: few test rows)
-Butterflies,combined,38,2,2,7,1,2,91.1,genus only (provisional: few test rows)
-Dragonflies,combined,20,3,2,367,1,139,69.5,expert only (provisional: few test rows)
+"Bees, wasps & ants",combined,119,3,1,6,2,2,72.3,genus only
+Beetles,combined,148,2,1,2,1,1,74.6,Quick to confirm
+Birds,combined,107,2,2,4,2,1,71.4,Quick to confirm
+Butterflies,combined,115,2,2,3,1,1,82.6,Quick to confirm
+Dragonflies,combined,108,2,1,2,1,1,59.4,Quick to confirm
 Ferns,combined,85,2,2,4,1,1,80.5,Quick to confirm
 Flies,combined,148,2,1,2,1,1,60.3,Quick to confirm
-Flowering plants (dicots),combined,94,2,2,18,1,2,70.0,genus only
+Flowering plants (dicots),combined,156,2,1,5,1,1,71.5,Quick to confirm
 Fungi,combined,115,2,1,2,1,1,64.2,Quick to confirm
 Grasses & sedges,combined,129,3,1,3,2,1,75.2,Quick to confirm
-Large mammals,classifier,40,3,2,2,1,1,73.5,Quick to confirm
-Molluscs,combined,85,1,1,1,1,1,66.2,Quick to confirm
+Large mammals,classifier,104,4,3,6,2,1,71.3,genus only
+Molluscs,combined,144,2,1,2,1,1,70.1,Quick to confirm
 Moths,combined,100,2,1,8,1,2,68.8,genus only
-Orchids,combined,50,2,2,3,1,1,52.5,Quick to confirm
-Reptiles,combined,38,2,11,30,2,5,98.3,expert only (provisional: few test rows)
-Rodents & shrews,combined,52,2,2,2,1,1,77.4,Quick to confirm
-Spiders & kin,combined,95,1,1,2,1,1,67.0,Quick to confirm
+Orchids,combined,109,3,2,5,1,1,62.6,Quick to confirm
+Reptiles,combined,126,3,2,6,2,2,77.3,genus only
+Rodents & shrews,combined,126,3,2,3,1,1,80.2,Quick to confirm
+Spiders & kin,combined,149,1,1,1,1,1,67.0,Quick to confirm
 True bugs,combined,121,1,1,2,1,1,69.6,Quick to confirm

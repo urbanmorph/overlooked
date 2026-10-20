@@ -207,8 +207,8 @@ To ask a lawyer or the NBA:
    size at 90% and 95%, by group; what a trained classifier adds. Results below.
 2. Corpus v0 from existing research-grade observations with open licences (done 20 October 2026; results below).
    Names matched through the GBIF backbone so synonyms are not errors. Test sets split by observer.
-3. Check on the real queue before a group goes live: more "waited" test rows for the groups with fewer than 50,
-   and the observer's name test (T3) per group; time a few identifiers with and without shortlists.
+3. Check on the real queue before a group goes live (done 20 October 2026: gate and frozen test below). Still to
+   do: time a few identifiers with and without shortlists; re-check the frozen test at 30, 60 and 90 days.
 4. Talk to IBP (host, GBIF dataset) and ask the legal questions. Corpus, embeddings and model stay in India.
 5. Queue page, labelled experimental, for the groups that pass steps 2 and 3; then the species-page block. The
    measure of use: shortlisted observations that later get a confirmed name, and how often that name was on the
@@ -287,6 +287,24 @@ What it means:
 - Species with no corpus photo (3.1% of T1): combined finds 22.0% first, BioCLIP alone 36.0%. Keep BioCLIP in the
   combination for them.
 - T2 (pilot queue rows that are research grade now): 18 of 19 right first. Too few to rely on.
+
+**Queue check, 20 October 2026** (rules fixed in `experiments/corpus_v0/README.md` before the data was drawn). T1
+grew to 2,545 observations, at least 100 per group where the test observers have them. Overall: right species
+first 84.4%, the 90% set holds it 92.0% of the time with a median of 1 name. Gate per group:
+- **Quick to confirm (12):** bats, bees, wasps and ants, beetles, dragonflies, flies, flowering plants (dicots),
+  fungi, molluscs, moths, orchids, spiders, true bugs.
+- **Genus first (7):** amphibians, birds, butterflies, large mammals, reptiles, rodents and shrews (right species
+  first under 80%), and grasses and sedges (lower on photos from 2025 or later). Genus sets hold the right genus
+  91 to 94% of the time, with a median of 1.
+- **Not enough data (5):** algae, ferns, fish, lichens, mosses. Not on the page.
+- Close to the line on new photos: bees, wasps and ants (85.3%) and moths (87.6%). Watch them first.
+
+**Frozen test.** 8,044 observations waiting in the India queue on 20 October 2026 (created in the last 120 days,
+up to 400 per group) have their shortlists saved: `data/corpus_v0/frozen_2026-10-20.parquet`, this machine only,
+SHA-256 `c395de2a16730e31338b02953f371fe8435cd20d606cb99724d0661d2e523398`. `recheck.py` scores them on or after
+19 November 2026, 19 December 2026 and 18 January 2027: how many got a confirmed name, and how often that name was
+on the shortlist. This is the test on answers that did not exist when the shortlists were made, and the baseline
+before the page. 61.7% of these observers also have photos in the corpus, so it is not split by observer.
 
 ## 3. Data from GBIF
 

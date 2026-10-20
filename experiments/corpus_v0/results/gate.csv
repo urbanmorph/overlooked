@@ -1,0 +1,25 @@
+group,method,n,verdict,top1,new_n,sp_cov,sp_median,new_sp_cov,g_cov,g_median,new_g_cov,sp_95_cov,sp_95_median,new_sp_95_cov,g_95_cov,g_95_median,new_g_95_cov
+Amphibians,combined,154,Genus first,77.9,79.0,91.8,2.0,96.8,92.7,1.0,94.5,97.3,3.0,99.1,96.6,1.0,97.3
+Birds,combined,107,Genus first,75.7,61.0,92.8,2.0,89.5,93.1,1.0,89.2,97.9,4.0,96.6,98.7,1.0,98.1
+Butterflies,combined,115,Genus first,76.5,58.0,93.4,2.0,97.2,94.3,1.0,96.7,98.0,3.0,99.8,97.6,1.0,99.7
+Grasses & sedges,combined,129,Genus first,82.2,50.0,90.0,1.0,81.3,91.1,1.0,86.6,94.9,3.0,89.5,95.9,1.0,93.9
+Large mammals,classifier,104,Genus first,74.0,63.0,93.3,3.0,90.6,92.3,1.0,89.1,98.1,6.0,97.9,97.6,1.0,96.2
+Reptiles,combined,126,Genus first,73.0,41.0,91.5,2.0,92.3,90.9,1.0,90.2,97.3,6.0,99.5,97.3,2.0,98.9
+Rodents & shrews,combined,126,Genus first,73.8,86.0,93.3,2.0,93.0,92.7,1.0,92.4,96.9,3.0,97.0,97.5,1.0,97.6
+Bats,classifier,176,Quick to confirm,92.0,146.0,90.9,1.0,96.6,91.1,1.0,96.4,96.0,54.0,99.3,96.8,1.0,98.7
+"Bees, wasps & ants",combined,119,Quick to confirm,85.7,45.0,88.2,1.0,85.3,89.7,1.0,84.9,97.7,6.0,95.6,97.5,2.0,95.1
+Beetles,combined,148,Quick to confirm,89.2,67.0,92.1,1.0,91.2,92.9,1.0,92.0,97.2,2.0,95.5,97.8,1.0,96.8
+Dragonflies,combined,108,Quick to confirm,88.0,43.0,93.4,1.0,94.2,94.1,1.0,93.2,96.9,2.0,96.4,97.7,1.0,97.1
+Flies,combined,148,Quick to confirm,87.8,84.0,92.9,1.0,90.6,91.5,1.0,90.5,98.0,2.0,97.8,97.1,1.0,96.9
+Flowering plants (dicots),combined,156,Quick to confirm,88.5,84.0,92.5,1.0,91.3,92.1,1.0,91.2,96.6,5.0,95.2,96.9,1.0,96.2
+Fungi,combined,115,Quick to confirm,85.2,49.0,90.7,1.0,94.2,92.8,1.0,93.0,96.9,2.0,100.0,97.4,1.0,98.1
+Molluscs,combined,144,Quick to confirm,89.6,76.0,91.8,1.0,92.5,93.0,1.0,90.2,96.9,2.0,96.0,97.1,1.0,96.2
+Moths,combined,100,Quick to confirm,88.0,51.0,91.2,1.0,87.6,91.6,1.0,85.2,96.2,8.0,93.5,97.0,2.0,94.5
+Orchids,combined,109,Quick to confirm,80.7,36.0,91.6,2.0,86.0,94.2,1.0,97.8,97.3,5.0,97.3,97.3,1.0,97.8
+Spiders & kin,combined,149,Quick to confirm,90.6,71.0,91.3,1.0,92.7,92.1,1.0,92.1,96.6,1.0,99.6,97.1,1.0,99.2
+True bugs,combined,121,Quick to confirm,90.1,60.0,94.0,1.0,93.9,92.7,1.0,92.4,97.6,2.0,97.4,97.1,1.0,96.8
+Algae & diatoms,zero-shot,0,not enough data,,,,,,,,,,,,,,
+Ferns,combined,85,not enough data,84.7,35.0,93.1,2.0,89.5,93.4,1.0,92.7,97.8,4.0,97.1,98.3,1.0,97.1
+Fish,classifier,0,not enough data,,,,,,,,,,,,,,
+Lichens,combined,0,not enough data,,,,,,,,,,,,,,
+Mosses & liverworts,zero-shot,0,not enough data,,,,,,,,,,,,,,

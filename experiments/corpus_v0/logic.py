@@ -211,3 +211,108 @@ def fixed_k(ranks, target):
     r = np.sort(np.asarray(ranks, dtype=float))
     k = r[int(np.ceil(target * len(r))) - 1]
     return int(k) if np.isfinite(k) else None
+
+
+# --- queue check ----------------------------------------------------------------------------------------
+
+QUICK, GENUS_FIRST, EXPERT, NOT_ENOUGH = "Quick to confirm", "Genus first", "For an expert", "not enough data"
+GATE_MIN_N, GATE_COV, GATE_MEDIAN, GATE_TOP1 = 100, 88.0, 2, 80.0
+OVERLAP_MIN_N, OVERLAP_COV = 40, 85.0
+
+
+def gate(r):
+    """Verdict of one group by the rules fixed in the README ("Queue check"). r: n, sp_cov, sp_median, top1,
+    g_cov, g_median (coverage and top-1 in %), and for rows confirmed in 2025 or later: new_n, new_sp_cov, new_g_cov."""
+    if r["n"] < GATE_MIN_N:
+        return NOT_ENOUGH
+    if r["sp_cov"] >= GATE_COV and r["sp_median"] <= GATE_MEDIAN and r["top1"] >= GATE_TOP1:
+        level, check = QUICK, r["new_sp_cov"]
+    elif r["g_cov"] >= GATE_COV and r["g_median"] <= GATE_MEDIAN:
+        level, check = GENUS_FIRST, r["new_g_cov"]
+    else:
+        return EXPERT
+    if r["new_n"] >= OVERLAP_MIN_N and check < OVERLAP_COV:
+        return GENUS_FIRST if level == QUICK else EXPERT
+    return level
+
+
+def conformal_rows(p_true, has, P, obs, target, n_splits=20, seed=0):
+    """Split conformal for one group, exactly as model check scoring._conformal, but per row: how often each row
+    was in a test half and covered. Returns (covered counts, tested counts, all test set sizes)."""
+    rng = np.random.default_rng(seed)
+    p_true, has, obs = np.asarray(p_true, float), np.asarray(has, bool), np.asarray(obs)
+    covered, tested, sizes = np.zeros(len(obs), int), np.zeros(len(obs), int), []
+    rows = np.arange(len(obs))
+    for _ in range(n_splits):
+        ids = rng.permutation(np.unique(obs))
+        cal_ids = set(ids[: len(ids) // 2])
+        cal = np.array([o in cal_ids for o in obs])
+        c, te = rows[cal], rows[~cal]
+        if len(c) == 0 or len(te) == 0:
+            continue
+        level = np.ceil((len(c) + 1) * target) / len(c)
+        q = 1.0 if level > 1 else np.quantile(1 - p_true[c], level, method="higher")
+        thr = 1 - q
+        for i in te:
+            tested[i] += 1
+            covered[i] += bool(has[i] and p_true[i] >= thr)
+            sizes.append(int((P[i] >= thr).sum()))
+    return covered, tested, sizes
+
+
+def next_sample_size(n_sampled, n_qualify, pool, target=100, cap=4000, min_step=200):
+    """How many observations of a group to have sampled after the next round: enough (by the rate so far, with a
+    20% margin) to reach `target` qualifying rows, at least `min_step` more, never above the cap or the pool."""
+    limit = min(cap, pool)
+    if n_qualify >= target or n_sampled >= limit:
+        return n_sampled
+    rate = max(n_qualify, 1) / n_sampled
+    need = int(np.ceil((target - n_qualify) / rate * 1.2))
+    return min(limit, n_sampled + max(min_step, need))
+
+
+_API_PHOTO = re.compile(
+    r"^https?://(?:inaturalist-open-data\.s3\.amazonaws\.com|static\.inaturalist\.org)/photos/(\d+)/\w+\.(\w+)"
+)
+
+
+def medium_from_api_url(url, size="medium"):
+    """Open-data bucket URL at `size` from a photo URL the iNaturalist API gives (any size), or None."""
+    m = _API_PHOTO.match(url or "")
+    return OPEN_DATA.format(id=m.group(1), size=size, ext=m.group(2)) if m else None
+
+
+def queue_match(group, taxon_name, rank, by_group, genera, accepted):
+    """(candidate species or genus, 'species' | 'genus') for a waiting observation's current taxon, if it is a
+    candidate species of its group (exact, then GBIF synonym) or a genus with a candidate species; else (None, None)."""
+    if rank in SPECIES_OR_BELOW:
+        name, _ = match_name([" ".join(str(taxon_name).split()[:2])], by_group.get(group, set()), accepted)
+        return (name, "species") if name else (None, None)
+    if rank == "genus" and taxon_name in genera.get(group, set()):
+        return taxon_name, "genus"
+    return None, None
+
+
+def recheck_outcome(frozen, now, final_species):
+    """What happened to one frozen observation. frozen: its frozen row (names joined by "|"); now: the slimmed
+    API answer; final_species: its current species matched to the group's candidates, or None. Shortlist hits are
+    None unless it reached research grade."""
+    split = lambda s: [x for x in str(s or "").split("|") if x]
+    if now.get("missing"):
+        return {"reached_rg": False, "changed_taxon": None, "final_species": None, "in_shown": None,
+                "in_set90": None, "first": None, "in_top5": None, "genus_in_shown": None}  # fmt: skip
+    rg = now.get("quality_grade") == "research"
+    out = {"reached_rg": rg, "changed_taxon": now.get("taxon_id") != frozen["taxon_id"], "final_species": None}
+    if not rg:
+        return {**out, "in_shown": None, "in_set90": None, "first": None, "in_top5": None, "genus_in_shown": None}
+    top = split(frozen["top_names"])
+    g = final_species.split()[0] if final_species else None
+    return {
+        **out,
+        "final_species": final_species,
+        "in_shown": final_species in split(frozen["shown_species"]),
+        "in_set90": final_species in split(frozen["set90"]),
+        "first": bool(top) and final_species == top[0],
+        "in_top5": final_species in top[:5],
+        "genus_in_shown": g in split(frozen["shown_genera"]),
+    }

@@ -1,64 +1,64 @@
 method,group,n,unseen,unseen_pct,unseen_top1,unseen_top5,unseen_top20,seen_top1,seen_top5
-zero-shot,Amphibians,85,0,0.0,,,,71.8,96.5
+zero-shot,Amphibians,154,0,0.0,,,,68.2,95.5
 zero-shot,Bats,176,6,3.4,33.3,66.7,100.0,44.7,97.1
-zero-shot,"Bees, wasps & ants",45,1,2.2,100.0,100.0,100.0,77.3,93.2
-zero-shot,Beetles,90,5,5.6,80.0,100.0,100.0,70.6,94.1
-zero-shot,Birds,29,0,0.0,,,,82.8,93.1
-zero-shot,Butterflies,38,0,0.0,,,,89.5,100.0
-zero-shot,Dragonflies,20,0,0.0,,,,80.0,100.0
+zero-shot,"Bees, wasps & ants",119,3,2.5,66.7,66.7,100.0,76.7,91.4
+zero-shot,Beetles,148,6,4.1,83.3,100.0,100.0,72.5,93.0
+zero-shot,Birds,107,0,0.0,,,,78.5,95.3
+zero-shot,Butterflies,115,0,0.0,,,,81.7,98.3
+zero-shot,Dragonflies,108,0,0.0,,,,82.4,99.1
 zero-shot,Ferns,85,4,4.7,0.0,75.0,100.0,86.4,95.1
 zero-shot,Flies,148,5,3.4,40.0,100.0,100.0,81.8,97.2
-zero-shot,Flowering plants (dicots),94,3,3.2,33.3,33.3,66.7,86.8,93.4
+zero-shot,Flowering plants (dicots),156,3,1.9,33.3,33.3,66.7,86.3,94.1
 zero-shot,Fungi,115,9,7.8,44.4,100.0,100.0,79.2,95.3
 zero-shot,Grasses & sedges,129,9,7.0,11.1,22.2,77.8,88.3,95.8
-zero-shot,Large mammals,40,0,0.0,,,,77.5,97.5
-zero-shot,Molluscs,85,1,1.2,100.0,100.0,100.0,77.4,94.0
+zero-shot,Large mammals,104,0,0.0,,,,76.9,92.3
+zero-shot,Molluscs,144,1,0.7,100.0,100.0,100.0,76.2,90.9
 zero-shot,Moths,100,2,2.0,0.0,0.0,0.0,83.7,96.9
-zero-shot,Orchids,50,2,4.0,0.0,100.0,100.0,81.2,95.8
-zero-shot,Reptiles,38,0,0.0,,,,60.5,94.7
-zero-shot,Rodents & shrews,52,0,0.0,,,,80.8,98.1
-zero-shot,Spiders & kin,95,0,0.0,,,,87.4,97.9
+zero-shot,Orchids,109,8,7.3,37.5,75.0,87.5,75.2,96.0
+zero-shot,Reptiles,126,0,0.0,,,,65.1,92.9
+zero-shot,Rodents & shrews,126,1,0.8,0.0,100.0,100.0,72.8,96.8
+zero-shot,Spiders & kin,149,0,0.0,,,,85.9,98.0
 zero-shot,True bugs,121,3,2.5,66.7,100.0,100.0,82.2,97.5
-zero-shot,All,1635,50,3.1,36.0,72.0,90.0,77.2,96.2
-classifier,Amphibians,85,0,0.0,,,,80.0,90.6
+zero-shot,All,2539,60,2.4,38.3,71.7,90.0,76.4,95.4
+classifier,Amphibians,154,0,0.0,,,,77.3,93.5
 classifier,Bats,176,6,3.4,0.0,0.0,0.0,95.3,100.0
-classifier,"Bees, wasps & ants",45,1,2.2,0.0,0.0,0.0,86.4,97.7
-classifier,Beetles,90,5,5.6,0.0,0.0,0.0,83.5,96.5
-classifier,Birds,29,0,0.0,,,,72.4,93.1
-classifier,Butterflies,38,0,0.0,,,,76.3,89.5
-classifier,Dragonflies,20,0,0.0,,,,80.0,100.0
+classifier,"Bees, wasps & ants",119,3,2.5,0.0,0.0,0.0,81.9,94.8
+classifier,Beetles,148,6,4.1,0.0,0.0,0.0,85.2,96.5
+classifier,Birds,107,0,0.0,,,,73.8,93.5
+classifier,Butterflies,115,0,0.0,,,,69.6,90.4
+classifier,Dragonflies,108,0,0.0,,,,86.1,94.4
 classifier,Ferns,85,4,4.7,0.0,0.0,0.0,86.4,97.5
 classifier,Flies,148,5,3.4,0.0,0.0,0.0,88.1,98.6
-classifier,Flowering plants (dicots),94,3,3.2,0.0,0.0,0.0,86.8,96.7
+classifier,Flowering plants (dicots),156,3,1.9,0.0,0.0,0.0,85.0,95.4
 classifier,Fungi,115,9,7.8,0.0,0.0,0.0,86.8,98.1
 classifier,Grasses & sedges,129,9,7.0,0.0,0.0,0.0,86.7,98.3
-classifier,Large mammals,40,0,0.0,,,,80.0,92.5
-classifier,Molluscs,85,1,1.2,0.0,0.0,0.0,90.5,98.8
+classifier,Large mammals,104,0,0.0,,,,74.0,91.3
+classifier,Molluscs,144,1,0.7,0.0,0.0,0.0,86.7,95.8
 classifier,Moths,100,2,2.0,0.0,0.0,0.0,87.8,98.0
-classifier,Orchids,50,2,4.0,0.0,0.0,0.0,85.4,100.0
-classifier,Reptiles,38,0,0.0,,,,73.7,92.1
-classifier,Rodents & shrews,52,0,0.0,,,,73.1,100.0
-classifier,Spiders & kin,95,0,0.0,,,,88.4,97.9
+classifier,Orchids,109,8,7.3,0.0,0.0,0.0,81.2,96.0
+classifier,Reptiles,126,0,0.0,,,,65.9,91.3
+classifier,Rodents & shrews,126,1,0.8,0.0,0.0,0.0,69.6,94.4
+classifier,Spiders & kin,149,0,0.0,,,,87.2,98.7
 classifier,True bugs,121,3,2.5,0.0,0.0,0.0,93.2,98.3
-classifier,All,1635,50,3.1,0.0,0.0,0.0,86.5,97.4
-combined,Amphibians,85,0,0.0,,,,81.2,96.5
+classifier,All,2539,60,2.4,0.0,0.0,0.0,82.7,95.8
+combined,Amphibians,154,0,0.0,,,,77.9,98.1
 combined,Bats,176,6,3.4,0.0,50.0,66.7,97.1,99.4
-combined,"Bees, wasps & ants",45,1,2.2,0.0,100.0,100.0,88.6,95.5
-combined,Beetles,90,5,5.6,40.0,80.0,100.0,88.2,97.6
-combined,Birds,29,0,0.0,,,,72.4,96.6
-combined,Butterflies,38,0,0.0,,,,84.2,100.0
-combined,Dragonflies,20,0,0.0,,,,85.0,100.0
+combined,"Bees, wasps & ants",119,3,2.5,33.3,66.7,100.0,87.1,94.0
+combined,Beetles,148,6,4.1,50.0,83.3,100.0,90.8,98.6
+combined,Birds,107,0,0.0,,,,75.7,95.3
+combined,Butterflies,115,0,0.0,,,,76.5,98.3
+combined,Dragonflies,108,0,0.0,,,,88.0,99.1
 combined,Ferns,85,4,4.7,0.0,75.0,100.0,88.9,96.3
 combined,Flies,148,5,3.4,20.0,80.0,100.0,90.2,99.3
-combined,Flowering plants (dicots),94,3,3.2,33.3,33.3,33.3,91.2,95.6
+combined,Flowering plants (dicots),156,3,1.9,33.3,33.3,33.3,89.5,96.1
 combined,Fungi,115,9,7.8,44.4,77.8,100.0,88.7,96.2
 combined,Grasses & sedges,129,9,7.0,0.0,11.1,33.3,88.3,97.5
-combined,Large mammals,40,0,0.0,,,,82.5,97.5
-combined,Molluscs,85,1,1.2,100.0,100.0,100.0,92.9,97.6
+combined,Large mammals,104,0,0.0,,,,77.9,96.2
+combined,Molluscs,144,1,0.7,100.0,100.0,100.0,89.5,96.5
 combined,Moths,100,2,2.0,0.0,0.0,0.0,89.8,96.9
-combined,Orchids,50,2,4.0,0.0,100.0,100.0,91.7,100.0
-combined,Reptiles,38,0,0.0,,,,68.4,94.7
-combined,Rodents & shrews,52,0,0.0,,,,80.8,100.0
-combined,Spiders & kin,95,0,0.0,,,,90.5,98.9
+combined,Orchids,109,8,7.3,0.0,62.5,87.5,87.1,97.0
+combined,Reptiles,126,0,0.0,,,,73.0,96.0
+combined,Rodents & shrews,126,1,0.8,0.0,100.0,100.0,74.4,96.8
+combined,Spiders & kin,149,0,0.0,,,,90.6,99.3
 combined,True bugs,121,3,2.5,66.7,100.0,100.0,90.7,99.2
-combined,All,1635,50,3.1,22.0,60.0,76.0,88.7,97.9
+combined,All,2539,60,2.4,21.7,60.0,78.3,85.9,97.4

@@ -1,4 +1,5 @@
 group,method_best
+Algae & diatoms,zero-shot
 Amphibians,combined
 Bats,classifier
 "Bees, wasps & ants",combined
@@ -7,12 +8,15 @@ Birds,combined
 Butterflies,combined
 Dragonflies,combined
 Ferns,combined
+Fish,classifier
 Flies,combined
 Flowering plants (dicots),combined
 Fungi,combined
 Grasses & sedges,combined
 Large mammals,classifier
+Lichens,combined
 Molluscs,combined
+Mosses & liverworts,zero-shot
 Moths,combined
 Orchids,combined
 Reptiles,combined

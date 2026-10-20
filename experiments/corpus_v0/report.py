@@ -139,6 +139,10 @@ def main():
             t = queue_table(q, who, best)
             t.to_csv(RESULTS / f"{name}.csv", index=False)
             print(f"## {name.upper()}\n" + md(t) + "\n")
+        for f, title in (("gate.csv", "Gate"), ("frozen.csv", "Frozen"), ("recheck_log.csv", "Re-check log")):
+            if (RESULTS / f).exists():
+                t = pd.read_csv(RESULTS / f)
+                print(f"## {title}\n" + md(t.drop(columns=[c for c in ("file", "sha256") if c in t])) + "\n")
         v = verdicts(sp, ge, best, pd.read_csv(RESULTS / "t3.csv"))
         v.to_csv(RESULTS / "verdicts.csv", index=False)
         print("## Verdicts\n" + md(v) + "\n")

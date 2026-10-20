@@ -29,7 +29,7 @@ import pandas as pd
 import torch
 from candidates import candidates
 from embed_v0 import load_all
-from lib import DATA, RESULTS, atomic_parquet, log, pct
+from lib import DATA, RESULTS, atomic_parquet, atomic_savez, log, pct
 from logic import (
     combine_probs,
     conformal_threshold,
@@ -42,6 +42,7 @@ from logic import (
 )
 
 METHODS = ("zero-shot", "classifier", "combined")
+SCORES = DATA / "scores"  # best method's probabilities per group (T1 and queue sample), for gate.py and freeze.py
 WEIGHT_DECAYS = (1e-4, 1e-3, 1e-2)
 WEIGHTS = (0.25, 0.5, 0.75)
 MIN_T1 = 20  # groups with fewer T1 rows are reported as too few to test (no padding)
@@ -202,6 +203,29 @@ def rank_of(p, cand, name):
     return 1 + int((p > p[i]).sum())
 
 
+def save_scores(group, models, scorer, F, fpos, cand, g, qg):
+    """The best method's probabilities for this group's T1 rows and queue-sample rows (scores/<group>.npz), for the
+    gate and the frozen sample."""
+    from pipeline.shortlist import slug
+
+    best = models["best"]
+    pt1, cl = method_probs(models, scorer, F, fpos, g.photo_id.tolist(), cand)[best]
+    pq, _ = method_probs(models, scorer, F, fpos, qg.photo_id.tolist(), cand)[best]
+    atomic_savez(
+        SCORES / f"{slug(group)}.npz",
+        group=np.array(group),
+        method=np.array(best),
+        names=np.array(cl, dtype=object).astype(str),
+        t1_probs=pt1.astype(np.float32),
+        t1_true=g.species.to_numpy().astype(str),
+        t1_observer=g.observer.fillna("").to_numpy().astype(str),
+        t1_rg_at=g.rg_at.fillna("").to_numpy().astype(str) if "rg_at" in g else np.array([], str),
+        t1_obs=g.obs_id.to_numpy(np.int64),
+        q_probs=pq.astype(np.float32),
+        q_obs=qg.obs_id.to_numpy(np.int64),
+    )
+
+
 def queue_rows(group, qg, qprobs, t1g):
     """Queue predictions with this group's T1 calibration: fixed k90 and conformal thresholds from all of T1.
     For the species it has now (T2) and the observer's own name (T3): rank and whether it is in each set."""
@@ -250,11 +274,15 @@ def main():
     queue = pd.read_parquet(qpath) if qpath.exists() else None
     if queue is not None:
         queue = queue[queue.photo_id.isin(fpos)].reset_index(drop=True)
+    qs_path = DATA / "queue_sample.parquet"
+    qs = pd.read_parquet(qs_path) if qs_path.exists() else pd.DataFrame(columns=["group", "photo_id", "obs_id"])
+    qs = qs[qs.photo_id.isin(fpos)].reset_index(drop=True)
+    SCORES.mkdir(exist_ok=True)
     scorer = Scorer("bioclip-2.5-filled", {"feats": F}, np.arange(len(F)))
 
     sl = {m: {"P": [], "T": [], "Pg": [], "Tg": [], "obs": [], "group": []} for m in METHODS}
     pred_rows, choices, qrows = [], [], []
-    for group in sorted(t1.group.unique()):
+    for group in sorted(set(t1.group) | set(qs.group)):
         tg = time.time()
         cand = cand_all[cand_all.group == group].species.tolist()
         cg = corpus[corpus.group == group]
@@ -264,6 +292,10 @@ def main():
         choices.append(choice)
         seen = set(cg.species)
         g = t1[t1.group == group]
+        save_scores(group, models, scorer, F, fpos, cand, g, qs[qs.group == group])
+        if g.empty:
+            log(f"{group}: no T1 rows; queue-sample scores only ({time.time() - tg:.0f} s)")
+            continue
         probs = method_probs(models, scorer, F, fpos, g.photo_id.tolist(), cand)
         ranks = {}
         for m, (p, cl) in probs.items():

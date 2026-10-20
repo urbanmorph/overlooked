@@ -6,6 +6,8 @@ Date: 20 October 2026. Plan: `docs/plan.md`, section 1d (module 6), step 2 and t
 
 ## Headline
 
+**Update, queue check (20 October 2026):** the groups for the experimental shortlist page are decided by the gate in "Queue check" below (rules fixed before the run, enlarged T1 of 2,545 rows): 12 Quick to confirm, 7 Genus first, 5 not enough data. A frozen sample of 8,044 queue observations (SHA-256 `c395de2a…3398`) will be re-checked at 30, 60 and 90 days. The verdicts in "Results on T1" were made with earlier, looser rules on the first T1 and are kept only as a record.
+
 On **T1** (1,635 research-grade observations from observers that the corpus never saw, that waited 30 days or more for research grade), the best method is **zero-shot BioCLIP 2.5-filled plus a classifier trained on corpus v0** (combined). Overall:
 
 | method | right species first | in top 5 | names for 90% | 90% set: coverage / median / 90th pct | 95% set: coverage / median / 90th pct | right genus first |
@@ -133,6 +135,8 @@ T1 "waited" (`qualify` = research grade 30 days or more after creation; `changed
 **Too few in T1** (not padded): algae and diatoms 0, lichens 0, mosses and liverworts 1, fish 5. These four groups are left out of the T1 metrics (a group needs 20 rows). Dragonflies (20), birds (29), butterflies (38) and reptiles (38) are tested, but their results are provisional. 72% of the sample reached research grade within 30 days, so the waiting part of the queue is a minority.
 
 ## Results on T1
+
+These tables are from the first T1 (1,635 rows). The enlarged T1 of the queue check is in "Queue check: results" below.
 
 ### Verdict per group
 
@@ -337,6 +341,168 @@ Of the 12,000 needs-ID rows the pilot sampled on 15 October, 20 are research gra
 
 The observer's name is not the truth. Observers are often wrong, and wrong names wait longer, so these figures mix model misses with observer errors. Still, the gap to T1 (71.9% against 92.6% at the 90% target) says shortlists must be checked on the queue before they are shown.
 
+## Queue check (rules fixed 20 October 2026)
+
+These rules decide which groups go on the experimental shortlist page. They were written here before the enlarged
+T1 or the frozen sample was drawn, and are not changed after seeing results.
+
+- **Enough data.** A group needs at least 100 T1 rows (research grade reached 30 days or more after creation;
+  observers not in the corpus or its validation, that is test observers only). Fewer: "not enough data", no verdict.
+- **Quick to confirm** (on the page, species shortlist): species 90% conformal set coverage at least 88% (calibrated
+  on observer-split halves of T1, 20 repeats, as before) **and** median 90% set at most 2 names **and** top-1 at
+  least 80%.
+- Else **Genus first** (on the page, genus shortlist): genus 90% coverage at least 88% and genus median at most 2.
+- Else **For an expert** (not on the page).
+- The 95% set is reported but not used in the gate (it needs far more calibration rows).
+- **Training-overlap check.** Coverage is also reported for T1 rows that reached research grade in 2025 or later. If
+  that subgroup has at least 40 rows and its coverage is below 85%, the group drops one level (Quick to confirm to
+  Genus first, Genus first to For an expert). The coverage checked is that of the level the group is on (species
+  for Quick to confirm, genus for Genus first).
+- Method per group: the one chosen on corpus validation (not re-chosen on T1).
+
+## Queue check: results (run 20 October 2026, after the rules above)
+
+**Part A: enlarged T1.** Every group below 100 qualifying rows got more test-observer observations, in the same
+shuffled order as the first sample (so the first 300 are unchanged), until it reached 100 or ran out (cap 4,000
+sampled; `grow_t1.py`, 32 more iNaturalist requests). T1 is now 2,545 rows from 12,366 sampled. The method per group
+and every validation choice (classifier, weight decay, temperatures, weight) are identical to the first run (checked
+against the saved `choice.csv`); nothing was chosen on T1. The tables in "Results on T1" above are the first T1
+(1,635 rows, commit 5c78420); `results/*.csv` now hold the enlarged run.
+
+| group | sampled | qualify | rg_within_30d | changed_or_gone | no_rg_date | median_waited_days | median_identifiers | observers | species |
+|---|---|---|---|---|---|---|---|---|---|
+| Algae & diatoms | 2 | 0 | 2 | 0 | 0 |  |  |  |  |
+| Amphibians | 500 | 154 | 346 | 0 | 0 | 242.0 | 1.0 | 94.0 | 40.0 |
+| Bats | 300 | 176 | 124 | 0 | 0 | 649.0 | 2.0 | 94.0 | 20.0 |
+| Bees, wasps & ants | 740 | 119 | 621 | 0 | 0 | 168.0 | 2.0 | 65.0 | 73.0 |
+| Beetles | 500 | 148 | 351 | 1 | 0 | 322.0 | 2.0 | 83.0 | 85.0 |
+| Birds | 1182 | 107 | 1075 | 0 | 0 | 156.0 | 1.0 | 49.0 | 93.0 |
+| Butterflies | 1088 | 115 | 969 | 4 | 0 | 246.0 | 2.0 | 64.0 | 71.0 |
+| Dragonflies | 1740 | 108 | 1604 | 28 | 0 | 146.0 | 2.0 | 65.0 | 53.0 |
+| Ferns | 246 | 85 | 161 | 0 | 0 | 193.0 | 1.0 | 44.0 | 35.0 |
+| Fish | 45 | 5 | 40 | 0 | 0 | 139.0 | 2.0 | 5.0 | 5.0 |
+| Flies | 300 | 148 | 152 | 0 | 0 | 296.0 | 1.0 | 77.0 | 56.0 |
+| Flowering plants (dicots) | 500 | 156 | 342 | 2 | 0 | 181.0 | 1.0 | 95.0 | 125.0 |
+| Fungi | 300 | 115 | 185 | 0 | 0 | 155.0 | 1.0 | 75.0 | 58.0 |
+| Grasses & sedges | 300 | 129 | 171 | 0 | 0 | 270.0 | 1.0 | 66.0 | 50.0 |
+| Large mammals | 840 | 104 | 736 | 0 | 0 | 139.0 | 1.0 | 74.0 | 28.0 |
+| Lichens | 1 | 0 | 1 | 0 | 0 |  |  |  |  |
+| Molluscs | 500 | 144 | 356 | 0 | 0 | 206.0 | 2.0 | 91.0 | 63.0 |
+| Mosses & liverworts | 1 | 1 | 0 | 0 | 0 | 698.0 | 2.0 | 1.0 | 1.0 |
+| Moths | 300 | 100 | 199 | 1 | 0 | 387.0 | 1.0 | 56.0 | 80.0 |
+| Orchids | 660 | 109 | 551 | 0 | 0 | 179.0 | 1.0 | 42.0 | 61.0 |
+| Reptiles | 888 | 126 | 762 | 0 | 0 | 228.0 | 2.0 | 82.0 | 63.0 |
+| Rodents & shrews | 633 | 126 | 507 | 0 | 0 | 152.0 | 1.0 | 92.0 | 23.0 |
+| Spiders & kin | 500 | 149 | 351 | 0 | 0 | 518.0 | 2.0 | 87.0 | 52.0 |
+| True bugs | 300 | 121 | 179 | 0 | 0 | 268.0 | 1.0 | 68.0 | 69.0 |
+| All | 12366 | 2545 | 9785 | 36 | 0 | 242.0 | 1.0 | 680.0 | 1204.0 |
+
+Not enough data: ferns 85 (the test pool has only 246 observations), fish 5, mosses and liverworts 1, lichens 0,
+algae 0. Overall on the enlarged T1 (2,539 rows tested; fish and mosses are below the 20-row minimum), combined:
+right species first 84.4%, top 5 96.5%, 90% set coverage 92.0% with median 1 name, 95% set coverage 96.8% with
+median 3; zero-shot alone 75.5% first.
+
+**Gate verdicts** (method chosen on validation; coverage in %, sets calibrated on observer-split halves of T1, 20
+repeats; "2025+" = rows that reached research grade in 2025 or later):
+
+| group | method | T1 n | verdict | top-1 | species 90% cov | species 90% median | genus 90% cov | genus 90% median | 2025+ n | 2025+ species cov | 2025+ genus cov | species 95% cov | species 95% median |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Amphibians | combined | 154 | Genus first | 77.9 | 91.8 | 2 | 92.7 | 1 | 79 | 96.8 | 94.5 | 97.3 | 3 |
+| Birds | combined | 107 | Genus first | 75.7 | 92.8 | 2 | 93.1 | 1 | 61 | 89.5 | 89.2 | 97.9 | 4 |
+| Butterflies | combined | 115 | Genus first | 76.5 | 93.4 | 2 | 94.3 | 1 | 58 | 97.2 | 96.7 | 98.0 | 3 |
+| Grasses & sedges | combined | 129 | Genus first | 82.2 | 90.0 | 1 | 91.1 | 1 | 50 | 81.3 | 86.6 | 94.9 | 3 |
+| Large mammals | classifier | 104 | Genus first | 74.0 | 93.3 | 3 | 92.3 | 1 | 63 | 90.6 | 89.1 | 98.1 | 6 |
+| Reptiles | combined | 126 | Genus first | 73.0 | 91.5 | 2 | 90.9 | 1 | 41 | 92.3 | 90.2 | 97.3 | 6 |
+| Rodents & shrews | combined | 126 | Genus first | 73.8 | 93.3 | 2 | 92.7 | 1 | 86 | 93.0 | 92.4 | 96.9 | 3 |
+| Bats | classifier | 176 | Quick to confirm | 92.0 | 90.9 | 1 | 91.1 | 1 | 146 | 96.6 | 96.4 | 96.0 | 54 |
+| Bees, wasps & ants | combined | 119 | Quick to confirm | 85.7 | 88.2 | 1 | 89.7 | 1 | 45 | 85.3 | 84.9 | 97.7 | 6 |
+| Beetles | combined | 148 | Quick to confirm | 89.2 | 92.1 | 1 | 92.9 | 1 | 67 | 91.2 | 92.0 | 97.2 | 2 |
+| Dragonflies | combined | 108 | Quick to confirm | 88.0 | 93.4 | 1 | 94.1 | 1 | 43 | 94.2 | 93.2 | 96.9 | 2 |
+| Flies | combined | 148 | Quick to confirm | 87.8 | 92.9 | 1 | 91.5 | 1 | 84 | 90.6 | 90.5 | 98.0 | 2 |
+| Flowering plants (dicots) | combined | 156 | Quick to confirm | 88.5 | 92.5 | 1 | 92.1 | 1 | 84 | 91.3 | 91.2 | 96.6 | 5 |
+| Fungi | combined | 115 | Quick to confirm | 85.2 | 90.7 | 1 | 92.8 | 1 | 49 | 94.2 | 93.0 | 96.9 | 2 |
+| Molluscs | combined | 144 | Quick to confirm | 89.6 | 91.8 | 1 | 93.0 | 1 | 76 | 92.5 | 90.2 | 96.9 | 2 |
+| Moths | combined | 100 | Quick to confirm | 88.0 | 91.2 | 1 | 91.6 | 1 | 51 | 87.6 | 85.2 | 96.2 | 8 |
+| Orchids | combined | 109 | Quick to confirm | 80.7 | 91.6 | 2 | 94.2 | 1 | 36 | 86.0 | 97.8 | 97.3 | 5 |
+| Spiders & kin | combined | 149 | Quick to confirm | 90.6 | 91.3 | 1 | 92.1 | 1 | 71 | 92.7 | 92.1 | 96.6 | 1 |
+| True bugs | combined | 121 | Quick to confirm | 90.1 | 94.0 | 1 | 92.7 | 1 | 60 | 93.9 | 92.4 | 97.6 | 2 |
+| Algae & diatoms | zero-shot | 0 | not enough data |  |  |  |  |  |  |  |  |  |  |
+| Ferns | combined | 85 | not enough data | 84.7 | 93.1 | 2 | 93.4 | 1 | 35 | 89.5 | 92.7 | 97.8 | 4 |
+| Fish | classifier | 0 | not enough data |  |  |  |  |  |  |  |  |  |  |
+| Lichens | combined | 0 | not enough data |  |  |  |  |  |  |  |  |  |  |
+| Mosses & liverworts | zero-shot | 0 | not enough data |  |  |  |  |  |  |  |  |  |  |
+
+- **Quick to confirm (12):** bats, bees wasps and ants, beetles, dragonflies, flies, flowering plants (dicots),
+  fungi, molluscs, moths, orchids, spiders and kin, true bugs.
+- **Genus first (7):** amphibians, birds, butterflies, large mammals, reptiles and rodents and shrews (top-1 under
+  80%), and grasses and sedges (passed the species rules, but its 2025+ species coverage is 81.3% on 50 rows, under
+  85%, so it drops one level).
+- **For an expert:** none.
+- **Not enough data (5):** algae, ferns, fish, lichens, mosses and liverworts.
+- **2025+ check:** only grasses and sedges drops. Close to the line: bees, wasps and ants 85.3% (45 rows), moths
+  87.6% (51), orchids 86.0% (36, under 40 so not judged).
+- The gate's figures equal the observer-split conformal figures in `results/t1_metrics.csv` exactly (checked).
+
+**Part B: frozen prospective test.** `queue_sample.py` drew the India needs-ID queue on 20 October 2026:
+observations created in the last 120 days, named to a candidate species or a genus with candidates, open-licence
+first photo, not the pilot's rows; random pages, up to 400 per group (bats 61, algae 45, lichens 141, orchids 201,
+large mammals 220, mosses 250 and rodents 326 have fewer in the window). 8,044 observations: 4,986 named to species,
+3,058 to genus. Each got its shortlist from the best method per group, calibrated with `pipeline/shortlist.py` on all
+of that group's T1 rows (target 90%; calibration version `ce7c9b55be8e`), and a band from the
+group's verdict: Quick to confirm (species set of 1 to 3 names), Genus first (a genus set), else For an expert.
+
+- File: `data/corpus_v0/frozen_2026-10-20.parquet` (local only, never uploaded).
+- **SHA-256: `c395de2a16730e31338b02953f371fe8435cd20d606cb99724d0661d2e523398`** (also in `results/frozen.csv`). This checksum is the pre-registration: `recheck.py` refuses
+  to score a file that does not match it, and `freeze.py` never writes it again.
+- Bands: Quick to confirm 3,950, Genus first 2,455, For an expert 1,639 (of which 1,236 are in the five groups with
+  not enough data). Per group:
+
+| group | For an expert | Genus first | Quick to confirm | rows | group_verdict |
+|---|---|---|---|---|---|
+| Algae & diatoms | 45 | 0 | 0 | 45 | not enough data |
+| Amphibians | 39 | 361 | 0 | 400 | Genus first |
+| Bats | 11 | 3 | 47 | 61 | Quick to confirm |
+| Bees, wasps & ants | 9 | 8 | 383 | 400 | Quick to confirm |
+| Beetles | 16 | 5 | 379 | 400 | Quick to confirm |
+| Birds | 32 | 368 | 0 | 400 | Genus first |
+| Butterflies | 49 | 351 | 0 | 400 | Genus first |
+| Dragonflies | 19 | 0 | 381 | 400 | Quick to confirm |
+| Ferns | 400 | 0 | 0 | 400 | not enough data |
+| Fish | 400 | 0 | 0 | 400 | not enough data |
+| Flies | 40 | 10 | 350 | 400 | Quick to confirm |
+| Flowering plants (dicots) | 7 | 5 | 388 | 400 | Quick to confirm |
+| Fungi | 22 | 10 | 368 | 400 | Quick to confirm |
+| Grasses & sedges | 16 | 384 | 0 | 400 | Genus first |
+| Large mammals | 11 | 209 | 0 | 220 | Genus first |
+| Lichens | 141 | 0 | 0 | 141 | not enough data |
+| Molluscs | 5 | 1 | 394 | 400 | Quick to confirm |
+| Mosses & liverworts | 250 | 0 | 0 | 250 | not enough data |
+| Moths | 24 | 6 | 370 | 400 | Quick to confirm |
+| Orchids | 2 | 1 | 198 | 201 | Quick to confirm |
+| Reptiles | 2 | 398 | 0 | 400 | Genus first |
+| Rodents & shrews | 28 | 298 | 0 | 326 | Genus first |
+| Spiders & kin | 31 | 13 | 356 | 400 | Quick to confirm |
+| True bugs | 40 | 24 | 336 | 400 | Quick to confirm |
+| All | 1639 | 2455 | 3950 | 8044 |  |
+
+**Re-check** (`recheck.py`): run at 30, 60 and 90 days (on or after 19 November 2026, 19 December 2026 and 18
+January 2027):
+
+```sh
+data/model_check/.venv/bin/python -u experiments/corpus_v0/recheck.py   # newest frozen_*.parquet
+```
+
+It fetches the same 8,044 ids (41 requests), and reports per group, band and overall: the share that reached
+research grade or changed taxon, and of those that reached research grade, the share whose final species was in the
+shown shortlist, in the frozen 90% set, first, in the top 5, and whose genus was in the shown genera. Its answers are
+cached per day, so a second run on the same day sends no requests and writes the same file
+(`results/recheck_<drawn>_<date>.csv`, one row per run in `results/recheck_log.csv`).
+Run once on the day of drawing, as a test: 9 of 8,044 had already reached research grade (0.1%); too few to read.
+
+Run times (queue check): growing T1 3 min (32 requests); queue sample 6 min (85 requests); re-check 3 min (41 requests and 1 retry); photos for 8,948 new
+rows 15 min; their features 11 min; evaluation 6.4 min; gate and freeze under 1 min. iNaturalist
+requests on 20 October 2026 in all: 249. Disk: `data/corpus_v0/` is now 17 GB (photos 15 GB).
+
 ## Limits
 
 - **Research grade is a proxy for "an expert confirmed it".** Research grade needs 2 agreeing identifiers (median identifiers other than the observer in T1: 1). Some of these identifiers are not experts, and research-grade names can be wrong.
@@ -347,6 +513,8 @@ The observer's name is not the truth. Observers are often wrong, and wrong names
 - **Candidates are the model check's list** (Indian GBIF species that BioCLIP 2.5-filled can name). 5.5% of research-grade records in the 24 groups are species outside that list and were dropped. Those are misses that T1 does not count (true bugs 35.8%, beetles 19.2%, fungi 14.5% of records). The model check counted such photos as misses.
 - **Small T1 groups.** 20 to 176 rows per group, often from few observers (dragonflies: 16). Per-group figures have wide margins; conformal sets at 95% need more calibration rows.
 - **Validation is species-balanced and T1 is not.** The corpus caps species at 15, so validation top-1 is lower than T1 (for example 78.0% against 89.4% for dicots). T1 is dominated by common species.
+- **Frozen sample and corpus observers.** 61.7% of the 8,044 frozen rows are by observers whose name or login is also a corpus observer (2,672 observers in the sample). The frozen test is prospective (truth from the future), not observer-disjoint. The verdicts come from T1, which is observer-disjoint.
+- **Frozen truth will be biased** in the same way as T1: the observations that reach research grade within 90 days are the easier ones. The re-check reports the share that reached it, so this stays visible.
 - **Not measured:** time saved for an identifier, other models (only BioCLIP 2.5), more than one photo per observation, a test of the corpus on the queue's genus- or family-level rows, and the 95% target with enough calibration data.
 
 ## Run times and disk
@@ -378,7 +546,14 @@ $PY -u photos.py          # medium photos from the open-data bucket [--retry]
 $PY -u embed_v0.py        # BioCLIP 2.5 features, shards in emb/
 $PY -u evaluate.py        # T1, T2, T3 predictions and metrics
 $PY report.py > results/report.md
-$PY -m pytest -q -p no:cacheprovider     # logic tests (31)
+# queue check (README "Queue check")
+$PY -u grow_t1.py         # enlarge T1 to 100 qualifying rows per group (same cache as T1)
+$PY -u queue_sample.py    # fresh needs-ID queue sample (state in queue_sample_state.json)
+$PY -u photos.py && $PY -u embed_v0.py && $PY -u evaluate.py   # also scores/<group>.npz
+$PY -u gate.py            # results/gate.csv
+$PY -u freeze.py          # frozen_<date>.parquet, calibration_<date>.json, results/frozen.csv (never rewritten)
+$PY -u recheck.py         # at 30, 60, 90 days
+$PY -m pytest -q -p no:cacheprovider     # logic tests (41)
 ```
 
 - Logic, with tests in `test_logic.py`: `logic.py` (photo URLs, observer split, capped sampling, research-grade date, name matching, k-NN scores, temperature, combination, conformal threshold, fixed k).

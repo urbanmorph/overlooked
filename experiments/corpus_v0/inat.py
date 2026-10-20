@@ -78,7 +78,10 @@ def slim(o):
             }
             for i in o.get("identifications") or []
         ],
-        "photos": [{"id": p.get("id"), "license_code": p.get("license_code")} for p in (o.get("photos") or [])[:1]],
+        "photos": [
+            {"id": p.get("id"), "license_code": p.get("license_code"), "url": p.get("url")}
+            for p in (o.get("photos") or [])[:1]
+        ],
     }
 
 
@@ -114,3 +117,10 @@ def fetch(ids, cache: Path):
                 if n % 10 == 0 or i + BATCH >= len(todo):
                     log(f"  iNat: {min(i + BATCH, len(todo)):,}/{len(todo):,} fetched")
     return {int(i): have[int(i)] for i in ids}
+
+
+def search(params):
+    """One observation search (read only), with the same spacing, daily cap and retries as fetch()."""
+    with requests.Session() as http:
+        http.headers["User-Agent"] = ua()
+        return _get(http, params)

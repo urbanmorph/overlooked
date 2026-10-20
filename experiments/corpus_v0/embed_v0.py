@@ -6,7 +6,7 @@ most one partial shard's worth of time and never a finished one. Photos in any s
 rerun does no new work. Photos that cannot be read are listed in emb/unreadable.json.
 
 The model and preprocessing are the model check's (experiments/model_check/embed.py build()).
-Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/embed_v0.py [corpus t1 queue]
+Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/embed_v0.py [corpus t1 queue qsample]
 """
 
 import sys
@@ -31,11 +31,12 @@ def local_paths():
 def manifest(sets):
     """photo_id -> image path for the requested sets."""
     paths = {}
-    if {"corpus", "t1"} & set(sets):
+    files = {"corpus": "corpus", "t1": "t1", "qsample": "queue_sample"}
+    if set(files) & set(sets):
         local = local_paths()
-        for s in ("corpus", "t1"):
-            if s in sets:
-                for pid in pd.read_parquet(DATA / f"{s}.parquet", columns=["photo_id"]).photo_id:
+        for s, f in files.items():
+            if s in sets and (DATA / f"{f}.parquet").exists():
+                for pid in pd.read_parquet(DATA / f"{f}.parquet", columns=["photo_id"]).photo_id:
                     if str(pid) in local:
                         paths[int(pid)] = local[str(pid)]
     if "queue" in sets:
@@ -72,7 +73,7 @@ def total_elapsed():
 
 
 def main():
-    sets = sys.argv[1:] or ["corpus", "t1", "queue"]
+    sets = sys.argv[1:] or ["corpus", "t1", "queue", "qsample"]
     paths = manifest(sets)
     bad = read_json(UNREADABLE, {})
     have = done_ids()
