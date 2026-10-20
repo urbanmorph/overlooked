@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shortlists · Overlooked</title>
+<meta name="description" content="Experimental. iNaturalist observations from India that wait for a name, each with a short list of names from a model. A person checks every name on iNaturalist.">
+<!-- part:head -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css">
+<!-- /part:head -->
+<link rel="preload" href="/data/layers/shortlist/latest.json" as="fetch" crossorigin>
+<link rel="preload" href="/data/layers/master/latest.json" as="fetch" crossorigin>
+<link rel="preconnect" href="https://inaturalist-open-data.s3.amazonaws.com">
+<link rel="modulepreload" href="/assets/common.js">
+<script type="module" src="/assets/shortlist.js"></script>
+</head>
+<body>
+<!-- part:noscript -->
+<noscript><div class="wrap" style="padding:16px 0"><b>This page needs JavaScript to draw the map and lists.</b> The same data is open without it: see <a href="/llms.txt">the data guide</a>, the files under <a href="/data/layers/master/latest.json">/data/</a>, and <a href="/method">Sources and method</a>.</div></noscript>
+<!-- /part:noscript -->
+<!-- part:header -->
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M27 10.5A12.5 12.5 0 1 0 27 21.5" fill="none" stroke="#16201C" stroke-width="3.4" stroke-linecap="round"/><path d="M15 16h4l2-4.5 3 9 2-4.5h4" fill="none" stroke="#B4480E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Explore</a>
+      <a href="/changes">Changes</a>
+      <a href="/shortlist" aria-current="page">Shortlists</a>
+      <a href="/method">Sources and method</a>
+    </nav>
+  </div>
+</header>
+<!-- /part:header -->
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <p style="margin:0 0 10px"><span class="badge st-none">Experimental</span></p>
+    <p class="mono note" id="runline" style="margin:0 0 8px">Shortlists</p>
+    <h1 class="page">Shortlists for people who identify</h1>
+    <p class="lede">Observations from India on iNaturalist that wait for a name. Each one has a short list of names to check. The most useful observations come first.</p>
+  </section>
+
+  <section class="card pad" aria-labelledby="howto">
+    <h2 id="howto" style="font-size:18px">Read this first</h2>
+    <ul class="plain">
+      <li>This page tests whether AI can help people identify observations.</li>
+      <li>A model made each list: BioCLIP 2.5, with a classifier that we trained on research-grade photos from India. A list is a suggestion. It is not an identification.</li>
+      <li>Check every name on iNaturalist. Add an identification only when you can see the features in the photos.</li>
+      <li>We post nothing to iNaturalist. The link opens the observation, and you identify it there yourself.</li>
+      <li>Some groups need a specimen or a microscope, for example lichens and many insects. A photo is not always enough. Groups that do not have enough test data are not on this page.</li>
+    </ul>
+    <p class="note" style="font-size:15px"><a href="/method#shortlist">How we test the lists, and the results per group</a></p>
+  </section>
+
+  <section style="margin-top:24px">
+    <div class="filters" style="max-width:720px">
+      <label class="f">Group <select id="sl-group"><option>Loading…</option></select></label>
+      <label class="f">State <select id="state"><option value="">All of India</option></select></label>
+    </div>
+    <p class="note" id="ginfo" style="max-width:880px"></p>
+    <div role="group" aria-label="Band" class="chips" id="bands" style="margin-top:12px"></div>
+  </section>
+
+  <section style="margin-top:16px" aria-live="polite">
+    <ul class="slist" id="list"><li class="loading">Loading…</li></ul>
+    <div class="pager" style="padding-inline:0"><span id="pinfo"></span><button class="b" type="button" id="more" hidden>Show more</button></div>
+  </section>
+
+  <p class="note" style="margin-top:20px;max-width:880px">Observations and photos: iNaturalist and the people who take them. Each photo keeps the licence of its author, as shown under it. The photos come from iNaturalist; we do not copy them. Shortlists: data and text CC BY 4.0, Sathya Sankaran.</p>
+</main>
+
+<!-- part:footer -->
+<footer>
+  <div class="wrap">
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · Local Government Directory, via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
+  </div>
+</footer>
+<!-- /part:footer -->
+</body>
+</html>

@@ -235,3 +235,17 @@ a.idlink { font-weight: 500; overflow-wrap: anywhere }
 .fix-kpis .kpi { border: 1px solid var(--line); box-shadow: none }
 .next-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5 }
 .next-steps .idlink { margin-right: 4px }
+/* Shortlists (experimental): one card per observation; the photo box keeps its size before and after the photo loads */
+.slist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px }
+.slist > .loading, .slist > .empty { grid-column: 1 / -1 }
+.slist:has(> .loading) { min-height: 100svh }   /* the pager starts below the screen, so the cards do not move it into view */
+.sl { display: flex; flex-direction: column; overflow: hidden; min-width: 0 }
+.sl-photo { position: relative; aspect-ratio: 4 / 3; background: #EEF0ED; display: flex; align-items: center; justify-content: center; padding: 0 16px; text-align: center; font-size: 14px; color: var(--muted) }
+.sl-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain }
+.sl-credit { margin: 0; padding: 6px 14px 0; font-size: 12px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere }
+.sl-body { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 16px; font-size: 15px }
+.sl-body p { margin: 0 } .sl-body .note { padding-bottom: 6px } .sl-h { font-size: 13px; font-weight: 600; color: var(--ink-2) }
+.sl-names { margin: 0; padding-left: 22px; font-size: 16px; line-height: 1.5 }
+.sl-body a.b.go { margin-top: auto; justify-content: center; background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600 }
+#ginfo { min-height: 3em } #bands { min-height: 44px }
+@media (max-width: 600px) { #ginfo { min-height: 6em } }

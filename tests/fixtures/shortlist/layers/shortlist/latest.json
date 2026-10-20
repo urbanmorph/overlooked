@@ -1,0 +1,43 @@
+{
+ "run": "2026-10-21",
+ "built": "2026-10-21T10:00:00Z",
+ "model": "BioCLIP 2.5 + corpus v0 classifier",
+ "corpus": "v0",
+ "calibration": "ce7c9b55be8e",
+ "rows": 56,
+ "groups": [
+  {
+   "key": "true-bugs",
+   "name": "True bugs",
+   "verdict": "Quick to confirm",
+   "rows": 48,
+   "t1": {
+    "n": 121,
+    "top1": 90.1,
+    "cov90": 94.0
+   }
+  },
+  {
+   "key": "bees-wasps-ants",
+   "name": "Bees, wasps and ants",
+   "verdict": "Quick to confirm",
+   "rows": 0,
+   "t1": {
+    "n": 119,
+    "top1": 85.7,
+    "cov90": 88.2
+   }
+  },
+  {
+   "key": "birds",
+   "name": "Birds",
+   "verdict": "Genus first",
+   "rows": 8,
+   "t1": {
+    "n": 107,
+    "top1": 75.7,
+    "cov90": 93.1
+   }
+  }
+ ]
+}

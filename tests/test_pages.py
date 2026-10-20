@@ -28,6 +28,7 @@ def test_every_page_has_the_header_and_the_footer_with_the_credits():
 def test_the_nav_marks_the_current_page():
     assert 'href="/" aria-current="page"' in pages.render(pages.part("header"), "index")
     assert 'href="/changes" aria-current="page"' in pages.render(pages.part("header"), "changes")
+    assert 'href="/shortlist" aria-current="page"' in pages.render(pages.part("header"), "shortlist")
     assert "aria-current" not in pages.render(pages.part("header"), "404")
 
 

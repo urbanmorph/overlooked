@@ -11,6 +11,8 @@ const STATE = /^\d{1,3}$/;            // LGD state code
 const SPECIES = /^[A-Za-z0-9]{1,20}$/; // GBIF usage key or Catalogue of Life ID
 const SEARCH = /\/layers\/master\/[^/]+\/search\/([a-z_]{2})\.json$/;
 const GROUP_FILE = /\/layers\/master\/[^/]+\/g\/(\d{1,4})\.json$/;
+const GO_INAT = /^\/go\/inat\/[1-9]\d{0,11}$/;           // counted link to an iNaturalist observation
+const SHORTLIST_GROUP = /^[a-z]{1,20}(-[a-z]{1,20}){0,4}$/; // shortlist group keys: true-bugs, bees-wasps-ants, ...
 
 /** human, llm (AI crawlers and agents) or bot (search crawlers, scripts). Same lists as mugilu. */
 export function clientClass(ua) {
@@ -51,6 +53,12 @@ export function observe(request, response) {
   const ua = h.get('user-agent');
   const cls = clientClass(ua);
   const ok = response.status === 200 || response.status === 206 || response.status === 304;
+
+  // The redirect itself, not the page: only the group of the observation is kept, never its id.
+  if (GO_INAT.test(url.pathname)) {
+    const g = url.searchParams.get('g') || '';
+    return response.status === 302 && cls === 'human' && SHORTLIST_GROUP.test(g) ? [['inat_out', g]] : [];
+  }
 
   if (url.pathname.startsWith('/data/')) {
     if (!ok || cls !== 'human') return [];

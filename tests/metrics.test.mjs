@@ -127,6 +127,17 @@ test('other data files, failed fetches and bot fetches record nothing', () => {
   assert.deepEqual(observe(req('/data/layers/master/2026-10/g/1.json', { ua: 'curl/8' }), json()), []);
 });
 
+test('link out to iNaturalist from the shortlist page records the group key only', () => {
+  const go = (path, status = 302, ua) => observe(req(path, { ua }), new Response(null, { status, headers: { location: 'https://www.inaturalist.org/observations/1' } }));
+  assert.deepEqual(go('/go/inat/123456789?g=true-bugs'), [['inat_out', 'true-bugs']]);
+  assert.deepEqual(go('/go/inat/1?g=birds'), [['inat_out', 'birds']]);
+  assert.deepEqual(go('/go/inat/1?g=Birds'), []);
+  assert.deepEqual(go('/go/inat/1?g=a--b'), []);
+  assert.deepEqual(go('/go/inat/1'), []);
+  assert.deepEqual(go('/go/inat/1?g=birds', 404), []);
+  assert.deepEqual(go('/go/inat/1?g=birds', 302, 'curl/8'), []);
+});
+
 test('no IP, cookie or user agent string is ever part of the output', () => {
   const r = req('/?group=birds', { headers: { 'cf-connecting-ip': '203.0.113.9', cookie: 'id=abc' } });
   const out = JSON.stringify(observe(r, html()));

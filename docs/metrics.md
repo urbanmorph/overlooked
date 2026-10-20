@@ -27,8 +27,9 @@ One table, `daily(day, dim, key, n)`: one counter per UTC day, per dimension, pe
 | `species` | GBIF key or Catalogue of Life ID | `/species?key=` page opens |
 | `search` | first two letters of a search, for example `pa` | the search file the front page fetches (`layers/master/<m>/search/<p>.json`) |
 | `group_open` | group index | the group file the front page fetches (`layers/master/<m>/g/<gi>.json`) |
+| `inat_out` | shortlist group key, for example `true-bugs` | a link followed from the Shortlists page to iNaturalist (`/go/inat/<id>?g=<group>`, a 302 redirect by `functions/go/inat/[id].js`); the observation id is not stored |
 
-Only page views with status 200 and an HTML body count. Prefetches, HEAD requests, errors and other files do not count. Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
+Only page views with status 200 and an HTML body count, and the `/go/inat/` redirects with status 302. Prefetches, HEAD requests, errors and other files do not count. Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
 
 Bots and AI crawlers add one `class` counter and nothing else (the same lists as mugilu), so the other counts show people.
 
@@ -37,6 +38,7 @@ Bots and AI crawlers add one `class` counter and nothing else (the same lists as
 - No IP address, no cookie, no user agent string, no session or user ID.
 - No search text. Only the two-letter prefix that picks the search file. The rest of the text stays in the browser.
 - No full referrer URL. Only the host.
+- No observation id for a link to iNaturalist. Only the shortlist group.
 - No rows per visit. Each dimension is a separate counter, so the table cannot say which country opened which species, or which search came from which page.
 
 ## Limits
@@ -56,7 +58,7 @@ npx wrangler d1 execute overlooked-metrics --remote --command "DELETE FROM daily
 
 ## Privacy paragraph (for PDGI.md)
 
-> **Privacy.** No third-party analytics, no tracking scripts, no ad tech, no accounts and no personal data. The first-party usage counts we keep (to improve the site, not to sell) are aggregate and server-side: daily counters of page views, country, device class, referring host, species pages opened, groups opened, and the two-letter prefix of front-page searches. We store no IP address, no cookies, no user agent, no search text, no per-user or per-visit records, and the site sends no client-side beacon. Each count is kept separately, so no record links one visitor's country, searches and pages. Evidence: `functions/_middleware.js`, `functions/lib/metrics.js`, `migrations/0001_metrics.sql`, this file.
+> **Privacy.** No third-party analytics, no tracking scripts, no ad tech, no accounts and no personal data. The first-party usage counts we keep (to improve the site, not to sell) are aggregate and server-side: daily counters of page views, country, device class, referring host, species pages opened, groups opened, links followed to iNaturalist per shortlist group, and the two-letter prefix of front-page searches. We store no IP address, no cookies, no user agent, no search text, no per-user or per-visit records, and the site sends no client-side beacon. Each count is kept separately, so no record links one visitor's country, searches and pages. Evidence: `functions/_middleware.js`, `functions/lib/metrics.js`, `migrations/0001_metrics.sql`, this file.
 
 ## Set-up steps (for the lead; not done by the code)
 
