@@ -1,0 +1,251 @@
+model,level,group,n,median_candidates,r@1,r@3,r@5,r@10,r@20,k90,conf90_cov,conf90_median,conf90_p90,k95,conf95_cov,conf95_median,conf95_p90
+bioclip-2,species,Algae & diatoms,213,213,51.2,70.4,75.1,79.3,81.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,species,Amphibians,250,271,59.6,76.0,82.8,85.2,88.0,59,89.8,271,271,not reached,not reached,not reached,not reached
+bioclip-2,species,Bats,250,123,57.6,87.6,93.2,95.2,97.2,4,91.4,3,5,10,96.2,5,13
+bioclip-2,species,"Bees, wasps & ants",244,1009,81.1,91.0,94.3,95.1,96.3,3,91.4,1,4,6,96.5,8,36
+bioclip-2,species,Beetles,250,1266,54.0,69.6,72.8,75.6,77.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,species,Birds,249,1475,75.9,87.1,90.0,92.8,93.6,6,92.5,3,19,not reached,not reached,not reached,not reached
+bioclip-2,species,Butterflies,250,995,81.2,89.2,91.2,91.2,91.6,4,91.3,7,995,not reached,not reached,not reached,not reached
+bioclip-2,species,Dragonflies,250,367,85.2,94.8,95.6,98.4,98.8,2,92.0,1,2,4,96.4,1,5
+bioclip-2,species,Ferns,250,625,74.4,84.0,86.4,87.6,89.2,250,90.1,625,625,not reached,not reached,not reached,not reached
+bioclip-2,species,Fish,247,2642,36.0,55.5,63.2,74.9,81.8,96,90.7,88,2642,not reached,not reached,not reached,not reached
+bioclip-2,species,Flies,248,621,61.3,73.0,77.4,79.8,80.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,species,Flowering plants (dicots),250,9145,72.0,83.2,87.6,91.6,93.6,6,91.1,3,12,73,95.7,53,9145
+bioclip-2,species,Fungi,249,2261,51.0,67.5,72.3,76.3,79.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,species,Grasses & sedges,250,1127,60.8,74.0,77.2,84.4,92.4,17,90.8,11,28,25,95.8,22,62
+bioclip-2,species,Large mammals,250,127,75.2,85.2,88.4,89.6,90.0,14,90.5,127,127,not reached,not reached,not reached,not reached
+bioclip-2,species,Lichens,33,749,18.2,36.4,60.6,81.8,90.9,17,94.7,749,749,48,97.4,749,749
+bioclip-2,species,Molluscs,250,2680,60.8,75.2,80.0,86.4,90.0,20,92.1,17,104,not reached,not reached,not reached,not reached
+bioclip-2,species,Mosses & liverworts,129,1122,45.0,58.9,66.7,72.9,78.3,84,90.8,45,208,160,96.1,924,1122
+bioclip-2,species,Moths,250,3856,71.2,80.0,86.0,88.8,90.8,16,89.8,3856,3856,not reached,not reached,not reached,not reached
+bioclip-2,species,Orchids,250,736,62.8,78.4,86.0,90.0,93.2,9,91.5,8,19,35,96.0,736,736
+bioclip-2,species,Reptiles,250,564,56.4,80.4,87.6,92.0,93.6,7,91.1,5,12,22,95.7,17,564
+bioclip-2,species,Rodents & shrews,250,107,78.0,94.4,97.6,99.6,99.6,2,91.5,2,3,4,96.2,2,4
+bioclip-2,species,Spiders & kin,245,618,76.3,87.3,90.2,91.4,92.7,5,91.1,4,12,37,94.9,383,618
+bioclip-2,species,True bugs,247,937,44.1,53.0,54.3,57.1,57.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,species,All,5604,937,64.2,78.3,82.7,86.2,88.4,39,87.8,14,1266,not reached,not reached,not reached,not reached
+bioclip-2,genus,Algae & diatoms,213,124,77.0,90.6,92.0,94.4,96.7,3,91.8,2,7,14,96.1,124,124
+bioclip-2,genus,Amphibians,250,55,81.6,90.0,91.2,93.2,94.0,3,91.4,2,8,not reached,not reached,not reached,not reached
+bioclip-2,genus,Bats,250,44,89.6,94.8,97.6,98.4,98.4,2,92.1,1,1,4,95.8,1,3
+bioclip-2,genus,"Bees, wasps & ants",244,331,90.6,95.5,97.1,98.4,98.8,1,92.4,1,1,3,96.5,1,4
+bioclip-2,genus,Beetles,250,640,72.8,84.4,85.6,86.0,87.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,genus,Birds,249,511,87.1,93.2,95.2,96.8,97.6,2,91.8,1,3,5,96.4,2,10
+bioclip-2,genus,Butterflies,250,322,89.2,93.6,95.2,96.0,96.8,2,90.9,1,2,5,95.8,5,322
+bioclip-2,genus,Dragonflies,250,139,92.8,98.8,98.8,99.6,100.0,1,91.4,1,1,2,95.8,1,1
+bioclip-2,genus,Ferns,250,135,83.2,87.6,88.0,88.4,89.6,48,90.0,135,135,not reached,not reached,not reached,not reached
+bioclip-2,genus,Fish,247,1087,54.7,75.3,82.2,89.1,93.1,12,92.5,10,26,41,96.2,23,67
+bioclip-2,genus,Flies,248,261,77.4,83.1,84.3,85.5,85.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,genus,Flowering plants (dicots),250,2210,83.2,91.2,93.6,95.6,97.2,3,90.4,1,3,7,95.4,2,15
+bioclip-2,genus,Fungi,249,924,69.5,83.9,89.6,92.8,97.2,7,92.4,3,12,15,96.0,7,31
+bioclip-2,genus,Grasses & sedges,250,246,74.8,88.0,93.6,96.0,98.0,4,91.0,2,5,10,95.7,4,13
+bioclip-2,genus,Large mammals,250,66,83.2,88.8,90.8,92.0,92.8,4,90.8,2,66,not reached,not reached,not reached,not reached
+bioclip-2,genus,Lichens,33,242,57.6,66.7,81.8,93.9,93.9,6,96.2,16,41,23,100.0,242,242
+bioclip-2,genus,Molluscs,250,1103,76.8,86.4,90.4,93.2,94.8,5,91.7,2,8,22,96.4,28,1103
+bioclip-2,genus,Mosses & liverworts,129,385,50.4,70.5,76.0,82.9,87.6,24,89.4,12,60,47,96.0,41,159
+bioclip-2,genus,Moths,250,1635,81.6,90.4,92.0,95.2,96.0,3,90.1,1,5,10,95.6,100,1635
+bioclip-2,genus,Orchids,250,125,82.4,93.6,97.6,98.4,98.8,2,90.8,1,3,4,96.1,2,6
+bioclip-2,genus,Reptiles,250,168,77.2,95.2,96.8,98.4,98.8,3,90.4,1,3,3,96.0,2,5
+bioclip-2,genus,Rodents & shrews,250,52,92.8,99.6,99.6,100.0,100.0,1,91.3,1,1,2,96.5,1,1
+bioclip-2,genus,Spiders & kin,245,305,90.2,95.9,96.7,98.0,98.4,1,91.3,1,1,2,96.1,1,5
+bioclip-2,genus,True bugs,247,608,56.7,63.2,65.6,67.2,68.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2,genus,All,5604,305,79.4,88.7,91.1,93.1,94.3,4,89.5,2,261,46,93.4,7,608
+bioclip-2.5,species,Algae & diatoms,213,212,54.5,72.8,80.3,84.0,85.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Amphibians,250,271,69.2,82.8,86.0,88.8,89.6,34,89.6,271,271,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Bats,250,123,42.8,90.4,94.8,96.8,97.2,3,90.2,3,5,6,95.9,3,9
+bioclip-2.5,species,"Bees, wasps & ants",244,965,88.1,94.3,95.5,95.9,97.5,2,91.6,1,2,5,96.7,3,16
+bioclip-2.5,species,Beetles,250,1269,59.6,72.8,75.2,77.2,79.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Birds,249,1472,87.1,92.4,94.0,94.8,94.8,2,92.9,1,5,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Butterflies,250,997,85.2,90.4,91.6,91.6,91.6,3,91.0,6,997,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Dragonflies,250,367,91.2,97.2,98.0,98.4,98.4,1,91.4,1,1,2,95.7,1,2
+bioclip-2.5,species,Ferns,250,625,75.6,86.0,88.0,88.4,89.6,78,90.1,625,625,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Fish,247,143,1.6,3.6,4.5,4.9,4.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Flies,248,590,66.9,74.6,77.0,79.4,79.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Flowering plants (dicots),250,9147,81.2,90.0,92.0,93.6,94.8,3,90.9,1,9,24,95.3,54,9147
+bioclip-2.5,species,Fungi,249,2216,59.8,70.7,75.9,80.7,81.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Grasses & sedges,250,1128,76.0,87.2,90.8,94.8,98.0,5,90.2,2,11,11,95.6,4,26
+bioclip-2.5,species,Large mammals,250,127,79.6,88.0,89.2,90.0,90.4,7,90.6,127,127,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Lichens,33,750,30.3,45.5,60.6,69.7,81.8,40,95.3,750,750,219,97.4,750,750
+bioclip-2.5,species,Molluscs,250,2455,66.0,77.2,82.4,84.8,87.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Mosses & liverworts,129,1122,44.2,63.6,72.1,81.4,86.8,29,92.0,21,178,113,96.6,826,1122
+bioclip-2.5,species,Moths,250,3857,73.2,86.4,88.8,90.0,90.4,8,89.9,3857,3857,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Orchids,250,736,73.6,90.0,91.6,92.8,94.8,3,91.9,2,8,24,96.4,736,736
+bioclip-2.5,species,Reptiles,250,1,0.0,0.0,0.0,0.0,0.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,Rodents & shrews,250,107,82.4,97.6,98.4,99.6,100.0,2,92.1,1,2,2,95.5,2,3
+bioclip-2.5,species,Spiders & kin,245,618,80.8,91.4,92.2,94.7,95.1,3,90.2,1,4,12,94.7,411,618
+bioclip-2.5,species,True bugs,247,877,48.2,55.1,56.7,58.3,59.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,species,All,5604,736,65.0,76.4,79.0,80.8,81.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Algae & diatoms,213,123,81.2,91.1,95.8,96.2,96.7,3,91.4,1,3,5,96.4,123,123
+bioclip-2.5,genus,Amphibians,250,55,83.2,92.0,93.2,93.6,94.0,2,90.8,1,4,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Bats,250,44,91.2,97.6,98.0,98.8,98.8,1,91.4,1,1,2,95.8,1,2
+bioclip-2.5,genus,"Bees, wasps & ants",244,317,92.6,97.5,98.0,98.0,98.8,1,92.0,1,1,2,96.5,1,2
+bioclip-2.5,genus,Beetles,250,642,76.4,84.4,85.6,87.2,87.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Birds,249,510,93.2,95.6,97.6,98.0,98.4,1,92.8,1,1,3,96.5,1,2
+bioclip-2.5,genus,Butterflies,250,323,90.8,94.8,95.2,96.0,96.4,1,91.0,1,1,5,96.0,4,323
+bioclip-2.5,genus,Dragonflies,250,139,96.8,98.8,99.2,99.6,99.6,1,91.4,1,1,1,95.8,1,1
+bioclip-2.5,genus,Ferns,250,135,85.2,88.8,89.2,89.6,89.6,21,90.0,135,135,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Fish,247,75,2.4,4.5,4.9,5.7,5.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Flies,248,254,79.0,81.9,84.7,85.1,85.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Flowering plants (dicots),250,2210,90.0,94.4,95.2,96.4,96.8,1,90.4,1,1,5,95.4,1,8
+bioclip-2.5,genus,Fungi,249,894,74.7,90.8,94.4,96.8,97.2,3,91.2,1,7,6,96.0,3,21
+bioclip-2.5,genus,Grasses & sedges,250,246,86.4,95.6,98.0,98.8,99.2,2,91.2,1,2,3,95.8,1,4
+bioclip-2.5,genus,Large mammals,250,66,85.2,90.0,92.0,92.0,92.4,3,91.1,1,66,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Lichens,33,243,54.5,66.7,75.8,84.8,90.9,15,95.3,66,160,31,100.0,243,243
+bioclip-2.5,genus,Molluscs,250,989,76.8,86.8,89.2,90.8,92.0,7,90.9,6,989,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Mosses & liverworts,129,385,49.6,75.2,81.4,91.5,93.0,10,90.4,5,35,37,96.0,14,112
+bioclip-2.5,genus,Moths,250,1633,84.8,93.2,94.4,95.2,95.2,2,91.3,1,2,8,95.7,137,1633
+bioclip-2.5,genus,Orchids,250,125,88.0,97.6,98.4,98.4,98.8,2,91.0,1,1,2,96.1,1,3
+bioclip-2.5,genus,Reptiles,250,1,0.0,0.0,0.0,0.0,0.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,Rodents & shrews,250,52,95.2,98.8,100.0,100.0,100.0,1,90.9,1,1,1,96.1,1,1
+bioclip-2.5,genus,Spiders & kin,245,305,91.4,97.1,97.6,98.4,98.4,1,91.8,1,1,2,96.0,1,2
+bioclip-2.5,genus,True bugs,247,573,58.7,62.8,66.8,68.8,70.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5,genus,All,5604,254,76.6,83.0,84.7,85.7,86.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Algae & diatoms,213,213,54.5,72.8,80.3,84.0,85.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Amphibians,250,271,69.2,82.8,86.0,88.8,89.6,34,89.6,271,271,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Bats,250,123,42.8,90.4,94.8,96.8,97.2,3,90.2,3,5,6,95.9,3,9
+bioclip-2.5-filled,species,"Bees, wasps & ants",244,1011,88.1,94.3,95.5,95.9,97.5,2,91.6,1,2,5,96.7,3,16
+bioclip-2.5-filled,species,Beetles,250,1269,59.6,72.8,75.2,77.2,79.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Birds,249,1476,87.1,92.4,94.0,94.8,94.8,2,92.9,1,5,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Butterflies,250,1002,85.2,90.4,91.6,91.6,91.6,3,91.0,6,1002,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Dragonflies,250,367,91.2,97.2,98.0,98.4,98.4,1,91.4,1,1,2,95.7,1,2
+bioclip-2.5-filled,species,Ferns,250,625,75.6,86.0,88.0,88.4,89.6,78,90.1,625,625,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Fish,247,2642,62.3,74.1,79.8,87.4,89.9,24,90.9,23,2642,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Flies,248,623,66.9,74.6,77.0,79.4,79.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Flowering plants (dicots),250,9147,81.2,90.0,92.0,93.6,94.8,3,90.9,1,9,24,95.3,54,9147
+bioclip-2.5-filled,species,Fungi,249,2268,59.8,70.7,76.3,81.1,82.3,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Grasses & sedges,250,1128,76.0,87.2,90.8,94.8,98.0,5,90.2,2,11,11,95.6,4,26
+bioclip-2.5-filled,species,Large mammals,250,127,79.6,88.0,89.2,90.0,90.4,7,90.6,127,127,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Lichens,33,750,30.3,45.5,60.6,69.7,81.8,40,95.3,750,750,219,97.4,750,750
+bioclip-2.5-filled,species,Molluscs,250,2680,67.2,79.2,83.6,87.6,92.0,14,91.4,5,28,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Mosses & liverworts,129,1122,44.2,63.6,72.1,81.4,86.8,29,92.0,21,178,113,96.6,826,1122
+bioclip-2.5-filled,species,Moths,250,3862,73.2,86.4,88.8,90.0,90.4,8,89.9,3862,3862,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,Orchids,250,736,73.6,90.0,91.6,92.8,94.8,3,91.9,2,8,24,96.4,736,736
+bioclip-2.5-filled,species,Reptiles,250,564,76.8,88.4,92.4,96.4,96.8,4,91.9,2,5,6,96.0,5,564
+bioclip-2.5-filled,species,Rodents & shrews,250,107,82.4,97.6,98.4,99.6,100.0,2,92.1,1,2,2,95.5,2,3
+bioclip-2.5-filled,species,Spiders & kin,245,618,80.8,91.4,92.2,94.7,95.1,3,90.2,1,4,12,94.7,411,618
+bioclip-2.5-filled,species,True bugs,247,938,48.2,55.1,56.3,58.3,59.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,species,All,5604,938,71.1,83.5,86.5,88.9,90.2,17,87.8,5,1269,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Algae & diatoms,213,124,80.8,91.1,95.3,96.2,96.7,3,91.4,1,3,5,96.4,124,124
+bioclip-2.5-filled,genus,Amphibians,250,55,83.2,92.0,93.2,93.6,94.0,2,90.8,1,4,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Bats,250,44,91.2,97.6,98.0,98.8,98.8,1,91.4,1,1,2,95.8,1,2
+bioclip-2.5-filled,genus,"Bees, wasps & ants",244,331,92.6,97.5,98.0,98.0,98.8,1,92.0,1,1,2,96.5,1,2
+bioclip-2.5-filled,genus,Beetles,250,642,76.4,84.4,85.6,87.2,87.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Birds,249,511,93.2,95.6,97.6,98.0,98.4,1,92.8,1,1,3,96.5,1,2
+bioclip-2.5-filled,genus,Butterflies,250,323,90.8,94.8,95.2,96.0,96.4,1,91.0,1,1,5,96.0,4,323
+bioclip-2.5-filled,genus,Dragonflies,250,139,96.8,98.8,99.2,99.6,99.6,1,91.4,1,1,1,95.8,1,1
+bioclip-2.5-filled,genus,Ferns,250,135,85.2,88.8,89.2,89.6,89.6,21,90.0,135,135,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Fish,247,1087,75.7,85.8,91.9,95.5,96.8,5,92.5,2,7,9,96.7,7,36
+bioclip-2.5-filled,genus,Flies,248,261,79.0,81.9,84.7,85.1,85.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Flowering plants (dicots),250,2210,90.0,94.4,95.2,96.4,96.8,1,90.4,1,1,5,95.4,1,8
+bioclip-2.5-filled,genus,Fungi,249,927,74.7,90.8,94.8,97.2,97.6,3,91.2,1,6,6,96.0,3,18
+bioclip-2.5-filled,genus,Grasses & sedges,250,246,86.4,95.6,98.0,98.8,99.2,2,91.2,1,2,3,95.8,1,4
+bioclip-2.5-filled,genus,Large mammals,250,66,85.2,90.0,92.0,92.0,92.4,3,91.1,1,66,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,Lichens,33,243,54.5,66.7,75.8,84.8,90.9,15,95.3,66,160,31,100.0,243,243
+bioclip-2.5-filled,genus,Molluscs,250,1103,78.8,89.2,91.2,94.8,96.8,4,90.6,1,5,11,96.2,5,1103
+bioclip-2.5-filled,genus,Mosses & liverworts,129,385,49.6,75.2,81.4,91.5,93.0,10,90.4,5,35,37,96.0,14,112
+bioclip-2.5-filled,genus,Moths,250,1636,84.8,93.2,94.4,95.2,95.2,2,91.3,1,2,8,95.7,137,1636
+bioclip-2.5-filled,genus,Orchids,250,125,88.0,97.6,98.4,98.4,98.8,2,91.0,1,1,2,96.1,1,3
+bioclip-2.5-filled,genus,Reptiles,250,168,87.6,95.2,97.6,98.8,99.2,2,90.7,1,2,3,96.0,1,4
+bioclip-2.5-filled,genus,Rodents & shrews,250,52,95.2,98.8,100.0,100.0,100.0,1,90.9,1,1,1,96.1,1,1
+bioclip-2.5-filled,genus,Spiders & kin,245,305,91.4,97.1,97.6,98.4,98.4,1,91.8,1,1,2,96.0,1,2
+bioclip-2.5-filled,genus,True bugs,247,609,58.7,62.8,66.4,68.8,70.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip-2.5-filled,genus,All,5604,305,83.9,91.0,93.0,94.3,94.7,3,89.6,1,261,31,93.4,2,609
+bioclip,species,Algae & diatoms,213,140,30.5,53.5,64.3,73.7,81.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Amphibians,250,222,33.6,55.6,64.4,71.6,76.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Bats,250,101,2.4,6.4,8.8,12.4,14.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,"Bees, wasps & ants",244,721,46.3,63.9,72.5,79.5,83.2,41,89.8,27,75,110,96.1,134,473
+bioclip,species,Beetles,250,761,39.6,50.8,57.2,65.6,70.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Birds,249,1496,64.7,77.1,81.5,85.9,89.2,26,91.2,11,46,157,96.7,1496,1496
+bioclip,species,Butterflies,250,898,60.0,72.0,76.8,81.6,84.4,89,91.0,113,898,not reached,not reached,not reached,not reached
+bioclip,species,Dragonflies,250,320,71.6,88.4,92.4,95.2,96.4,4,91.8,3,6,10,96.0,8,27
+bioclip,species,Ferns,250,332,52.4,68.4,71.6,78.0,80.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Fish,247,2329,26.3,39.7,46.2,54.3,61.1,650,90.4,2329,2329,not reached,not reached,not reached,not reached
+bioclip,species,Flies,248,341,56.0,71.0,77.8,81.5,84.3,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Flowering plants (dicots),250,5394,50.0,61.2,67.2,73.6,78.4,1764,89.1,5394,5394,not reached,not reached,not reached,not reached
+bioclip,species,Fungi,249,1100,42.6,54.2,59.0,65.5,69.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Grasses & sedges,250,590,41.2,53.6,64.0,70.4,77.6,96,90.2,203,590,not reached,not reached,not reached,not reached
+bioclip,species,Large mammals,250,135,59.6,77.6,82.4,84.8,91.6,16,91.5,11,104,not reached,not reached,not reached,not reached
+bioclip,species,Lichens,33,292,18.2,27.3,33.3,42.4,51.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Molluscs,250,1895,35.2,50.4,58.4,62.4,68.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Mosses & liverworts,129,264,22.5,34.9,44.2,55.8,62.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Moths,250,2586,51.2,66.8,70.8,74.4,76.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Orchids,250,393,45.6,64.4,70.8,75.6,80.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Reptiles,250,435,35.2,47.2,56.0,64.4,73.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,Rodents & shrews,250,94,54.0,80.8,87.2,92.8,94.8,7,91.2,4,14,27,97.0,10,39
+bioclip,species,Spiders & kin,245,366,44.5,66.5,71.8,76.3,81.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,True bugs,247,538,21.5,32.0,34.4,37.2,40.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,species,All,5604,435,43.3,58.5,64.6,70.2,74.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,Algae & diatoms,213,84,62.9,82.2,85.9,89.2,92.5,11,92.2,10,32,44,96.1,84,84
+bioclip,genus,Amphibians,250,50,61.2,78.0,83.2,89.6,91.6,11,90.2,8,22,not reached,not reached,not reached,not reached
+bioclip,genus,Bats,250,35,55.6,73.2,82.4,91.6,98.0,10,91.0,6,12,14,96.8,14,25
+bioclip,genus,"Bees, wasps & ants",244,227,64.8,80.7,86.1,92.6,96.7,8,90.7,4,12,13,96.3,11,29
+bioclip,genus,Beetles,250,435,56.8,69.6,73.6,75.6,77.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,Birds,249,511,78.3,84.7,88.0,91.2,94.4,9,91.7,3,12,25,96.5,9,43
+bioclip,genus,Butterflies,250,308,72.4,82.0,85.2,89.2,92.8,11,91.5,3,19,48,95.4,28,308
+bioclip,genus,Dragonflies,250,128,83.2,94.8,96.0,98.0,98.8,2,91.6,1,3,4,95.8,2,6
+bioclip,genus,Ferns,250,101,69.2,79.2,81.6,84.4,86.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,Fish,247,993,41.7,59.1,64.4,73.3,81.8,49,92.7,50,128,172,97.0,230,993
+bioclip,genus,Flies,248,177,67.7,82.3,85.9,89.1,91.1,16,91.5,17,177,not reached,not reached,not reached,not reached
+bioclip,genus,Flowering plants (dicots),250,1802,61.6,74.8,78.8,84.0,89.6,23,90.5,15,54,218,94.9,173,598
+bioclip,genus,Fungi,249,488,60.6,76.3,81.9,87.6,89.6,26,90.5,41,198,not reached,not reached,not reached,not reached
+bioclip,genus,Grasses & sedges,250,171,53.6,68.0,76.0,84.4,89.2,21,89.3,16,41,59,95.4,171,171
+bioclip,genus,Large mammals,250,68,72.0,86.0,90.0,94.8,98.4,5,91.8,2,8,11,96.0,5,17
+bioclip,genus,Lichens,33,122,48.5,63.6,69.7,75.8,84.8,28,90.0,122,122,not reached,not reached,not reached,not reached
+bioclip,genus,Molluscs,250,833,48.4,65.6,73.2,77.6,81.6,206,91.2,833,833,not reached,not reached,not reached,not reached
+bioclip,genus,Mosses & liverworts,129,160,27.1,45.7,55.0,65.1,71.3,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,Moths,250,1246,64.8,78.8,81.2,85.2,85.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,Orchids,250,95,68.8,83.2,85.6,91.6,95.6,9,91.3,4,12,18,96.2,17,95
+bioclip,genus,Reptiles,250,153,48.0,66.4,73.2,82.4,86.0,48,91.4,153,153,not reached,not reached,not reached,not reached
+bioclip,genus,Rodents & shrews,250,49,81.6,92.8,95.2,97.2,99.2,3,92.4,1,3,5,96.7,2,8
+bioclip,genus,Spiders & kin,245,191,61.6,79.2,84.5,89.0,92.7,12,90.6,7,22,not reached,not reached,not reached,not reached
+bioclip,genus,True bugs,247,376,29.6,42.9,46.6,49.8,53.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+bioclip,genus,All,5604,177,61.2,75.6,80.2,85.2,88.8,30,88.4,13,435,not reached,not reached,not reached,not reached
+eva02-inat21,species,Algae & diatoms,213,3,12.7,12.7,12.7,12.7,12.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Amphibians,250,7,20.4,21.2,21.2,21.2,21.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Bats,250,1,0.0,0.0,0.0,0.0,0.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,"Bees, wasps & ants",244,22,41.0,42.2,42.2,42.2,42.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Beetles,250,32,18.8,22.0,22.4,22.4,22.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Birds,249,413,61.0,65.1,66.7,67.1,67.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Butterflies,250,141,64.8,70.0,70.0,70.0,70.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Dragonflies,250,61,71.6,74.0,74.0,74.0,74.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Ferns,250,44,26.0,26.4,26.4,26.8,26.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Fish,247,45,7.3,7.7,8.1,8.1,8.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Flies,248,25,42.3,42.7,42.7,42.7,42.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Flowering plants (dicots),250,788,42.0,43.6,43.6,44.4,44.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Fungi,249,132,36.9,37.8,37.8,38.2,38.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Grasses & sedges,250,69,28.4,32.8,32.8,32.8,32.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Large mammals,250,33,56.4,58.4,58.4,59.2,60.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Lichens,33,28,15.2,24.2,27.3,27.3,27.3,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Molluscs,250,22,23.2,23.6,23.6,23.6,23.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Mosses & liverworts,129,23,14.0,14.0,14.7,15.5,15.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Moths,250,122,22.0,22.4,22.4,22.4,22.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Orchids,250,10,4.0,4.0,4.0,4.0,4.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Reptiles,250,27,22.4,22.8,22.8,23.2,23.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Rodents & shrews,250,8,42.0,49.6,49.6,49.6,49.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,Spiders & kin,245,24,19.6,20.0,20.0,20.0,20.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,True bugs,247,24,6.9,6.9,6.9,6.9,6.9,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,species,All,5604,27,30.1,31.8,31.9,32.1,32.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Algae & diatoms,213,3,20.7,22.1,22.1,22.1,22.1,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Amphibians,250,6,31.2,32.4,32.8,32.8,32.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Bats,250,1,0.4,0.4,0.4,0.4,0.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,"Bees, wasps & ants",244,17,58.6,61.1,62.3,62.7,62.7,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Beetles,250,28,31.6,36.8,36.8,37.6,37.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Birds,249,227,74.3,78.7,81.1,82.3,82.3,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Butterflies,250,90,77.2,82.0,82.0,82.4,82.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Dragonflies,250,33,84.4,87.6,87.6,88.0,88.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Ferns,250,30,46.4,50.8,53.6,54.8,54.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Fish,247,35,11.3,12.1,12.1,12.1,12.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Flies,248,20,48.0,49.6,49.6,49.6,49.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Flowering plants (dicots),250,495,51.6,58.0,58.4,60.8,63.2,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Fungi,249,98,52.2,59.4,61.8,68.7,69.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Grasses & sedges,250,45,41.2,48.8,50.0,52.8,53.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Large mammals,250,24,73.2,80.8,82.4,82.4,84.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Lichens,33,22,27.3,42.4,45.5,45.5,45.5,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Molluscs,250,20,24.8,26.0,26.4,29.6,32.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Mosses & liverworts,129,22,16.3,17.1,17.8,18.6,18.6,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Moths,250,107,37.2,40.4,40.4,40.4,40.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Orchids,250,9,4.0,4.0,4.0,4.0,4.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Reptiles,250,22,36.0,38.0,38.4,38.8,38.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Rodents & shrews,250,5,58.8,60.8,60.8,60.8,60.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,Spiders & kin,245,19,46.9,49.4,50.2,51.0,51.0,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,True bugs,247,23,12.1,14.6,15.4,15.4,15.4,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached
+eva02-inat21,genus,All,5604,23,41.4,44.7,45.4,46.3,46.8,not reached,not reached,not reached,not reached,not reached,not reached,not reached,not reached

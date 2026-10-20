@@ -1,0 +1,126 @@
+model,group,india_species,in_vocab,pct_in_vocab
+bioclip-2,Algae & diatoms,335,213,63.6
+bioclip-2,Amphibians,386,271,70.2
+bioclip-2,Bats,137,123,89.8
+bioclip-2,"Bees, wasps & ants",1791,1009,56.3
+bioclip-2,Beetles,2505,1266,50.5
+bioclip-2,Birds,1627,1475,90.7
+bioclip-2,Butterflies,1097,995,90.7
+bioclip-2,Dragonflies,424,367,86.6
+bioclip-2,Ferns,665,625,94.0
+bioclip-2,Fish,3348,2642,78.9
+bioclip-2,Flies,1113,621,55.8
+bioclip-2,Flowering plants (dicots),9778,9145,93.5
+bioclip-2,Fungi,4883,2261,46.3
+bioclip-2,Grasses & sedges,1177,1127,95.8
+bioclip-2,Large mammals,154,127,82.5
+bioclip-2,Lichens,917,749,81.7
+bioclip-2,Molluscs,3365,2680,79.6
+bioclip-2,Mosses & liverworts,1223,1122,91.7
+bioclip-2,Moths,5014,3856,76.9
+bioclip-2,Orchids,768,736,95.8
+bioclip-2,Reptiles,752,564,75.0
+bioclip-2,Rodents & shrews,150,107,71.3
+bioclip-2,Spiders & kin,1255,618,49.2
+bioclip-2,True bugs,1773,937,52.8
+bioclip-2,All,44637,33636,75.4
+bioclip-2.5,Algae & diatoms,335,212,63.3
+bioclip-2.5,Amphibians,386,271,70.2
+bioclip-2.5,Bats,137,123,89.8
+bioclip-2.5,"Bees, wasps & ants",1791,965,53.9
+bioclip-2.5,Beetles,2505,1269,50.7
+bioclip-2.5,Birds,1627,1472,90.5
+bioclip-2.5,Butterflies,1097,997,90.9
+bioclip-2.5,Dragonflies,424,367,86.6
+bioclip-2.5,Ferns,665,625,94.0
+bioclip-2.5,Fish,3348,143,4.3
+bioclip-2.5,Flies,1113,590,53.0
+bioclip-2.5,Flowering plants (dicots),9778,9147,93.5
+bioclip-2.5,Fungi,4883,2216,45.4
+bioclip-2.5,Grasses & sedges,1177,1128,95.8
+bioclip-2.5,Large mammals,154,127,82.5
+bioclip-2.5,Lichens,917,750,81.8
+bioclip-2.5,Molluscs,3365,2455,73.0
+bioclip-2.5,Mosses & liverworts,1223,1122,91.7
+bioclip-2.5,Moths,5014,3857,76.9
+bioclip-2.5,Orchids,768,736,95.8
+bioclip-2.5,Reptiles,752,0,0.0
+bioclip-2.5,Rodents & shrews,150,107,71.3
+bioclip-2.5,Spiders & kin,1255,618,49.2
+bioclip-2.5,True bugs,1773,877,49.5
+bioclip-2.5,All,44637,30174,67.6
+bioclip-2.5-filled,Algae & diatoms,335,213,63.6
+bioclip-2.5-filled,Amphibians,386,271,70.2
+bioclip-2.5-filled,Bats,137,123,89.8
+bioclip-2.5-filled,"Bees, wasps & ants",1791,1011,56.4
+bioclip-2.5-filled,Beetles,2505,1269,50.7
+bioclip-2.5-filled,Birds,1627,1476,90.7
+bioclip-2.5-filled,Butterflies,1097,1002,91.3
+bioclip-2.5-filled,Dragonflies,424,367,86.6
+bioclip-2.5-filled,Ferns,665,625,94.0
+bioclip-2.5-filled,Fish,3348,2642,78.9
+bioclip-2.5-filled,Flies,1113,623,56.0
+bioclip-2.5-filled,Flowering plants (dicots),9778,9147,93.5
+bioclip-2.5-filled,Fungi,4883,2268,46.4
+bioclip-2.5-filled,Grasses & sedges,1177,1128,95.8
+bioclip-2.5-filled,Large mammals,154,127,82.5
+bioclip-2.5-filled,Lichens,917,750,81.8
+bioclip-2.5-filled,Molluscs,3365,2680,79.6
+bioclip-2.5-filled,Mosses & liverworts,1223,1122,91.7
+bioclip-2.5-filled,Moths,5014,3862,77.0
+bioclip-2.5-filled,Orchids,768,736,95.8
+bioclip-2.5-filled,Reptiles,752,564,75.0
+bioclip-2.5-filled,Rodents & shrews,150,107,71.3
+bioclip-2.5-filled,Spiders & kin,1255,618,49.2
+bioclip-2.5-filled,True bugs,1773,938,52.9
+bioclip-2.5-filled,All,44637,33669,75.4
+bioclip,Algae & diatoms,335,140,41.8
+bioclip,Amphibians,386,222,57.5
+bioclip,Bats,137,101,73.7
+bioclip,"Bees, wasps & ants",1791,721,40.3
+bioclip,Beetles,2505,761,30.4
+bioclip,Birds,1627,1496,91.9
+bioclip,Butterflies,1097,898,81.9
+bioclip,Dragonflies,424,320,75.5
+bioclip,Ferns,665,332,49.9
+bioclip,Fish,3348,2329,69.6
+bioclip,Flies,1113,341,30.6
+bioclip,Flowering plants (dicots),9778,5394,55.2
+bioclip,Fungi,4883,1100,22.5
+bioclip,Grasses & sedges,1177,590,50.1
+bioclip,Large mammals,154,135,87.7
+bioclip,Lichens,917,292,31.8
+bioclip,Molluscs,3365,1895,56.3
+bioclip,Mosses & liverworts,1223,264,21.6
+bioclip,Moths,5014,2586,51.6
+bioclip,Orchids,768,393,51.2
+bioclip,Reptiles,752,435,57.8
+bioclip,Rodents & shrews,150,94,62.7
+bioclip,Spiders & kin,1255,366,29.2
+bioclip,True bugs,1773,538,30.3
+bioclip,All,44637,21743,48.7
+eva02-inat21,Algae & diatoms,335,3,0.9
+eva02-inat21,Amphibians,386,7,1.8
+eva02-inat21,Bats,137,1,0.7
+eva02-inat21,"Bees, wasps & ants",1791,22,1.2
+eva02-inat21,Beetles,2505,32,1.3
+eva02-inat21,Birds,1627,413,25.4
+eva02-inat21,Butterflies,1097,141,12.9
+eva02-inat21,Dragonflies,424,61,14.4
+eva02-inat21,Ferns,665,44,6.6
+eva02-inat21,Fish,3348,45,1.3
+eva02-inat21,Flies,1113,25,2.2
+eva02-inat21,Flowering plants (dicots),9778,788,8.1
+eva02-inat21,Fungi,4883,132,2.7
+eva02-inat21,Grasses & sedges,1177,69,5.9
+eva02-inat21,Large mammals,154,33,21.4
+eva02-inat21,Lichens,917,28,3.1
+eva02-inat21,Molluscs,3365,22,0.7
+eva02-inat21,Mosses & liverworts,1223,23,1.9
+eva02-inat21,Moths,5014,122,2.4
+eva02-inat21,Orchids,768,10,1.3
+eva02-inat21,Reptiles,752,27,3.6
+eva02-inat21,Rodents & shrews,150,8,5.3
+eva02-inat21,Spiders & kin,1255,24,1.9
+eva02-inat21,True bugs,1773,24,1.4
+eva02-inat21,All,44637,2104,4.7

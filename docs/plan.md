@@ -166,7 +166,7 @@ To ask a lawyer or the NBA:
 
 ### Steps
 
-1. Model check on the fnf answer key (running): every open model on the same 5,604 Indian photos; top-k, shortlist
+1. Model check on the fnf answer key (done 20 October 2026): every open model on the same 5,604 Indian photos; top-k, shortlist
    size at 90% and 95%, by group; what a trained classifier adds. Results below.
 2. Corpus v0 from existing research-grade observations with open licences (no new expert work). Names matched
    through the GBIF backbone so synonyms are not errors. A held-out test set, split by observation.
@@ -176,7 +176,46 @@ To ask a lawyer or the NBA:
 
 ### Model results
 
-Pending: the check is running (20 October 2026). This part is filled in when it ends.
+Model check, 20 October 2026 (`experiments/model_check/`, results in `results/`). Same 5,604 research-grade
+photos and per-group Indian candidate lists as the fnf pilot; names matched with synonyms. BioCLIP 2 reproduces the
+pilot exactly (62.6% / 78.4% / 80.6%).
+
+| Model | Licence | Right species first | In top 5 | Names for 90% | Speed (s per 1,000) | Indian species known | Verdict |
+|---|---|---|---|---|---|---|---|
+| BioCLIP 2.5, labels filled | MIT | 71.1% | 86.5% | 17 | 94.4 | 75.4% | Best now; strong groups only |
+| BioCLIP 2.5, labels as published | MIT | 65.0% | 79.0% | not reached | 94.4 | 67.6% | Do not use its label file as it is |
+| BioCLIP 2 | MIT | 64.2% | 82.7% | 39 | 39.1 | 75.4% | Second choice, 2.4 times faster |
+| BioCLIP (first version) | MIT | 43.3% | 64.6% | not reached | 9.9 | 48.7% | Not usable |
+| EVA02-L iNat21 (timm) | CC BY-NC 4.0 | 30.1% | 31.9% | not reached | 107.2 | 4.7% | Not usable: knows too few Indian species |
+| DINOv2-L | Apache-2.0 | (classifier only: 73.5%) | | | 39.3 | | Not usable: BioCLIP 2.5 features do better (92.9%) |
+
+What it means for shortlists:
+- **No model reaches 95% at species level with any list length.** For 8.4% of photos the right species is not a
+  candidate at all (the model cannot name it, or it has no Indian GBIF record in that group).
+- **Strong groups are ready:** dragonflies, bees, wasps and ants, birds, butterflies, rodents and spiders reach 90%
+  within 1 to 3 names. These can go to "Quick to confirm" after the fresh test in step 3.
+- **Weak groups need the corpus:** true bugs, beetles, fungi, flies and algae do not reach 90% at species level
+  (true bugs: 59.9% even in the top 20). A small classifier trained on Indian photos changes this: on BioCLIP 2.5
+  features, true bugs 94.9% (zero-shot 55.9%), beetles 99.2% (80.5%), fungi 97.2% (77.1%), flies 95.8% (76.5%);
+  95% sets with a median of 1 name. This is an upper bound (common species only, 3,460 photos, 472 species, and
+  the same observer may be in training and test), but it shows the corpus is worth building.
+- **Genus shortlists:** 3 genera hold the right one 90% of the time, 31 genera 95%. For groups with no species
+  shortlist, route by genus.
+- Calibrated sets (90% target) give a median of 5 names, but one photo in ten gets hundreds. Show only short sets;
+  send the rest to "For an expert".
+- **Fault in the published BioCLIP 2.5 labels:** almost no reptiles or ray-finned fish (*Naja naja*, *Calotes
+  versicolor*, *Labeo rohita* absent). Filled from the model's own text encoder (median agreement 0.950 with the
+  published vectors). To report to Imageomics (a public post: owner to decide).
+
+Not run, by access:
+- iNaturalist's model: closed (no public API; only a 500-taxon small model is open).
+- Pl@ntNet: API key needed; 500 a day free, Pro EUR 1,000 a year for 2,00,000. Has an Indian subcontinent flora.
+- Pathanga Suchaka: offline since about 2022, no API or model, all rights reserved.
+- DINOv3: gated, custom licence.
+- SpeciesNet (camera traps, Apache-2.0): most large Indian mammals, not blackbuck or Indian rhino.
+- Sound: Perch 2.0 Apache-2.0 (about 15,000 species); BirdNET models CC BY-NC-SA 4.0 (no commercial use).
+
+Not measured yet: the real waiting queue (the pilot showed it is harder than research-grade photos). That is step 3.
 
 ## 3. Data from GBIF
 

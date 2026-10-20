@@ -18,3 +18,4 @@ node_modules/
 .playwright-mcp/
 .wrangler/
 /.claude/worktrees/
+.ruff_cache/
