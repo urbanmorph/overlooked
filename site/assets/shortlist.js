@@ -19,6 +19,8 @@ const SPECIES_LEVEL = new Set(['species', 'hybrid', 'subspecies', 'variety', 'fo
 const OBS_ID = /^[1-9]\d{0,11}$/;
 const GROUP_KEY = /^[a-z]{1,20}(-[a-z]{1,20}){0,4}$/;   // the keys functions/lib/metrics.js counts
 const PAGE = 24;
+// How the sample is drawn (experiments/corpus_v0/live.py) and the size of the queue it comes from (docs/plan.md, step 6).
+const SAMPLE = { perGroup: 1000, days: 120, queue: 'about 29 lakh' };
 
 /** The band, its label and the names to show for one row, or null when the row is not shown. */
 export function shortlistOf(r) {
@@ -43,6 +45,13 @@ export function groupFiles(run, g) {
   if (!g) return [];
   const base = `layers/shortlist/${encodeURIComponent(run)}/g/${encodeURIComponent(g.key)}`;
   return Array.from({ length: g.pages || 1 }, (_, i) => `${base}${i ? `.${i + 1}` : ''}.json`);
+}
+
+/** Text that says the page shows a small sample of the queue, not all of it. */
+export function sampleNote(latest) {
+  return `This page shows ${fmt(latest.rows)} of ${SAMPLE.queue} observations from India that wait for a name on iNaturalist. ` +
+    `For each group, we took up to ${fmt(SAMPLE.perGroup)} observations uploaded in the ${SAMPLE.days} days before ${monthName(latest.run)}. ` +
+    'We keep some recent observations back to test the lists, so some groups are small. If the page is useful, we will add more.';
 }
 
 /** The counted link to an observation, or null for an id that is not an iNaturalist observation id. */
@@ -73,6 +82,7 @@ async function main() {
     const groups = latest.groups || [];
     const stName = new Map(S.states.map(s => [String(s.code), s.name]));
     $('#runline').textContent = `Shortlists of ${monthName(latest.run)} · ${latest.model}`;
+    $('#sample').textContent = sampleNote(latest);
 
     // State held in the URL so a view can be shared.
     const url = new URL(location.href);
@@ -114,7 +124,7 @@ async function main() {
     };
     const view = () => filterRows(rows, st);
     const pager = v => {
-      $('#pinfo').textContent = v.length ? `Showing ${fmt(Math.min(st.shown, v.length))} of ${fmt(v.length)}` : '';
+      $('#pinfo').textContent = v.length ? `Showing ${fmt(Math.min(st.shown, v.length))} of ${fmt(v.length)} in this sample` : '';
       $('#more').hidden = st.shown >= v.length;
     };
     function render() {

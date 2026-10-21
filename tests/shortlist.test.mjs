@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML, groupFiles } from '../site/assets/shortlist.js';
+import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML, groupFiles, sampleNote } from '../site/assets/shortlist.js';
 
 const FIX = new URL('./fixtures/shortlist/layers/shortlist/', import.meta.url);
 const latest = JSON.parse(readFileSync(new URL('latest.json', FIX)));
@@ -84,4 +84,12 @@ test('groupFiles: every page file of a group, the first without a number', () =>
     ['layers/shortlist/2026-10-20/g/true-bugs.json', 'layers/shortlist/2026-10-20/g/true-bugs.2.json']);
   assert.deepEqual(groupFiles('2026-10-20', { key: 'birds' }), ['layers/shortlist/2026-10-20/g/birds.json']);
   assert.deepEqual(groupFiles('2026-10-20', null), []);
+});
+
+test('sampleNote: says the page is a sample, with its size, rule and date', () => {
+  const t = sampleNote({ run: '2026-10-20', rows: 13842 });
+  assert.match(t, /13,842 of about 29 lakh/);
+  assert.match(t, /up to 1,000 observations/);
+  assert.match(t, /120 days before 20 October 2026/);
+  assert.match(t, /some groups are small/);
 });
