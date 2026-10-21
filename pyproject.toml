@@ -5,7 +5,7 @@ description = "Monthly monitor of gaps in India's public biodiversity data"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-  "duckdb>=1.1",
+  "duckdb>=1.1,<2",  # 2.0 drops fetchone() on relations; move to it as its own change
   "pyarrow>=17",
   "requests>=2.32",
   "python-dotenv>=1.0",
