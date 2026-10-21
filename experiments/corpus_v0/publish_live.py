@@ -36,8 +36,11 @@ def files(run):
 
 
 def main():
+    from dotenv import load_dotenv
+
     from pipeline import r2
 
+    load_dotenv(ROOT / ".env", override=True)
     run = sys.argv[1]
     plan = files(run)
     s3 = r2.client()
