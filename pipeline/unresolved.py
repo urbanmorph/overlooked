@@ -7,6 +7,7 @@ n_records_since_1980 counts records at points (about 110 m) whose latest record 
 
 from pipeline.groups import GROUP_SQL
 from pipeline.places import place_points
+from pipeline.util import value
 
 TYPES = {"kingdom": "VARCHAR", "phylum": "VARCHAR", "class": "VARCHAR", "order": "VARCHAR", "family": "VARCHAR",
          "genus": "VARCHAR", "taxonrank": "VARCHAR", "lat": "DOUBLE", "lon": "DOUBLE",
@@ -40,4 +41,4 @@ def build(con, tsv, districts_path):
         GROUP BY ALL
         ORDER BY state_lgd, district_lgd, grp, taxonrank, genus
     """)
-    return con.sql("SELECT sum(n_records) FROM unresolved").fetchone()[0] or 0
+    return value(con, "SELECT sum(n_records) FROM unresolved") or 0

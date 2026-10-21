@@ -15,6 +15,7 @@ from pathlib import Path
 import duckdb
 
 from pipeline.places import place_points
+from pipeline.util import value
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
@@ -50,7 +51,7 @@ def load_cube(con, tsv):
         SELECT * FROM read_csv('{tsv}', delim = '\t', header = true, columns = {cols})
     """)
     # Merged duplicate keys (names.merge_duplicates), when that step has run.
-    if con.sql("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'").fetchone()[0]:
+    if value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'"):
         con.sql("UPDATE cube SET specieskey = m.canonical FROM key_map m WHERE cube.specieskey = m.species_key")
 
 
@@ -73,7 +74,7 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS):
     path = out / "ledger.parquet"
     con.sql(f"COPY ledger TO '{path}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)")
 
-    one = lambda s: con.sql(s).fetchone()[0]
+    one = lambda s: value(con, s)
     by_how = dict(con.sql("""SELECT how, sum(n_records) FROM cube JOIN point_district USING (lat, lon)
                              GROUP BY how""").fetchall())
     stats = {

@@ -12,7 +12,7 @@ import duckdb
 
 from pipeline import ledger
 from pipeline.groups import GROUP_SQL
-from pipeline.util import dump
+from pipeline.util import dump, value
 
 # PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
 RIGHTS = {
@@ -50,7 +50,7 @@ def build(con: duckdb.DuckDBPyConnection, out: Path, meta: dict):
                min(first_year) AS first_year, max(last_year) AS last_year, sum(n_records) AS n
         FROM lg GROUP BY species_key
     """)
-    one = lambda q: con.sql(q).fetchone()[0]
+    one = lambda q: value(con, q)
     summary = dict(meta, **RIGHTS)
     summary.update({
         "species": one("SELECT count(*) FROM india"),
@@ -157,7 +157,7 @@ def shard_of(key):
 
 def species_shards(con, out: Path):
     """One small file per shard: each species with its classification, districts and history by decade."""
-    has_decades = bool(con.sql("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'species_decade'").fetchone()[0])
+    has_decades = bool(value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'species_decade'"))
     genus = "s.genus" if "genus" in [c[0] for c in con.sql("DESCRIBE species").fetchall()] else "NULL"
     sp = {r[0]: {"name": r[1], "gi": r[2], "kingdom": r[3], "phylum": r[4], "class": r[5], "order": r[6],
                  "family": r[7], "genus": r[8], "districts": [], "decades": []}

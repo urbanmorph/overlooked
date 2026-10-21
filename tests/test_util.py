@@ -1,7 +1,9 @@
 """Shared helpers of the pipeline: streamed downloads, restore from R2, JSON output."""
 
 import json
+from pathlib import Path
 
+import duckdb
 import pytest
 import requests
 
@@ -90,3 +92,23 @@ def test_stream_does_not_compare_length_of_a_compressed_answer(tmp_path):
     gz = Response(b"abcdef", kind="application/json")
     gz.headers.update({"Content-Length": "4", "Content-Encoding": "gzip"})  # requests unpacks it: 6 bytes arrive
     assert util.stream(Http(gz), "u", tmp_path / "f.json") is True
+
+
+def test_first_and_value_read_one_row_and_leave_the_connection_free():
+    con = duckdb.connect()
+    con.sql("CREATE TABLE t AS SELECT range AS a FROM range(5)")
+    assert util.first(con, "SELECT count(*), max(a) FROM t") == (5, 4)
+    assert util.first(con, "SELECT a FROM t WHERE a > ? ORDER BY a LIMIT 1", [2]) == (3,)
+    assert util.first(con, "SELECT a FROM t WHERE a > 9") is None
+    assert util.value(con, "SELECT sum(a) FROM t") == 10
+    assert util.value(con, "SELECT a FROM t WHERE a > ?", [9]) is None
+    assert util.value(duckdb, "SELECT 7") == 7          # the module's default connection, as described.py uses
+    assert con.sql("SELECT 1").fetchall() == [(1,)]     # duckdb 2.0 refuses a new query while a result is unread
+
+
+def test_no_code_calls_fetchone():
+    """duckdb 2.0 has no fetchone() on relations, and after execute() it leaves the result unread. Use util.first."""
+    root = Path(__file__).resolve().parent.parent
+    bad = [f"{p.relative_to(root)}:{i}" for d in ("pipeline", "scripts", "tests") for p in (root / d).rglob("*.py")
+           for i, line in enumerate(p.read_text().splitlines(), 1) if ".fetchone(" in line and p.name != "test_util.py"]
+    assert bad == []

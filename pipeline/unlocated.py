@@ -21,6 +21,7 @@ import requests
 
 from pipeline.groups import GROUP_SQL
 from pipeline.unresolved import read_tsv
+from pipeline.util import value
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE_NAMES = ROOT / "pipeline" / "ref" / "state_names.csv"
@@ -72,7 +73,7 @@ def build(con, tsv, names_path=STATE_NAMES):
     """Load a query L download and place it in states. Returns the number of records."""
     read_tsv(con, "lcube", tsv, TYPES)
     # Merged duplicate keys (names.merge_duplicates), when that step has run.
-    if con.sql("SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'").fetchone()[0]:
+    if value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'"):
         con.sql("UPDATE lcube SET specieskey = m.canonical FROM key_map m WHERE lcube.specieskey = m.species_key")
     names = load_state_names(names_path)
     texts = [r[0] for r in con.sql("SELECT DISTINCT stateprovince FROM lcube WHERE stateprovince IS NOT NULL").fetchall()]
@@ -88,7 +89,7 @@ def build(con, tsv, names_path=STATE_NAMES):
         GROUP BY species_key, l.genus, taxonrank, grp, l.stateprovince, m.state_lgd, l.datasetkey, basis, problem
         ORDER BY state_lgd NULLS LAST, grp, species_key, datasetkey
     """)
-    return con.sql("SELECT coalesce(sum(n_records), 0) FROM unlocated").fetchone()[0]
+    return value(con, "SELECT coalesce(sum(n_records), 0) FROM unlocated")
 
 
 def dataset_titles(http, keys, cache=TITLE_CACHE, s3=None, gap=1.0):

@@ -26,7 +26,7 @@ import duckdb
 import requests
 
 from pipeline import bsi, gbif, health, zsi_discoveries
-from pipeline.util import now
+from pipeline.util import first, now
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
@@ -134,9 +134,9 @@ def group_from(con, c):
     if not c or not any(c.values()):
         return None
     from pipeline.groups import GROUP_SQL
-    row = con.execute(f"""SELECT {GROUP_SQL} FROM (SELECT ?::VARCHAR AS kingdom, ?::VARCHAR AS phylum,
+    row = first(con, f"""SELECT {GROUP_SQL} FROM (SELECT ?::VARCHAR AS kingdom, ?::VARCHAR AS phylum,
                          ?::VARCHAR AS class, ?::VARCHAR AS "order", ?::VARCHAR AS family)""",
-                      [c.get("kingdom"), c.get("phylum"), c.get("class"), c.get("order"), c.get("family")]).fetchone()
+                      [c.get("kingdom"), c.get("phylum"), c.get("class"), c.get("order"), c.get("family")])
     return row[0] if row and row[0] != "Other" else ("Other" if row else None)
 
 
@@ -180,10 +180,10 @@ def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, 
                 rows, how = vrows, "name as published in GBIF"
         obs, papers, latest = after(rows)
         # Any public record in India at all, including the type material from the description itself.
-        any_record = bool(key and (key in in_snapshot or con.execute(
-            "SELECT 1 FROM y WHERE specieskey = ? AND NOT sequence_only LIMIT 1", [key]).fetchone()))
-        any_record = any_record or bool(con.execute(
-            f"SELECT 1 FROM v WHERE NOT sequence_only AND {V_NAME} LIMIT 1", [n["name"], n["name"]]).fetchone())
+        any_record = bool(key and (key in in_snapshot or first(con,
+            "SELECT 1 FROM y WHERE specieskey = ? AND NOT sequence_only LIMIT 1", [key])))
+        any_record = any_record or bool(first(con,
+            f"SELECT 1 FROM v WHERE NOT sequence_only AND {V_NAME} LIMIT 1", [n["name"], n["name"]]))
         status = "recorded" if obs else ("later_papers" if papers else "none")
         grp = group_of.get(key) or group_hint(n)
         if not grp:

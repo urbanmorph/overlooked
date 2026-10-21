@@ -7,6 +7,8 @@ takes the nearest one and is flagged. Points further out are offshore (NULL dist
 
 import duckdb
 
+from pipeline.util import value
+
 NEAR_KM = 5
 # Rough degrees for the search box; distances are then measured in metres on the sphere.
 NEAR_DEG = NEAR_KM / 100
@@ -16,6 +18,7 @@ def load_districts(con: duckdb.DuckDBPyConnection, districts_path: str):
     """Create table districts. Two districts have no LGD code (both 0 in the source):
     Muzaffarabad and Mirpur get -1 and -2 so every district has its own code."""
     con.sql("INSTALL spatial; LOAD spatial")
+    con.sql("SET geometry_always_xy = true")  # points are (lon, lat); duckdb 2.0 needs this said, 2.1 makes it default
     con.sql(f"""
         CREATE OR REPLACE TABLE districts AS
         SELECT CASE WHEN dist_lgd = 0 AND dtname = 'Muzaffarabad' THEN -1
@@ -24,7 +27,7 @@ def load_districts(con: duckdb.DuckDBPyConnection, districts_path: str):
                state_lgd, dtname, stname, geometry
         FROM '{districts_path}'
     """)
-    dupes = con.sql("SELECT count(*) - count(DISTINCT dist_lgd) FROM districts").fetchone()[0]
+    dupes = value(con, "SELECT count(*) - count(DISTINCT dist_lgd) FROM districts")
     if dupes:
         raise ValueError(f"{dupes} duplicate district codes in {districts_path}")
 
@@ -44,10 +47,10 @@ def place_points(con: duckdb.DuckDBPyConnection, points_rel: str, districts_path
         CREATE OR REPLACE TABLE near AS
         WITH rest AS (SELECT lat, lon FROM upts ANTI JOIN inside USING (lat, lon))
         SELECT r.lat, r.lon,
-               arg_min(d.dist_lgd, ST_Distance_Sphere(ST_Point(r.lat, r.lon),
-                       ST_FlipCoordinates(ST_ClosestPoint(d.geometry, ST_Point(r.lon, r.lat))))) AS dist_lgd,
-               min(ST_Distance_Sphere(ST_Point(r.lat, r.lon),
-                       ST_FlipCoordinates(ST_ClosestPoint(d.geometry, ST_Point(r.lon, r.lat))))) AS metres
+               arg_min(d.dist_lgd, ST_Distance_Sphere(ST_Point(r.lon, r.lat),
+                       ST_ClosestPoint(d.geometry, ST_Point(r.lon, r.lat)))) AS dist_lgd,
+               min(ST_Distance_Sphere(ST_Point(r.lon, r.lat),
+                       ST_ClosestPoint(d.geometry, ST_Point(r.lon, r.lat)))) AS metres
         FROM rest r JOIN districts d
           ON ST_DWithin(d.geometry, ST_Point(r.lon, r.lat), {NEAR_DEG})
         GROUP BY r.lat, r.lon

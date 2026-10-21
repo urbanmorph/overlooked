@@ -2,6 +2,7 @@ import duckdb
 import pytest
 
 from pipeline import checks, gbif, ledger
+from pipeline.util import value
 
 
 @pytest.fixture
@@ -76,7 +77,7 @@ def test_names_from_history(tmp_path):
     con = duckdb.connect()
     names.load_history(con, tsv)
     assert con.sql("SELECT name FROM species").fetchall() == [("Anthus nilghiriensis",)]
-    assert con.sql("SELECT sum(n_records) FROM species_decade").fetchone()[0] == 9
+    assert value(con, "SELECT sum(n_records) FROM species_decade") == 9
 
 
 def test_inputs_fingerprint_is_stable_and_sensitive():
@@ -135,7 +136,7 @@ def test_duplicate_keys_for_one_name_are_merged(districts, tmp_path):
     names.load_history(con, tsv)
     assert names.merge_duplicates(con) == 1
     assert sorted(con.sql("SELECT species_key FROM species").fetchall()) == [("PL1",), ("XBFD",)]
-    assert con.sql("SELECT sum(n_records) FROM species_decade WHERE species_key = 'XBFD'").fetchone()[0] == 1702
+    assert value(con, "SELECT sum(n_records) FROM species_decade WHERE species_key = 'XBFD'") == 1702
     cube = tmp_path / "c.tsv"
     cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\n"
                     "VN78J\t10.5\t76.5\t1938\t1947\t2\nXBFD\t10.5\t76.5\t1990\t2026\t1700\n")

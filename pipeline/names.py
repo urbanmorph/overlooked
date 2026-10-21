@@ -5,6 +5,8 @@ Creates tables:
   species_decade  species_key, decade, basis, n_records
 """
 
+from pipeline.util import value
+
 
 def load_history(con, tsv):
     con.sql(f"""
@@ -55,4 +57,4 @@ def merge_duplicates(con):
         FROM species_decade d LEFT JOIN key_map m USING (species_key)
         GROUP BY ALL ORDER BY species_key, decade, basis
     """)
-    return con.sql("SELECT count(DISTINCT name) FROM key_map").fetchone()[0]
+    return value(con, "SELECT count(DISTINCT name) FROM key_map")

@@ -61,7 +61,7 @@ from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
 from pipeline.site_data import RIGHTS, shard_of
 from pipeline.r2 import sha256
-from pipeline.util import dump, now
+from pipeline.util import dump, first, now, value
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "master"
@@ -629,7 +629,7 @@ def resolve(con):
                SELECT i.* EXCLUDE (in_gbif) FROM ids0 i JOIN idmap m USING (id) WHERE m.id = m.canonical""")
     for t in ("names_in_r", "evidence_r"):
         con.sql(f"UPDATE {t} SET id = m.canonical FROM idmap m WHERE {t}.id = m.id AND m.id <> m.canonical")
-    return con.sql("SELECT count(*) FROM idmap WHERE id <> canonical").fetchone()[0]
+    return value(con, "SELECT count(*) FROM idmap WHERE id <> canonical")
 
 
 # ---------------------------------------------------------------- flags and labels
@@ -849,7 +849,7 @@ def species_files(con, out: Path):
 
 def described_summary(con):
     """Range of the years described, and how many species have no year in the sources."""
-    lo, hi, unknown = con.sql("SELECT min(year), max(year), count(*) FILTER (WHERE year IS NULL) FROM master").fetchone()
+    lo, hi, unknown = first(con, "SELECT min(year), max(year), count(*) FILTER (WHERE year IS NULL) FROM master")
     return {"from": lo, "to": hi, "unknown": unknown}
 
 
@@ -882,8 +882,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
             FROM master_state s JOIN master m USING (id)
             GROUP BY ALL""").fetchall():
         by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [obs, ident, thr]
-    totals = dict(zip(("documented", "observed", "identified"), con.sql(
-        "SELECT count(*), count(*) FILTER (WHERE observed), count(*) FILTER (WHERE identified) FROM master").fetchone()))
+    totals = dict(zip(("documented", "observed", "identified"), first(con,
+        "SELECT count(*), count(*) FILTER (WHERE observed), count(*) FILTER (WHERE identified) FROM master")))
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
@@ -924,8 +924,8 @@ def changes(con, prev_parquet, prev_month, month, n_groups=len(GROUPS)):
         c AS (SELECT key, name, gi, sources, observed, identified, states_identified,
                      coalesce(key, 'n:' || name) AS id FROM master),
         j AS (SELECT c.*, p.id IS NOT NULL AS was, p.observed AS p_obs, p.identified AS p_id,
-                     list_filter(c.states_identified, s -> NOT list_contains(coalesce(p.states_identified, []), s)) AS new_states,
-                     list_filter(c.sources, s -> NOT list_contains(coalesce(p.sources, []), s)) AS new_sources
+                     list_filter(c.states_identified, lambda s: NOT list_contains(coalesce(p.states_identified, []), s)) AS new_states,
+                     list_filter(c.sources, lambda s: NOT list_contains(coalesce(p.sources, []), s)) AS new_sources
               FROM c LEFT JOIN p USING (id))
         SELECT CASE WHEN NOT was THEN 'documented'
                     WHEN identified AND NOT p_id THEN 'identified'

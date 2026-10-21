@@ -16,6 +16,8 @@ from pathlib import Path
 
 import duckdb
 
+from pipeline.util import first, value
+
 ROOT = Path(__file__).resolve().parent.parent
 POINTS = ROOT / "data/fnf/gbif_points_2026-10-13/0023211-260928105237408.csv"
 EXCLUDED = ROOT / "pipeline/ref/excluded_datasets.csv"
@@ -40,7 +42,7 @@ def main():
           AND (coordinateUncertaintyInMeters IS NULL OR coordinateUncertaintyInMeters <= 25000)
           AND datasetKey NOT IN (SELECT datasetKey FROM read_csv('{EXCLUDED}'))
     """)
-    n = con.sql("SELECT count(*), count(DISTINCT (lat, lon)) FROM pts").fetchone()
+    n = first(con, "SELECT count(*), count(DISTINCT (lat, lon)) FROM pts")
     print(f"records {n[0]:,}, distinct points {n[1]:,} ({time.time() - t:.0f}s)")
 
     con.sql(f"CREATE OR REPLACE TABLE d AS SELECT dist_lgd, geometry FROM '{DISTRICTS}'")
@@ -73,15 +75,15 @@ def main():
             JOIN pt_district pd USING (lat, lon)
             JOIN cell_district cd ON cd.cx = floor(p.lon * {k}) AND cd.cy = floor(p.lat * {k})
         """)
-        r = con.sql("""
+        r = first(con, """
             SELECT count(*) AS records,
                    count(*) FILTER (WHERE by_point IS NOT NULL AND by_cell IS NOT NULL AND by_point <> by_cell) AS other_district,
                    count(*) FILTER (WHERE by_point IS NOT NULL AND by_cell IS NULL) AS lost_to_sea,
                    count(*) FILTER (WHERE by_point IS NULL AND by_cell IS NOT NULL) AS gained_from_sea,
                    count(*) FILTER (WHERE by_point IS NULL AND by_cell IS NULL) AS outside_both
             FROM placed
-        """).fetchone()
-        ledgers = con.sql("""
+        """)
+        ledgers = first(con, """
             WITH a AS (SELECT species_key, by_point AS dist, max("year") AS last_year FROM placed
                        WHERE by_point IS NOT NULL GROUP BY ALL),
                  b AS (SELECT species_key, by_cell AS dist, max("year") AS last_year FROM placed
@@ -94,8 +96,8 @@ def main():
                     WHERE a.last_year IS DISTINCT FROM b.last_year),
                    (SELECT count(*) FROM a JOIN b USING (species_key, dist)
                     WHERE (a.last_year < 1980) IS DISTINCT FROM (b.last_year < 1980))
-        """).fetchone()
-        cube_rows = con.sql(f"SELECT count(*) FROM (SELECT DISTINCT species_key, floor(lon * {k}), floor(lat * {k}) FROM pts)").fetchone()[0]
+        """)
+        cube_rows = value(con, f"SELECT count(*) FROM (SELECT DISTINCT species_key, floor(lon * {k}), floor(lat * {k}) FROM pts)")
         res = {
             "cell_km_approx": round(111 / k, 2),
             "records": r[0],

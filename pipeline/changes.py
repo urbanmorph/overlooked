@@ -35,7 +35,7 @@ import duckdb
 from pipeline import iucn, r2
 from pipeline.groups import GROUP_SQL
 from pipeline.r2 import sha256
-from pipeline.util import now
+from pipeline.util import first, now, value
 
 ROOT = Path(__file__).resolve().parent.parent
 SNAPSHOTS = ROOT / "data" / "snapshots"
@@ -150,11 +150,11 @@ def state(folder: Path, run_id, sources, iucn_path=None, iucn_meta=None):
         ORDER BY species_key
     """)
     con.sql(f"COPY st TO '{folder / STATE}' (FORMAT parquet, COMPRESSION zstd)")
-    n, records, placed = con.sql("SELECT count(*), sum(records), sum(records_placed) FROM st").fetchone()
+    n, records, placed = first(con, "SELECT count(*), sum(records), sum(records_placed) FROM st")
     meta = {"run_id": run_id, "built": now(), "ref_year": ref_year, "recent_years": RECENT_YEARS, "inputs": inputs,
             "rows": n, "sources": sources, "iucn": iucn_meta,
             "totals": {"species": n, "records": int(records or 0), "records_placed": int(placed or 0),
-                       "districts": con.sql(f"SELECT count(DISTINCT district_lgd) FROM '{ledger}'").fetchone()[0]}}
+                       "districts": value(con, f"SELECT count(DISTINCT district_lgd) FROM '{ledger}'")}}
     meta_path.write_text(json.dumps(meta, indent=1))
     return meta
 
@@ -231,8 +231,8 @@ def compare(old, new):
                o.records AS records_before, n.records AS records_after,
                abs({obs_share('n')} - {obs_share('o')}) AS kind_move,
                o.last_year AS last_year_before, n.last_year AS last_year_after,
-               list_filter(coalesce(n.districts, []), x -> NOT list_contains(coalesce(o.districts, []), x)) AS districts_added,
-               list_filter(coalesce(o.districts, []), x -> NOT list_contains(coalesce(n.districts, []), x)) AS districts_removed,
+               list_filter(coalesce(n.districts, []), lambda x: NOT list_contains(coalesce(o.districts, []), x)) AS districts_added,
+               list_filter(coalesce(o.districts, []), lambda x: NOT list_contains(coalesce(n.districts, []), x)) AS districts_removed,
                o.iucn AS iucn_before, n.iucn AS iucn_after
         FROM (SELECT o.*, coalesce(m.new_key, o.species_key) AS nk FROM o LEFT JOIN moved m ON m.old_key = o.species_key) o
         FULL JOIN n ON o.nk = n.species_key
@@ -249,7 +249,7 @@ def compare(old, new):
     }
     con.sql(f"""ALTER TABLE pair ADD COLUMN flags VARCHAR[];
                 UPDATE pair SET flags = list_filter([{', '.join(f"CASE WHEN {c} THEN '{f}' END" for f, c in species_flags.items())}],
-                                                    x -> x IS NOT NULL)""")
+                                                    lambda x: x IS NOT NULL)""")
     iucn_known = bool(before and before.get("iucn") and after.get("iucn"))
     when = {
         "newly_recorded": "NOT was",
@@ -295,7 +295,7 @@ def compare(old, new):
                        "large_record_change": LARGE_RECORD_CHANGE, "min_record_change": MIN_RECORD_CHANGE,
                        "kind_shift": KIND_SHIFT, "many_records_at_once": MANY_RECORDS_AT_ONCE},
         "counts": counts, "rows": sum(counts.values()),
-        "flagged": con.sql("SELECT count(*) FROM feed WHERE len(flags) > 0").fetchone()[0],
+        "flagged": value(con, "SELECT count(*) FROM feed WHERE len(flags) > 0"),
         "sources": {"shifts": moved, "unknown": unknown, "from": before and before["sources"], "to": after["sources"]},
         "totals": {"from": before and before["totals"], "to": after["totals"]},
         "record_jumps": [[k, nm, int(b), int(a), list(f)] for k, nm, b, a, f in jumps],

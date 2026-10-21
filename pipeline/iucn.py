@@ -18,6 +18,8 @@ from pathlib import Path
 
 import requests
 
+from pipeline.util import value
+
 ROOT = Path(__file__).resolve().parent.parent
 URL = "https://hosted-datasets.gbif.org/datasets/iucn/iucn-latest.zip"
 DATASET = "19491596-35ae-4a91-9a98-85cf505f1bd3"
@@ -99,7 +101,7 @@ def from_gbif(con, http, s3=None, cache=CACHE):
             z.extractall(folder)
         parse(con, folder, local)
         meta = {"etag": tag, "url": URL, "dataset": DATASET, "doi": "10.15468/0qnb58", "licence": "CC BY 4.0 (on GBIF)",
-                "rows": con.sql("SELECT count(*) FROM iucn").fetchone()[0]}
+                "rows": value(con, "SELECT count(*) FROM iucn")}
         meta_path.write_text(json.dumps(meta, indent=1))
         if s3:
             r2.sync_file(s3, local, f"cache/master/{PARQUET}", immutable=False)

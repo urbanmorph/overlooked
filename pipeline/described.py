@@ -139,7 +139,7 @@ def sync(http, s3, force=False):
         if s3:
             r2.sync_file(s3, local, R2_PREFIX + FILES[src], immutable=False)
             r2.put_json(s3, meta, R2_PREFIX + META)
-        n = duckdb.sql(f"SELECT count(*), count(year) FROM '{local}'").fetchone()
+        n = util.first(duckdb, f"SELECT count(*), count(year) FROM '{local}'")
         print(f"{src}: {n[0]} species names, {n[1]} with a year", flush=True)
         paths[src] = local
     return paths

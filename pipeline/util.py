@@ -1,4 +1,5 @@
-"""Small helpers that every extractor and builder shares: logs, timestamps, JSON output, streamed downloads."""
+"""Small helpers that every extractor and builder shares: logs, timestamps, JSON output, streamed downloads, one-row
+queries."""
 
 import json
 from datetime import datetime, timezone
@@ -11,6 +12,20 @@ def log(*a):
 
 def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def first(con, sql, params=None):
+    """The first row of a query as a tuple, or None. For queries of one row (counts, LIMIT 1). It reads the whole
+    result: duckdb 2.0 refuses the next query on a connection while a result is unread, and has no fetchone() on
+    relations. con: a connection or the duckdb module."""
+    rows = con.execute(sql, params or []).fetchall()
+    return rows[0] if rows else None
+
+
+def value(con, sql, params=None):
+    """The first column of the first row, or None."""
+    row = first(con, sql, params)
+    return row[0] if row else None
 
 
 def dump(obj, path: Path):
