@@ -99,7 +99,14 @@ def test_query_l_runs_last():
     ("Ladakh", 37), ("Telangana", 36), ("Dadra and Nagar Haveli and Daman and Diu", 38),
     ("Bombay", None), ("Madras", None), ("Bengal", None), ("[Not Stated]", None), ("", None), (None, None),
     ("Kerala, Tamil Nadu", None), ("Punjab [Haryana]", None),   # two states: left unplaced
-    ("Mysore", None), ("Mysore State", 29), ("Madras State", 33), ("Bihar State of", 10), ("NEFA", 12),
+    ("Mysore State", 29), ("Madras State", 33), ("Bihar State of", 10), ("NEFA", 12),
+    # Old names of places wholly inside one of today's states (city, district or hill range): placed.
+    ("Mysore", 29), ("Bangalore", 29), ("Coorg", 29), ("Malabar", 32), ("Malappuram", 32), ("Darjeeling", 19),
+    ("Darjiling", 19), ("Calcutta", 19), ("Kumaon", 5), ("Garhwal", 5), ("Tehri", 5), ("Mussoorie", 5),
+    ("Khasia Hills", 17), ("Khasi Hills", 17), ("Nilgiris", 33), ("Neilgherries", 33), ("Neelgherries", 33),
+    ("Salem", 33), ("Tiruchi", 33), ("Kotagiri", 33), ("Ranchi", 20),
+    # Old names that cover more than one of today's states, or another country: left unplaced.
+    ("Travancore", None), ("Canara", None), ("Madura", None), ("Concan", None), ("Carnatic", None),
 ])
 def test_state_names(text, lgd):
     from pipeline import unlocated
