@@ -45,7 +45,20 @@
     <p class="lede">Each week we compare the master list with the week before. A species moves when someone observes it, when someone confirms its name, or when a source adds it. These changes come from the people who observe and identify on iNaturalist, from the collections and data publishers on GBIF, and from the taxonomists of BSI, ZSI and other institutions.</p>
   </section>
 
-  <section class="card pad" id="baseline" hidden>
+  <section id="trend" hidden aria-labelledby="trend-h">
+    <h2 id="trend-h" class="visually-hidden">Totals by week</h2>
+    <div class="filters"><label class="f">Group <select id="tgroup"><option value="">All groups</option></select></label></div>
+    <div class="kpis six" id="ttiles" role="group" aria-label="Choose a measure for the chart" style="margin-top:16px"></div>
+    <section class="card pad trend" style="margin-top:16px" aria-labelledby="tchart-h">
+      <h3 id="tchart-h" style="margin:0;font-size:18px">Species documented in India</h3>
+      <p class="note" id="tchart-note" style="margin:4px 0 0"></p>
+      <div style="position:relative;margin-top:12px"><svg id="tsvg" viewBox="0 0 800 260" role="img" tabindex="0" aria-labelledby="tchart-h tchart-note"></svg><div class="tip" id="ttip" hidden></div></div>
+      <details style="margin-top:12px"><summary class="note" style="cursor:pointer">Show the numbers as a table</summary>
+        <div class="tablebox"><table><thead><tr><th>Week</th><th class="n">Value</th><th class="n">Change</th></tr></thead><tbody id="ttable"></tbody></table></div></details>
+    </section>
+  </section>
+
+  <section class="card pad" id="baseline" hidden style="margin-top:16px">
     <h2>Changes start next week</h2>
     <p class="note" style="font-size:16px" id="baseline-text">The master list compares each week with the week before. The first changes show here after the next weekly list.</p>
     <p class="note" style="font-size:16px">To help now, <a href="/?view=identified">see the species that wait for a name</a>.</p>

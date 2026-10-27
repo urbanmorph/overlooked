@@ -6,6 +6,7 @@
 import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 import { fixSection } from './fix.js';
+import { MEASURES, series, tile } from './trend.js';
 
 // Top-level groups for the cards, built from the 28 pipeline groups by name.
 const CATS = [
@@ -45,6 +46,9 @@ function parseYears(v) {
 try {
   const latest = await getJSON('layers/master/latest.json');
   const base = latest.base;
+  getJSON(base + 'history.json').then(H => {   // This week: the totals and their change, each a link to its chart
+    if (H?.lists?.length) $('#week').innerHTML = MEASURES.map(m => tile(m, series(H, m.key), { href: `/changes?m=${m.key}` })).join('');
+  }).catch(() => {});
   const snap = await snapshot();
   const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
   const fix = fixSection(snap);

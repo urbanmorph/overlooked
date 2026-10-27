@@ -249,3 +249,14 @@ a.idlink { font-weight: 500; overflow-wrap: anywhere }
 .sl-body a.b.go { margin-top: auto; justify-content: center; background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600 }
 #ginfo { min-height: 3em } #bands { min-height: 44px }
 @media (max-width: 600px) { #ginfo { min-height: 6em } }
+
+/* Weekly trend (changes.html): tiles that pick the measure, and the chart */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+button.kpi { text-align: left; font: inherit; cursor: pointer; width: 100% } button.kpi:hover { border-color: var(--field) }
+button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent) }
+.kpi .delta { margin-top: 4px; font-size: 14px; color: var(--muted) } .kpi .spark { display: block; margin-top: 10px; width: 100%; height: 28px }
+.trend svg { display: block; width: 100%; height: auto; touch-action: pan-y }
+.trend .axis { font: 12px var(--mono); fill: var(--muted) } .trend .grid { stroke: var(--line-2); stroke-width: 1 }
+.kpis.six { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+@media (max-width: 899px) { .kpis.six { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px } .kpis.six .kpi { padding: 14px }
+  .kpis.six .kpi b { font-size: 22px } .kpis.six .delta { min-height: 2.9em } }   /* placeholder and filled tiles keep one height */

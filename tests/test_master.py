@@ -394,7 +394,7 @@ def test_changes_between_months(tmp_path):
         ('K5', 'Eus fus', 1, ['BSI'], false, false, []::INTEGER[])) t({cols})""")
     ch = master.changes(con, prev, "2026-10", "2026-11", n_groups=2)
     assert ch["from"] == "2026-10" and ch["to"] == "2026-11"
-    assert ch["counts"] == {"identified": 1, "state": 1, "observed": 1, "documented": 1, "dropped": 1}
+    assert ch["counts"] == {"identified": 1, "state": 1, "observed": 1, "documented": 1, "dropped": 1, "iucn": 0}
     # per group: [added, newly observed, newly identified, identified in a new state]
     assert ch["groups"] == [[0, 1, 1, 0], [1, 0, 0, 1]]
     assert sorted(ch["rows"]) == sorted([
@@ -522,3 +522,63 @@ def test_species_known_only_from_gbif_records_with_no_place_are_labelled(inputs,
     assert "lgo" in labels["U1"] and "lm" in labels["U1"]
     assert "lgo" not in labels["K3"]
     assert ("lgo", "Only GBIF records with no exact location", "other") in master.LABELS
+
+
+def test_iucn_category_changes_are_a_kind_of_change(tmp_path):
+    """A species whose IUCN Red List category changed since the last list is a change of its own, with both
+    categories; a species with no category before or after is not one. Lists without IUCN give no such rows."""
+    con = duckdb.connect()
+    g0 = GROUPS[0]
+    con.sql(f"""CREATE TABLE prev AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', '{g0}', ['GBIF'], true, true, [32], 'VU'),
+        ('K2', 'Bus cus', '{g0}', ['GBIF'], true, true, [32], 'LC'),
+        ('K3', 'Cus dus', '{g0}', ['GBIF'], true, true, [32], NULL))
+        t(key, name, "group", sources, observed, identified, states_identified, iucn)""")
+    prev = tmp_path / "prev.parquet"
+    con.sql(f"COPY prev TO '{prev}' (FORMAT parquet)")
+    con.sql("""CREATE TABLE master AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', 0, ['GBIF'], true, true, [32], 'EN'),
+        ('K2', 'Bus cus', 0, ['GBIF'], true, true, [32], 'LC'),
+        ('K3', 'Cus dus', 0, ['GBIF'], true, true, [32], 'NT'))
+        t(key, name, gi, sources, observed, identified, states_identified, iucn)""")
+    ch = master.changes(con, prev, "2026-10", "2026-10-26", n_groups=1)
+    assert ch["counts"]["iucn"] == 2
+    assert sorted(r for r in ch["rows"] if r[0] == "iucn") == [
+        ["iucn", "K1", "Aus bus", 0, [], [], ["VU", "EN"]], ["iucn", "K3", "Cus dus", 0, [], [], [None, "NT"]]]
+
+
+def summary_for(period, docs, obs, ident, cats, w_species, w_obs):
+    """A summary.json with two groups, as site_files writes it (the parts history reads)."""
+    iucn = master.IUCN_CATS
+    row = lambda d, o, i, c: [d, o, i, [c.get(k, 0) for k in iucn], 0]
+    return {"period": period, "groups": ["G0", "G1"],
+            "india": [row(docs[0], obs[0], ident[0], cats[0]), row(docs[1], obs[1], ident[1], cats[1])],
+            "waiting": {"india": [[w_species[0], w_obs[0], 0], [w_species[1], w_obs[1], 0]]}}
+
+
+def test_history_has_one_entry_per_list_with_the_totals_by_group():
+    s1 = summary_for("2026-10", [10, 5], [6, 2], [4, 1], [{"CR": 1, "VU": 2, "LC": 3}, {"EN": 1}], [3, 1], [30, 7])
+    s2 = summary_for("2026-10-26", [11, 5], [7, 2], [5, 1], [{"CR": 1, "VU": 3}, {"EN": 1}], [2, 1], [25, 7])
+    h = master.history(None, s1)
+    h = master.history(h, s2)
+    assert h["measures"] == ["documented", "observed", "identified", "threatened", "waiting_species", "waiting_observations"]
+    assert [e["period"] for e in h["lists"]] == ["2026-10", "2026-10-26"]
+    assert h["lists"][1]["india"] == [16, 9, 6, 5, 3, 32]
+    assert h["lists"][1]["groups"] == [[11, 7, 5, 4, 2, 25], [5, 2, 1, 1, 1, 7]]
+    assert master.history(h, s2) == h                              # the same list again changes nothing
+    assert [e["period"] for e in master.history(h, {**s1, "period": "2026-11-02"})["lists"]] == ["2026-10", "2026-10-26", "2026-11-02"]
+
+
+def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
+    s1 = summary_for("2026-10", [10, 5], [6, 2], [4, 1], [{}, {}], [3, 1], [30, 7])
+    s2 = summary_for("2026-10-26", [11, 5], [7, 2], [5, 1], [{}, {}], [2, 1], [25, 7])
+    first_week = master.next_history({"summary": s1, "history": None}, s2)      # October had no history.json
+    assert [e["period"] for e in first_week["lists"]] == ["2026-10", "2026-10-26"]
+    s3 = {**s2, "period": "2026-11-02"}
+    assert len(master.next_history({"summary": s2, "history": first_week}, s3)["lists"]) == 3
+    assert [e["period"] for e in master.next_history(None, s1)["lists"]] == ["2026-10"]
+
+
+def test_the_list_writes_its_history(built):
+    h = json.loads((built["out"] / "history.json").read_text())
+    assert [e["period"] for e in h["lists"]] == ["2026-10"] and h["measures"] == master.MEASURES

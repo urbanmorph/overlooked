@@ -915,13 +915,14 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
 
 # ---------------------------------------------------------------- changes since the previous list
 
-CHANGE_KINDS = ("identified", "state", "observed", "documented", "dropped")
+CHANGE_KINDS = ("identified", "state", "observed", "documented", "dropped", "iucn")
 
 
 def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
     """Species that moved between the previous master list (a master.parquet) and this one (table master).
     Kinds: identified (first identification in India), state (identified in a state for the first time),
-    observed (first observation), documented (new on the list), dropped (no longer on the list: renamed or merged).
+    observed (first observation), documented (new on the list), dropped (no longer on the list: renamed, merged, or
+    left out as not from India), iucn (IUCN Red List category changed; the row ends with [before, now]).
     rows: [kind, key, name, group index, [states new for the species], [sources new for the species]]."""
     if not prev_parquet:
         return {"from": None, "to": period_id}
@@ -943,15 +944,53 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
         UNION ALL
         SELECT 'dropped', coalesce(key, ''), name, gi, [], [] FROM p WHERE id NOT IN (SELECT id FROM c)
         ORDER BY 1, 3""").fetchall()
+    rows = [list(r) for r in rows]
+    prev_cols = {c for (c, *_) in con.sql(f"DESCRIBE SELECT * FROM '{prev_parquet}'").fetchall()}
+    if "iucn" in prev_cols and "iucn" in {c for (c, *_) in con.sql("DESCRIBE master").fetchall()}:
+        rows += [[*r[:4], [], [], [r[4], r[5]]] for r in con.sql(f"""
+            SELECT 'iucn', coalesce(c.key, ''), c.name, c.gi, p.iucn, c.iucn
+            FROM master c JOIN '{prev_parquet}' p ON coalesce(c.key, 'n:' || c.name) = coalesce(p.key, 'n:' || p.name)
+            WHERE c.iucn IS NOT NULL AND c.iucn IS DISTINCT FROM p.iucn ORDER BY c.name""").fetchall()]
     counts = dict.fromkeys(CHANGE_KINDS, 0)
     groups = [[0, 0, 0, 0] for _ in range(n_groups)]
     col = {"documented": 0, "observed": 1, "identified": 2, "state": 3}
-    for kind, _, _, gi, _, _ in rows:
+    for kind, _, _, gi, *_ in rows:
         counts[kind] += 1
         if kind in col and gi is not None and 0 <= gi < n_groups:
             groups[gi][col[kind]] += 1
     return {"from": prev_period, "to": period_id, "counts": counts, "groups": groups,
-            "rows": [[k, key, name, gi, list(st), list(src)] for k, key, name, gi, st, src in rows]}
+            "rows": [[k, key, name, gi, list(st), list(src), *extra] for k, key, name, gi, st, src, *extra in rows]}
+
+
+# Measures of the weekly history (history.json), for India and per group.
+MEASURES = ["documented", "observed", "identified", "threatened", "waiting_species", "waiting_observations"]
+
+
+def history_entry(summary):
+    """One list's totals from its summary.json: per group [documented, observed, identified, threatened (IUCN CR, EN
+    or VU), species and observations on iNaturalist that wait for a name], and their sum for India."""
+    threat = [IUCN_CATS.index(c) for c in THREATENED]
+    waiting = (summary.get("waiting") or {}).get("india") or []
+    groups = [[d, o, i, sum(cats[k] for k in threat), *(waiting[gi][:2] if gi < len(waiting) else [0, 0])]
+              for gi, (d, o, i, cats, *_) in enumerate(summary["india"])]
+    return {"period": summary.get("period") or summary.get("month"), "india": [sum(c) for c in zip(*groups)],
+            "groups": groups}
+
+
+def next_history(prev, summary):
+    """This list's history: the previous list's history (or, for a list from before history.json, one built from its
+    summary) with this list added. prev: previous_layer() or None."""
+    base = (prev or {}).get("history")
+    if not base and (prev or {}).get("summary"):
+        base = history(None, prev["summary"])
+    return history(base, summary)
+
+
+def history(prev, summary):
+    """history.json: the totals of every list so far, oldest first. This list replaces an entry of the same period."""
+    entry = history_entry(summary)
+    lists = [e for e in (prev or {}).get("lists", []) if e["period"] != entry["period"]] + [entry]
+    return {"measures": MEASURES, "groups": summary["groups"], "lists": sorted(lists, key=lambda e: e["period"])}
 
 
 def previous_period(latest, period):
@@ -966,25 +1005,32 @@ def previous_period(latest, period):
     return published if published and published < period else None
 
 
+def layer_json(s3, period, name):
+    """A JSON file of a published master list, from the local folder or R2, or None."""
+    from pipeline import r2
+    local = LAYERS / "master" / period / name
+    if local.exists():
+        return json.loads(local.read_text())
+    return r2.get_json(s3, f"layers/master/{period}/{name}") if s3 else None
+
+
 def previous_layer(s3, period):
-    """The previous master list: {"parquet", "period", "summary"} from local files or R2, or None."""
+    """The previous master list: {"parquet", "period", "summary", "history"} from local files or R2, or None."""
     from pipeline import r2
     if s3:
         pm = previous_period(r2.get_json(s3, "layers/master/latest.json"), period)
     else:
-        local = sorted(p.name for p in (LAYERS / "master").glob("*") if p.is_dir() and p.name < period)
-        pm = local[-1] if local else None
+        older = sorted(p.name for p in (LAYERS / "master").glob("*") if p.is_dir() and p.name < period)
+        pm = older[-1] if older else None
     if not pm:
         return None
-    local = LAYERS / "master" / pm
-    parquet = local / "master.parquet"
+    parquet = LAYERS / "master" / pm / "master.parquet"
     if not parquet.exists():
         parquet = r2_file(s3, f"layers/master/{pm}/master.parquet", CACHE / f"master_{pm}.parquet")
     if not parquet:
         return None
-    summary = (json.loads((local / "summary.json").read_text()) if (local / "summary.json").exists()
-               else r2.get_json(s3, f"layers/master/{pm}/summary.json") if s3 else None)
-    return {"parquet": parquet, "period": pm, "summary": summary}
+    return {"parquet": parquet, "period": pm, "summary": layer_json(s3, pm, "summary.json"),
+            "history": layer_json(s3, pm, "history.json")}
 
 
 def waiting_total(summary):
@@ -1051,6 +1097,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
     dump(ch, out / "changes.json")
+    dump(next_history(prev, summary), out / "history.json")
     summary["merged_ids"] = merged
     summary["names_pending_match"] = len(pending)
     return summary
