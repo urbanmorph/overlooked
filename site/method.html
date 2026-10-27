@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sources and method · Overlooked</title>
-<meta name="description" content="How Overlooked builds each monthly snapshot, the sources it uses, their terms, and how to download the data.">
+<meta name="description" content="How Overlooked builds each weekly snapshot, the sources it uses, their terms, and how to download the data.">
 <!-- part:head -->
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
 <link rel="modulepreload" href="/assets/common.js">
 <script type="module" src="/assets/method.js"></script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dataset","name":"Overlooked: species of India, observed and identified","description":"A monthly master list of species documented from India from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, Plazi and the IUCN Red List, with observed, identified and IUCN status by group and state.","url":"https://overlooked-india.pages.dev/method","license":"https://creativecommons.org/licenses/by/4.0/","creator":{"@type":"Person","name":"Sathya Sankaran"},"creditText":"Overlooked (overlooked-india.pages.dev), CC BY 4.0, Sathya Sankaran. Sources: GBIF.org, iNaturalist, Botanical Survey of India, Zoological Survey of India, Royal Botanic Gardens Kew, Plazi, IUCN Red List, Catalogue of Life.","isAccessibleForFree":true,"spatialCoverage":{"@type":"Place","name":"India"},"temporalCoverage":"../..","distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/layers/master/latest.json"},{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/latest.json"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dataset","name":"Overlooked: species of India, observed and identified","description":"A weekly master list of species documented from India from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, Plazi and the IUCN Red List, with observed, identified and IUCN status by group and state.","url":"https://overlooked-india.pages.dev/method","license":"https://creativecommons.org/licenses/by/4.0/","creator":{"@type":"Person","name":"Sathya Sankaran"},"creditText":"Overlooked (overlooked-india.pages.dev), CC BY 4.0, Sathya Sankaran. Sources: GBIF.org, iNaturalist, Botanical Survey of India, Zoological Survey of India, Royal Botanic Gardens Kew, Plazi, IUCN Red List, Catalogue of Life.","isAccessibleForFree":true,"spatialCoverage":{"@type":"Place","name":"India"},"temporalCoverage":"../..","distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/layers/master/latest.json"},{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/latest.json"}]}</script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -42,20 +42,20 @@
 <main id="main" class="wrap">
   <section style="margin-top:40px">
     <h1 class="page">Sources and method</h1>
-    <p class="lede">Each month a scheduled job takes fresh data from the sources, computes every figure again, and publishes the result as a dated snapshot. Nobody edits the figures by hand. A snapshot never changes after it is published.</p>
+    <p class="lede">Each week a scheduled job takes fresh data from the sources, computes every figure again, and publishes the result as a dated snapshot. Nobody edits the figures by hand. A snapshot never changes after it is published.</p>
   </section>
 
   <section>
-    <h2>The monthly run</h2>
+    <h2>The weekly run</h2>
     <ol class="steps">
       <li class="card"><span class="mono">01</span><b>Check the sources</b><span>One request to each source. If GBIF or the data store does not answer, the run stops.</span></li>
       <li class="card"><span class="mono">02</span><b>Download</b><span>GBIF downloads, one after another, each with its own DOI. iNaturalist species lists per state. The checklists and the IUCN Red List when they change.</span></li>
       <li class="card"><span class="mono">03</span><b>Place</b><span>Each record goes to its LGD district by its coordinates.</span></li>
       <li class="card"><span class="mono">04</span><b>Compute</b><span>The master list: every species from every source, with what is observed, what is identified, and the IUCN status, for India and each state.</span></li>
-      <li class="card"><span class="mono">05</span><b>Check</b><span>Every download has a DOI. Large changes from last month stop the run.</span></li>
+      <li class="card"><span class="mono">05</span><b>Check</b><span>Every download has a DOI. Large changes from the last run stop the run.</span></li>
       <li class="card"><span class="mono">06</span><b>Publish</b><span>The files go to the data store. The site reads them in your browser.</span></li>
     </ol>
-    <p class="note">The job can run again safely. It does not repeat finished steps, and it does not send a file again if the data store already has the same file. If GBIF reports no change since the last run, the month downloads nothing.</p>
+    <p class="note">The job can run again safely. It does not repeat finished steps, and it does not send a file again if the data store already has the same file. If GBIF reports no change since the last run, the week downloads nothing.</p>
   </section>
 
   <section class="row">

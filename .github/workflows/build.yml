@@ -1,17 +1,17 @@
 name: Build and publish
 
-# Every 6 hours on days 1 to 10: if this month's GBIF downloads are ready, build the snapshot,
+# Every 6 hours, Monday to Thursday: if this week's GBIF downloads are ready, build the snapshot,
 # check it, upload it to R2 and commit site/data/latest.json. Otherwise exit quietly.
 # Scheduled runs need the repository variable PIPELINE_ENABLED = true and always publish.
 # Manual runs publish only when asked; test runs (one state) are never published.
 
 on:
   schedule:
-    - cron: "47 */6 1-10 * *"
+    - cron: "47 */6 * * 1-4"
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Run id, e.g. 2026-11 or 2026-10-kerala (empty = this month)"
+        description: "Run id, e.g. 2026-11-02 or 2026-11-02-kerala (empty = this week)"
         required: false
         default: ""
       publish:
@@ -78,5 +78,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "Monthly build failed ($(date -u +%Y-%m-%d))" \
+          gh issue create --title "Weekly build failed ($(date -u +%Y-%m-%d))" \
             --body "The build workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,6 +1,6 @@
-// What changed since last month, from the master list (layers/master/<month>/changes.json).
+// What changed since the previous weekly list, from the master list (layers/master/<period>/changes.json).
 
-import { getJSON, fmt, esc, $, showLoadError } from './common.js';
+import { getJSON, fmt, esc, $, showLoadError, periodName } from './common.js';
 
 const KINDS = [
   ['identified', 'Identified in India', 'First identification in India', 'var(--accent)'],
@@ -11,13 +11,12 @@ const KINDS = [
 ];
 const KIND = Object.fromEntries(KINDS.map(([k, chip, label, dot]) => [k, { chip, label, dot }]));
 const PAGE = 50;
-const monthName = ym => new Date(`${ym}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 try {
   const latest = await getJSON('layers/master/latest.json');
   const [S, ch] = await Promise.all([getJSON(latest.base + 'summary.json'), getJSON(latest.base + 'changes.json').catch(() => ({ from: null }))]);
   const stName = new Map(S.states.map(s => [Number(s.code), s.name]));
-  $('#runline').textContent = `Master list · ${monthName(ch.to || S.month)}${ch.from ? ` compared with ${monthName(ch.from)}` : ''}`;
+  $('#runline').textContent = `Master list · ${periodName(ch.to || S.period || S.month)}${ch.from ? ` compared with ${periodName(ch.from)}` : ''}`;
 
   if (!ch.from) {
     $('#baseline').hidden = false;
@@ -29,7 +28,7 @@ try {
     $('#tiles').innerHTML = tiles.map(([k, t]) => `<div class="card kpi"><b>${fmt(ch.counts[k] || 0)}</b><span>${t}</span></div>`).join('');
     const w = ch.waiting;
     $('#waitline').innerHTML = w && w.before != null
-      ? `Observations on iNaturalist that wait for a name: ${fmt(w.before)} last month, ${fmt(w.now)} now. <a href="/?view=identified">See the species that wait</a>.`
+      ? `Observations on iNaturalist that wait for a name: ${fmt(w.before)} last week, ${fmt(w.now)} now. <a href="/?view=identified">See the species that wait</a>.`
       : '';
     $('#state').insertAdjacentHTML('beforeend', S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join(''));
 

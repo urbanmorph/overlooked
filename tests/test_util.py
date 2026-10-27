@@ -112,3 +112,19 @@ def test_no_code_calls_fetchone():
     bad = [f"{p.relative_to(root)}:{i}" for d in ("pipeline", "scripts", "tests") for p in (root / d).rglob("*.py")
            for i, line in enumerate(p.read_text().splitlines(), 1) if ".fetchone(" in line and p.name != "test_util.py"]
     assert bad == []
+
+
+def test_period_is_the_monday_of_the_week_in_utc():
+    from datetime import datetime, timezone
+    assert util.period(datetime(2026, 10, 26, 0, 5, tzinfo=timezone.utc)) == "2026-10-26"   # a Monday
+    assert util.period(datetime(2026, 11, 1, 23, 59, tzinfo=timezone.utc)) == "2026-10-26"  # the Sunday after
+    assert util.period(datetime(2027, 1, 1, tzinfo=timezone.utc)) == "2026-12-28"           # a week across the year
+    assert len(util.period()) == 10
+
+
+def test_runs_and_layers_are_named_by_week(monkeypatch):
+    """The monthly run became weekly (27 October 2026): a run id is the week's Monday, a test run adds the state."""
+    from pipeline import run
+    monkeypatch.setattr(run, "period", lambda: "2026-10-26")
+    assert run.default_run_id() == "2026-10-26"
+    assert run.default_run_id("Tamil Nadu") == "2026-10-26-tamil-nadu"

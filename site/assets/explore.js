@@ -1,4 +1,4 @@
-// Front page: India map, groups and search over the master species list (layers/master/<month>/).
+// Front page: India map, groups and search over the master species list (layers/master/<period>/).
 // Three views: observed, identified, IUCN. Groups and states are wired both ways; the URL keeps the state.
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.

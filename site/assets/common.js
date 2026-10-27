@@ -33,6 +33,13 @@ export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 export const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
 export const $ = (sel, el = document) => el.querySelector(sel);
 
+/** A snapshot or list id as words: a weekly id ("2026-10-26", its Monday) or an earlier monthly one ("2026-10"). */
+export function periodName(id) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(id || '')) return `week of ${monthName(id)}`;
+  if (/^\d{4}-\d{2}$/.test(id || '')) return new Date(`${id}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return id || '';
+}
+
 export function monthName(iso) {
   const d = new Date(iso);
   return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });

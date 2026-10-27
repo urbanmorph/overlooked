@@ -1,4 +1,4 @@
-"""Monthly run: request the GBIF downloads, then build and publish when they are ready.
+"""Weekly run: request the GBIF downloads, then build and publish when they are ready.
 
 State for each run is kept in runs/<run id>.json and committed by the workflows, so a later job
 can resume from the download keys.
@@ -7,7 +7,7 @@ Usage:
     python -m pipeline.run request [--state Kerala]
     python -m pipeline.run build   [--run-id 2026-11] [--publish]
 
-A run limited to one state (a test run) gets the id <month>-<state> and is never published.
+A run limited to one state (a test run) gets the id <week>-<state> and is never published.
 """
 
 import argparse
@@ -18,7 +18,6 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -36,7 +35,7 @@ from pipeline import (
     unlocated,
     unresolved,
 )
-from pipeline.util import now
+from pipeline.util import now, period
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
@@ -53,8 +52,8 @@ FAILED = ("FAILED", "KILLED", "CANCELLED", "FILE_ERASED")
 
 
 def default_run_id(state=None):
-    month = datetime.now(UTC).strftime("%Y-%m")
-    return f"{month}-{state.lower().replace(' ', '-')}" if state else month
+    week = period()
+    return f"{week}-{state.lower().replace(' ', '-')}" if state else week
 
 
 def load(run_id):
@@ -101,7 +100,7 @@ def check_sources(state):
     state.setdefault("health", []).append(report)
     state["health"] = state["health"][-5:]
     for name in report["warnings"]:
-        print(f"warning: {name} did not answer correctly; it keeps last month's data")
+        print(f"warning: {name} did not answer correctly; it keeps the data of the last run")
     if report["critical_failures"]:
         state["status_note"] = f"stopped: {report['critical_failures']} not working"
         save(state)

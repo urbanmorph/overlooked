@@ -2,7 +2,7 @@
 
 Each check reports ok, HTTP status, time, and a fingerprint (ETag, Last-Modified, size or a count)
 that later steps use to fetch only what changed. Critical sources stop the run; the others are
-marked stale and keep last month's data.
+marked stale and keep the data of the last run.
 
 Usage: python -m pipeline.health [--out health.json]
 """
@@ -76,12 +76,12 @@ def check_all(r2_client=None):
     # GBIF downloads: the account can log in and list its downloads.
     user = os.environ.get("GBIF_USER")
     if user:
-        add("gbif_downloads", True, "monthly downloads", "GET",
+        add("gbif_downloads", True, "weekly downloads", "GET",
             f"https://api.gbif.org/v1/occurrence/download/user/{user}?limit=1",
             auth=(user, os.environ.get("GBIF_PASSWORD", "")))
         results["gbif_downloads"][1]["url"] = "https://api.gbif.org/v1/occurrence/download/user/<account>"
     else:
-        results["gbif_downloads"] = (None, {"ok": False, "critical": True, "used_for": "monthly downloads",
+        results["gbif_downloads"] = (None, {"ok": False, "critical": True, "used_for": "weekly downloads",
                                             "error": "GBIF_USER not set"})
     add("lgd_boundaries", False, "district map and placement", "HEAD", districts.URL)
     add("plazi", False, "module 3: new species", "GET",

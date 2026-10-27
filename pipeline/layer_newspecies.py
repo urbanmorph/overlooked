@@ -1,6 +1,6 @@
 """Module 3: follow-up on species described from India since FIRST_YEAR (2007). A dated layer, like the iNaturalist one.
 
-Steps (each saved in R2 cache/newspecies/state_<month>.json, so a run can stop and continue):
+Steps (each saved in R2 cache/newspecies/state_<week>.json, so a run can stop and continue):
   1. names     new species from Plazi (Indian holotype, "sp. nov."), BSI Plant Discoveries and ZSI Animal
                Discoveries (new to science)
   2. downloads GBIF query Y (records since FIRST_YEAR by species, year, kind) and query V (unmatched names as published),
@@ -9,7 +9,7 @@ Steps (each saved in R2 cache/newspecies/state_<month>.json, so a run can stop a
                Catalogue of Life (synonyms), then the name as published in GBIF records
   4. status    "recorded": a record dated after the description year that is not copied from a paper;
                "later papers": only records copied from later papers; "no public record since"
-Output: layers/newspecies/<month>/new_species.json and layers/newspecies/latest.json
+Output: layers/newspecies/<week>/new_species.json and layers/newspecies/latest.json
 
 Usage: python -m pipeline.layer_newspecies [--publish] [--force] [--minutes 200]
 """
@@ -26,7 +26,7 @@ import duckdb
 import requests
 
 from pipeline import bsi, gbif, health, zsi_discoveries
-from pipeline.util import first, now
+from pipeline.util import first, now, period
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
@@ -48,7 +48,7 @@ def binomial(name):
 
 
 def plazi_names(http, done=None, save=None):
-    """done: {year: rows} already fetched this month; save() is called after each year."""
+    """done: {year: rows} already fetched this week; save() is called after each year."""
     done = {} if done is None else done
     fields = "tax.name+tax.status+bib.year+bib.source+matCit.typeStatus+matCit.region+doc.uuid"
     for year in range(FIRST_YEAR, datetime.now(timezone.utc).year + 1):
@@ -266,7 +266,7 @@ def expand(doc):
 
 
 def check_window(state):
-    """A state built for another first year (names and GBIF queries Y and V) starts the month again.
+    """A state built for another first year (names and GBIF queries Y and V) starts the week again.
     Returns True when it reset the state."""
     if state.get("window") == FIRST_YEAR:
         return False
@@ -292,15 +292,15 @@ def check_queries(state):
 def run(publish, force=False, minutes=None):
     from pipeline import r2
     deadline = time.monotonic() + minutes * 60 if minutes else None
-    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    week = period()
     CACHE.mkdir(parents=True, exist_ok=True)
     http = gbif.session()
     plain = requests.Session()
     plain.headers["User-Agent"] = health.ua()
     s3 = r2.client() if publish else None
-    state_key = f"cache/newspecies/state_{month}.json"
-    state = (r2.get_json(s3, state_key) if s3 else None) or {"month": month, "downloads": {q: {"status": "WAITING"} for q in QUERIES}}
-    save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{month}.json").write_text(json.dumps(state)))
+    state_key = f"cache/newspecies/state_{week}.json"
+    state = (r2.get_json(s3, state_key) if s3 else None) or {"period": week, "downloads": {q: {"status": "WAITING"} for q in QUERIES}}
+    save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{week}.json").write_text(json.dumps(state)))
     if check_window(state):
         print(f"new-species window is now {FIRST_YEAR} onwards; names and GBIF downloads start again")
         save()
@@ -310,10 +310,10 @@ def run(publish, force=False, minutes=None):
     if force:
         state.pop("done", None)
     if state.get("done"):
-        print(f"new species layer for {month} is done ({state['done']}); nothing to do")
+        print(f"new species layer for {week} is done ({state['done']}); nothing to do")
         return
 
-    # 1. Names (once a month).
+    # 1. Names (once a week).
     if "names" not in state:
         names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3)
                       + zsi_discoveries.names(plain, s3, FIRST_YEAR))
@@ -387,21 +387,21 @@ def run(publish, force=False, minutes=None):
         print(f"time limit reached; {len(mcache)} names matched so far; the next run continues")
         return
 
-    result = {"month": month, "built": now(), "snapshot": snapshot_run, "first_year": FIRST_YEAR,
+    result = {"period": week, "built": now(), "snapshot": snapshot_run, "first_year": FIRST_YEAR,
               "downloads": [{"query": q, "key": d[q]["key"], "doi": d[q]["doi"], "created": metas[q].get("created"),
                              "records": metas[q].get("totalRecords")} for q in QUERIES],
               "sources": ["Plazi TreatmentBank (CC0)", "Botanical Survey of India, Plant Discoveries (reproduced with acknowledgement)",
                           "Zoological Survey of India, Animal Discoveries (reproduced with acknowledgement)"],
               **compact(out)}
-    folder = ROOT / "data" / "layers" / "newspecies" / month
+    folder = ROOT / "data" / "layers" / "newspecies" / week
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "new_species.json").write_text(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
     counts = {s: sum(1 for r in out if r["status"] == s) for s in ("recorded", "later_papers", "none")}
     counts["any_record"] = sum(1 for r in out if r["any_record"])
     print(f"{len(out)} new species: {counts}")
     if s3:
-        r2.sync_file(s3, folder / "new_species.json", f"layers/newspecies/{month}/new_species.json", immutable=False)
-        r2.put_json(s3, {"month": month, "updated": now(), "file": f"layers/newspecies/{month}/new_species.json",
+        r2.sync_file(s3, folder / "new_species.json", f"layers/newspecies/{week}/new_species.json", immutable=False)
+        r2.put_json(s3, {"period": week, "updated": now(), "file": f"layers/newspecies/{week}/new_species.json",
                          "snapshot": snapshot_run, "counts": counts}, "layers/newspecies/latest.json")
     state["done"] = now()  # last, so a failed upload is done again by the next run
     save()
@@ -410,7 +410,7 @@ def run(publish, force=False, minutes=None):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
-    p.add_argument("--force", action="store_true", help="recompute this month from the downloads already made")
+    p.add_argument("--force", action="store_true", help="recompute this week from the downloads already made")
     p.add_argument("--minutes", type=int, help="stop cleanly after this many minutes; the next run continues")
     a = p.parse_args()
     run(a.publish, a.force, a.minutes)

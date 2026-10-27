@@ -6,7 +6,7 @@ Forest and Climate Change, Government of India. https://bsi.gov.in
 
 The parser is ported from the fnf project (scripts/06_bsi_plant_discoveries.py). Three layouts: 2007-2012
 are lists of names with citations (list_entries); 2013-2014 and 2015+ have a description per taxon (parse),
-with 2013-2014 mostly scanned (OCR, resumable: ocr). The monthly sync
+with 2013-2014 mostly scanned (OCR, resumable: ocr). The weekly sync
 reads BSI's listing page (1 request), downloads only editions not parsed yet, and keeps parsed
 entries in the cache (local data/cache/bsi/, and R2 cache/bsi/), so each PDF is parsed once.
 

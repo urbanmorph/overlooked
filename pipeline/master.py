@@ -21,13 +21,13 @@ Inputs (all optional except the snapshot):
   ZSI           data/fnf/zsi/zsi_checklist_matched.csv, else R2 cache/master/zsi_checklist.csv
   WCVP          data/fnf/wcvp/wcvp_india.parquet, else R2 cache/master/wcvp_india.parquet
   BSI checklist data/bsi/bsi_checklist.csv, else R2 cache/bsi/bsi_checklist.csv
-  iNaturalist   layers/inat/<month>/species_counts.json (species per state, research grade and needs ID),
+  iNaturalist   layers/inat/<period>/species_counts.json (species per state, research grade and needs ID),
                 genus_counts.json (genera of observations named only to genus), coarse_counts.json (named only above genus)
-  new species   layers/newspecies/<month>/new_species.json
+  new species   layers/newspecies/<period>/new_species.json
   IUCN          the Red List checklist on GBIF (pipeline/iucn.py)
   described     Catalogue of Life authorship and Kew WCVP years (pipeline/described.py), R2 cache/described/
 
-Output: data/layers/master/<month>/ (and R2 layers/master/<month>/ with --publish, then layers/master/latest.json)
+Output: data/layers/master/<period>/ (and R2 layers/master/<period>/ with --publish, then layers/master/latest.json)
   master.parquet        one row per species: key, name, group, sources[], observed, identified, iucn, labels[],
                         states_observed[], states_identified[], year (described), authority
   master_state.parquet  one row per species x state with an observation
@@ -61,7 +61,7 @@ from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
 from pipeline.site_data import RIGHTS, shard_of
 from pipeline.r2 import sha256
-from pipeline.util import dump, first, now, value
+from pipeline.util import dump, first, now, period, value
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "master"
@@ -233,14 +233,14 @@ def snapshot_input(s3, run_id):
 
 
 def layer_input(s3, layer, field, filename):
-    """The newest local layers/<layer>/<month>/<filename>, else the one R2 layers/<layer>/latest.json names."""
+    """The newest local layers/<layer>/<period>/<filename>, else the one R2 layers/<layer>/latest.json names."""
     from pipeline import r2
     local = sorted((LAYERS / layer).glob(f"*/{filename}"))
     if local:
         return json.loads(local[-1].read_text()), local[-1].parent.name
     latest = r2.get_json(s3, f"layers/{layer}/latest.json") if s3 else None
     if latest and latest.get(field):
-        return r2.get_json(s3, latest[field]), latest.get("month")
+        return r2.get_json(s3, latest[field]), latest.get("period") or latest.get("month")
     return None, None
 
 
@@ -906,18 +906,18 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     return summary
 
 
-# ---------------------------------------------------------------- changes since last month
+# ---------------------------------------------------------------- changes since the previous list
 
 CHANGE_KINDS = ("identified", "state", "observed", "documented", "dropped")
 
 
-def changes(con, prev_parquet, prev_month, month, n_groups=len(GROUPS)):
-    """Species that moved between last month's master list (a master.parquet) and this one (table master).
+def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
+    """Species that moved between the previous master list (a master.parquet) and this one (table master).
     Kinds: identified (first identification in India), state (identified in a state for the first time),
     observed (first observation), documented (new on the list), dropped (no longer on the list: renamed or merged).
     rows: [kind, key, name, group index, [states new for the species], [sources new for the species]]."""
     if not prev_parquet:
-        return {"from": None, "to": month}
+        return {"from": None, "to": period_id}
     rows = con.sql(f"""
         WITH p AS (SELECT *, coalesce(key, 'n:' || name) AS id, list_position({GROUPS!r}, "group") - 1 AS gi
                    FROM '{prev_parquet}'),
@@ -943,19 +943,32 @@ def changes(con, prev_parquet, prev_month, month, n_groups=len(GROUPS)):
         counts[kind] += 1
         if kind in col and gi is not None and 0 <= gi < n_groups:
             groups[gi][col[kind]] += 1
-    return {"from": prev_month, "to": month, "counts": counts, "groups": groups,
+    return {"from": prev_period, "to": period_id, "counts": counts, "groups": groups,
             "rows": [[k, key, name, gi, list(st), list(src)] for k, key, name, gi, st, src in rows]}
 
 
-def previous_month(month):
-    y, m = map(int, month.split("-"))
-    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+def previous_period(latest, period):
+    """The list to compare this one with: the period layers/master/latest.json names, or, when that is this period
+    already (a second run in the same week), the one it names as previous. Monthly ids ("2026-10") sort before weekly
+    ones ("2026-10-26"), so the first weekly list compares with the last monthly one."""
+    if not latest:
+        return None
+    published = latest.get("period") or latest.get("month")
+    if published == period:
+        return latest.get("previous")
+    return published if published and published < period else None
 
 
-def previous_layer(s3, month):
-    """Last month's master list: {"parquet", "month", "summary"} from local files or R2, or None."""
+def previous_layer(s3, period):
+    """The previous master list: {"parquet", "period", "summary"} from local files or R2, or None."""
     from pipeline import r2
-    pm = previous_month(month)
+    if s3:
+        pm = previous_period(r2.get_json(s3, "layers/master/latest.json"), period)
+    else:
+        local = sorted(p.name for p in (LAYERS / "master").glob("*") if p.is_dir() and p.name < period)
+        pm = local[-1] if local else None
+    if not pm:
+        return None
     local = LAYERS / "master" / pm
     parquet = local / "master.parquet"
     if not parquet.exists():
@@ -964,7 +977,7 @@ def previous_layer(s3, month):
         return None
     summary = (json.loads((local / "summary.json").read_text()) if (local / "summary.json").exists()
                else r2.get_json(s3, f"layers/master/{pm}/summary.json") if s3 else None)
-    return {"parquet": parquet, "month": pm, "summary": summary}
+    return {"parquet": parquet, "period": pm, "summary": summary}
 
 
 def waiting_total(summary):
@@ -980,9 +993,9 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     start(con)
     has_dna = load_gbif(con, paths)
     if not has_dna:
-        notes.append("The label \"DNA only\" uses the record type only: this month's GBIF data does not mark DNA sequences.")
+        notes.append("The label \"DNA only\" uses the record type only: this snapshot's GBIF data does not mark DNA sequences.")
     if not paths.get("unlocated"):
-        notes.append("This month's GBIF data does not include records that cannot go in a district, so no species has the label \"No exact location\" yet.")
+        notes.append("This snapshot's GBIF data does not include records that cannot go in a district, so no species has the label \"No exact location\" yet.")
     if inputs.get("zsi"):
         load_zsi(con, inputs["zsi"])
     if inputs.get("wcvp"):
@@ -1027,7 +1040,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
             "(FORMAT parquet, COMPRESSION zstd)")
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
-    ch = changes(con, prev and prev["parquet"], prev and prev["month"], meta["month"])
+    ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
     dump(ch, out / "changes.json")
@@ -1073,8 +1086,8 @@ def run(a):
         snapshot = (r2.get_json(s3, "latest.json") or {}).get("run_id") if s3 else None
         if not snapshot:
             raise SystemExit("no --snapshot given and no published snapshot found")
-    month = datetime.now(timezone.utc).strftime("%Y-%m")
-    out = LAYERS / "master" / month
+    week = period()
+    out = LAYERS / "master" / week
     paths = snapshot_input(s3, snapshot)
     inat_doc, inat_month = layer_input(s3, "inat", "species_counts", "species_counts.json")
     ns_doc, ns_month = layer_input(s3, "newspecies", "file", "new_species.json")
@@ -1090,20 +1103,20 @@ def run(a):
     districts.ensure(health.ua())
     iucn_meta = iucn.table(con, http, s3)
     inputs["described"] = described.sync(http, s3)
-    prev = previous_layer(s3, month)
+    prev = previous_layer(s3, week)
     extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
     fp_before = fingerprint(paths, inputs, cache, extra)
     from pipeline import r2
-    remote = r2.get_json(s3, f"layers/master/{month}/manifest.json") if s3 else None
+    remote = r2.get_json(s3, f"layers/master/{week}/manifest.json") if s3 else None
     local = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else None
     old = local or remote
     if old and old.get("inputs") == fp_before and not old.get("names_pending_match") and not a.force:
-        print(f"layers/master/{month}: already built from the same inputs ({fp_before}); nothing to do")
+        print(f"layers/master/{week}: already built from the same inputs ({fp_before}); nothing to do")
         if not local:
             return  # built and published by an earlier run
     else:
         deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
-        meta = {"month": month, "snapshot": snapshot, "built": now()}
+        meta = {"period": week, "snapshot": snapshot, "built": now()}
         summary = build(con, paths, out, meta, districts.PATH, inputs, cache, s3, deadline, http, match=not a.no_match,
                         prev=prev)
         manifest = {**meta, "inputs": fingerprint(paths, inputs, cache, extra), "names_pending_match": summary["names_pending_match"],
@@ -1120,10 +1133,11 @@ def run(a):
             raise SystemExit("--publish needs the R2_* environment variables")
         built = json.loads((out / "manifest.json").read_text())
         if remote and remote.get("inputs") == built["inputs"] and not a.force:
-            print(f"layers/master/{month} is already published from the same inputs")
+            print(f"layers/master/{week} is already published from the same inputs")
             return
-        info = {"month": month, "updated": now(), "snapshot": snapshot, "base": f"layers/master/{month}/"}
-        publish(s3, out, month, info)
+        info = {"period": week, "previous": prev and prev["period"], "updated": now(), "snapshot": snapshot,
+                "base": f"layers/master/{week}/"}
+        publish(s3, out, week, info)
 
 
 def main():

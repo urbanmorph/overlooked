@@ -124,7 +124,7 @@ def built(inputs, tmp_path, monkeypatch):
     iucn_table(con)
     http = FakeGbif()
     out = tmp_path / "out"
-    summary = master.build(con, inputs["paths"], out, {"month": "2026-10", "snapshot": "2026-10", "built": "x"},
+    summary = master.build(con, inputs["paths"], out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"},
                            inputs["districts"], inputs["inputs"], cache={}, http=http)
     rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "identified", "iucn", "labels",
                             "states_observed", "states_identified"], r))
@@ -278,7 +278,7 @@ def test_second_run_asks_nothing(inputs, built, tmp_path):
     iucn_table(con)
     cache = json.loads((tmp_path / "cache" / "gbif_match.json").read_text())
     http = FakeGbif()
-    master.build(con, inputs["paths"], tmp_path / "out2", {"month": "m", "snapshot": "s", "built": "x"},
+    master.build(con, inputs["paths"], tmp_path / "out2", {"period": "m", "snapshot": "s", "built": "x"},
                  inputs["districts"], inputs["inputs"], cache=cache, http=http)
     assert http.asked == []
 
@@ -288,7 +288,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     con = duckdb.connect()
     iucn_table(con)
     http = FakeGbif()
-    s = master.build(con, inputs["paths"], tmp_path / "o", {"month": "m", "snapshot": "s", "built": "x"},
+    s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
     assert http.asked == [] and s["names_pending_match"] == 4
     assert any("not yet matched" in n for n in s["notes"])
@@ -410,8 +410,15 @@ def test_first_month_has_no_changes(built):
     assert json.loads((built["out"] / "changes.json").read_text()) == {"from": None, "to": "2026-10"}
 
 
-def test_previous_month():
-    assert master.previous_month("2026-11") == "2026-10" and master.previous_month("2027-01") == "2026-12"
+def test_previous_period_is_the_list_published_before_this_one():
+    """The list to compare with is the one latest.json names, or the one it names as previous when this week
+    is already published (a second run in the same week). The switch from monthly to weekly needs no gap."""
+    prev = master.previous_period
+    assert prev(None, "2026-10-26") is None
+    assert prev({"month": "2026-10"}, "2026-10-26") == "2026-10"                      # last monthly list
+    assert prev({"period": "2026-10-26", "previous": "2026-10"}, "2026-10-26") == "2026-10"
+    assert prev({"period": "2026-10-26"}, "2026-11-02") == "2026-10-26"
+    assert prev({"period": "2026-11-02"}, "2026-10-26") is None                       # never a later list
 
 
 def test_new_species_from_every_source_and_the_whole_window():
@@ -463,7 +470,7 @@ def test_records_that_cannot_go_in_a_district_are_tagged_by_problem(inputs, tmp_
           first_year, last_year, n_records)) TO '{unl}' (FORMAT parquet)""")
     paths = {**inputs["paths"], "unlocated": unl}
     out = tmp_path / "out_u"
-    master.build(con, paths, out, {"month": "2026-10", "snapshot": "2026-10", "built": "x"},
+    master.build(con, paths, out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"},
                  inputs["districts"], inputs["inputs"], cache={}, http=FakeGbif())
     rows = {k: (o, s, set(lab)) for k, o, s, lab in duckdb.sql(
         f"SELECT key, observed, states_observed, labels FROM '{out / 'master.parquet'}'").fetchall()}

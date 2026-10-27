@@ -2,7 +2,7 @@
 queries."""
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -12,6 +12,13 @@ def log(*a):
 
 def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def period(when=None):
+    """The week a run belongs to: the date of its Monday in UTC, for example "2026-10-26". Snapshots, layers and the
+    change feed are weekly. Earlier ones were monthly ("2026-10"); the ids still sort in time order."""
+    when = when or datetime.now(timezone.utc)
+    return (when - timedelta(days=when.weekday())).strftime("%Y-%m-%d")
 
 
 def first(con, sql, params=None):

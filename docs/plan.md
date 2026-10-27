@@ -463,19 +463,24 @@ Each row has the values before and after, a reason and flags. Reason, by year on
 - `species_changes.json` lists the 500 largest record changes, with their flags.
 - Limits: the snapshot has no dataset key per species, so a flag says "this coincides with a large change in the sources", not "this dataset caused it". A merge of one species into another shows only as `not_in_snapshot` plus a records jump on the other species. Dates are years only, so most `no_recent_record` rows come in January, when the reference year moves. Snapshots made before this measure (2026-10) have no query hash, so the first comparison reports the queries as unknown.
 
-## 7. Monthly schedule (GitHub Actions)
+## 7. Weekly schedule (GitHub Actions)
+
+**Weekly from 27 October 2026** (owner's decision: the site is the master list of India's species and the changes each
+week). A week is named by its Monday in UTC (`2026-10-26`); the lists before were monthly (`2026-10`). The master list
+compares with the list `layers/master/latest.json` names, so the first weekly list compares with October. Storage: about
+120 MB a week in R2 (snapshot and master list); a rule for how long old weeks stay is due before the bucket reaches 8 GB.
 
 | Workflow | When | Does |
 |---|---|---|
-| `request.yml` | 1st of the month, 02:00 UTC, and by hand | Submits the first GBIF download (A); C, U and L follow one at a time from `build.yml`. Writes the keys to `runs/YYYY-MM.json` and commits it. |
-| `build.yml` | Every 6 hours on days 1 to 10, and by hand | If downloads are pending, polls GBIF. When all are ready: builds, checks, uploads to R2, writes `latest.json`, commits `site/data/latest.json`. The commit triggers the Pages build. |
+| `request.yml` | Mondays, 02:17 UTC, and by hand | Submits the first GBIF download (A); C, U and L follow one at a time from `build.yml`. Writes the keys to `runs/<week>.json` and commits it. |
+| `build.yml` | Every 6 hours, Monday to Thursday, and by hand | If downloads are pending, polls GBIF. When all are ready: builds, checks, uploads to R2, writes `latest.json`, commits `site/data/latest.json`. The commit triggers the Pages build. |
 | `checks.yml` | On pull requests | Tests and a small sample build. |
 
 - One build at a time (`concurrency` group). Jobs stop at 6 hours; a build resumes from the download keys.
-- **Idempotent and incremental (16 October 2026):** every step can run again safely. Download keys and fetched files are reused; a build is skipped when a snapshot from the same inputs (download keys and boundary checksum) exists; R2 uploads skip files already there with the same SHA-256, so an interrupted upload continues; the manifest and `latest.json` go last. If GBIF reports no India record added, changed or re-processed since the last published run, the month downloads nothing. GBIF itself is re-summarised each month: about 5% of India records are re-processed monthly and GBIF publishes no deletions, so adding only changed records to the totals would drift.
-- **Source health at every refresh:** `pipeline/health.py` sends one request to each source (GBIF API and downloads, R2, LGD boundaries, Plazi, IPNI, Index Fungorum, iNaturalist, the India Biodiversity Portal's GBIF dataset, Kew WCVP, BSI Plant Discoveries and IVH). A critical failure (GBIF, R2) stops the run and opens an issue; any other failure is a warning, and that source keeps last month's data. Results are kept in the run state and the manifest.
-- Checks before publishing: row counts within a set range of last month, no district codes outside LGD, every figure has a DOI. Records with no coordinates and candidates are not empty when built, and within 20% of last month when last month has them. If a check fails, the job stops and opens a GitHub issue.
-- The monthly commits keep the repository active, so GitHub does not turn off the schedules.
+- **Idempotent and incremental (16 October 2026):** every step can run again safely. Download keys and fetched files are reused; a build is skipped when a snapshot from the same inputs (download keys and boundary checksum) exists; R2 uploads skip files already there with the same SHA-256, so an interrupted upload continues; the manifest and `latest.json` go last. If GBIF reports no India record added, changed or re-processed since the last published run, the week downloads nothing. GBIF itself is re-summarised each run: about 5% of India records are re-processed monthly and GBIF publishes no deletions, so adding only changed records to the totals would drift.
+- **Source health at every refresh:** `pipeline/health.py` sends one request to each source (GBIF API and downloads, R2, LGD boundaries, Plazi, IPNI, Index Fungorum, iNaturalist, the India Biodiversity Portal's GBIF dataset, Kew WCVP, BSI Plant Discoveries and IVH). A critical failure (GBIF, R2) stops the run and opens an issue; any other failure is a warning, and that source keeps the data of the last run. Results are kept in the run state and the manifest.
+- Checks before publishing: row counts within a set range of the last run, no district codes outside LGD, every figure has a DOI. Records with no coordinates are not empty when built, and within 20% of the last run when it has them. If a check fails, the job stops and opens a GitHub issue.
+- The weekly commits keep the repository active, so GitHub does not turn off the schedules.
 - Secrets in Actions: GBIF account and R2 keys (scoped to `overlooked-data`). The site builds through Cloudflare's GitHub integration, so Actions holds no Cloudflare API token. The broader Cloudflare token stays local.
 
 ## 8. Site

@@ -143,11 +143,11 @@ def page_through(client, d, save, **params):
             break
 
 
-def species_counts(client, areas, month):
+def species_counts(client, areas, week):
     """Species observed in each area, research grade and needs ID separately (observations/species_counts,
-    taxa at species rank or below). Saved after every page in species_counts_<month>.json, so a stopped run
+    taxa at species rank or below). Saved after every page in species_counts_<week>.json, so a stopped run
     continues at the next page. Raises Budget when the request budget or time limit is reached."""
-    name = f"species_counts_{month}.json"
+    name = f"species_counts_{week}.json"
     done = cached(name) or {}
     for code, pid in areas:
         for q in QUALITIES:
@@ -156,10 +156,10 @@ def species_counts(client, areas, month):
     return done
 
 
-def genus_counts(client, areas, month):
+def genus_counts(client, areas, week):
     """Genera of the needs-ID observations named only to genus, per area (observations/species_counts with
-    rank=genus). Saved after every page in genus_counts_<month>.json; a stopped run continues."""
-    name = f"genus_counts_{month}.json"
+    rank=genus). Saved after every page in genus_counts_<week>.json; a stopped run continues."""
+    name = f"genus_counts_{week}.json"
     done = cached(name) or {}
     for code, pid in areas:
         d = done.setdefault(code, {"place_id": str(pid), "page": 0, "total": None, "rows": []})
@@ -180,10 +180,10 @@ def genus_doc(done, areas, as_of):
     return {"as_of": as_of, "complete": complete, "places": dict(areas), "lists": lists}
 
 
-def coarse_counts(client, areas, month, groups=GROUPS):
+def coarse_counts(client, areas, week, groups=GROUPS):
     """Needs-ID observations named only above genus (subtribe or higher), per area and iconic group: one
-    count request each. Saved after every answer in coarse_counts_<month>.json; a stopped run continues."""
-    name = f"coarse_counts_{month}.json"
+    count request each. Saved after every answer in coarse_counts_<week>.json; a stopped run continues."""
+    name = f"coarse_counts_{week}.json"
     done = cached(name) or {}
     for code, pid in areas:
         for g in groups:

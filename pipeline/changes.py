@@ -118,7 +118,7 @@ def state(folder: Path, run_id, sources, iucn_path=None, iucn_meta=None):
             return old
     species, ledger, decade = (folder / f for f in SNAPSHOT_FILES)
     kinds = lambda basis: ", ".join(f"'{b}'" for b in basis)
-    # IUCN (NE: not assessed; NULL: no Red List table this month): the Red List name equal to the GBIF name, the
+    # IUCN (NE: not assessed; NULL: no Red List table in this snapshot): the Red List name equal to the GBIF name, the
     # assessed name before a synonym, same kingdom when both know it. Simpler than the master list, which also tries
     # the names other sources give.
     iucn_sql = (f"""SELECT s.species_key, arg_min(i.category, CASE WHEN i.accepted THEN 0 ELSE 1 END) AS iucn

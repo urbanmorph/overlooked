@@ -1,7 +1,7 @@
 name: New species layer
 
-# Module 3: follow-up on species described from India since 2015. Daily, after the monthly build
-# (it waits while GBIF downloads run, then builds and publishes once a month), and by hand.
+# Module 3: follow-up on species described from India since 2007. Daily, after the weekly build
+# (it waits while GBIF downloads run, then builds and publishes once a week), and by hand.
 # Scheduled runs need the repository variable PIPELINE_ENABLED = true.
 
 on:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Recompute this month from the downloads already made"
+        description: "Recompute this week from the downloads already made"
         type: boolean
         default: false
 

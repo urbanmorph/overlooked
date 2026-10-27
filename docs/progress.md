@@ -2,6 +2,13 @@
 
 Newest first. Updated as work happens.
 
+## 27 October 2026
+
+- Weekly, not monthly: GBIF snapshot each Monday (`request.yml`, `build.yml` Monday to Thursday); iNaturalist, new-species and master list layers keyed by week (`util.period`, the Monday in UTC). The master list compares with the list `latest.json` names (`master.previous_period`), so the first weekly list (`2026-10-26`) compares with October. Site text says "week"; `periodName` shows "week of 26 October 2026".
+- README rewritten for the current site (master list, Changes, Shortlists) and how the parts connect; the old ledger, backlog and new-species pages and `candidates.json` are gone from it.
+- Shortlists, first week: 19 page views, 1 link followed to iNaturalist. Re-check at 7 days: 318 of 13,842 shown (2.3%) got a confirmed name; the species was on the list for 95% of Quick to confirm rows, the genus for 97% of Genus first rows. Not yet an effect of the page.
+- Wrong-country records: VectorBase (US mosquitoes coded India, 30 species), Indian_sediments (metagenome names), two South African museums and state text naming other countries put about 356 non-Indian species in the master list. 17,364 species rest only on GBIF records with no exact place (mostly old museum specimens).
+
 ## Status (19 October 2026)
 
 | Area | State |

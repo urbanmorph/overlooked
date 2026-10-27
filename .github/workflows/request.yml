@@ -1,12 +1,12 @@
-name: Request monthly downloads
+name: Request weekly downloads
 
-# 1st of each month: submit the GBIF SQL downloads and commit their keys to runs/.
+# Each Monday: submit the GBIF SQL downloads and commit their keys to runs/ (run id: the week's Monday).
 # Scheduled runs need the repository variable PIPELINE_ENABLED = true. Manual runs always work;
 # give a state for a test run (never published).
 
 on:
   schedule:
-    - cron: "17 2 1 * *"
+    - cron: "17 2 * * 1"
   workflow_dispatch:
     inputs:
       state:

@@ -1,8 +1,8 @@
 name: iNaturalist layer
 
 # iNaturalist species lists per state for the master list: species research grade and needs ID, genera
-# named only to genus, and counts named only above genus (about 1,400 requests a month).
-# Daily: it continues within iNaturalist's daily limit until the month is done, then does nothing;
+# named only to genus, and counts named only above genus (about 1,400 requests a week).
+# Daily: it continues within iNaturalist's daily limit until the week is done, then does nothing;
 # and by hand. Scheduled runs need the repository variable PIPELINE_ENABLED = true.
 
 on:

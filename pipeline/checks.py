@@ -1,9 +1,9 @@
 """Checks before a snapshot is published. Any failure stops the run; nothing is uploaded."""
 
-# A month-on-month change larger than this stops the run for a look.
+# A change from the last run larger than this stops the run for a look.
 MAX_CHANGE = 0.20
 # Outputs a snapshot may lack (built from downloads made before they were added). When present they
-# must not be empty, and they are compared with last month only if last month has them too.
+# must not be empty, and they are compared with the last run only if the last run has them too.
 OPTIONAL = ("unlocated_records",)
 
 
