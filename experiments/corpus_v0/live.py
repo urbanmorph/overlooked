@@ -14,8 +14,10 @@
                   first. Writes data/shortlist/<run>/latest.json and g/<key>.json (pages g/<key>.<n>.json when a
                   group passes MAX_BYTES), compact and deterministic, and shown.parquet (local only: every
                   published id with its full shortlist, for recheck.py --shown).
+  live.py prune <run> <date>   after recheck.py --shown <run> on <date>: a copy of the run without the observations
+                  now research grade, casual or gone, as run <date> (latest.json gives sample, checked, removed).
 Nothing is posted anywhere; publish_live.py (run only when the owner agrees) copies the JSON files to R2.
-Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/live.py draw|build
+Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/live.py draw|build|prune
 """
 
 import hashlib
@@ -29,7 +31,17 @@ import pandas as pd
 from evaluate import SCORES
 from freeze import TOP, band, joined
 from lib import DATA, RESULTS, ROOT, atomic_parquet, atomic_write_json, log
-from logic import EXPERT, GENUS_FIRST, QUICK, compact, live_order, paginate, public_row
+from logic import (
+    EXPERT,
+    GENUS_FIRST,
+    QUICK,
+    compact,
+    done_ids,
+    live_order,
+    page_name,
+    paginate,
+    public_row,
+)
 from queue_sample import PILOT, draw, row
 
 STATE = DATA / "live_state.json"
@@ -102,6 +114,44 @@ def obs_view(r):
     }  # fmt: skip
 
 
+def write_pages(out_dir, key, rows):
+    """Write a group's rows, in order, as pages of at most MAX_BYTES (docs/shortlist_data.md). Returns the page count."""
+    pages = paginate(rows, lambda rs: compact({"group": key, "rows": rs}), MAX_BYTES)
+    for n, page in enumerate(pages, 1):
+        body = {"group": key, "rows": page}
+        if len(pages) > 1:
+            body = {"group": key, "page": n, "pages": len(pages), "rows": page}
+        (out_dir / "g" / page_name(key, n)).write_text(compact(body))
+    return len(pages)
+
+
+def group_rows(run_dir, group):
+    """All rows of a group in a built run, in page order."""
+    return [r for n in range(1, group.get("pages", 1) + 1)
+            for r in json.loads((run_dir / "g" / page_name(group["key"], n)).read_text())["rows"]]
+
+
+def do_prune():
+    """A copy of the sample run without the observations a re-check found done (research grade, casual or gone), as a
+    new run named by the check date. The sample run and its shown.parquet stay as they are: the measure uses them.
+    Usage: live.py prune <sample run> <check date>   (after recheck.py --shown <sample run> on that date)"""
+    run, checked = sys.argv[2], sys.argv[3]
+    src, out_dir = OUT / run, OUT / checked
+    latest = json.loads((src / "latest.json").read_text())
+    answers = [json.loads(line) for line in (DATA / f"inat_recheck_shown_{run}_{checked}.jsonl").open()]
+    rows = {g["key"]: group_rows(src, g) for g in latest["groups"]}
+    done = done_ids(answers, [r["id"] for rs in rows.values() for r in rs])
+    (out_dir / "g").mkdir(parents=True, exist_ok=True)
+    for old in (out_dir / "g").glob("*.json"):
+        old.unlink()  # a second prune on the same date writes the same files again
+    for g in latest["groups"]:
+        keep = [r for r in rows[g["key"]] if r["id"] not in done]
+        g.update(rows=len(keep), pages=write_pages(out_dir, g["key"], keep))
+    latest.update(run=checked, sample=run, checked=checked, removed=len(done), rows=sum(g["rows"] for g in latest["groups"]))
+    (out_dir / "latest.json").write_text(compact(latest))
+    log(f"run {checked}: {latest['rows']:,} rows; {len(done):,} done since {run} left out")
+
+
 def do_build():
     from pipeline import shortlist as sl
 
@@ -146,17 +196,10 @@ def do_build():
             )  # fmt: skip
         rows = [{k: v for k, v in r.items() if k != "created_at"} for r in live_order(rows)]
         key = sl.slug(group)
-        pages = paginate(rows, lambda rs, key=key: compact({"group": key, "rows": rs}), MAX_BYTES)
-        for n, page in enumerate(pages, 1):
-            body = {"group": key, "rows": page}
-            if len(pages) > 1:
-                body = {"group": key, "page": n, "pages": len(pages), "rows": page}
-            name = f"{key}.json" if n == 1 else f"{key}.{n}.json"
-            (out_dir / "g" / name).write_text(compact(body))
         t1 = gates.loc[group]
         groups.append(
             {
-                "key": key, "name": group, "verdict": verdict, "rows": len(rows), "pages": len(pages),
+                "key": key, "name": group, "verdict": verdict, "rows": len(rows), "pages": write_pages(out_dir, key, rows),
                 "t1": {"n": int(t1.n), "top1": float(t1.top1), "cov90": float(t1.sp_cov if verdict == QUICK else t1.g_cov)},
             }
         )  # fmt: skip
@@ -177,4 +220,4 @@ def do_build():
 
 
 if __name__ == "__main__":
-    {"draw": do_draw, "build": do_build}[sys.argv[1]]()
+    {"draw": do_draw, "build": do_build, "prune": do_prune}[sys.argv[1]]()

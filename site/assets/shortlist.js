@@ -50,7 +50,8 @@ export function groupFiles(run, g) {
 /** Text that says the page shows a small sample of the queue, not all of it. */
 export function sampleNote(latest) {
   return `This page shows ${fmt(latest.rows)} of ${SAMPLE.queue} observations from India that wait for a name on iNaturalist. ` +
-    `For each group, we took up to ${fmt(SAMPLE.perGroup)} observations uploaded in the ${SAMPLE.days} days before ${monthName(latest.run)}. ` +
+    `For each group, we took up to ${fmt(SAMPLE.perGroup)} observations uploaded in the ${SAMPLE.days} days before ${monthName(latest.sample || latest.run)}. ` +
+    (latest.checked ? `On ${monthName(latest.checked)} we checked them on iNaturalist: ${fmt(latest.removed)} that got a name or were removed since are no longer listed. ` : '') +
     'We keep some recent observations back to test the lists, so some groups are small. If the page is useful, we will add more.';
 }
 

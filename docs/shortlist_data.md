@@ -43,6 +43,10 @@ The contract between the shortlist job (made on this machine: the model and corp
   not split). At about 450 bytes a row, a page holds about 650 rows.
 - `band`: `quick` (Quick to confirm: up to 3 species) or `genus` (Genus first: up to 5 genera). Rows with no
   usable list (band "For an expert") are not published. A group's `rows` in latest.json counts published rows.
+- A pruned run (`live.py prune <sample run> <date>`, after `recheck.py --shown` on that date) is the sample run
+  without the observations now research grade, casual or gone. Its latest.json adds `sample` (the run it was cut
+  from), `checked` (the date of the check) and `removed` (rows left out). It has no shown.parquet: the measure
+  always uses the sample run's shown set.
 - `t1.cov90`: coverage of the 90% set at the group's level: species for Quick to confirm, genus for Genus first.
 - `names`: the species shortlist in order, at most 3; empty for `genus`. `genera`: at most 5.
 - `state`: LGD state code when known (from the observation's place), else null.

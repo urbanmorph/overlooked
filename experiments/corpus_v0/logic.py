@@ -374,3 +374,15 @@ def paginate(rows, encode, max_bytes):
         cur.append(r)
     pages.append(cur)
     return pages
+
+
+def done_ids(answers, shown):
+    """Shown observations a person no longer needs to look at: research grade or casual on iNaturalist now, or not
+    returned at all (deleted or made private). answers: the observation records of a re-check."""
+    now = {int(a["id"]): a.get("quality_grade") for a in answers}
+    return {int(i) for i in shown if now.get(int(i), "gone") in ("research", "casual", "gone")}
+
+
+def page_name(key, n):
+    """File name of page n of a group (docs/shortlist_data.md): the first page has no number."""
+    return f"{key}.json" if n == 1 else f"{key}.{n}.json"

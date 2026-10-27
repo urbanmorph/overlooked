@@ -13,6 +13,7 @@ import json
 import sys
 
 from lib import ROOT, log
+from logic import page_name
 
 PREFIX = "layers/shortlist"
 
@@ -26,7 +27,7 @@ def files(run):
     out = []
     for g in latest["groups"]:
         for n in range(1, g.get("pages", 1) + 1):
-            name = f"{g['key']}.json" if n == 1 else f"{g['key']}.{n}.json"
+            name = page_name(g["key"], n)
             p = d / "g" / name
             if not p.exists():
                 raise SystemExit(f"missing {p}")

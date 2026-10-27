@@ -10,6 +10,7 @@ import pytest
 from logic import (
     combine_probs,
     conformal_threshold,
+    done_ids,
     fit_temperature,
     hash_unit,
     in_validation,
@@ -17,6 +18,7 @@ from logic import (
     match_name,
     observer_split,
     open_data_url,
+    page_name,
     research_grade_at,
     sample_capped,
     softmax,
@@ -478,3 +480,15 @@ def test_compact_is_deterministic_and_unicode():
     from logic import compact
 
     assert compact({"a": "é", "b": [1, 2]}) == '{"a":"é","b":[1,2]}'
+
+
+def test_done_ids_are_named_casual_or_gone():
+    """A shown observation is done when iNaturalist now has it as research grade or casual, or no longer returns it."""
+    answers = [{"id": 1, "quality_grade": "research"}, {"id": 2, "quality_grade": "needs_id"},
+               {"id": 3, "quality_grade": "casual"}]
+    assert done_ids(answers, shown=[1, 2, 3, 4]) == {1, 3, 4}
+    assert done_ids([], shown=[]) == set()
+
+
+def test_page_name_numbers_every_page_after_the_first():
+    assert [page_name("true-bugs", n) for n in (1, 2, 3)] == ["true-bugs.json", "true-bugs.2.json", "true-bugs.3.json"]

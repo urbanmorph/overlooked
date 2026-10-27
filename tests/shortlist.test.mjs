@@ -93,3 +93,11 @@ test('sampleNote: says the page is a sample, with its size, rule and date', () =
   assert.match(t, /120 days before 20 October 2026/);
   assert.match(t, /some groups are small/);
 });
+
+test('sampleNote: a pruned run keeps the sample date and says what the check left out', () => {
+  const t = sampleNote({ run: '2026-10-27', sample: '2026-10-20', checked: '2026-10-27', removed: 320, rows: 13522 });
+  assert.match(t, /13,522 of about 29 lakh/);
+  assert.match(t, /120 days before 20 October 2026/);
+  assert.match(t, /On 27 October 2026 we checked them on iNaturalist: 320 that got a name or were removed since are no longer listed\./);
+  assert.doesNotMatch(sampleNote({ run: '2026-10-20', rows: 13842 }), /checked/);
+});
