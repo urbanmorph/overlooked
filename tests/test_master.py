@@ -480,3 +480,45 @@ def test_records_that_cannot_go_in_a_district_are_tagged_by_problem(inputs, tmp_
     assert "lco" in rows["K3"][2] and "lm" not in rows["K3"][2]
     codes = [c for c, _, _ in master.LABELS]
     assert codes[:15] == ["rg", "nid", "ho", "sp", "pap", "dna", "mo", "oc", "chk", "lm", "do", "end", "nra", "nm", "vn"]
+
+
+def test_records_from_excluded_datasets_or_other_countries_add_no_species(inputs, tmp_path, monkeypatch):
+    """A snapshot built before a dataset was excluded, or with records whose place is outside India, must not put
+    those species on the list: VectorBase (US mosquitoes coded IN) and a record from Nepal add nothing."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    unl = tmp_path / "unlocated.parquet"
+    con.sql(f"""COPY (SELECT * FROM (VALUES
+        ('U1', 'Mus nus', 'Mus', 'species', 'Birds', 'Kerala', 32, 'd1', 'PRESERVED_SPECIMEN', 'none', 1900, 1910, 4),
+        ('V1', 'Aedes tus', 'Aedes', 'species', 'Insects: flies', 'Madhya Pradesh', 23,
+         'c3969d4c-b9c1-439a-96be-ebf369f17a0c', 'HUMAN_OBSERVATION', 'issue', 1998, 2019, 880),
+        ('F1', 'Fus gus', 'Fus', 'species', 'Birds', 'Nepal', NULL, 'd2', 'PRESERVED_SPECIMEN', 'none', 1890, 1890, 1))
+        t(species_key, name, genus, taxonrank, grp, stateprovince, state_lgd, datasetkey, basis, problem,
+          first_year, last_year, n_records)) TO '{unl}' (FORMAT parquet)""")
+    out = tmp_path / "out_x"
+    master.build(con, {**inputs["paths"], "unlocated": unl}, out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                 inputs["districts"], inputs["inputs"], cache={}, http=FakeGbif())
+    keys = {k for (k,) in duckdb.sql(f"SELECT key FROM '{out / 'master.parquet'}'").fetchall()}
+    assert "U1" in keys and "V1" not in keys and "F1" not in keys
+
+
+def test_species_known_only_from_gbif_records_with_no_place_are_labelled(inputs, tmp_path, monkeypatch):
+    """The label "Only GBIF records with no exact location" marks a species that rests on one source and no mapped
+    record, so a reader can set such species apart; a species with an exact record does not get it."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    unl = tmp_path / "unlocated.parquet"
+    con.sql(f"""COPY (SELECT * FROM (VALUES
+        ('U1', 'Mus nus', 'Mus', 'species', 'Birds', 'Kerala', 32, 'd1', 'PRESERVED_SPECIMEN', 'none', 1900, 1910, 4),
+        ('K3', 'Gus hus', 'Gus', 'species', 'Birds', NULL, NULL, 'd2', 'HUMAN_OBSERVATION', 'coarse', 2012, 2012, 1))
+        t(species_key, name, genus, taxonrank, grp, stateprovince, state_lgd, datasetkey, basis, problem,
+          first_year, last_year, n_records)) TO '{unl}' (FORMAT parquet)""")
+    out = tmp_path / "out_g"
+    master.build(con, {**inputs["paths"], "unlocated": unl}, out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                 inputs["districts"], inputs["inputs"], cache={}, http=FakeGbif())
+    labels = {k: set(lab) for k, lab in duckdb.sql(f"SELECT key, labels FROM '{out / 'master.parquet'}'").fetchall()}
+    assert "lgo" in labels["U1"] and "lm" in labels["U1"]
+    assert "lgo" not in labels["K3"]
+    assert ("lgo", "Only GBIF records with no exact location", "other") in master.LABELS

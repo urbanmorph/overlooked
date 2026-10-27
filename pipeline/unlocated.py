@@ -25,6 +25,8 @@ from pipeline.util import value
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE_NAMES = ROOT / "pipeline" / "ref" / "state_names.csv"
+# State text that names a place outside India: GBIF has the record as India, but it is not (pipeline/ref).
+FOREIGN = ROOT / "pipeline" / "ref" / "foreign_places.csv"
 TITLE_CACHE = ROOT / "data" / "cache" / "gbif_datasets.json"
 TITLE_KEY = "cache/gbif_datasets.json"
 
@@ -69,9 +71,16 @@ def state_of(text, names):
     return found.pop() if len(found) == 1 else None
 
 
+def foreign_places(path=FOREIGN):
+    """State texts (lower case, trimmed) that name a place outside India."""
+    return {r["place"].strip().lower() for r in csv.DictReader(path.open())}
+
+
 def build(con, tsv, names_path=STATE_NAMES):
-    """Load a query L download and place it in states. Returns the number of records."""
+    """Load a query L download and place it in states, without records whose state text names a place outside
+    India. Returns the number of records."""
     read_tsv(con, "lcube", tsv, TYPES)
+    con.execute("DELETE FROM lcube WHERE list_contains($1, lower(trim(stateprovince)))", [sorted(foreign_places())])
     # Merged duplicate keys (names.merge_duplicates), when that step has run.
     if value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'key_map'"):
         con.sql("UPDATE lcube SET specieskey = m.canonical FROM key_map m WHERE lcube.specieskey = m.species_key")

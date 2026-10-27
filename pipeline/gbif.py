@@ -46,10 +46,15 @@ def session():
 NEW_SPECIES_FROM = 2007
 
 
+def dataset_keys(path=EXCLUDED):
+    """The dataset keys a reference list (pipeline/ref/excluded_*.csv) names."""
+    return [r["datasetKey"] for r in csv.DictReader(path.open())]
+
+
 def build_sql(name, state=None):
-    keys = lambda f: [f"'{r['datasetKey']}'" for r in csv.DictReader(f.open())]
-    excluded = ", ".join(keys(EXCLUDED))
-    sequence_datasets = ", ".join(keys(EXCLUDED_UNLOCATED))
+    quoted = lambda path: ", ".join(f"'{k}'" for k in dataset_keys(path))
+    excluded = quoted(EXCLUDED)
+    sequence_datasets = quoted(EXCLUDED_UNLOCATED)
     # GADM state name is only for test runs. The real runs place cells in LGD districts later.
     region = f"AND level1name = '{state}'" if state else ""
     # Records with no coordinates have no GADM name; a test run selects them by the state text.

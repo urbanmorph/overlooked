@@ -198,3 +198,17 @@ def test_unlocated_counts_each_problem(tmp_path):
     old.write_text(L_HEAD + f"D1\tDendrobium one\tDendrobium\tSPECIES\t{ORCH}\tKerala\tds1\tPRESERVED_SPECIMEN\t1900\t1950\t5\n")
     unlocated.build(con, old)
     assert site_data.unlocated_json(con, tmp_path)["india"]["p"] == {"none": 5}
+
+
+def test_records_from_places_outside_india_are_left_out(tmp_path):
+    """GBIF codes some records IN that are not from India: the state text names another country or a US state
+    (Indiana, the classic IN). Those records are left out; Indian text, old names and frontier names stay."""
+    from pipeline import unlocated
+    tsv = tmp_path / "l.tsv"
+    row = lambda key, place, n: f"{key}\tDendrobium {key}\tDendrobium\tSPECIES\t{ORCH}\t{place}\tds1\tPRESERVED_SPECIMEN\t1900\t1950\t{n}\n"
+    tsv.write_text(L_HEAD + row("D1", "Kerala", 5) + row("D2", "Nepal", 2) + row("D3", "Indiana", 1)
+                   + row("D4", " Ceylon ", 1) + row("D5", "Assam-Bhutan Frontier", 3) + row("D6", "Himalaya", 4))
+    con = duckdb.connect()
+    assert unlocated.build(con, tsv) == 12
+    assert [r[0] for r in con.sql("SELECT species_key FROM unlocated ORDER BY 1").fetchall()] == ["D1", "D5", "D6"]
+    assert "indiana" in unlocated.foreign_places() and "himalaya" not in unlocated.foreign_places()

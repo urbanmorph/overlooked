@@ -54,7 +54,7 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import described, health, iucn
+from pipeline import described, gbif, health, iucn, unlocated
 from pipeline.gbif import NEW_SPECIES_FROM
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
@@ -96,6 +96,7 @@ LABELS = [
     ("lnc", "Records with no coordinates", "other"),
     ("lco", "Records with coordinates uncertain by more than 25 km", "other"),
     ("lfl", "Records with coordinates that GBIF marks as possibly wrong", "other"),
+    ("lgo", "Only GBIF records with no exact location", "other"),
 ]
 # Query L: why a record cannot go in a district.
 PROBLEM_LABEL = {"none": "lnc", "coarse": "lco", "issue": "lfl"}
@@ -297,14 +298,18 @@ def load_gbif(con, paths):
                if "last_year_not_dna" in cols else "SELECT NULL::VARCHAR AS key WHERE false")
     con.sql(f"CREATE OR REPLACE TABLE ledger_dna_only AS {dna_sql}")
     if paths.get("unlocated"):
-        con.sql(f"""INSERT INTO names_in SELECT 'GBIF', name, species_key, NULL, NULL, NULL, NULL, NULL, genus, grp,
-                    false, false, 1 FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL""")
+        # Excluded datasets and places outside India apply also to snapshots built before they were listed.
+        con.execute(f"""CREATE OR REPLACE TABLE unl AS SELECT * FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL
+                        AND NOT list_contains($1, coalesce(datasetkey, ''))
+                        AND NOT list_contains($2, coalesce(lower(trim(stateprovince)), ''))""",
+                    [gbif.dataset_keys(), sorted(unlocated.foreign_places())])
+        con.sql("""INSERT INTO names_in SELECT 'GBIF', name, species_key, NULL, NULL, NULL, NULL, NULL, genus, grp,
+                   false, false, 1 FROM unl""")
         con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd,
-                    CASE basis {basis} ELSE 'oc' END, true, true, false
-                    FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL""")
+                    CASE basis {basis} ELSE 'oc' END, true, true, false FROM unl""")
         problem = " ".join(f"WHEN '{p}' THEN '{c}'" for p, c in PROBLEM_LABEL.items())
         con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, NULL, CASE problem {problem} END,
-                    true, true, false FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL""")
+                    true, true, false FROM unl""")
     return "last_year_not_dna" in cols
 
 
@@ -659,11 +664,20 @@ def flags(con):
         FROM ids i LEFT JOIN evidence_r e USING (id) GROUP BY i.id
     """)
     con.sql(f"""
+        CREATE OR REPLACE TABLE id_sources AS
+        WITH s AS (SELECT id, source FROM names_in_r UNION SELECT id, source FROM evidence_r
+                   UNION SELECT id, 'IUCN' FROM id_iucn)
+        SELECT id, list(source ORDER BY CASE source {src_idx} END) AS sources, sum(1::BIGINT << (CASE source {src_idx} END)) AS sources_mask
+        FROM s GROUP BY id
+    """)
+    con.sql(f"""
         CREATE OR REPLACE TABLE id_labels AS
         WITH l AS (
             SELECT id, unnest(ev_labels) AS code FROM id_flags
             UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed
             UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located AND unplaced
+            UNION SELECT id, 'lgo' FROM id_flags JOIN id_sources USING (id)
+                  WHERE observed AND NOT located AND unplaced AND sources = ['GBIF']
             UNION SELECT id, 'end' FROM names_in_r WHERE endemic
             -- Checked only where the paper is the description: same year as the year described.
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
@@ -675,13 +689,6 @@ def flags(con):
                                                 AND NOT list_has_any(ev_labels, ['ho', 'pap', 'mo']))))
         SELECT id, list(code ORDER BY CASE code {lab_idx} END) AS labels, sum(1::BIGINT << (CASE code {lab_idx} END)) AS labels_mask
         FROM l GROUP BY id
-    """)
-    con.sql(f"""
-        CREATE OR REPLACE TABLE id_sources AS
-        WITH s AS (SELECT id, source FROM names_in_r UNION SELECT id, source FROM evidence_r
-                   UNION SELECT id, 'IUCN' FROM id_iucn)
-        SELECT id, list(source ORDER BY CASE source {src_idx} END) AS sources, sum(1::BIGINT << (CASE source {src_idx} END)) AS sources_mask
-        FROM s GROUP BY id
     """)
     con.sql("""
         CREATE OR REPLACE TABLE master_state AS
