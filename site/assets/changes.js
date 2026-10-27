@@ -99,7 +99,7 @@ try {
     $('#tiles').innerHTML = tiles.map(([k, t]) => `<div class="card kpi"><b>${fmt(ch.counts[k] || 0)}</b><span>${t}</span></div>`).join('');
     const w = ch.waiting;
     $('#waitline').innerHTML = w && w.before != null
-      ? `Observations on iNaturalist that wait for a name: ${fmt(w.before)} last week, ${fmt(w.now)} now. <a href="/?view=identified">See the species that wait</a>.`
+      ? `Observations on iNaturalist named to species, not yet confirmed: ${fmt(w.before)} in the list of ${esc(periodName(ch.from))}, ${fmt(w.now)} now. <a href="/?view=identified">See the species that wait</a>.`
       : '';
     $('#state').insertAdjacentHTML('beforeend', S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join(''));
 

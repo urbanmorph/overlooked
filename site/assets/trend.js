@@ -8,8 +8,8 @@ export const MEASURES = [
   { key: 'observed', label: 'Observed at least once' },
   { key: 'identified', label: 'Identified to species' },
   { key: 'threatened', label: 'Threatened (IUCN CR, EN or VU)' },
-  { key: 'waiting_species', label: 'Species with observations that wait for a name' },
-  { key: 'waiting_observations', label: 'Observations that wait for a name' },
+  { key: 'waiting_species', label: 'Species named in observations not yet confirmed' },
+  { key: 'waiting_observations', label: 'Observations named to species, not yet confirmed' },
 ];
 
 /** One measure over time, oldest first: [{period, value}]. group: a group index, or null for all of India. */

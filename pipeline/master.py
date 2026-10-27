@@ -968,7 +968,8 @@ MEASURES = ["documented", "observed", "identified", "threatened", "waiting_speci
 
 def history_entry(summary):
     """One list's totals from its summary.json: per group [documented, observed, identified, threatened (IUCN CR, EN
-    or VU), species and observations on iNaturalist that wait for a name], and their sum for India."""
+    or VU), species and observations on iNaturalist named to species but not yet confirmed (needs ID)], and their sum
+    for India."""
     threat = [IUCN_CATS.index(c) for c in THREATENED]
     waiting = (summary.get("waiting") or {}).get("india") or []
     groups = [[d, o, i, sum(cats[k] for k in threat), *(waiting[gi][:2] if gi < len(waiting) else [0, 0])]
