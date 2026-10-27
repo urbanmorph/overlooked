@@ -5,12 +5,14 @@
  "requested": "2026-10-27T15:46:52Z",
  "downloads": {
   "ledger_cube": {
-   "status": "PREPARING",
+   "status": "SUCCEEDED",
    "key": "0008739-261023074918325",
    "requested": "2026-10-27T15:47:48Z"
   },
   "species_history": {
-   "status": "WAITING"
+   "status": "PREPARING",
+   "key": "0008863-261023074918325",
+   "requested": "2026-10-27T16:55:54Z"
   },
   "unresolved_cube": {
    "status": "WAITING"
@@ -134,6 +136,136 @@
      "critical": false,
      "used_for": "BSI type specimens",
      "url": "https://ivh.bsi.gov.in/phanerogams/en?search_bar=CAL00003107&selection=szBarcode"
+    }
+   },
+   "critical_failures": [],
+   "warnings": []
+  },
+  {
+   "checked": "2026-10-27T16:55:51Z",
+   "sources": {
+    "gbif_api": {
+     "ok": true,
+     "status": 200,
+     "ms": 773,
+     "fingerprint": {
+      "Content-Length": "85",
+      "india_records": 64780693
+     },
+     "critical": true,
+     "used_for": "all modules",
+     "url": "https://api.gbif.org/v1/occurrence/search?country=IN&hasCoordinate=true&occurrenceStatus=PRESENT&limit=0"
+    },
+    "gbif_downloads": {
+     "ok": true,
+     "status": 200,
+     "ms": 113,
+     "fingerprint": {
+      "Content-Length": "2279"
+     },
+     "critical": true,
+     "used_for": "weekly downloads",
+     "url": "https://api.gbif.org/v1/occurrence/download/user/<account>"
+    },
+    "lgd_boundaries": {
+     "ok": true,
+     "status": 200,
+     "ms": 396,
+     "fingerprint": {
+      "ETag": "\"363b9847505e634c94a0152577941134\"",
+      "Last-Modified": "Wed, 20 May 2026 07:24:05 GMT",
+      "Content-Length": "22178335"
+     },
+     "critical": false,
+     "used_for": "district map and placement",
+     "url": "https://pub-0429b8e3b5a946e69ea007df844a6f1c.r2.dev/admin/districts/LGD_Districts.parquet"
+    },
+    "plazi": {
+     "ok": true,
+     "status": 200,
+     "ms": 697,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "module 3: new species",
+     "url": "https://tb.plazi.org/GgServer/srsStats/stats?outputFields=doc.count&FP-matCit.country=India&format=JSON"
+    },
+    "ipni": {
+     "ok": true,
+     "status": 200,
+     "ms": 572,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "module 3: new plant names",
+     "url": "https://www.ipni.org/api/1/search?q=published:2025&perPage=1"
+    },
+    "index_fungorum": {
+     "ok": true,
+     "status": 200,
+     "ms": 886,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "module 3: new fungus names",
+     "url": "https://www.indexfungorum.org/ixfwebservice/fungus.asmx/NewNamesInRange?rank=sp.&startDate=20250101&endDate=20250102"
+    },
+    "inaturalist": {
+     "ok": true,
+     "status": 200,
+     "ms": 418,
+     "fingerprint": {
+      "ETag": "W/\"3c-m4awbZ7evyw7HntQKeQicfzDXe0\"",
+      "Content-Length": "60"
+     },
+     "critical": false,
+     "used_for": "iNaturalist (via GBIF; direct checks planned)",
+     "url": "https://api.inaturalist.org/v1/observations?place_id=6681&quality_grade=research&per_page=0"
+    },
+    "ibp_gbif_dataset": {
+     "ok": true,
+     "status": 200,
+     "ms": 466,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "India Biodiversity Portal (via GBIF)",
+     "url": "https://api.gbif.org/v1/dataset/c6b86c40-ff71-4e5e-902c-111f400d0d56"
+    },
+    "kew_wcvp": {
+     "ok": true,
+     "status": 200,
+     "ms": 319,
+     "fingerprint": {
+      "ETag": "\"54183c1-6536e62f7dc69\"",
+      "Last-Modified": "Thu, 04 Jun 2026 14:30:32 GMT",
+      "Content-Length": "88179649"
+     },
+     "critical": false,
+     "used_for": "plant checklist (later module)",
+     "url": "https://sftp.kew.org/pub/data-repositories/WCVP/wcvp.zip"
+    },
+    "bsi_plant_discoveries": {
+     "ok": true,
+     "status": 200,
+     "ms": 8170,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "module 3: new plant species and records",
+     "url": "https://bsi.gov.in/page/en/national-wild-life-action-plan"
+    },
+    "bsi_ivh": {
+     "ok": true,
+     "status": 200,
+     "ms": 16919,
+     "fingerprint": {},
+     "critical": false,
+     "used_for": "BSI type specimens",
+     "url": "https://ivh.bsi.gov.in/phanerogams/en?search_bar=CAL00003107&selection=szBarcode"
+    },
+    "r2": {
+     "ok": true,
+     "status": 200,
+     "ms": 460,
+     "critical": true,
+     "used_for": "publishing",
+     "url": "r2://<bucket>"
     }
    },
    "critical_failures": [],
