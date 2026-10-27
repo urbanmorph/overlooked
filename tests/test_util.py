@@ -128,3 +128,16 @@ def test_runs_and_layers_are_named_by_week(monkeypatch):
     monkeypatch.setattr(run, "period", lambda: "2026-10-26")
     assert run.default_run_id() == "2026-10-26"
     assert run.default_run_id("Tamil Nadu") == "2026-10-26-tamil-nadu"
+
+
+def test_a_built_run_records_its_summary_without_the_dropped_quiet_count(tmp_path, monkeypatch):
+    """finish() keeps the run's main counts in runs/<id>.json; the summary no longer has quiet_species (the
+    'no record since 1980' count was dropped), and a run must not fail on it after its files are built."""
+    from pipeline import run
+    monkeypatch.setattr(run, "RUNS", tmp_path)
+    state = {"run_id": "2026-10-26", "status": "requested"}
+    summary = {"species": 9, "records": 20, "districts": 3, "ledger_rows": 12, "built": "x"}
+    manifest = {"downloads": [{"key": "k", "doi": "10.1/x"}]}
+    run.finish(None, state, tmp_path, manifest, summary, "b", tmp_path / "b", publish=False)
+    saved = json.loads((tmp_path / "2026-10-26.json").read_text())
+    assert saved["status"] == "built" and saved["summary"] == {"species": 9, "records": 20, "districts": 3, "ledger_rows": 12}

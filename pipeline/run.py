@@ -343,7 +343,7 @@ def finish(args, state, out, manifest, summary, bpath, bfile, publish):
     else:
         state["status"] = "built"
     state["finished"] = now()
-    state["summary"] = {k: summary[k] for k in ("species", "records", "districts", "ledger_rows", "quiet_species")}
+    state["summary"] = {k: summary[k] for k in ("species", "records", "districts", "ledger_rows")}
     save(state)
     print(json.dumps(state["summary"], indent=1))
 
