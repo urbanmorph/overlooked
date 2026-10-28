@@ -17,7 +17,6 @@ import os
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import duckdb
@@ -327,8 +326,7 @@ def finish(args, state, out, manifest, summary, bpath, bfile, publish):
         if not remote:
             r2.sync_file(s3, bfile, bpath)
             files = [p for p in sorted(out.rglob("*")) if p.suffix in (".parquet", ".json") and p.name != "manifest.json"]
-            with ThreadPoolExecutor(8) as pool:
-                sent = sum(pool.map(lambda p: r2.sync_file(s3, p, f"{prefix}/{p.relative_to(out).as_posix()}"), files))
+            sent = r2.sync_files(s3, ((p, f"{prefix}/{p.relative_to(out).as_posix()}") for p in files))
             print(f"uploaded {sent} of {len(files)} files (the rest were already in R2)")
             # The manifest goes last: its presence marks a complete snapshot.
             r2.sync_file(s3, out / "manifest.json", f"{prefix}/manifest.json")

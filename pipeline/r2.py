@@ -3,15 +3,22 @@
 import hashlib
 import json
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 # Snapshot files never change once written; only latest.json moves.
 IMMUTABLE = "public, max-age=31536000, immutable"
 SHORT = "public, max-age=300"
 TYPES = {".json": "application/json", ".parquet": "application/vnd.apache.parquet"}
+# sync_files: uploads at once (the client keeps as many connections), tries per file, pause before a retry (doubles).
+WORKERS = 16
+TRIES = 4
+RETRY_PAUSE = 2.0
 
 
 def client():
@@ -21,6 +28,7 @@ def client():
         aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
         region_name="auto",
+        config=Config(max_pool_connections=WORKERS * 2, retries={"max_attempts": 5, "mode": "standard"}),
     )
 
 
@@ -90,3 +98,44 @@ def sync_file(s3, path: Path, key, immutable=True):
         "Metadata": {"sha256": digest},
     })
     return True
+
+
+class UploadFailed(RuntimeError):
+    """Some files did not reach R2 after every try. keys: their keys. The others are uploaded; a rerun sends the rest."""
+
+    def __init__(self, keys):
+        self.keys = sorted(keys)
+        super().__init__(f"{len(self.keys)} files did not upload: {', '.join(self.keys[:10])}")
+
+
+def sync_files(s3, pairs, immutable=True, workers=WORKERS):
+    """sync_file for many (path, key) pairs at once. Each file is tried up to TRIES times; a file that still fails
+    does not stop the others, and UploadFailed names it at the end, so the caller writes no pointer to an incomplete
+    set. Idempotent: a rerun uploads only what R2 does not hold yet. Returns the number of files uploaded."""
+    pairs = list(pairs)
+
+    def one(path, key):
+        """True when uploaded, False when R2 held it already, None when every try failed."""
+        for attempt in range(TRIES):
+            try:
+                return sync_file(s3, path, key, immutable)
+            except Exception as e:  # noqa: BLE001 - any error: try again, then report the key, not stop the others
+                if attempt == TRIES - 1:
+                    print(f"{key}: upload failed after {TRIES} tries: {type(e).__name__}", flush=True)
+                    return None
+                time.sleep(RETRY_PAUSE * 2 ** attempt)
+
+    sent, done, failed = 0, 0, []
+    with ThreadPoolExecutor(workers) as pool:
+        jobs = {pool.submit(one, p, k): k for p, k in pairs}
+        for job in as_completed(jobs):
+            done += 1
+            uploaded = job.result()
+            if uploaded is None:
+                failed.append(jobs[job])
+            sent += bool(uploaded)
+            if done % 100 == 0:
+                print(f"R2: {done} of {len(pairs)} files checked, {sent} uploaded", flush=True)
+    if failed:
+        raise UploadFailed(failed)
+    return sent

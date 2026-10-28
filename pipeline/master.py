@@ -1158,8 +1158,9 @@ def fingerprint(paths, inputs, cache, extra=None):
 def publish(s3, out: Path, month, info):
     from pipeline import r2
     files = [p for p in sorted(out.rglob("*")) if p.is_file() and p.name != "manifest.json"]
-    sent = sum(r2.sync_file(s3, p, f"layers/master/{month}/{p.relative_to(out).as_posix()}", immutable=False)
-               for p in files)
+    # Every file first (sync_files raises if one fails), then the manifest and the pointer.
+    sent = r2.sync_files(s3, ((p, f"layers/master/{month}/{p.relative_to(out).as_posix()}") for p in files),
+                         immutable=False)
     r2.sync_file(s3, out / "manifest.json", f"layers/master/{month}/manifest.json", immutable=False)
     r2.put_json(s3, info, "layers/master/latest.json")
     print(f"published layers/master/{month}/: {sent} of {len(files)} files uploaded (the rest were unchanged)")
