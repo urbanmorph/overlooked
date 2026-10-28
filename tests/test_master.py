@@ -644,13 +644,13 @@ def layer_folder(tmp_path, name, files=3):
 
 def test_a_build_goes_to_its_own_folder_and_the_pointers_move_last(tmp_path, monkeypatch):
     """Files first, then the manifest, then the week's current.json, then latest.json: the site reads one build or the
-    other, never a mix. Old builds of the week beyond the one before go; other weeks are left alone."""
+    other, never a mix. Old builds of the week beyond the one before go, and the files from before builds."""
     from pipeline import r2
     from tests.r2_fake import FakeS3
     monkeypatch.setenv("R2_BUCKET", "b")
     s3 = FakeS3()
     s3.put_object(Bucket="b", Key="layers/master/2026-10-26/summary.json", Body=b"{}")    # the layout before builds
-    s3.put_object(Bucket="b", Key="layers/master/2026-11-02/g/0.json", Body=b"{}")        # not a build folder
+    s3.put_object(Bucket="b", Key="layers/master/2026-11-02/g/0.json", Body=b"{}")        # from before builds
     s3.put_object(Bucket="b", Key="layers/master/2026-10-19/20261019T010000Z/summary.json", Body=b"{}")  # another week
     for n, build in enumerate(["20261102T010000Z", "20261102T090000Z", "20261103T010000Z"]):
         s3.writes.clear()
@@ -663,7 +663,7 @@ def test_a_build_goes_to_its_own_folder_and_the_pointers_move_last(tmp_path, mon
     builds = {k.split("/")[3] for k in r2.list_keys(s3, "layers/master/2026-11-02/")
               if k.count("/") == 4 and master.BUILD_RE.fullmatch(k.split("/")[3])}
     assert builds == {"20261102T090000Z", "20261103T010000Z"}                 # the oldest build of the week went
-    assert "layers/master/2026-11-02/g/0.json" in s3.store
+    assert "layers/master/2026-11-02/g/0.json" not in s3.store                  # the week has a pointer now
     assert "layers/master/2026-10-26/summary.json" in s3.store and "layers/master/2026-10-19/20261019T010000Z/summary.json" in s3.store
     assert master.period_base(s3, "2026-10-26") == "layers/master/2026-10-26/"   # a week from before: its own folder
 
@@ -704,3 +704,35 @@ def test_the_previous_list_comes_from_its_build_in_r2_not_a_local_copy(tmp_path,
 def test_build_ids_sort_in_time_order():
     assert master.build_id("2026-10-28T16:00:44Z") == "20261028T160044Z"
     assert master.build_id("2026-10-28T09:00:00Z") < master.build_id("2026-10-28T16:00:44Z")
+
+
+def test_retention_keeps_the_last_build_of_each_past_week(monkeypatch):
+    """This week: the current build and the one before. A past week: only the build its current.json names. Files
+    from before builds go where the week has a pointer; a week with no pointer keeps them (its only copy). Keys
+    outside layers/master/<week>/ and the build latest.json names are never touched."""
+    from pipeline import r2
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    s3 = FakeS3()
+    put = lambda k, body=b"{}": s3.put_object(Bucket="b", Key=k, Body=body)
+    pointer = lambda week, b: put(f"layers/master/{week}/current.json",
+                                  json.dumps({"base": f"layers/master/{week}/{b}/", "build": b}).encode())
+    for k in ("summary.json", "g/0.json"):
+        put(f"layers/master/2026-10/{k}")                                   # no pointer: its only copy
+        put(f"layers/master/2026-10-26/{k}")                                # superseded by its builds
+    for b in ("20261027T010000Z", "20261028T161358Z"):
+        put(f"layers/master/2026-10-26/{b}/summary.json")
+    pointer("2026-10-26", "20261028T161358Z")
+    for b in ("20261102T010000Z", "20261102T090000Z", "20261103T010000Z"):
+        put(f"layers/master/2026-11-02/{b}/summary.json")
+    pointer("2026-11-02", "20261103T010000Z")
+    put("layers/master/latest.json", json.dumps({"base": "layers/master/2026-11-02/20261103T010000Z/"}).encode())
+    put("snapshots/2026-10-26/species.parquet")
+    master.prune(s3, "2026-11-02", "20261103T010000Z")
+    assert r2.list_keys(s3, "") == sorted([
+        "layers/master/2026-10/g/0.json", "layers/master/2026-10/summary.json",
+        "layers/master/2026-10-26/20261028T161358Z/summary.json", "layers/master/2026-10-26/current.json",
+        "layers/master/2026-11-02/20261102T090000Z/summary.json", "layers/master/2026-11-02/20261103T010000Z/summary.json",
+        "layers/master/2026-11-02/current.json", "layers/master/latest.json", "snapshots/2026-10-26/species.parquet"])
+    master.prune(s3, "2026-11-02", "20261103T010000Z")                     # idempotent
+    assert len(r2.list_keys(s3, "")) == 9

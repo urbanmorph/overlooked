@@ -1171,7 +1171,7 @@ def fingerprint(paths, inputs, cache, extra=None):
 def publish(s3, out: Path, period, build, info):
     """Upload a build to its own folder, then point to it: every file (sync_files raises if one fails, and then no
     pointer moves), the manifest, the week's current.json, latest.json. The site reads one build or the other, never a
-    mix. Then older builds of the week go (prune_builds). A rerun skips what R2 holds."""
+    mix. Then older builds and copies go (prune). A rerun skips what R2 holds."""
     from pipeline import r2
     base = f"layers/master/{period}/{build}/"
     files = [p for p in sorted(out.rglob("*")) if p.is_file() and p.name != "manifest.json"]
@@ -1179,19 +1179,38 @@ def publish(s3, out: Path, period, build, info):
     r2.sync_file(s3, out / "manifest.json", base + "manifest.json")
     r2.put_json(s3, {"period": period, "build": build, "base": base}, f"layers/master/{period}/current.json")
     r2.put_json(s3, {**info, "base": base}, "layers/master/latest.json")
-    gone = prune_builds(s3, period, build)
+    gone = prune(s3, period, build)
     print(f"published {base}: {sent} of {len(files)} files uploaded (the rest were unchanged); "
-          f"{gone} files of older builds of the week deleted", flush=True)
+          f"{gone} files of older builds and copies deleted", flush=True)
 
 
-def prune_builds(s3, period, current):
-    """Delete the builds of a week older than the KEEP_BUILDS newest (never the current one). A build folder is named
-    by its build time; the files of the layout before builds, and other weeks, stay. Returns the files deleted."""
+def prune(s3, period, current):
+    """Retention of the master list in R2. This week (period): the current build and the one before. A past week:
+    only the build its current.json names (its last build). In a week with a pointer, the files from before builds
+    go too; a week with no pointer keeps them (its only copy). The build latest.json names is never deleted, nor
+    anything outside layers/master/<week>/. Returns the files deleted."""
     from pipeline import r2
-    keys = r2.list_keys(s3, f"layers/master/{period}/")
-    builds = sorted({k.split("/")[3] for k in keys if k.count("/") >= 4 and BUILD_RE.fullmatch(k.split("/")[3])})
-    keep = set(builds[-KEEP_BUILDS:]) | {current}
-    return r2.delete_keys(s3, [k for k in keys if k.count("/") >= 4 and k.split("/")[3] in set(builds) - keep])
+    live = (r2.get_json(s3, "layers/master/latest.json") or {}).get("base")
+    by_week = {}
+    for k in r2.list_keys(s3, "layers/master/"):
+        parts = k.split("/")
+        if len(parts) >= 4:
+            by_week.setdefault(parts[2], []).append(k)
+    gone = []
+    for week, keys in by_week.items():
+        ptr = r2.get_json(s3, f"layers/master/{week}/current.json")
+        if not ptr:
+            continue
+        builds = sorted({k.split("/")[3] for k in keys if k.count("/") >= 4 and BUILD_RE.fullmatch(k.split("/")[3])})
+        keep = (set(builds[-KEEP_BUILDS:]) | {current}) if week == period else {ptr["build"]}
+        for k in keys:
+            folder = k.split("/")[3]
+            if k.endswith(f"/{week}/current.json") or (live and k.startswith(live)):
+                continue
+            if folder in keep and k.count("/") >= 4:
+                continue
+            gone.append(k)
+    return r2.delete_keys(s3, gone)
 
 
 def run(a):
