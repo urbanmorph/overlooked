@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changes · Overlooked</title>
-<meta name="description" content="Each week: species of India identified for the first time, identified in a new state, observed for the first time, or added to the list.">
+<meta name="description" content="Each week: species of India with a first open record in India or in a state, species added to the list, and the names that wait.">
 <!-- part:head -->
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -42,13 +42,13 @@
   <section style="margin-top:40px">
     <p class="mono note" id="runline" style="margin:0 0 8px">Master list</p>
     <h1 class="page">What changed since last week</h1>
-    <p class="lede">Each week we compare the master list with the week before. A species moves when someone observes it, when someone confirms its name, or when a source adds it. These changes come from the people who observe and identify on iNaturalist, from the collections and data publishers on GBIF, and from the taxonomists of BSI, ZSI and other institutions.</p>
+    <p class="lede">Each week we compare the master list with the week before. A species moves when it gets its first open record (a specimen, photo or sighting that anyone can check online), when someone confirms the name of an observation, or when a source adds it. These changes come from the people who observe and identify on iNaturalist, from the collections and data publishers on GBIF, and from the taxonomists of BSI, ZSI and other institutions.</p>
   </section>
 
   <section id="trend" hidden aria-labelledby="trend-h">
     <h2 id="trend-h" class="visually-hidden">Totals by week</h2>
     <div class="filters"><label class="f">Group <select id="tgroup"><option value="">All groups</option></select></label></div>
-    <div class="kpis six" id="ttiles" role="group" aria-label="Choose a measure for the chart" style="margin-top:16px"></div>
+    <div class="kpis five" id="ttiles" role="group" aria-label="Choose a measure for the chart" style="margin-top:16px"></div>
     <section class="card pad trend" style="margin-top:16px" aria-labelledby="tchart-h">
       <h3 id="tchart-h" style="margin:0;font-size:18px">Species documented in India</h3>
       <p class="note" id="tchart-note" style="margin:4px 0 0"></p>
@@ -61,11 +61,11 @@
   <section class="card pad" id="baseline" hidden style="margin-top:16px">
     <h2>Changes start next week</h2>
     <p class="note" style="font-size:16px" id="baseline-text">The master list compares each week with the week before. The first changes show here after the next weekly list.</p>
-    <p class="note" style="font-size:16px">To help now, <a href="/?view=identified">see the species that wait for a name</a>.</p>
+    <p class="note" style="font-size:16px">To help now, <a href="/?view=waiting">see the species that wait for a name</a>.</p>
   </section>
 
   <div id="feed" hidden>
-    <section class="kpis tiles4" id="tiles" style="margin-top:8px"></section>
+    <section class="kpis tiles3" id="tiles" style="margin-top:8px"></section>
     <p class="note" id="waitline" style="margin:12px 0 0"></p>
     <div class="row" style="margin-top:16px;gap:8px;align-items:center">
       <div role="group" aria-label="Kind of change" class="chips" id="chips" style="margin-top:0"></div>
@@ -78,7 +78,7 @@
     </section>
     <section class="card" style="margin-top:16px" aria-labelledby="bygroup">
       <div class="bar-head"><h2 id="bygroup" style="font-size:18px">By group</h2></div>
-      <div class="tablebox"><table><thead><tr><th>Group</th><th class="n">Identified in India</th><th class="n">Identified in a new state</th><th class="n">Observed</th><th class="n">Added to the list</th></tr></thead><tbody id="groups"></tbody></table></div>
+      <div class="tablebox"><table><thead><tr><th>Group</th><th class="n">First open record in India</th><th class="n">In a new state</th><th class="n">Added to the list</th></tr></thead><tbody id="groups"></tbody></table></div>
     </section>
   </div>
 </main>

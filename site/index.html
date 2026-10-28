@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Overlooked: species of India, observed and identified</title>
-<meta name="description" content="Every species documented from India, from many sources. For each group and state: which species people observe, which they identify, and the IUCN status. Updated each week.">
+<title>Overlooked: species of India and their open records</title>
+<meta name="description" content="Every species documented from India, from many sources. For each group and state: which species have an open record, which wait for a name, and the IUCN status. Updated each week.">
 <!-- part:head -->
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -16,7 +16,7 @@
 <link rel="modulepreload" href="/assets/common.js">
 <link rel="modulepreload" href="/assets/map.js">
 <script type="module" src="/assets/explore.js"></script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: observed, identified and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -41,14 +41,13 @@
 <!-- /part:header -->
 
 <main id="main" class="wrap ex">
-  <h1 class="sr">Species of India: observed, identified and IUCN status</h1>
+  <h1 class="sr">Species of India: open records, names that wait, and IUCN status</h1>
 
   <section class="week" aria-labelledby="week-h">
     <h2 id="week-h" style="font-size:20px;margin:0">This week</h2>
-    <div class="kpis six" id="week" style="margin-top:12px">
+    <div class="kpis five" id="week" style="margin-top:12px">
       <a class="card kpi" href="/changes?m=documented"><b>–</b><span>Species documented in India</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=observed"><b>–</b><span>Observed at least once</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=identified"><b>–</b><span>Identified to species</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
+      <a class="card kpi" href="/changes?m=observed"><b>–</b><span>With an open record you can check online</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
       <a class="card kpi" href="/changes?m=threatened"><b>–</b><span>Threatened (IUCN CR, EN or VU)</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
       <a class="card kpi" href="/changes?m=waiting_species"><b>–</b><span>Species named in observations not yet confirmed</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
       <a class="card kpi" href="/changes?m=waiting_observations"><b>–</b><span>Observations named to species, not yet confirmed</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
@@ -57,8 +56,8 @@
 
   <section class="ex-top">
     <div class="views" role="tablist" aria-label="What the map and groups show">
-      <button type="button" role="tab" data-view="observed" aria-selected="true"><b>Observed</b><span>At least one observation</span></button>
-      <button type="button" role="tab" data-view="identified" aria-selected="false"><b>Identified</b><span>Confirmed to species</span></button>
+      <button type="button" role="tab" data-view="observed" aria-selected="true"><b>Open record</b><span>A record you can check online</span></button>
+      <button type="button" role="tab" data-view="waiting" aria-selected="false"><b>Waiting</b><span>Observations to name</span></button>
       <button type="button" role="tab" data-view="iucn" aria-selected="false"><b>IUCN</b><span>Red List status</span></button>
     </div>
     <div class="search">
@@ -108,11 +107,10 @@
         <button type="button" class="b" data-list="wait" aria-pressed="true">Named to species</button>
         <button type="button" class="b" data-list="genus" aria-pressed="false">Named to genus only</button>
         <button type="button" class="b" data-list="coarse" aria-pressed="false">Named above genus</button>
-        <button type="button" class="b" data-list="done" aria-pressed="false">Identified</button>
       </div>
     </div>
-    <p class="pad muted wait-help" data-for="wait" hidden>Observations on iNaturalist that the observer named to species and that nobody has confirmed yet. Species at the top matter most: no identification here yet, threatened, or endemic. Open them on iNaturalist to agree or to give a better name (you need an iNaturalist account).</p>
-    <p class="pad muted wait-help" data-for="genus" hidden>Observations on iNaturalist named only to genus. A person who knows the genus can often name the species. Genera at the top matter most: not on the India list yet (a possible new record for India), or with species that nobody has identified in India.</p>
+    <p class="pad muted wait-help" data-for="wait" hidden>Observations on iNaturalist that the observer named to species and that nobody has confirmed yet. Species at the top matter most: not on the India list yet, no open record here yet, threatened, or endemic. Open them on iNaturalist to agree or to give a better name (you need an iNaturalist account).</p>
+    <p class="pad muted wait-help" data-for="genus" hidden>Observations on iNaturalist named only to genus. A person who knows the genus can often name the species. Genera at the top matter most: not on the India list yet (a possible new record for India), or with species that have no open record in India.</p>
     <p class="pad muted wait-help" data-for="coarse" hidden>Observations on iNaturalist named only to a family, an order or a higher level. A person who knows the group can often name the genus or the species. Each link opens the observations of one group.</p>
     <div class="tablebox">
       <table class="sp-table">

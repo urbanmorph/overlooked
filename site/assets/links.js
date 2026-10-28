@@ -28,22 +28,22 @@ const GBIF_PUBLISH = 'https://www.gbif.org/become-a-publisher';
 const IUCN_PROCESS = 'https://www.iucnredlist.org/assessment/process';
 
 // What a person can do next for one species, from its status, IUCN category and labels.
-// sp: {status (0 listed only, 1 observed, 2 identified), iucn, codes (Set of label codes), wait (iNaturalist
+// sp: {status (0 on the list, no open record; 1 an open record; 2 not on the list, named only in observations that
+// wait), iucn, codes (Set of label codes), wait (iNaturalist
 // observations that wait for a name), identify (Identify page), gbifKey, name, paper (link to the description)}.
 // Returns [{text, links: [{href, text}]}], the first step first.
 export function nextSteps(sp) {
   const out = [], c = sp.codes, q = encodeURIComponent(sp.name);
   const gbif = gbifIndiaLinks(sp.gbifKey, c);
   if (sp.status === 0) {
-    out.push({ text: c.has('nra') ? 'No observation is in the sources, and nobody has recorded it since it was described. Look for it where the description found it, and add what you find.'
-      : 'No observation is in the sources. If you find it, add an observation, or publish the specimen records of your collection.',
+    out.push({ text: c.has('nra') ? 'No open record is in the sources, and nobody has recorded it since it was described. Look for it where the description found it, and add what you find.'
+      : 'No open record is in the sources. If you find it, add an observation, or publish the specimen records of your collection.',
     links: [...(c.has('nra') && sp.paper ? [{ href: sp.paper, text: 'The description' }] : []),
       { href: INAT_UPLOAD, text: 'Add an observation on iNaturalist' }, { href: GBIF_PUBLISH, text: 'Publish records on GBIF' }] });
   }
   if (sp.wait && sp.identify) {
-    out.push({ text: `${sp.wait.toLocaleString('en-IN')} ${sp.wait === 1 ? 'observation on iNaturalist waits for a name. If you know the group, identify it.' : 'observations on iNaturalist wait for a name. If you know the group, identify them.'}`, links: [{ href: sp.identify, text: 'Identify on iNaturalist' }] });
-  } else if (sp.status === 1) {
-    out.push({ text: 'The records do not confirm the name yet. A specialist of the group can check the specimens or photos.', links: gbif.slice(0, 1) });
+    const first = sp.status === 2 ? ' It is not on the India list yet: a confirmed name adds it.' : '';
+    out.push({ text: `${sp.wait.toLocaleString('en-IN')} ${sp.wait === 1 ? 'observation on iNaturalist waits for a name. If you know the group, identify it.' : 'observations on iNaturalist wait for a name. If you know the group, identify them.'}${first}`, links: [{ href: sp.identify, text: 'Identify on iNaturalist' }] });
   }
   if (c.has('lnc') || c.has('lco') || c.has('lfl') || c.has('lm')) {
     out.push({ text: `Some records from India have no exact location, so they are not on the map.${c.has('lfl') ? ' Some coordinates may be wrong: such a record may not be from India.' : ''} The publisher of each record can correct it on GBIF.`,

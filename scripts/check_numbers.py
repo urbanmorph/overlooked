@@ -18,12 +18,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from pipeline.master import MEASURES, history_entry
 
-TOTALS = ("documented", "observed", "identified")
+TOTALS = ("documented", "observed")
+
+
+def old_list(s):
+    """A list from before open records (its totals have identified): its numbers are read another way."""
+    return "identified" in s["totals"]
 
 
 def check_summary(s):
     """The India totals are the sum of the group rows the cards and the map show."""
-    sums = [sum(r[n] for r in s["india"]) for n in range(3)]
+    if old_list(s):
+        return []
+    sums = [sum(r[n] for r in s["india"]) for n in range(len(TOTALS))]
     return [f"summary {s.get('period') or s.get('month')}: totals {k} is {s['totals'][k]}, its groups add up to {v}"
             for k, v in zip(TOTALS, sums) if s["totals"][k] != v]
 
@@ -33,7 +40,7 @@ def check_history(h, summaries):
     out = []
     for e in h["lists"]:
         s = summaries.get(e["period"])
-        if s is None:
+        if s is None or old_list(s):
             continue
         want = history_entry(s)["india"]
         out += [f"history {e['period']}: {m} is {a}, the summary gives {b}"

@@ -1,6 +1,5 @@
-// One species: what the master list knows (sources, observed, identified, IUCN, labels, year described,
-// waiting observations),
-// where it is observed and identified, and its GBIF records when the snapshot has them.
+// One species: what the master list knows (sources, open record, IUCN, labels, year described, waiting observations),
+// the states with an open record and with observations that wait, and its GBIF records when the snapshot has them.
 
 import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js';
 import { drawMap } from './map.js';
@@ -12,11 +11,11 @@ function shardOf(key) {
   for (const b of new TextEncoder().encode(String(key))) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
   return h % 512;
 }
-const STATUS = ['Listed only', 'Observed, not identified', 'Identified'];
+const STATUS = ['No open record yet', 'Open record', 'Not on the India list yet'];
 const STATUS_TEXT = [
-  'A source lists this species for India. No observation of it is in the sources yet.',
-  'Someone observed it in India, but nobody has confirmed the name yet.',
-  'Someone observed it in India and the name is confirmed.',
+  'A checklist or a paper lists this species for India. No open record of it is online yet: no specimen, photo or sighting that anyone can check.',
+  'There is an open record of it from India: a specimen, photo or sighting that anyone can check online.',
+  'Only iNaturalist observations that wait for a name give this species for India. When someone confirms the name, it goes on the list.',
 ];
 const IDENTIFY = 'https://www.inaturalist.org/observations/identify';
 const AFTER = { recorded: y => `Recorded again after ${y}`, later_papers: y => `After ${y}, only in papers`,
@@ -76,16 +75,16 @@ try {
   showDevBanner(snapSummary);
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
-  const [name, gi, sources, status, iucn, labels, obsMask, idMask, taxon, waitIndia, waitStates, year, authority, paper] = row;
+  const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper] = row;
   const group = S.groups[gi] || '';
-  const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), id: bit(idMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
+  const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
   $('#name').textContent = name;
   $('#crumb').textContent = `/ ${group}${gbif?.family ? ` / ${gbif.family}` : ''}`;
   $('#classif').textContent = gbif ? [gbif.kingdom, gbif.phylum, gbif.class, gbif.order, gbif.family].filter(Boolean).join(' › ') : group;
 
   // Status, IUCN, sources, labels and what waits for a name.
-  const nId = states.filter(s => s.id).length, nObs = states.filter(s => s.obs).length;
+  const nObs = states.filter(s => s.obs).length;
   const cat = S.iucn[iucn];
   const chips = (mask, names) => tags(mask, names) || '<span class="muted">–</span>';
   const identify = place => `${IDENTIFY}?quality_grade=needs_id&taxon_id=${encodeURIComponent(taxon)}&place_id=${encodeURIComponent(place)}`;
@@ -94,8 +93,7 @@ try {
     <dl class="stats">
       <dt>Described</dt><dd>${year ? `<a href="/?described=${year}-${year}">${year}</a>` : '<span class="muted">Year not known</span>'}${authority ? ` <span class="muted">· ${esc(authority)}</span>` : ''}</dd>
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span></dd>
-      <dt>Identified in</dt><dd>${fmt(nId)} state${nId === 1 ? '' : 's'}</dd>
-      <dt>Observed in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
+      <dt>Open record in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
     </dl>
     ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${paper[5]}`}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
       ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.` : ''}</p>` : ''}
@@ -116,16 +114,15 @@ try {
   // Map: each state shaded by what is known there.
   const byState = new Map(states.map(s => [Number(s.code), s]));
   const map = drawMap($('#map'), boundaries, {
-    label: `Map of India: where ${name} is observed and identified`, pickLabel: 'Explore this state',
+    label: `Map of India: where ${name} has an open record`, pickLabel: 'Explore this state',
     onPick: d => { location.href = `/?state=${d.state_lgd}`; },
   });
   map.fill(new Map(boundaries.districts.map(d => [d.id, byState.get(d.state_lgd)])),
-    s => (s?.id ? '--q3' : s?.obs ? '--q1' : '--none'),
-    (id, s) => (s ? `${s.id ? 'Identified' : s.obs ? 'Observed, not identified' : 'No observation'} in the state${s.wait ? `; ${fmt(s.wait)} wait for a name` : ''}` : 'No data'));
+    s => (s?.obs ? '--q3' : s?.wait ? '--q1' : '--none'),
+    (id, s) => (s ? `${s.obs ? 'Open record' : 'No open record'} in the state${s.wait ? `; ${fmt(s.wait)} wait for a name` : ''}` : 'No data'));
   const names = list => list.map(s => esc(s.name)).join(', ');
   const waitList = states.filter(s => s.wait).sort((a, b) => b.wait - a.wait).slice(0, 8);
-  $('#where').innerHTML = (nId ? `Identified in ${names(states.filter(s => s.id))}.` : nObs ? 'Not identified in any state yet.' : 'No observation with a state yet.')
-    + (nObs > nId ? ` Observed but not identified in ${names(states.filter(s => s.obs && !s.id))}.` : '')
+  $('#where').innerHTML = (nObs ? `Open record in ${names(states.filter(s => s.obs))}.` : 'No open record with a state yet.')
     + (waitList.length && taxon ? `<br><span class="note">Waiting for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}</span>` : '');
 
   // GBIF records, when the snapshot has the species.

@@ -1,15 +1,14 @@
 """Master list: every species documented from India, with the sources that list it.
 
-Per species (and per state where the place is known) we track three things: observed, identified and
-the IUCN category.
+Per species (and per state where the place is known) we track two things: an open record, and the IUCN category.
   documented  on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India),
-              GBIF, iNaturalist, new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries)
-  observed    at least one observation in any source: a GBIF record of any kind (photo, sighting, specimen,
-              sound, DNA sample, record cited from a paper), or an iNaturalist observation of any grade
-  identified  at least one observation confirmed to species: a GBIF record named to species (labelled by
-              its basis of record), or an iNaturalist research-grade observation. iNaturalist "needs ID"
-              with a species name proposed is observed, not identified.
-A checklist entry is not an observation: a species only on checklists is "documented, checklist only".
+              new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries), or an open record
+  observed    an open record: a record anyone can check online. A GBIF record of any kind (photo, sighting,
+              specimen, sound, DNA sample, record cited from a paper), or an iNaturalist research-grade
+              observation. This is the standard of GBIF, which takes only research grade from iNaturalist.
+An iNaturalist "needs ID" observation is not an open record of its species: the name waits for a second person.
+A species named only in such observations is not on the list (status 2); its observations still count as waiting.
+A checklist entry is not an observation: a species only on checklists is "documented, no open record yet".
 
 Names: every name is matched to the Catalogue of Life (eXtended Release, the taxonomy of GBIF's SQL
 downloads): GBIF species keys as they are, ZSI's own Catalogue of Life match, then exact names, then
@@ -28,8 +27,8 @@ Inputs (all optional except the snapshot):
   described     Catalogue of Life authorship and Kew WCVP years (pipeline/described.py), R2 cache/described/
 
 Output: data/layers/master/<period>/ (and R2 layers/master/<period>/ with --publish, then layers/master/latest.json)
-  master.parquet        one row per species: key, name, group, sources[], observed, identified, iucn, labels[],
-                        states_observed[], states_identified[], year (described), authority
+  master.parquet        one row per species on the list: key, name, group, sources[], observed (an open record), iucn,
+                        labels[], states_observed[] (states with an open record), year (described), authority
   master_state.parquet  one row per species x state with an observation
   summary.json          totals by group and by state x group
   g/<gi>.json           all species of a group
@@ -250,7 +249,7 @@ def layer_input(s3, layer, field, filename):
 NAMES_COLS = ("source VARCHAR, name VARCHAR, key VARCHAR, kingdom VARCHAR, phylum VARCHAR, class VARCHAR, "
               "\"order\" VARCHAR, family VARCHAR, genus VARCHAR, grp VARCHAR, endemic BOOLEAN, new BOOLEAN, tier INTEGER")
 EVIDENCE_COLS = ("source VARCHAR, name VARCHAR, key VARCHAR, state_lgd INTEGER, label VARCHAR, "
-                 "observed BOOLEAN, identified BOOLEAN, located BOOLEAN")
+                 "observed BOOLEAN, located BOOLEAN")
 # Canonical "Genus epithet": subgenus in brackets dropped, infraspecific part dropped.
 BINOMIAL = """CREATE OR REPLACE MACRO binomial(s) AS coalesce(nullif(regexp_extract(
                   regexp_replace(trim(s), '\\s*\\([A-Z][a-z]+\\)', ''), '^([A-Z][a-z-]+ (× ?)?[a-z][a-z-]+)', 1), ''),
@@ -261,7 +260,8 @@ def start(con):
     """Empty tables every loader appends to.
     names_in: one row per source x name (documentation), with what is known of the classification.
       tier: how good the classification is (0 = GBIF's own; 5 = a hint from the source).
-    evidence: observations. state_lgd NULL = India, place not known."""
+    evidence: observations. observed: an open record (false for iNaturalist needs ID). state_lgd NULL = India,
+      place not known."""
     con.sql(BINOMIAL)
     con.sql(f"CREATE OR REPLACE TABLE names_in ({NAMES_COLS})")
     con.sql(f"CREATE OR REPLACE TABLE evidence ({EVIDENCE_COLS})")
@@ -287,8 +287,8 @@ def load_gbif(con, paths):
     con.sql(f"""INSERT INTO names_in SELECT 'GBIF', name, species_key, kingdom, phylum, class, "order", family, genus,
                 NULL, false, false, 0 FROM '{paths["species"]}'""")
     con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, NULL, CASE basis {basis} ELSE 'oc' END,
-                true, true, true FROM '{paths["species_decade"]}'""")
-    con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd, NULL, true, true, true
+                true, true FROM '{paths["species_decade"]}'""")
+    con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd, NULL, true, true
                 FROM '{paths["ledger"]}' WHERE state_lgd IS NOT NULL""")
     con.sql(f"""INSERT INTO alias SELECT name, species_key, name, 0 FROM '{paths["species"]}'""")
     # DNA only, where the ledger knows which records are DNA sequences (snapshots built after that column was added).
@@ -306,10 +306,10 @@ def load_gbif(con, paths):
         con.sql("""INSERT INTO names_in SELECT 'GBIF', name, species_key, NULL, NULL, NULL, NULL, NULL, genus, grp,
                    false, false, 1 FROM unl""")
         con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd,
-                    CASE basis {basis} ELSE 'oc' END, true, true, false FROM unl""")
+                    CASE basis {basis} ELSE 'oc' END, true, false FROM unl""")
         problem = " ".join(f"WHEN '{p}' THEN '{c}'" for p, c in PROBLEM_LABEL.items())
         con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, NULL, CASE problem {problem} END,
-                    true, true, false FROM unl""")
+                    true, false FROM unl""")
     return "last_year_not_dna" in cols
 
 
@@ -366,19 +366,20 @@ def load_bsi(con, path):
 
 
 def load_inat(con, doc):
-    """iNaturalist species lists per state: research grade = identified; needs ID = observed."""
+    """iNaturalist species lists per state: research grade = an open record; needs ID = waits for a name (evidence that
+    links the waiting observations to the species, not an open record)."""
     rows, names, wait = [], {}, []
     for code, lists in doc["lists"].items():
         state = None if code == "india" else int(code)
-        for quality, label, ident in (("research", "rg", True), ("needs_id", "nid", False)):
+        for quality, label, record in (("research", "rg", True), ("needs_id", "nid", False)):
             for taxon, name, iconic, n in lists.get(quality, []):
-                rows.append([name, state, label, ident])
+                rows.append([name, state, label, record])
                 names.setdefault(name, iconic)
                 if quality == "needs_id":
                     wait.append([name, state, taxon, n])
     insert(con, "inat_wait", "SELECT binomial(n), n, s::INTEGER, t::BIGINT, c::BIGINT", ["n", "s", "t", "c"], wait)
-    insert(con, "evidence", "SELECT 'iNaturalist', binomial(n), NULL, s::INTEGER, l, true, i, true",
-           ["n", "s", "l", "i"], rows)
+    insert(con, "evidence", "SELECT 'iNaturalist', binomial(n), NULL, s::INTEGER, l, r, true",
+           ["n", "s", "l", "r"], rows)
     insert(con, "names_in", """SELECT 'iNaturalist', binomial(n), NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, NULL,
                                       NULL, NULL, false, false, 5""",
            ["n", "k", "p", "c"], [[n, *INAT_HINTS.get(i or "", (None, None, None))] for n, i in names.items()])
@@ -409,7 +410,7 @@ def load_newspecies(con, doc):
                                       false, new, 5""", ["src", "n", "k", "g", "new"], rows)
     insert(con, "ns_info", "SELECT binomial(n), y::INTEGER, d", ["n", "y", "d"], info)
     # Observed in India, in no state; located stays unknown, as the layer does not keep the coordinates.
-    insert(con, "evidence", "SELECT 'GBIF', binomial(n), NULL, NULL, 'vn', true, false, NULL", ["n"], seen)
+    insert(con, "evidence", "SELECT 'GBIF', binomial(n), NULL, NULL, 'vn', true, NULL", ["n"], seen)
 
 
 def load_described(con, paths):
@@ -657,9 +658,12 @@ def flags(con):
     """)
     con.sql("""
         CREATE OR REPLACE TABLE id_flags AS
-        SELECT i.id, coalesce(bool_or(e.observed), false) AS observed, coalesce(bool_or(e.identified), false) AS identified,
-               coalesce(bool_or(e.located), false) AS located,
-               coalesce(bool_or(NOT e.located), false) AS unplaced,   -- a record known to have no exact location
+        SELECT i.id, coalesce(bool_or(e.observed), false) AS observed,
+               coalesce(bool_or(e.located) FILTER (WHERE e.observed), false) AS located,
+               coalesce(bool_or(NOT e.located) FILTER (WHERE e.observed), false) AS unplaced,  -- known to have no exact location
+               -- On the list: an open record, or a source other than iNaturalist (whose names are its observations).
+               coalesce(bool_or(e.observed), false)
+                   OR i.id IN (SELECT id FROM names_in_r WHERE source <> 'iNaturalist') AS listed,
                list(DISTINCT e.label) FILTER (WHERE e.label IS NOT NULL) AS ev_labels
         FROM ids i LEFT JOIN evidence_r e USING (id) GROUP BY i.id
     """)
@@ -674,7 +678,7 @@ def flags(con):
         CREATE OR REPLACE TABLE id_labels AS
         WITH l AS (
             SELECT id, unnest(ev_labels) AS code FROM id_flags
-            UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed
+            UNION SELECT id, 'chk' FROM id_flags WHERE NOT observed AND listed
             UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located AND unplaced
             UNION SELECT id, 'lgo' FROM id_flags JOIN id_sources USING (id)
                   WHERE observed AND NOT located AND unplaced AND sources = ['GBIF']
@@ -696,30 +700,31 @@ def flags(con):
                bool_or(e.source = 'GBIF' AND e.located) AS gbif_located,
                bool_or(e.source = 'GBIF' AND NOT e.located) AS gbif_no_coordinates,
                bool_or(e.label = 'rg') AS inat_research, bool_or(e.label = 'nid') AS inat_needs_id,
-               bool_or(e.observed) AS observed, bool_or(e.identified) AS identified
+               bool_or(e.observed) AS observed
         FROM evidence_r e JOIN ids i USING (id) WHERE e.state_lgd IS NOT NULL
         GROUP BY e.id, e.state_lgd ORDER BY state_lgd, name
     """)
     con.sql("""
         CREATE OR REPLACE TABLE id_states AS
-        SELECT id, coalesce(list(state_lgd ORDER BY state_lgd) FILTER (WHERE observed), []) AS states_observed,
-               coalesce(list(state_lgd ORDER BY state_lgd) FILTER (WHERE identified), []) AS states_identified
+        SELECT id, coalesce(list(state_lgd ORDER BY state_lgd) FILTER (WHERE observed), []) AS states_observed
         FROM master_state GROUP BY id
     """)
     con.sql(f"""
         CREATE OR REPLACE TABLE master AS
         SELECT i.id, CASE WHEN NOT starts_with(i.id, 'n:') THEN i.id END AS key, i.name, i.grp AS "group",
                list_position({GROUPS!r}, i.grp) - 1 AS gi,
-               s.sources, s.sources_mask, f.observed, f.identified,
-               CASE WHEN f.identified THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
+               s.sources, s.sources_mask, f.observed,
+               -- 0: on the list, no open record yet; 1: an open record; 2: not on the list, a name that waits.
+               CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i,
                l.labels, l.labels_mask,
-               coalesce(t.states_observed, []) AS states_observed, coalesce(t.states_identified, []) AS states_identified,
+               coalesce(t.states_observed, []) AS states_observed,
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
         ORDER BY gi, i.name
     """)
+    con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
 
 
 # ---------------------------------------------------------------- site files
@@ -731,7 +736,7 @@ def states_list(districts_path):
 
 # One species in g/<gi>.json (and at the start of w/<gi>.json rows); the last field is the year described.
 ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
-           "s.states_id_mask, s.year")
+           "s.year")
 
 
 def per_area(rows, n, width):
@@ -760,7 +765,7 @@ def state_pairs(states):
 def waiting_genus(con, n, out: Path):
     """Observations named only to genus. Per group [genera, observations] for India and per state, and
     wg/<gi>.json rows [genus, taxon, observations in India, [[state index, n]], species of the genus on the list,
-    of them never identified, threatened, endemic]. A genus with no species on the list takes its group from
+    of them with no open record, threatened, endemic]. A genus with no species on the list takes its group from
     its iNaturalist iconic group."""
     end = CODES.index("end")
     # Every name the list knows for a species counts: a source may still use a genus that the Catalogue of
@@ -772,9 +777,9 @@ def waiting_genus(con, n, out: Path):
                    UNION SELECT coalesce(m.canonical, a.key), a.name FROM alias a LEFT JOIN idmap m ON m.id = a.key
                    WHERE a.key IS NOT NULL),
         g AS (SELECT DISTINCT split_part(n.name, ' ', 1) AS genus, i.kingdom, s.*
-              FROM n JOIN site s USING (id) JOIN ids i USING (id))
+              FROM n JOIN site s USING (id) JOIN ids i USING (id) WHERE s.status < 2)
         SELECT genus, kingdom, mode(gi) AS gi, count(*) AS docs,
-               count(*) FILTER (WHERE status < 2) AS unid, count(*) FILTER (WHERE iucn IN {THREATENED}) AS threat,
+               count(*) FILTER (WHERE NOT observed) AS unid, count(*) FILTER (WHERE iucn IN {THREATENED}) AS threat,
                count(*) FILTER (WHERE (labels_mask >> {end}) & 1 = 1) AS endemic
         FROM g GROUP BY 1, 2""")
     # A genus name can belong to a plant and to an animal: match the kingdom when both sides know it.
@@ -805,9 +810,9 @@ def waiting_genus(con, n, out: Path):
 
 def waiting(con, n, out: Path, places, coarse=None):
     """iNaturalist observations that wait for a name (needs ID), per species and area.
-    Returns the summary part: per group [species, observations, species with no identification in that area],
-    for India and per state. Writes w/<gi>.json: the species' g/<gi>.json row (key, name, sources, status, IUCN, labels, states observed,
-    states identified), then iNaturalist taxon, observations in India, [[state index, observations], ...], so the
+    Returns the summary part: per group [species, observations, species with no open record in that area],
+    for India and per state. Writes w/<gi>.json: the species' g/<gi>.json row (key, name, sources, status, IUCN, labels,
+    states with an open record, year), then iNaturalist taxon, observations in India, [[state index, observations], ...], so the
     site can rank each species and link it to iNaturalist's Identify page without the group file."""
     con.sql("""
         CREATE OR REPLACE TABLE wait AS
@@ -817,11 +822,11 @@ def waiting(con, n, out: Path, places, coarse=None):
         SELECT w.id, w.state_lgd, any_value(t.taxon) AS taxon, sum(w.n) AS n
         FROM w JOIN t USING (id) GROUP BY w.id, w.state_lgd
     """)
-    # "First": no identification in that area (India: anywhere; a state: in that state).
+    # "First": no open record in that area (India: anywhere; a state: in that state).
     india, by_state = per_area(con.sql("""
             SELECT w.state_lgd, s.gi, count(*), sum(w.n),
-                   count(*) FILTER (WHERE CASE WHEN w.state_lgd IS NULL THEN s.status < 2
-                                               ELSE NOT list_contains(s.states_identified, w.state_lgd) END)
+                   count(*) FILTER (WHERE CASE WHEN w.state_lgd IS NULL THEN NOT s.observed
+                                               ELSE NOT list_contains(s.states_observed, w.state_lgd) END)
             FROM wait w JOIN site s USING (id) GROUP BY ALL""").fetchall(), n, 3)
     group_files(out, "w", ((gi, [*row, taxon, int(n_india), state_pairs(states)])
                            for gi, *row, taxon, n_india, states in con.sql(f"""
@@ -836,7 +841,7 @@ def waiting(con, n, out: Path, places, coarse=None):
 
 def species_files(con, out: Path):
     """sp/<shard>.json for the species page: {key: [name, group index, sources, status, IUCN, labels,
-    states observed, states identified, iNaturalist taxon, observations waiting in India, [[state index, n]],
+    states with an open record, iNaturalist taxon, observations waiting in India, [[state index, n]],
     year described, authority, paper of a new species [sources, journal, link, after the description, latest year
     after, year of the paper]]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
@@ -844,7 +849,7 @@ def species_files(con, out: Path):
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
-                   s.states_id_mask, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
+                   any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
@@ -856,8 +861,21 @@ def species_files(con, out: Path):
 
 def described_summary(con):
     """Range of the years described, and how many species have no year in the sources."""
-    lo, hi, unknown = first(con, "SELECT min(year), max(year), count(*) FILTER (WHERE year IS NULL) FROM master")
+    lo, hi, unknown = first(con, "SELECT min(year), max(year), count(*) FILTER (WHERE year IS NULL) FROM listed")
     return {"from": lo, "to": hi, "unknown": unknown}
+
+
+def group_totals(con, species_sql, n):
+    """Per group [documented, with an open record, [species per IUCN category], threatened with an open record],
+    from SQL that gives the species on a list with gi, iucn and observed."""
+    india = [[0, 0, [0] * len(IUCN_CATS), 0] for _ in range(n)]
+    for gi, cat, docs, obs, thr in con.sql(f"""
+            SELECT gi, coalesce(iucn, 'NE'), count(*), count(*) FILTER (WHERE observed),
+                   count(*) FILTER (WHERE observed AND iucn IN {THREATENED})
+            FROM ({species_sql}) WHERE gi >= 0 GROUP BY ALL""").fetchall():
+        row = india[gi]
+        row[0] += docs; row[1] += obs; row[2][IUCN_CATS.index(cat)] += docs; row[3] += thr
+    return india
 
 
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
@@ -869,28 +887,22 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     con.sql("""
         CREATE OR REPLACE TABLE site AS
         SELECT m.*, coalesce((SELECT sum(1::BIGINT << b) FROM state_bit WHERE list_contains(m.states_observed, state_lgd)), 0)
-                    AS states_obs_mask,
-               coalesce((SELECT sum(1::BIGINT << b) FROM state_bit WHERE list_contains(m.states_identified, state_lgd)), 0)
-                    AS states_id_mask
+                    AS states_obs_mask
         FROM master m
     """)
     shutil.rmtree(out / "search", ignore_errors=True)
     n = len(GROUPS)
-    india = [[0, 0, 0, [0] * len(IUCN_CATS), 0] for _ in range(n)]
-    for gi, cat, docs, obs, ident, thr in con.sql(f"""
-            SELECT gi, iucn_i, count(*), count(*) FILTER (WHERE observed), count(*) FILTER (WHERE identified),
-                   count(*) FILTER (WHERE observed AND iucn IN {THREATENED}) FROM master GROUP BY ALL""").fetchall():
-        row = india[gi]
-        row[0] += docs; row[1] += obs; row[2] += ident; row[3][cat] += docs; row[4] += thr
+    india = group_totals(con, "SELECT gi, iucn, observed FROM listed", n)
+    # Per state and group [with an open record, threatened with an open record].
     by_state = {}
-    for st, gi, obs, ident, thr in con.sql(f"""
-            SELECT s.state_lgd, m.gi, count(*) FILTER (WHERE s.observed), count(*) FILTER (WHERE s.identified),
+    for st, gi, obs, thr in con.sql(f"""
+            SELECT s.state_lgd, m.gi, count(*) FILTER (WHERE s.observed),
                    count(*) FILTER (WHERE s.observed AND m.iucn IN {THREATENED})
-            FROM master_state s JOIN master m USING (id)
+            FROM master_state s JOIN listed m USING (id)
             GROUP BY ALL""").fetchall():
-        by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [obs, ident, thr]
-    totals = dict(zip(("documented", "observed", "identified"), first(con,
-        "SELECT count(*), count(*) FILTER (WHERE observed), count(*) FILTER (WHERE identified) FROM master")))
+        by_state.setdefault(str(st), [[0, 0] for _ in range(n)])[gi] = [obs, thr]
+    totals = dict(zip(("documented", "observed"), first(con,
+        "SELECT count(*), count(*) FILTER (WHERE observed) FROM listed")))
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
@@ -898,7 +910,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
-    group_files(out, "g", ((gi, row) for gi, *row in con.sql(f"SELECT gi, {ROW_SQL} FROM site s ORDER BY gi, s.name").fetchall()), range(n))
+    group_files(out, "g", ((gi, row) for gi, *row in con.sql(
+        f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
     for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year
                         FROM site ORDER BY lower(name), name""").fetchall():
@@ -915,28 +928,43 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
 
 # ---------------------------------------------------------------- changes since the previous list
 
-CHANGE_KINDS = ("identified", "state", "observed", "documented", "dropped", "iucn")
+CHANGE_KINDS = ("observed", "state", "documented", "dropped", "iucn")
+
+
+def previous_list(con, parquet):
+    """SQL for a published master.parquet as today's rule reads it: the species on the list, with key, name, gi,
+    sources, observed (an open record), states_observed and iucn. Lists up to 2026-10-26 (with an identified column)
+    counted iNaturalist needs ID as observed: there an open record is identified, or a record under the name as
+    published (observed, in no state), and a species named only by iNaturalist (and IUCN) was not on the list."""
+    cols = {c for (c, *_) in con.sql(f"DESCRIBE SELECT * FROM '{parquet}'").fetchall()}
+    iucn = "iucn" if "iucn" in cols else "NULL::VARCHAR AS iucn"
+    base = f"""coalesce(key, 'n:' || name) AS id, key, name, list_position({GROUPS!r}, "group") - 1 AS gi, sources, {iucn}"""
+    if "identified" not in cols:
+        return f"SELECT {base}, observed, states_observed FROM '{parquet}'"
+    return f"""SELECT * FROM (
+        SELECT {base}, identified OR list_contains(labels, 'vn') AS observed, states_identified AS states_observed
+        FROM '{parquet}')
+        WHERE observed OR len(list_filter(sources, lambda s: s NOT IN ('iNaturalist', 'IUCN'))) > 0"""
 
 
 def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
     """Species that moved between the previous master list (a master.parquet) and this one (table master).
-    Kinds: identified (first identification in India), state (identified in a state for the first time),
-    observed (first observation), documented (new on the list), dropped (no longer on the list: renamed, merged, or
-    left out as not from India), iucn (IUCN Red List category changed; the row ends with [before, now]).
+    Kinds: observed (a first open record in India), state (a first open record in a state), documented (new on the
+    list), dropped (no longer on the list: renamed, merged, or left out as not from India), iucn (IUCN Red List
+    category changed; the row ends with [before, now]).
     rows: [kind, key, name, group index, [states new for the species], [sources new for the species]]."""
     if not prev_parquet:
         return {"from": None, "to": period_id}
+    p = previous_list(con, prev_parquet)
     rows = con.sql(f"""
-        WITH p AS (SELECT *, coalesce(key, 'n:' || name) AS id, list_position({GROUPS!r}, "group") - 1 AS gi
-                   FROM '{prev_parquet}'),
-        c AS (SELECT key, name, gi, sources, observed, identified, states_identified,
-                     coalesce(key, 'n:' || name) AS id FROM master),
-        j AS (SELECT c.*, p.id IS NOT NULL AS was, p.observed AS p_obs, p.identified AS p_id,
-                     list_filter(c.states_identified, lambda s: NOT list_contains(coalesce(p.states_identified, []), s)) AS new_states,
+        WITH p AS ({p}),
+        c AS (SELECT key, name, gi, sources, observed, states_observed, coalesce(key, 'n:' || name) AS id
+              FROM master WHERE status < 2),
+        j AS (SELECT c.*, p.id IS NOT NULL AS was, p.observed AS p_obs,
+                     list_filter(c.states_observed, lambda s: NOT list_contains(coalesce(p.states_observed, []), s)) AS new_states,
                      list_filter(c.sources, lambda s: NOT list_contains(coalesce(p.sources, []), s)) AS new_sources
               FROM c LEFT JOIN p USING (id))
         SELECT CASE WHEN NOT was THEN 'documented'
-                    WHEN identified AND NOT p_id THEN 'identified'
                     WHEN observed AND NOT p_obs THEN 'observed'
                     WHEN len(new_states) > 0 THEN 'state' END AS kind,
                coalesce(key, ''), name, gi, new_states, new_sources
@@ -945,15 +973,14 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
         SELECT 'dropped', coalesce(key, ''), name, gi, [], [] FROM p WHERE id NOT IN (SELECT id FROM c)
         ORDER BY 1, 3""").fetchall()
     rows = [list(r) for r in rows]
-    prev_cols = {c for (c, *_) in con.sql(f"DESCRIBE SELECT * FROM '{prev_parquet}'").fetchall()}
-    if "iucn" in prev_cols and "iucn" in {c for (c, *_) in con.sql("DESCRIBE master").fetchall()}:
+    if "iucn" in {c for (c, *_) in con.sql("DESCRIBE master").fetchall()}:
         rows += [[*r[:4], [], [], [r[4], r[5]]] for r in con.sql(f"""
             SELECT 'iucn', coalesce(c.key, ''), c.name, c.gi, p.iucn, c.iucn
-            FROM master c JOIN '{prev_parquet}' p ON coalesce(c.key, 'n:' || c.name) = coalesce(p.key, 'n:' || p.name)
-            WHERE c.iucn IS NOT NULL AND c.iucn IS DISTINCT FROM p.iucn ORDER BY c.name""").fetchall()]
+            FROM master c JOIN ({p}) p ON coalesce(c.key, 'n:' || c.name) = p.id
+            WHERE c.status < 2 AND c.iucn IS NOT NULL AND c.iucn IS DISTINCT FROM p.iucn ORDER BY c.name""").fetchall()]
     counts = dict.fromkeys(CHANGE_KINDS, 0)
-    groups = [[0, 0, 0, 0] for _ in range(n_groups)]
-    col = {"documented": 0, "observed": 1, "identified": 2, "state": 3}
+    groups = [[0, 0, 0] for _ in range(n_groups)]
+    col = {"documented": 0, "observed": 1, "state": 2}
     for kind, _, _, gi, *_ in rows:
         counts[kind] += 1
         if kind in col and gi is not None and 0 <= gi < n_groups:
@@ -963,25 +990,37 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
 
 
 # Measures of the weekly history (history.json), for India and per group.
-MEASURES = ["documented", "observed", "identified", "threatened", "waiting_species", "waiting_observations"]
+MEASURES = ["documented", "observed", "threatened", "waiting_species", "waiting_observations"]
 
 
 def history_entry(summary):
-    """One list's totals from its summary.json: per group [documented, observed, identified, threatened (IUCN CR, EN
+    """One list's totals from its summary.json: per group [documented, with an open record, threatened (IUCN CR, EN
     or VU), species and observations on iNaturalist named to species but not yet confirmed (needs ID)], and their sum
     for India."""
     threat = [IUCN_CATS.index(c) for c in THREATENED]
     waiting = (summary.get("waiting") or {}).get("india") or []
-    groups = [[d, o, i, sum(cats[k] for k in threat), *(waiting[gi][:2] if gi < len(waiting) else [0, 0])]
-              for gi, (d, o, i, cats, *_) in enumerate(summary["india"])]
+    groups = [[d, o, sum(cats[k] for k in threat), *(waiting[gi][:2] if gi < len(waiting) else [0, 0])]
+              for gi, (d, o, cats, *_) in enumerate(summary["india"])]
     return {"period": summary.get("period") or summary.get("month"), "india": [sum(c) for c in zip(*groups)],
             "groups": groups}
 
 
+def previous_summary(con, prev):
+    """The previous list's summary.json, or, for a list from before open records (its totals have identified), its
+    per-group totals read from its master.parquet with today's rule (previous_list); the waiting counts are its own."""
+    s = (prev or {}).get("summary")
+    if not s or "identified" not in (s.get("totals") or {}):
+        return s
+    india = group_totals(con, previous_list(con, prev["parquet"]), len(s["groups"]))
+    return {**s, "india": india, "totals": {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india)}}
+
+
 def next_history(prev, summary):
-    """This list's history: the previous list's history (or, for a list from before history.json, one built from its
-    summary) with this list added. prev: previous_layer() or None."""
+    """This list's history: the previous list's history (or, for a list from before history.json or from before
+    open records, one built from its summary) with this list added. prev: previous_layer() or None."""
     base = (prev or {}).get("history")
+    if base and base.get("measures") != MEASURES:
+        base = None
     if not base and (prev or {}).get("summary"):
         base = history(None, prev["summary"])
     return history(base, summary)
@@ -1088,17 +1127,17 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     described_years(con)
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
-    con.sql(f"""COPY (SELECT key, name, "group", sources, observed, identified, iucn, labels, states_observed,
-                       states_identified, year, authority FROM master) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
-    con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state) TO '{out / 'master_state.parquet'}' "
-            "(FORMAT parquet, COMPRESSION zstd)")
+    con.sql(f"""COPY (SELECT key, name, "group", sources, observed, iucn, labels, states_observed, year, authority
+                     FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
+    con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
+            f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
     dump(ch, out / "changes.json")
-    dump(next_history(prev, summary), out / "history.json")
+    dump(next_history(prev and {**prev, "summary": previous_summary(con, prev)}, summary), out / "history.json")
     summary["merged_ids"] = merged
     summary["names_pending_match"] = len(pending)
     return summary

@@ -6,8 +6,8 @@ The master list of India's species, and what changes in it each week.
 
 Overlooked joins every public source on India's species into one list: GBIF, iNaturalist, the Zoological and
 Botanical Surveys of India (checklists and annual discoveries), Kew WCVP, Catalogue of Life and the IUCN Red List. For
-each species, group and state it shows whether the species is observed, whether it has a confirmed identification,
-and its IUCN status. Each week it builds a new dated list from the sources and compares it with the week before. It
+each species, group and state it shows whether the species has an open record (a specimen, photo or sighting anyone
+can check online), how many observations of it wait for a name, and its IUCN status. Each week it builds a new dated list from the sources and compares it with the week before. It
 holds no sightings and takes no user input; every figure links back to its source. The larger aim is to track the
 health of India's species over time. It follows the data story
 [The Overlooked Species](https://overlooked-species.surge.sh).
@@ -16,9 +16,9 @@ health of India's species over time. It follows the data story
 
 | Page | What it shows | Reads |
 |---|---|---|
-| `/` Explore | Species of India by group and state: observed, identified, IUCN status; search; and the records to fix (GBIF records with no exact place or no species name, by dataset) | `layers/master/<week>/` |
+| `/` Explore | Species of India by group and state: open records, observations that wait for a name, IUCN status; search; and the records to fix (GBIF records with no exact place or no species name, by dataset) | `layers/master/<week>/` |
 | `/species` | One species: its sources, districts, records by decade, IUCN status, observations that wait for a name | `layers/master/<week>/`, snapshot files |
-| `/changes` | The totals by week as tiles and a chart (`history.json`), then what moved since last week: IUCN category changed; identified for the first time in India or in a state, observed for the first time, added to or taken off the list | `layers/master/<week>/changes.json` |
+| `/changes` | The totals by week as tiles and a chart (`history.json`), then what moved since last week: IUCN category changed; a first open record in India or in a state, added to or taken off the list | `layers/master/<week>/changes.json` |
 | `/shortlist` | Experimental. Observations on iNaturalist that wait for a name, each with a short list of names from a model, for a person to check on iNaturalist | `layers/shortlist/` |
 | `/method` | Sources, credit, method, health of the sources at the last run, downloads | snapshot manifest and summary |
 

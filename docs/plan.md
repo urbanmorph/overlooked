@@ -52,12 +52,15 @@ Rules:
 
 ## 1c. Master list (17 October 2026)
 
-Question: which species are documented from India, and for each one, is it observed, is it identified, and what is its IUCN category? The same three things per state, where the place is known.
+Question: which species are documented from India, and for each one, does it have an open record, and what is its IUCN category? The same per state, where the place is known.
 
-- **Documented:** on the list of any source: ZSI checklists, BSI checklists, Kew WCVP (plants native to India), GBIF, iNaturalist, new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries). A species on a BSI or ZSI checklist counts as documented.
-- **Observed:** at least one observation in any source: a GBIF record of any kind (photo, sighting, specimen, sound, DNA sample, record cited from a paper), or an iNaturalist observation of any quality grade.
-- **Identified:** at least one observation confirmed to species: a GBIF record named to species (labelled by its basis of record) or an iNaturalist research-grade observation. An iNaturalist "needs ID" observation with a species name proposed is observed, not identified. A checklist entry is not an observation.
-- We never write "not recorded since 1980" on these pages. A species is documented, observed or identified.
+Changed 28 October 2026, to the standard of biodiversity data (GBIF): three tiers, listed, recorded with evidence, verified. In the open data GBIF records arrive with their identification done, so the only records with no confirmed name were iNaturalist "needs ID"; with those set apart, observed and identified were the same number (13 species apart), so they became one measure.
+
+- **Documented:** a checklist, a paper or an open record gives the species for India: ZSI checklists, BSI checklists, Kew WCVP (plants native to India), new species since 2007 (Plazi, BSI Plant Discoveries, ZSI Animal Discoveries), or an open record. A species on a BSI or ZSI checklist counts as documented. Most species with no open record are known from papers and specimens not online yet.
+- **Open record** (`observed` in the data): a record anyone can check online: a GBIF record of any kind (photo, sighting, specimen, sound, DNA sample, record cited from a paper, a record under the name as published), or an iNaturalist research-grade observation. GBIF takes only research grade from iNaturalist. Records with no exact place count (in no state).
+- **Waiting for a name:** an iNaturalist "needs ID" observation is not an open record of its species. A species named only in such observations is not on the list (status 2): it keeps its species page and its place in the waiting lists, and joins the list when someone confirms the name. On 26 October 2026 this was 10,675 species: 9,261 left the list, 1,414 stay with no open record (a checklist lists them).
+- Lists made before (up to 2026-10-26, with an `identified` column) are read with the same rule when compared (`master.previous_list`): open record = identified or a record under the name as published; a species named only by iNaturalist (and IUCN) was not on the list.
+- We never write "not recorded since 1980" on these pages.
 
 Labels (several per species; the search filters on them):
 
@@ -80,11 +83,11 @@ Output (`layers/master/<month>/`, published with `--publish`, then `layers/maste
 
 | File | Content |
 |---|---|
-| `master.parquet` | key, name, group, sources[], observed, identified, iucn, labels[], states_observed[], states_identified[] |
-| `master_state.parquet` | species x state: GBIF with and without coordinates, iNaturalist research grade and needs ID, observed, identified |
-| `summary.json` | sources, labels, IUCN categories, groups, states (bit order for the masks); India by group: documented, observed, identified, IUCN counts, threatened and observed; by state x group: observed, identified, threatened and observed; totals; notes on what is incomplete |
-| `g/<gi>.json` | every species of a group: [key, name, sources mask, status (0 documented, 1 observed, 2 identified), IUCN index, labels mask, states observed mask, states identified mask] |
-| `search/<p>.json` | search index: one file per first two letters of the name (other characters `_`), sorted by name: [name, key, group, status, IUCN index, sources mask, labels mask]. 2026-10: 334 files, largest 51 KB compressed (`pa`, `ca`), median 1.6 KB, 1.9 MB in all |
+| `master.parquet` | the species on the list: key, name, group, sources[], observed (an open record), iucn, labels[], states_observed[], year, authority |
+| `master_state.parquet` | species x state: GBIF with and without coordinates, iNaturalist research grade and needs ID, observed (an open record) |
+| `summary.json` | sources, labels, IUCN categories, groups, states (bit order for the masks); India by group: documented, with an open record, IUCN counts, threatened with an open record; by state x group: with an open record, threatened with an open record; totals; notes on what is incomplete |
+| `g/<gi>.json` | every species of a group on the list: [key, name, sources mask, status (0 no open record yet, 1 an open record), IUCN index, labels mask, states-with-an-open-record mask, year]. `w/<gi>.json` rows add status 2: not on the list, named only in observations that wait |
+| `search/<p>.json` | search index (with the status 2 names): one file per first two letters of the name (other characters `_`), sorted by name: [name, key, group, status, IUCN index, sources mask, labels mask]. 2026-10: 334 files, largest 51 KB compressed (`pa`, `ca`), median 1.6 KB, 1.9 MB in all |
 | `search/places.json` | LGD states and districts: [name, "state" or "district", code, state code] |
 
 - Runs daily after the iNaturalist layer (`.github/workflows/master.yml`), within a time limit for name matching. A run with the same inputs (file checksums, layer files, match cache, IUCN ETag) and no names left to match does nothing.

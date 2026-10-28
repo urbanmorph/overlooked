@@ -13,20 +13,20 @@ CATS = master.IUCN_CATS
 
 
 def summary(period, rows, waiting, totals=None):
-    """rows: per group (documented, observed, identified, {IUCN category: count})."""
-    india = [[d, o, i, [c.get(k, 0) for k in CATS], 0] for d, o, i, c in rows]
-    t = totals or dict(zip(("documented", "observed", "identified"), [sum(r[n] for r in rows) for n in range(3)]))
+    """rows: per group (documented, with an open record, {IUCN category: count})."""
+    india = [[d, o, [c.get(k, 0) for k in CATS], 0] for d, o, c in rows]
+    t = totals or dict(zip(("documented", "observed"), [sum(r[n] for r in rows) for n in range(2)]))
     return {"period": period, "groups": [f"G{i}" for i in range(len(rows))], "india": india, "totals": t,
             "waiting": {"india": waiting, "genus": {"india": [[1, 10]] * len(rows)}, "coarse": {"india": {"Plantae": 5}}}}
 
 
-S1 = summary("2026-10", [(10, 6, 4, {"VU": 2}), (5, 2, 1, {})], [[3, 30, 0], [1, 7, 0]])
-S2 = summary("2026-10-26", [(11, 7, 5, {"VU": 3}), (5, 2, 1, {"EN": 1})], [[2, 25, 0], [1, 7, 0]])
+S1 = summary("2026-10", [(10, 6, {"VU": 2}), (5, 2, {})], [[3, 30, 0], [1, 7, 0]])
+S2 = summary("2026-10-26", [(11, 7, {"VU": 3}), (5, 2, {"EN": 1})], [[2, 25, 0], [1, 7, 0]])
 
 
 def test_a_summary_whose_totals_are_the_sum_of_its_groups_passes():
     assert cn.check_summary(S2) == []
-    assert cn.check_summary({**S2, "totals": {"documented": 99, "observed": 9, "identified": 6}}) == [
+    assert cn.check_summary({**S2, "totals": {"documented": 99, "observed": 9}}) == [
         "summary 2026-10-26: totals documented is 99, its groups add up to 16"]
 
 
@@ -35,6 +35,10 @@ def test_history_matches_the_summaries_of_its_lists():
     assert cn.check_history(h, {"2026-10": S1, "2026-10-26": S2}) == []
     bad = master.next_history({"summary": S1}, {**S2, "india": S1["india"]})
     assert cn.check_history(bad, {"2026-10": S1, "2026-10-26": S2})[0].startswith("history 2026-10-26: documented is 15")
+    # A list from before open records: its history entry is read from its master.parquet, not its summary.
+    old = {**S1, "totals": {"documented": 15, "observed": 8, "identified": 5}}
+    assert cn.check_history(h, {"2026-10": old, "2026-10-26": S2}) == []
+    assert cn.check_summary(old) == []
 
 
 def test_changes_agree_with_the_pointer_the_history_and_their_own_rows():

@@ -5,8 +5,7 @@ import { fmt, esc } from './common.js';
 
 export const MEASURES = [
   { key: 'documented', label: 'Species documented in India' },
-  { key: 'observed', label: 'Observed at least once' },
-  { key: 'identified', label: 'Identified to species' },
+  { key: 'observed', label: 'With an open record you can check online' },
   { key: 'threatened', label: 'Threatened (IUCN CR, EN or VU)' },
   { key: 'waiting_species', label: 'Species named in observations not yet confirmed' },
   { key: 'waiting_observations', label: 'Observations named to species, not yet confirmed' },

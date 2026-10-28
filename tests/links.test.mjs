@@ -20,20 +20,22 @@ test('records from India, and a link for each location problem the species has',
   assert.deepEqual(gbifIndiaLinks(null, new Set(['lnc'])), []);
 });
 
-const base = { status: 2, iucn: 'LC', codes: new Set(), wait: 0, identify: 'ID', gbifKey: 5, name: 'Aus bus', paper: null };
+const base = { status: 1, iucn: 'LC', codes: new Set(), wait: 0, identify: 'ID', gbifKey: 5, name: 'Aus bus', paper: null };
 const steps = o => nextSteps({ ...base, ...o });
 const texts = o => steps(o).map(s => s.text).join(' | ');
 
-test('a species that nobody has observed: look for it and add the record', () => {
+test('a species with no open record: look for it and add the record', () => {
   const s = steps({ status: 0, iucn: 'NE', codes: new Set(['chk']) });
-  assert.match(s[0].text, /No observation/);
+  assert.match(s[0].text, /No open record/);
   assert.ok(s[0].links.some(l => l.href.includes('inaturalist.org/observations/upload')));
   assert.match(texts({ status: 0, codes: new Set(['chk', 'nra']), paper: 'https://p' }), /since it was described/);
 });
 
-test('observed but not identified: identify on iNaturalist, or ask a specialist', () => {
+test('named only in observations that wait: not on the India list until someone confirms the name', () => {
+  const s = steps({ status: 2, wait: 3 });
+  assert.match(s[0].text, /not on the India list/);
+  assert.equal(s[0].links[0].href, 'ID');
   assert.equal(steps({ status: 1, wait: 3 })[0].links[0].href, 'ID');
-  assert.match(steps({ status: 1, wait: 0 })[0].text, /specialist/);
 });
 
 test('records with no exact location: correct them on GBIF; flagged ones may not be from India', () => {
@@ -63,8 +65,8 @@ test('no step text uses words the site avoids', () => {
   for (const t of all) assert.doesNotMatch(t, /missing|lost|extinct|quiet|—/i);
 });
 
-test('identified species with observations still waiting: the identify step stays', () => {
-  assert.ok(steps({ status: 2, wait: 3 }).some(s => s.links.some(l => l.href === 'ID')));
+test('a species with an open record and observations still waiting: the identify step stays', () => {
+  assert.ok(steps({ status: 1, wait: 3 }).some(s => s.links.some(l => l.href === 'ID')));
 });
 
 test('one observation waits, several wait', () => {

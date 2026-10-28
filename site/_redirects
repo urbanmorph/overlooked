@@ -1,6 +1,6 @@
-/ledger /?view=identified 301
-/ledger.html /?view=identified 301
-/backlog /?view=identified 301
-/backlog.html /?view=identified 301
+/ledger /?view=waiting 301
+/ledger.html /?view=waiting 301
+/backlog /?view=waiting 301
+/backlog.html /?view=waiting 301
 /new-species /?described=2007- 301
 /new-species.html /?described=2007- 301

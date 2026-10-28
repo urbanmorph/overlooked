@@ -126,21 +126,23 @@ def built(inputs, tmp_path, monkeypatch):
     out = tmp_path / "out"
     summary = master.build(con, inputs["paths"], out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"},
                            inputs["districts"], inputs["inputs"], cache={}, http=http)
-    rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "identified", "iucn", "labels",
-                            "states_observed", "states_identified"], r))
+    rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed"], r))
             for r in duckdb.sql(f"SELECT * FROM '{out / 'master.parquet'}'").fetchall()}
     return {"summary": summary, "rows": rows, "out": out, "http": http}
 
 
-def test_documented_observed_identified(built):
+def test_documented_and_with_an_open_record(built):
+    """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
+    one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
     t = built["summary"]["totals"]
-    assert t == {"documented": 11, "observed": 6, "identified": 4}   # Wus xus: observed, by name
+    assert t == {"documented": 10, "observed": 5}   # Wus xus: a record under the name as published
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
-    assert r["Aus bus"]["identified"] and r["Aus bus"]["states_identified"] == [32]
-    assert r["Zus zus"]["observed"] and not r["Zus zus"]["identified"]
-    assert r["Zus zus"]["states_observed"] == [29] and r["Zus zus"]["states_identified"] == []
+    assert r["Aus bus"]["observed"] and r["Aus bus"]["states_observed"] == [32]
+    assert r["Hus ius"]["states_observed"] == [32]    # GBIF; its needs-ID observations add nothing
+    assert "Zus zus" not in r                        # only needs ID
     assert not r["Gus hus"]["observed"]
+    assert set(r["Aus bus"]) == {"key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed"}
 
 
 def test_sources_and_labels(built):
@@ -151,7 +153,6 @@ def test_sources_and_labels(built):
     assert "Old dus" not in r and r["Pus qus"]["group"] == "Plants: ferns & lycophytes" and r["Cus dus"]["labels"] == ["sp", "end"]
     assert r["Eus fus"]["labels"] == ["dna", "do"]
     assert r["Gus hus"]["sources"] == ["ZSI", "Plazi"] and r["Gus hus"]["labels"] == ["chk", "nra"]
-    assert r["Zus zus"]["labels"] == ["nid", "nm"]
 
 
 def test_iucn_by_name_and_synonym(built):
@@ -175,25 +176,30 @@ def test_groups_from_classification_or_hints(built):
     r = built["rows"]
     assert r["Cus dus"]["group"] == r["Wus vus"]["group"] == "Plants: orchids"
     assert r["Xus yus"]["group"] == "Insects: beetles"      # from the ZSI checklist name
-    assert r["Gus hus"]["group"] == r["Zus zus"]["group"] == "Birds"
+    assert r["Gus hus"]["group"] == "Birds"
 
 
 def test_site_files(built):
     out, s = built["out"], built["summary"]
     birds = GROUPS.index("Birds")
-    assert s["india"][birds][:3] == [6, 4, 2]                # Aus, Gus, Hus, Qus, Wus, Zus
-    assert s["india"][birds][3][s["iucn"].index("EN")] == 1 and s["india"][birds][4] == 1
+    # [documented, with an open record, [species per IUCN category], threatened with an open record]
+    assert s["india"][birds][:2] == [5, 3]                   # Aus, Gus, Hus, Qus, Wus xus; Aus, Hus, Wus xus
+    assert s["india"][birds][2][s["iucn"].index("EN")] == 1 and s["india"][birds][3] == 1
     assert [st["code"] for st in s["states"]] == ["29", "32"]
     assert {"licence", "attribution", "disclaimer"} <= set(s)
-    assert s["by_state"]["29"][birds] == [1, 0, 0]
+    assert s["by_state"]["29"][birds] == [0, 0]              # Zus zus: needs ID only
+    assert s["by_state"]["32"][birds] == [2, 1]
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
-    assert aus[0] == "K1" and aus[3] == 2 and aus[7] == 1 << 1      # identified in state index 1 (32)
-    assert aus[8] == 1758                                           # year described
+    assert aus[0] == "K1" and aus[3] == 1 and aus[6] == 1 << 1      # an open record in state index 1 (32)
+    assert aus[7] == 1758 and len(aus) == 8                         # year described
+    assert "Zus zus" not in {x[1] for x in g}
     assert aus[5] & (1 << labels.index("end")) and aus[2] == 0b1011001  # ZSI, GBIF, iNaturalist, IUCN
     search = json.loads((out / "search" / "au.json").read_text())["rows"]
-    assert search == [["Aus bus", "K1", birds, 2, 1, aus[2], aus[5], 1758]]
+    assert search == [["Aus bus", "K1", birds, 1, 1, aus[2], aus[5], 1758]]
+    zus = json.loads((out / "search" / "zu.json").read_text())["rows"]
+    assert [z[:4] for z in zus] == [["Zus zus", "", birds, 2]]     # status 2: waits for a name, not on the list
     assert json.loads((out / "search" / "xu.json").read_text())["rows"][0][1] == ""
     places = json.loads((out / "search" / "places.json").read_text())["rows"]
     assert ["Kerala", "state", 32, 32] in places and ["Mysuru", "district", 201, 29] in places
@@ -204,16 +210,17 @@ def test_waiting_for_a_name(built):
     out, w = built["out"], built["summary"]["waiting"]
     birds = GROUPS.index("Birds")
     assert w["places"] == {"india": 6681, "32": 7, "29": 8}
-    # [species waiting, observations waiting, species with no identification in that area]
+    # [species waiting, observations waiting, species with no open record in that area]
     assert w["india"][birds] == [2, 7, 1]           # Zus zus (never identified) and Hus ius
     assert w["by_state"]["29"][birds] == [1, 1, 1]
-    assert w["by_state"]["32"][birds] == [1, 6, 0]  # Hus ius and its subspecies; identified in Kerala by GBIF
+    assert w["by_state"]["32"][birds] == [1, 6, 0]  # Hus ius and its subspecies; a GBIF record in Kerala
     rows = json.loads((out / "w" / f"{birds}.json").read_text())["rows"]
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     # The species' g row (with the year), then iNaturalist taxon (the species, not a subspecies), observations in India,
-    # [[state index, n]]
-    assert [r[:9] for r in rows] == [g["Hus ius"], g["Zus zus"]]
-    assert [r[9:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
+    # [[state index, n]]. Zus zus is on no list (status 2), but its observations still wait.
+    assert rows[0][:8] == g["Hus ius"]
+    assert rows[1][1] == "Zus zus" and rows[1][3] == 2 and rows[1][6] == 0
+    assert [r[8:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):
@@ -225,7 +232,7 @@ def test_waiting_at_genus_and_above(built):
     assert w["genus"]["by_state"]["32"][birds] == [1, 3]
     assert w["coarse"] == {"india": {"Aves": 9, "Insecta": 1}, "by_state": {"32": {"Aves": 4}}}
     # [genus, iNaturalist taxon, observations in India, [[state index, n]], species of the genus on the list,
-    #  of them never identified, threatened, endemic]
+    #  of them with no open record, threatened, endemic]
     rows = json.loads((out / "wg" / f"{birds}.json").read_text())["rows"]
     # Hia: the genus of an older name of Hus ius, still known to the list through that name.
     assert rows == [["Hia", 55, 1, [], 1, 0, 0, 0], ["Hus", 50, 5, [[1, 3]], 1, 0, 0, 0]]
@@ -242,13 +249,13 @@ def test_species_files(built):
     birds = GROUPS.index("Birds")
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     part = json.loads((out / "sp" / f"{site_data.shard_of('G1')}.json").read_text())
-    # [name, group index, sources, status, IUCN, labels, states observed, states identified,
+    # [name, group index, sources, status, IUCN, labels, states with an open record,
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
-    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:8], 3, 6, [[1, 6]], 1849, "Moore, 1849", None]
+    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None]
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
-    assert gus[0] == "Gus hus" and gus[8:11] == [None, 0, []]          # nothing waits
-    assert gus[11:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020]]
+    assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
+    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020]]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -266,7 +273,7 @@ def test_year_described_from_the_first_source_that_has_one(built):
     assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
     assert years["Eus fus"] is None
     d = built["summary"]["described"]
-    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 5   # Wus xus: its paper, 2021
+    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 4   # Wus xus: its paper, 2021
 
 
 def test_prefix():
@@ -372,38 +379,65 @@ def test_match_stops_at_deadline_with_workers(tmp_path, monkeypatch):
     assert http.asked == []
 
 
-def test_changes_between_months(tmp_path):
-    """Species that moved since last month: added, observed, identified, identified in a new state, dropped."""
+def test_changes_between_weeks(tmp_path):
+    """Species that moved since the last list: added, a first open record in India or in a state, dropped."""
     con = duckdb.connect()
     g0, g1 = GROUPS[0], GROUPS[1]
     con.sql(f"""CREATE TABLE prev AS SELECT * FROM (VALUES
-        ('K1', 'Aus bus', '{g0}', ['ZSI'], false, false, []::INTEGER[]),
-        ('K2', 'Bus cus', '{g0}', ['GBIF'], true, false, []::INTEGER[]),
-        ('K3', 'Cus dus', '{g1}', ['GBIF'], true, true, [32]),
-        ('K4', 'Dus eus', '{g1}', ['GBIF'], true, true, [32]),
-        (NULL, 'Old name', '{g1}', ['ZSI'], false, false, []::INTEGER[]))
-        t(key, name, "group", sources, observed, identified, states_identified)""")  # as in master.parquet
-    cols = "key, name, gi, sources, observed, identified, states_identified"
+        ('K1', 'Aus bus', '{g0}', ['ZSI'], false, []::INTEGER[], ['chk']),
+        ('K3', 'Cus dus', '{g1}', ['GBIF'], true, [32], ['ho']),
+        ('K4', 'Dus eus', '{g1}', ['GBIF'], true, [32], ['ho']),
+        (NULL, 'Old name', '{g1}', ['ZSI'], false, []::INTEGER[], ['chk', 'nm']))
+        t(key, name, "group", sources, observed, states_observed, labels)""")  # as in master.parquet
     prev = tmp_path / "prev.parquet"
     con.sql(f"COPY prev TO '{prev}' (FORMAT parquet)")
-    con.sql(f"""CREATE TABLE master AS SELECT * FROM (VALUES
-        ('K1', 'Aus bus', 0, ['ZSI', 'iNaturalist'], true, false, []::INTEGER[]),
-        ('K2', 'Bus cus', 0, ['GBIF', 'iNaturalist'], true, true, [29]),
-        ('K3', 'Cus dus', 1, ['GBIF'], true, true, [29, 32]),
-        ('K4', 'Dus eus', 1, ['GBIF'], true, true, [32]),
-        ('K5', 'Eus fus', 1, ['BSI'], false, false, []::INTEGER[])) t({cols})""")
-    ch = master.changes(con, prev, "2026-10", "2026-11", n_groups=2)
-    assert ch["from"] == "2026-10" and ch["to"] == "2026-11"
-    assert ch["counts"] == {"identified": 1, "state": 1, "observed": 1, "documented": 1, "dropped": 1, "iucn": 0}
-    # per group: [added, newly observed, newly identified, identified in a new state]
-    assert ch["groups"] == [[0, 1, 1, 0], [1, 0, 0, 1]]
-    assert sorted(ch["rows"]) == sorted([
-        ["identified", "K2", "Bus cus", 0, [29], ["iNaturalist"]],
-        ["observed", "K1", "Aus bus", 0, [], ["iNaturalist"]],
+    con.sql("""CREATE TABLE master AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', 0, ['ZSI', 'GBIF'], true, [29], 1),
+        ('K3', 'Cus dus', 1, ['GBIF'], true, [29, 32], 1),
+        ('K4', 'Dus eus', 1, ['GBIF'], true, [32], 1),
+        ('K5', 'Eus fus', 1, ['BSI'], false, []::INTEGER[], 0),
+        (NULL, 'Fus gus', 1, ['iNaturalist'], false, []::INTEGER[], 2))
+        t(key, name, gi, sources, observed, states_observed, status)""")
+    ch = master.changes(con, prev, "2026-10-26", "2026-11-02", n_groups=2)
+    assert ch["from"] == "2026-10-26" and ch["to"] == "2026-11-02"
+    assert ch["counts"] == {"observed": 1, "state": 1, "documented": 1, "dropped": 1, "iucn": 0}
+    # per group: [added, first open record in India, first open record in a state]
+    assert ch["groups"] == [[0, 1, 0], [1, 0, 1]]
+    assert sorted(ch["rows"]) == sorted([          # Fus gus waits for a name: not on the list, so not added
+        ["observed", "K1", "Aus bus", 0, [29], ["GBIF"]],
         ["state", "K3", "Cus dus", 1, [29], []],
         ["documented", "K5", "Eus fus", 1, [], ["BSI"]],
         ["dropped", "", "Old name", 1, [], []]])
-    assert master.changes(con, None, None, "2026-11", n_groups=2) == {"from": None, "to": "2026-11"}
+    assert master.changes(con, None, None, "2026-11-02", n_groups=2) == {"from": None, "to": "2026-11-02"}
+
+
+def test_a_list_from_before_open_records_is_compared_by_the_same_rule(tmp_path):
+    """Lists up to 2026-10-26 counted needs-ID observations as observed. Read with today's rule: a species known
+    only from them was not on the list, and observed meant identified (or a record under the name as published)."""
+    con = duckdb.connect()
+    g0 = GROUPS[0]
+    con.sql(f"""CREATE TABLE prev AS SELECT * FROM (VALUES
+        ('K1', 'Aus bus', '{g0}', ['iNaturalist', 'IUCN'], true, false, [32], []::INTEGER[], ['nid'], 'EN'),
+        ('K2', 'Bus cus', '{g0}', ['ZSI', 'iNaturalist'], true, false, [32], []::INTEGER[], ['nid'], 'LC'),
+        ('K3', 'Cus dus', '{g0}', ['GBIF', 'iNaturalist'], true, true, [29, 32], [29], ['ho', 'nid'], 'VU'),
+        ('K4', 'Dus eus', '{g0}', ['ZSI', 'GBIF'], true, false, []::INTEGER[], []::INTEGER[], ['vn'], 'NE'))
+        t(key, name, "group", sources, observed, identified, states_observed, states_identified, labels, iucn)""")
+    prev = tmp_path / "old.parquet"
+    con.sql(f"COPY prev TO '{prev}' (FORMAT parquet)")
+    assert sorted(con.sql(f"SELECT key, observed, states_observed FROM ({master.previous_list(con, prev)})").fetchall()) == [
+        ("K2", False, []), ("K3", True, [29]), ("K4", True, [])]
+    con.sql("""CREATE TABLE master AS SELECT * FROM (VALUES
+        ('K2', 'Bus cus', 0, ['ZSI', 'iNaturalist'], false, []::INTEGER[], 0, 'LC'),
+        ('K3', 'Cus dus', 0, ['GBIF', 'iNaturalist'], true, [29], 1, 'VU'),
+        ('K4', 'Dus eus', 0, ['ZSI', 'GBIF'], true, []::INTEGER[], 1, 'NE'))
+        t(key, name, gi, sources, observed, states_observed, status, iucn)""")
+    ch = master.changes(con, prev, "2026-10-26", "2026-10-26", n_groups=1)
+    assert ch["counts"] == dict.fromkeys(master.CHANGE_KINDS, 0)   # nothing moved; Aus bus was never on the list
+    s = master.previous_summary(con, {"parquet": prev, "summary": summary_for("2026-10-26", [4, 0], [4, 0], [1, 0],
+                                                                                 [{}, {}], [2, 0], [9, 0])})
+    assert s["india"][0][:2] == [3, 2] and s["india"][0][3] == 1   # documented, open record, threatened (Cus dus)
+    assert s["waiting"] == {"india": [[2, 9, 0], [0, 0, 0]]} and s["period"] == "2026-10-26"
+    assert master.history_entry(s)["india"] == [3, 2, 1, 2, 9]
 
 
 def test_first_month_has_no_changes(built):
@@ -448,10 +482,10 @@ def test_a_snapshot_with_no_unlocated_file_is_reported(tmp_path, monkeypatch, ca
 def test_records_under_the_name_as_published_count_as_observed(built):
     """GBIF has no key for the name yet, but has records under it after the description: observed in India
     (no state), with a label that says why."""
-    rows = {n: r for n, *r in duckdb.sql(f"""SELECT name, observed, identified, states_observed, labels
+    rows = {n: r for n, *r in duckdb.sql(f"""SELECT name, observed, states_observed, labels
                                              FROM '{built['out'] / 'master.parquet'}'""").fetchall()}
-    observed, identified, states, labels = rows["Wus xus"]
-    assert observed and not identified and not states
+    observed, states, labels = rows["Wus xus"]
+    assert observed and not states
     assert "vn" in labels and "chk" not in labels and "lm" not in labels
 
 
@@ -530,17 +564,17 @@ def test_iucn_category_changes_are_a_kind_of_change(tmp_path):
     con = duckdb.connect()
     g0 = GROUPS[0]
     con.sql(f"""CREATE TABLE prev AS SELECT * FROM (VALUES
-        ('K1', 'Aus bus', '{g0}', ['GBIF'], true, true, [32], 'VU'),
-        ('K2', 'Bus cus', '{g0}', ['GBIF'], true, true, [32], 'LC'),
-        ('K3', 'Cus dus', '{g0}', ['GBIF'], true, true, [32], NULL))
-        t(key, name, "group", sources, observed, identified, states_identified, iucn)""")
+        ('K1', 'Aus bus', '{g0}', ['GBIF'], true, [32], 'VU'),
+        ('K2', 'Bus cus', '{g0}', ['GBIF'], true, [32], 'LC'),
+        ('K3', 'Cus dus', '{g0}', ['GBIF'], true, [32], NULL))
+        t(key, name, "group", sources, observed, states_observed, iucn)""")
     prev = tmp_path / "prev.parquet"
     con.sql(f"COPY prev TO '{prev}' (FORMAT parquet)")
     con.sql("""CREATE TABLE master AS SELECT * FROM (VALUES
-        ('K1', 'Aus bus', 0, ['GBIF'], true, true, [32], 'EN'),
-        ('K2', 'Bus cus', 0, ['GBIF'], true, true, [32], 'LC'),
-        ('K3', 'Cus dus', 0, ['GBIF'], true, true, [32], 'NT'))
-        t(key, name, gi, sources, observed, identified, states_identified, iucn)""")
+        ('K1', 'Aus bus', 0, ['GBIF'], true, [32], 1, 'EN'),
+        ('K2', 'Bus cus', 0, ['GBIF'], true, [32], 1, 'LC'),
+        ('K3', 'Cus dus', 0, ['GBIF'], true, [32], 1, 'NT'))
+        t(key, name, gi, sources, observed, states_observed, status, iucn)""")
     ch = master.changes(con, prev, "2026-10", "2026-10-26", n_groups=1)
     assert ch["counts"]["iucn"] == 2
     assert sorted(r for r in ch["rows"] if r[0] == "iucn") == [
@@ -548,35 +582,48 @@ def test_iucn_category_changes_are_a_kind_of_change(tmp_path):
 
 
 def summary_for(period, docs, obs, ident, cats, w_species, w_obs):
-    """A summary.json with two groups, as site_files writes it (the parts history reads)."""
+    """A summary.json with two groups, as site_files wrote it up to 2026-10-26 (with identified)."""
     iucn = master.IUCN_CATS
     row = lambda d, o, i, c: [d, o, i, [c.get(k, 0) for k in iucn], 0]
-    return {"period": period, "groups": ["G0", "G1"],
+    return {"period": period, "groups": ["G0", "G1"], "totals": {"documented": 0, "observed": 0, "identified": 0},
             "india": [row(docs[0], obs[0], ident[0], cats[0]), row(docs[1], obs[1], ident[1], cats[1])],
             "waiting": {"india": [[w_species[0], w_obs[0], 0], [w_species[1], w_obs[1], 0]]}}
 
 
+def summary_now(period, docs, obs, cats, w_species, w_obs):
+    """A summary.json with two groups, as site_files writes it (the parts history reads)."""
+    iucn = master.IUCN_CATS
+    row = lambda d, o, c: [d, o, [c.get(k, 0) for k in iucn], 0]
+    return {"period": period, "groups": ["G0", "G1"], "totals": {"documented": 0, "observed": 0},
+            "india": [row(docs[0], obs[0], cats[0]), row(docs[1], obs[1], cats[1])],
+            "waiting": {"india": [[w_species[0], w_obs[0], 0], [w_species[1], w_obs[1], 0]]}}
+
+
 def test_history_has_one_entry_per_list_with_the_totals_by_group():
-    s1 = summary_for("2026-10", [10, 5], [6, 2], [4, 1], [{"CR": 1, "VU": 2, "LC": 3}, {"EN": 1}], [3, 1], [30, 7])
-    s2 = summary_for("2026-10-26", [11, 5], [7, 2], [5, 1], [{"CR": 1, "VU": 3}, {"EN": 1}], [2, 1], [25, 7])
+    s1 = summary_now("2026-10", [10, 5], [6, 2], [{"CR": 1, "VU": 2, "LC": 3}, {"EN": 1}], [3, 1], [30, 7])
+    s2 = summary_now("2026-10-26", [11, 5], [7, 2], [{"CR": 1, "VU": 3}, {"EN": 1}], [2, 1], [25, 7])
     h = master.history(None, s1)
     h = master.history(h, s2)
-    assert h["measures"] == ["documented", "observed", "identified", "threatened", "waiting_species", "waiting_observations"]
+    assert h["measures"] == ["documented", "observed", "threatened", "waiting_species", "waiting_observations"]
     assert [e["period"] for e in h["lists"]] == ["2026-10", "2026-10-26"]
-    assert h["lists"][1]["india"] == [16, 9, 6, 5, 3, 32]
-    assert h["lists"][1]["groups"] == [[11, 7, 5, 4, 2, 25], [5, 2, 1, 1, 1, 7]]
+    assert h["lists"][1]["india"] == [16, 9, 5, 3, 32]
+    assert h["lists"][1]["groups"] == [[11, 7, 4, 2, 25], [5, 2, 1, 1, 7]]
     assert master.history(h, s2) == h                              # the same list again changes nothing
     assert [e["period"] for e in master.history(h, {**s1, "period": "2026-11-02"})["lists"]] == ["2026-10", "2026-10-26", "2026-11-02"]
 
 
 def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
-    s1 = summary_for("2026-10", [10, 5], [6, 2], [4, 1], [{}, {}], [3, 1], [30, 7])
-    s2 = summary_for("2026-10-26", [11, 5], [7, 2], [5, 1], [{}, {}], [2, 1], [25, 7])
+    s1 = summary_now("2026-10", [10, 5], [6, 2], [{}, {}], [3, 1], [30, 7])
+    s2 = summary_now("2026-10-26", [11, 5], [7, 2], [{}, {}], [2, 1], [25, 7])
     first_week = master.next_history({"summary": s1, "history": None}, s2)      # October had no history.json
     assert [e["period"] for e in first_week["lists"]] == ["2026-10", "2026-10-26"]
     s3 = {**s2, "period": "2026-11-02"}
     assert len(master.next_history({"summary": s2, "history": first_week}, s3)["lists"]) == 3
     assert [e["period"] for e in master.next_history(None, s1)["lists"]] == ["2026-10"]
+    # A history with the measures of before (identified): only the previous list, read with today's rule.
+    old = {"measures": ["documented", "observed", "identified"], "lists": [{"period": "2026-10"}]}
+    h = master.next_history({"summary": s2, "history": old}, s3)
+    assert [e["period"] for e in h["lists"]] == ["2026-10-26", "2026-11-02"]
 
 
 def test_the_list_writes_its_history(built):

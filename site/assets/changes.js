@@ -4,9 +4,8 @@ import { getJSON, fmt, esc, $, showLoadError, periodName } from './common.js';
 import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js';
 
 const KINDS = [
-  ['identified', 'Identified in India', 'First identification in India', 'var(--accent)'],
-  ['state', 'Identified in a new state', 'First identification in a state', 'var(--blue)'],
-  ['observed', 'Observed', 'First observation', 'var(--q3)'],
+  ['observed', 'First open record', 'First open record in India', 'var(--accent)'],
+  ['state', 'In a new state', 'First open record in a state', 'var(--blue)'],
   ['documented', 'Added to the list', 'Added to the list', 'var(--ink-2)'],
   ['dropped', 'Off the list', 'No longer on the list', '#6B7771'],
   ['iucn', 'IUCN category', 'IUCN Red List category changed', 'var(--quiet)'],
@@ -14,7 +13,7 @@ const KINDS = [
 const KIND = Object.fromEntries(KINDS.map(([k, chip, label, dot]) => [k, { chip, label, dot }]));
 const PAGE = 50;
 
-// Totals by week: six tiles (value, change since the list before, a small line) pick the measure of one chart.
+// Totals by week: five tiles (value, change since the list before, a small line) pick the measure of one chart.
 function trend(H, groups) {
   const HT = 260, R = 16, T = 12, B = 30;
   let W = 800, L = 84;
@@ -94,22 +93,21 @@ try {
   } else {
     $('#feed').hidden = false;
     const rows = ch.rows.map(([kind, key, name, gi, states, sources, extra]) => ({ kind, key, name, gi, states, sources, extra }));
-    const tiles = [['identified', 'species identified for the first time in India'], ['state', 'species identified for the first time in a state'],
-      ['observed', 'species observed for the first time'], ['documented', 'species added to the list']];
+    const tiles = [['observed', 'species with a first open record in India'], ['state', 'species with a first open record in a state'],
+      ['documented', 'species added to the list']];
     $('#tiles').innerHTML = tiles.map(([k, t]) => `<div class="card kpi"><b>${fmt(ch.counts[k] || 0)}</b><span>${t}</span></div>`).join('');
     const w = ch.waiting;
     $('#waitline').innerHTML = w && w.before != null
-      ? `Observations on iNaturalist named to species, not yet confirmed: ${fmt(w.before)} in the list of ${esc(periodName(ch.from))}, ${fmt(w.now)} now. <a href="/?view=identified">See the species that wait</a>.`
+      ? `Observations on iNaturalist named to species, not yet confirmed: ${fmt(w.before)} in the list of ${esc(periodName(ch.from))}, ${fmt(w.now)} now. <a href="/?view=waiting">See the species that wait</a>.`
       : '';
     $('#state').insertAdjacentHTML('beforeend', S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join(''));
 
-    let kind = 'identified', state = null, page = 0;
+    let kind = 'observed', state = null, page = 0;
     const names = list => list.map(s => stName.get(s) || s).join(', ');
     const text = r => {
       const src = r.sources.length ? ` New source: ${r.sources.join(', ')}.` : '';
-      if (r.kind === 'identified') return `First identification in India${r.states.length ? `, in ${names(r.states)}` : ''}.${src}`;
-      if (r.kind === 'state') return `First identification in ${names(r.states)}.${src}`;
-      if (r.kind === 'observed') return `First observation. Nobody has confirmed the name yet.${src}`;
+      if (r.kind === 'observed') return `First open record in India${r.states.length ? `, in ${names(r.states)}` : ''}.${src}`;
+      if (r.kind === 'state') return `First open record in ${names(r.states)}.${src}`;
       if (r.kind === 'documented') return `Added to the list.${src}`;
       if (r.kind === 'iucn') return r.extra?.[0] ? `IUCN Red List category was ${r.extra[0]}, now ${r.extra[1]}.` : `First IUCN Red List category: ${r.extra?.[1]}.`;
       return 'No longer on the list. The name changed, a source merged it with another species, or its records are not from India.';
@@ -128,24 +126,25 @@ try {
         || '<li class="muted" style="padding:24px;display:block">No changes of this kind here.</li>';
       $('#pinfo').textContent = view.length ? `Showing ${fmt(page * PAGE + 1)} to ${fmt(page * PAGE + slice.length)} of ${fmt(view.length)}` : '';
       $('#prev').disabled = page === 0; $('#next').disabled = (page + 1) * PAGE >= view.length;
-      // A state only applies to identifications, which carry their states.
-      $('#chips').innerHTML = KINDS.filter(([k]) => state == null || k === 'identified' || k === 'state')
+      // A state only applies to open records, which carry their states.
+      $('#chips').innerHTML = KINDS.filter(([k]) => state == null || k === 'observed' || k === 'state')
         .map(([k, l]) => `<button type="button" class="chip" aria-pressed="${k === kind}" data-k="${k}">${l} <span class="mono">${fmt(count(k))}</span></button>`).join('');
     }
     $('#chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { kind = b.dataset.k; page = 0; render(); } });
     $('#state').addEventListener('change', e => {
       state = e.target.value ? Number(e.target.value) : null; page = 0;
       const has = k => rows.some(r => r.kind === k && (state == null || r.states.includes(state)));
-      if (!has(kind) || (state != null && !['identified', 'state'].includes(kind))) kind = KINDS.map(([k]) => k).find(has) || kind;
+      if (!has(kind) || (state != null && !['observed', 'state'].includes(kind))) kind = KINDS.map(([k]) => k).find(has) || kind;
       render();
     });
     $('#prev').addEventListener('click', () => { page--; render(); });
     $('#next').addEventListener('click', () => { page++; render(); });
     render();
-    $('#groups').innerHTML = ch.groups.map((g, gi) => [gi, ...g]).filter(([, a, o, i, s]) => a + o + i + s)
-      .sort((a, b) => (b[3] + b[4]) - (a[3] + a[4]))
-      .map(([gi, a, o, i, s]) => `<tr><td>${esc(S.groups[gi])}</td><td class="n mono">${fmt(i)}</td><td class="n mono">${fmt(s)}</td><td class="n mono">${fmt(o)}</td><td class="n mono">${fmt(a)}</td></tr>`).join('')
-      || '<tr><td colspan="5" class="muted">No group changed.</td></tr>';
+    // ch.groups: per group [added, first open record in India, first open record in a state].
+    $('#groups').innerHTML = ch.groups.map((g, gi) => [gi, ...g]).filter(([, a, o, s]) => a + o + s)
+      .sort((a, b) => (b[2] + b[3]) - (a[2] + a[3]))
+      .map(([gi, a, o, s]) => `<tr><td>${esc(S.groups[gi])}</td><td class="n mono">${fmt(o)}</td><td class="n mono">${fmt(s)}</td><td class="n mono">${fmt(a)}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="muted">No group changed.</td></tr>';
   }
 } catch (err) {
   showLoadError(err);

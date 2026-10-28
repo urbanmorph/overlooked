@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import { MEASURES, series, change, geometry, nearest, tile } from '../site/assets/trend.js';
 
 const H = {
-  measures: ['documented', 'observed', 'identified', 'threatened', 'waiting_species', 'waiting_observations'],
+  measures: ['documented', 'observed', 'threatened', 'waiting_species', 'waiting_observations'],
   groups: ['Birds', 'Fish'],
   lists: [
-    { period: '2026-10', india: [15, 8, 5, 3, 4, 37], groups: [[10, 6, 4, 3, 3, 30], [5, 2, 1, 0, 1, 7]] },
-    { period: '2026-10-26', india: [16, 9, 6, 5, 3, 32], groups: [[11, 7, 5, 4, 2, 25], [5, 2, 1, 1, 1, 7]] },
+    { period: '2026-10', india: [15, 8, 3, 4, 37], groups: [[10, 6, 3, 3, 30], [5, 2, 0, 1, 7]] },
+    { period: '2026-10-26', india: [16, 9, 5, 3, 32], groups: [[11, 7, 4, 2, 25], [5, 2, 1, 1, 7]] },
   ],
 };
 
@@ -50,7 +50,7 @@ test('tile: value, change since the list before, and a small line; a button or a
   assert.match(b, /^<button type="button" class="card kpi" aria-pressed="true" data-m="documented">/);
   assert.match(b, /<b>16<\/b><span>Species documented in India<\/span>/);
   assert.match(b, /\+1 since the last list/);
-  const a = tile(MEASURES[3], series(H, 'threatened'), { href: '/changes?m=threatened' });
+  const a = tile(MEASURES[2], series(H, 'threatened'), { href: '/changes?m=threatened' });
   assert.match(a, /^<a class="card kpi" href="\/changes\?m=threatened">/);
   assert.match(tile(MEASURES[0], series(H, 'documented').slice(0, 1), {}), /First week/);
 });
