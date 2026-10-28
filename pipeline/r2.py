@@ -139,3 +139,17 @@ def sync_files(s3, pairs, immutable=True, workers=WORKERS):
     if failed:
         raise UploadFailed(failed)
     return sent
+
+
+def list_keys(s3, prefix):
+    """Every key under prefix, sorted (all pages)."""
+    return sorted(o["Key"] for page in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket(), Prefix=prefix)
+                  for o in page.get("Contents", []))
+
+
+def delete_keys(s3, keys):
+    """Delete keys, 1,000 per request (the S3 limit). Returns how many were asked to go."""
+    keys = list(keys)
+    for i in range(0, len(keys), 1000):
+        s3.delete_objects(Bucket=bucket(), Delete={"Objects": [{"Key": k} for k in keys[i:i + 1000]], "Quiet": True})
+    return len(keys)

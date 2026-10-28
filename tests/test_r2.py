@@ -1,42 +1,9 @@
 """R2 uploads: sync_files sends many files at once, skips what R2 holds, retries, and reports what failed."""
 
-import threading
-
 import pytest
-from botocore.exceptions import ClientError
 
 from pipeline import r2
-
-
-class FakeS3:
-    """head_object and upload_file over a dict; fail: {key: times to fail before it works (-1: always)}."""
-
-    def __init__(self, fail=None, pause=0.0):
-        self.store, self.uploads, self.fail = {}, [], dict(fail or {})
-        self.lock, self.now, self.most, self.pause = threading.Lock(), 0, 0, pause
-
-    def head_object(self, Bucket, Key):
-        if Key not in self.store:
-            raise ClientError({"Error": {"Code": "404"}}, "HeadObject")
-        return {"Metadata": {"sha256": self.store[Key]}}
-
-    def upload_file(self, path, bucket, key, ExtraArgs):
-        with self.lock:
-            self.now += 1
-            self.most = max(self.most, self.now)
-            left = self.fail.get(key, 0)
-            if left:
-                self.fail[key] = left - 1 if left > 0 else -1
-        try:
-            threading.Event().wait(self.pause)
-            if left:
-                raise ClientError({"Error": {"Code": "500"}}, "PutObject")
-            with self.lock:
-                self.store[key] = ExtraArgs["Metadata"]["sha256"]
-                self.uploads.append(key)
-        finally:
-            with self.lock:
-                self.now -= 1
+from tests.r2_fake import FakeS3
 
 
 @pytest.fixture
@@ -74,3 +41,14 @@ def test_a_file_that_keeps_failing_stops_nothing_else_and_is_named(files):
     assert len(s3.store) == 39                               # the rest are in R2
     s3.fail = {}
     assert r2.sync_files(s3, files, workers=4) == 1          # a rerun sends only what is still to send
+
+
+def test_list_and_delete_keys_under_a_prefix(files):
+    s3 = FakeS3()
+    r2.sync_files(s3, files[:5])
+    s3.put_object(Bucket="b", Key="other/x.json", Body=b"{}")
+    keys = r2.list_keys(s3, "k/")
+    assert keys == sorted(k for _, k in files[:5])                 # every page, only the prefix
+    assert r2.delete_keys(s3, keys[:3]) == 3
+    assert r2.list_keys(s3, "k/") == keys[3:] and "other/x.json" in s3.store
+    assert r2.delete_keys(s3, []) == 0

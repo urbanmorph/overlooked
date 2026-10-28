@@ -68,3 +68,10 @@ def test_the_method_table_matches_the_gate_results():
     gate = [{"group": "Birds", "verdict": "Genus first", "n": "107", "top1": "75.7", "sp_cov": "92.8", "g_cov": "93.1"}]
     assert cn.check_method_table(html, gate) == []
     assert cn.check_method_table(html.replace("75.7%", "76.0%"), gate) == ["method table Birds: first name right 76.0, gate.csv 75.7"]
+
+
+def test_a_week_is_read_from_the_build_its_pointer_names():
+    files = {"layers/master/2026-11-02/current.json": {"base": "layers/master/2026-11-02/20261102T010000Z/"}}
+    get = files.get
+    assert cn.week_base(get, "2026-11-02") == "layers/master/2026-11-02/20261102T010000Z/"
+    assert cn.week_base(get, "2026-10-26") == "layers/master/2026-10-26/"     # a list from before builds

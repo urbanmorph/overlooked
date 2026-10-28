@@ -629,3 +629,78 @@ def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
 def test_the_list_writes_its_history(built):
     h = json.loads((built["out"] / "history.json").read_text())
     assert [e["period"] for e in h["lists"]] == ["2026-10"] and h["measures"] == master.MEASURES
+
+
+# ---------------------------------------------------------------- one folder per build
+
+def layer_folder(tmp_path, name, files=3):
+    out = tmp_path / name
+    out.mkdir()
+    for i in range(files):
+        (out / f"f{i}.json").write_text(f'{{"{name}": {i}}}')
+    (out / "manifest.json").write_text(json.dumps({"inputs": name}))
+    return out
+
+
+def test_a_build_goes_to_its_own_folder_and_the_pointers_move_last(tmp_path, monkeypatch):
+    """Files first, then the manifest, then the week's current.json, then latest.json: the site reads one build or the
+    other, never a mix. Old builds of the week beyond the one before go; other weeks are left alone."""
+    from pipeline import r2
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    s3 = FakeS3()
+    s3.put_object(Bucket="b", Key="layers/master/2026-10-26/summary.json", Body=b"{}")    # the layout before builds
+    s3.put_object(Bucket="b", Key="layers/master/2026-11-02/g/0.json", Body=b"{}")        # not a build folder
+    s3.put_object(Bucket="b", Key="layers/master/2026-10-19/20261019T010000Z/summary.json", Body=b"{}")  # another week
+    for n, build in enumerate(["20261102T010000Z", "20261102T090000Z", "20261103T010000Z"]):
+        s3.writes.clear()
+        master.publish(s3, layer_folder(tmp_path, build), "2026-11-02", build, {"period": "2026-11-02"})
+        base = f"layers/master/2026-11-02/{build}/"
+        assert s3.writes[-3:] == [base + "manifest.json", "layers/master/2026-11-02/current.json", "layers/master/latest.json"]
+        assert set(s3.writes[:-3]) == {base + f"f{i}.json" for i in range(3)}
+        assert r2.get_json(s3, "layers/master/latest.json") == {"period": "2026-11-02", "base": base}
+        assert master.period_base(s3, "2026-11-02") == base
+    builds = {k.split("/")[3] for k in r2.list_keys(s3, "layers/master/2026-11-02/")
+              if k.count("/") == 4 and master.BUILD_RE.fullmatch(k.split("/")[3])}
+    assert builds == {"20261102T090000Z", "20261103T010000Z"}                 # the oldest build of the week went
+    assert "layers/master/2026-11-02/g/0.json" in s3.store
+    assert "layers/master/2026-10-26/summary.json" in s3.store and "layers/master/2026-10-19/20261019T010000Z/summary.json" in s3.store
+    assert master.period_base(s3, "2026-10-26") == "layers/master/2026-10-26/"   # a week from before: its own folder
+
+
+def test_a_failed_upload_moves_no_pointer(tmp_path, monkeypatch):
+    from pipeline import r2
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(r2, "RETRY_PAUSE", 0)
+    s3 = FakeS3(fail={"layers/master/2026-11-02/B2/f1.json": -1})
+    master.publish(s3, layer_folder(tmp_path, "B1"), "2026-11-02", "B1", {"period": "2026-11-02"})
+    with pytest.raises(r2.UploadFailed):
+        master.publish(s3, layer_folder(tmp_path, "B2"), "2026-11-02", "B2", {"period": "2026-11-02"})
+    assert master.period_base(s3, "2026-11-02") == "layers/master/2026-11-02/B1/"
+    assert r2.get_json(s3, "layers/master/latest.json")["base"] == "layers/master/2026-11-02/B1/"
+    assert "layers/master/2026-11-02/B2/manifest.json" not in s3.store
+
+
+def test_the_previous_list_comes_from_its_build_in_r2_not_a_local_copy(tmp_path, monkeypatch):
+    """A local folder of an earlier list can be out of date; with R2 the list is the build its pointer names."""
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(master, "LAYERS", tmp_path / "layers")
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    stale = tmp_path / "layers" / "master" / "2026-10-26"
+    stale.mkdir(parents=True)
+    (stale / "summary.json").write_text('{"period": "stale"}')
+    s3 = FakeS3()
+    build = layer_folder(tmp_path, "B9")
+    (build / "summary.json").write_text('{"period": "2026-10-26"}')
+    (build / "master.parquet").write_bytes(b"PAR1")
+    master.publish(s3, build, "2026-10-26", "B9", {"period": "2026-10-26"})
+    prev = master.previous_layer(s3, "2026-11-02")
+    assert prev["period"] == "2026-10-26" and prev["summary"] == {"period": "2026-10-26"}
+    assert prev["parquet"].read_bytes() == b"PAR1"
+
+
+def test_build_ids_sort_in_time_order():
+    assert master.build_id("2026-10-28T16:00:44Z") == "20261028T160044Z"
+    assert master.build_id("2026-10-28T09:00:00Z") < master.build_id("2026-10-28T16:00:44Z")

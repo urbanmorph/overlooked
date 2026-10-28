@@ -79,7 +79,8 @@ How it is built (`pipeline/master.py`, a dated layer like the iNaturalist and ne
 4. Group: GBIF's classification; else the GBIF match's; else IUCN's; else the genus or family as known from GBIF and IUCN (same kingdom only); else a hint from the source (ZSI checklist name, iNaturalist iconic group, WCVP = vascular plants).
 5. IUCN: by name, the assessed name first, then IUCN synonyms; same kingdom.
 
-Output (`layers/master/<month>/`, published with `--publish`, then `layers/master/latest.json`):
+Output (`layers/master/<week>/<build>/`, published with `--publish`: the files, then `<week>/current.json`, then
+`layers/master/latest.json`; lists up to 2026-10-26 have their files in `layers/master/<period>/` itself):
 
 | File | Content |
 |---|---|

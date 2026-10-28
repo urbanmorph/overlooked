@@ -35,8 +35,11 @@ This machine (India)
 ```
 
 - **Master list** (`pipeline/master.py`, `master.yml`, daily): reads the newest GBIF snapshot and the iNaturalist and
-  new-species layers, plus BSI, ZSI, Kew, Catalogue of Life and IUCN, and writes `layers/master/<week>/`. A second run
-  in the same week refreshes that week. It compares with the previous published list (`latest.json` names it).
+  new-species layers, plus BSI, ZSI, Kew, Catalogue of Life and IUCN, and writes `layers/master/<week>/<build>/`: one folder
+  per build, never changed after. Every file goes up first, then `<week>/current.json` and `latest.json` name the new
+  build, so the site reads one build or the other, never a mix; older builds of the week beyond the one before are
+  deleted. A second run in the same week adds a build. It compares with the previous published list (`latest.json`
+  names it).
 - **Shortlists** are made on this machine, not on GitHub Actions: the corpus, the image features and the model stay in
   India. Only the JSON rows go to R2 (`experiments/corpus_v0/publish_live.py`, run by hand). Contract:
   [docs/shortlist_data.md](docs/shortlist_data.md).

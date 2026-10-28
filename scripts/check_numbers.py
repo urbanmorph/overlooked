@@ -26,6 +26,12 @@ def old_list(s):
     return "identified" in s["totals"]
 
 
+def week_base(get, period):
+    """The folder of a week's current build (its current.json), or, for a list from before builds, the week's folder.
+    get: path -> parsed JSON, or None when there is no such file."""
+    return (get(f"layers/master/{period}/current.json") or {}).get("base") or f"layers/master/{period}/"
+
+
 def check_summary(s):
     """The India totals are the sum of the group rows the cards and the map show."""
     if old_list(s):
@@ -115,13 +121,18 @@ def main():
     p.add_argument("--site", default="https://overlooked-india.pages.dev")
     a = p.parse_args()
     http = requests.Session()
-    get = lambda path: http.get(f"{a.site}/data/{path}", timeout=60).json()
+    def get(path):
+        r = http.get(f"{a.site}/data/{path}", timeout=60)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
     ptr = get("layers/master/latest.json")
     base = ptr["base"]
     s = get(base + "summary.json")
     problems = check_summary(s)
     h = get(base + "history.json")
-    summaries = {e["period"]: get(f"layers/master/{e['period']}/summary.json") for e in h["lists"]}
+    summaries = {e["period"]: get(week_base(get, e["period"]) + "summary.json") for e in h["lists"]}
     problems += check_history(h, summaries)
     problems += check_changes(get(base + "changes.json"), ptr, h)
     sl = get("layers/shortlist/latest.json")

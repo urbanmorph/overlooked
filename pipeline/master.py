@@ -26,7 +26,8 @@ Inputs (all optional except the snapshot):
   IUCN          the Red List checklist on GBIF (pipeline/iucn.py)
   described     Catalogue of Life authorship and Kew WCVP years (pipeline/described.py), R2 cache/described/
 
-Output: data/layers/master/<period>/ (and R2 layers/master/<period>/ with --publish, then layers/master/latest.json)
+Output: data/layers/master/<period>/. With --publish, R2 layers/master/<period>/<build>/ (one folder per build, never
+changed after), then layers/master/<period>/current.json and layers/master/latest.json name it.
   master.parquet        one row per species on the list: key, name, group, sources[], observed (an open record), iucn,
                         labels[], states_observed[] (states with an open record), year (described), authority
   master_state.parquet  one row per species x state with an observation
@@ -1045,32 +1046,44 @@ def previous_period(latest, period):
     return published if published and published < period else None
 
 
-def layer_json(s3, period, name):
-    """A JSON file of a published master list, from the local folder or R2, or None."""
+def build_id(built):
+    """A build's folder name from its build time: "2026-10-28T16:00:44Z" -> "20261028T160044Z" (sorts in time order)."""
+    return built.replace("-", "").replace(":", "")
+
+
+BUILD_RE = re.compile(r"\d{8}T\d{6}Z")
+KEEP_BUILDS = 2   # per week: the current build and the one before (a page open during the switch still finds its files)
+
+
+def period_base(s3, period):
+    """R2 prefix of a week's current build, from layers/master/<period>/current.json. Lists from before builds had
+    their files in layers/master/<period>/ itself."""
     from pipeline import r2
-    local = LAYERS / "master" / period / name
-    if local.exists():
-        return json.loads(local.read_text())
-    return r2.get_json(s3, f"layers/master/{period}/{name}") if s3 else None
+    ptr = r2.get_json(s3, f"layers/master/{period}/current.json")
+    return ptr["base"] if ptr else f"layers/master/{period}/"
 
 
 def previous_layer(s3, period):
-    """The previous master list: {"parquet", "period", "summary", "history"} from local files or R2, or None."""
+    """The previous master list: {"parquet", "period", "summary", "history"}, or None. With R2, the build its pointer
+    names (never a local copy, which can be out of date); without, the newest local folder before this period."""
     from pipeline import r2
     if s3:
         pm = previous_period(r2.get_json(s3, "layers/master/latest.json"), period)
-    else:
-        older = sorted(p.name for p in (LAYERS / "master").glob("*") if p.is_dir() and p.name < period)
-        pm = older[-1] if older else None
-    if not pm:
+        if not pm:
+            return None
+        base = period_base(s3, pm)
+        parquet = r2_file(s3, base + "master.parquet", CACHE / f"master_{pm}.parquet")
+        if not parquet:
+            return None
+        return {"parquet": parquet, "period": pm, "summary": r2.get_json(s3, base + "summary.json"),
+                "history": r2.get_json(s3, base + "history.json")}
+    older = sorted(p.name for p in (LAYERS / "master").glob("*") if p.is_dir() and p.name < period)
+    if not older or not (LAYERS / "master" / older[-1] / "master.parquet").exists():
         return None
-    parquet = LAYERS / "master" / pm / "master.parquet"
-    if not parquet.exists():
-        parquet = r2_file(s3, f"layers/master/{pm}/master.parquet", CACHE / f"master_{pm}.parquet")
-    if not parquet:
-        return None
-    return {"parquet": parquet, "period": pm, "summary": layer_json(s3, pm, "summary.json"),
-            "history": layer_json(s3, pm, "history.json")}
+    folder = LAYERS / "master" / older[-1]
+    read = lambda name: json.loads((folder / name).read_text()) if (folder / name).exists() else None
+    return {"parquet": folder / "master.parquet", "period": older[-1], "summary": read("summary.json"),
+            "history": read("history.json")}
 
 
 def waiting_total(summary):
@@ -1155,15 +1168,30 @@ def fingerprint(paths, inputs, cache, extra=None):
     return h.hexdigest()[:16]
 
 
-def publish(s3, out: Path, month, info):
+def publish(s3, out: Path, period, build, info):
+    """Upload a build to its own folder, then point to it: every file (sync_files raises if one fails, and then no
+    pointer moves), the manifest, the week's current.json, latest.json. The site reads one build or the other, never a
+    mix. Then older builds of the week go (prune_builds). A rerun skips what R2 holds."""
     from pipeline import r2
+    base = f"layers/master/{period}/{build}/"
     files = [p for p in sorted(out.rglob("*")) if p.is_file() and p.name != "manifest.json"]
-    # Every file first (sync_files raises if one fails), then the manifest and the pointer.
-    sent = r2.sync_files(s3, ((p, f"layers/master/{month}/{p.relative_to(out).as_posix()}") for p in files),
-                         immutable=False)
-    r2.sync_file(s3, out / "manifest.json", f"layers/master/{month}/manifest.json", immutable=False)
-    r2.put_json(s3, info, "layers/master/latest.json")
-    print(f"published layers/master/{month}/: {sent} of {len(files)} files uploaded (the rest were unchanged)")
+    sent = r2.sync_files(s3, ((p, base + p.relative_to(out).as_posix()) for p in files))
+    r2.sync_file(s3, out / "manifest.json", base + "manifest.json")
+    r2.put_json(s3, {"period": period, "build": build, "base": base}, f"layers/master/{period}/current.json")
+    r2.put_json(s3, {**info, "base": base}, "layers/master/latest.json")
+    gone = prune_builds(s3, period, build)
+    print(f"published {base}: {sent} of {len(files)} files uploaded (the rest were unchanged); "
+          f"{gone} files of older builds of the week deleted", flush=True)
+
+
+def prune_builds(s3, period, current):
+    """Delete the builds of a week older than the KEEP_BUILDS newest (never the current one). A build folder is named
+    by its build time; the files of the layout before builds, and other weeks, stay. Returns the files deleted."""
+    from pipeline import r2
+    keys = r2.list_keys(s3, f"layers/master/{period}/")
+    builds = sorted({k.split("/")[3] for k in keys if k.count("/") >= 4 and BUILD_RE.fullmatch(k.split("/")[3])})
+    keep = set(builds[-KEEP_BUILDS:]) | {current}
+    return r2.delete_keys(s3, [k for k in keys if k.count("/") >= 4 and k.split("/")[3] in set(builds) - keep])
 
 
 def run(a):
@@ -1202,7 +1230,7 @@ def run(a):
     extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
     fp_before = fingerprint(paths, inputs, cache, extra)
     from pipeline import r2
-    remote = r2.get_json(s3, f"layers/master/{week}/manifest.json") if s3 else None
+    remote = r2.get_json(s3, period_base(s3, week) + "manifest.json") if s3 else None
     local = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else None
     old = local or remote
     if old and old.get("inputs") == fp_before and not old.get("names_pending_match") and not a.force:
@@ -1214,7 +1242,7 @@ def run(a):
         meta = {"period": week, "snapshot": snapshot, "built": now()}
         summary = build(con, paths, out, meta, districts.PATH, inputs, cache, s3, deadline, http, match=not a.no_match,
                         prev=prev)
-        manifest = {**meta, "inputs": fingerprint(paths, inputs, cache, extra), "names_pending_match": summary["names_pending_match"],
+        manifest = {**meta, "build": build_id(meta["built"]), "inputs": fingerprint(paths, inputs, cache, extra), "names_pending_match": summary["names_pending_match"],
                     "merged_ids": summary["merged_ids"], "totals": summary["totals"],
                     "sources": {"snapshot": snapshot, "inat_species_counts": inat_month, "newspecies": ns_month,
                                 "zsi": bool(inputs["zsi"]), "wcvp": bool(inputs["wcvp"]), "bsi_checklist": bool(inputs["bsi"]),
@@ -1230,9 +1258,8 @@ def run(a):
         if remote and remote.get("inputs") == built["inputs"] and not a.force:
             print(f"layers/master/{week} is already published from the same inputs")
             return
-        info = {"period": week, "previous": prev and prev["period"], "updated": now(), "snapshot": snapshot,
-                "base": f"layers/master/{week}/"}
-        publish(s3, out, week, info)
+        info = {"period": week, "previous": prev and prev["period"], "updated": now(), "snapshot": snapshot}
+        publish(s3, out, week, built.get("build") or build_id(built["built"]), info)
 
 
 def main():
