@@ -305,6 +305,10 @@ def load_gbif(con, paths):
                    HAVING max(last_year_not_dna) IS NULL AND max(last_year) IS NOT NULL"""
                if "last_year_not_dna" in cols else "SELECT NULL::VARCHAR AS key WHERE false")
     con.sql(f"CREATE OR REPLACE TABLE ledger_dna_only AS {dna_sql}")
+    # The Raunkiæran gap: a record placed in India with a trait (ledgers built after n_trait was added; else empty).
+    trait_sql = (f"SELECT species_key AS key FROM '{paths['ledger']}' GROUP BY 1 HAVING sum(n_trait) > 0"
+                 if "n_trait" in cols else "SELECT NULL::VARCHAR AS key WHERE false")
+    con.sql(f"CREATE OR REPLACE TABLE ledger_trait AS {trait_sql}")
     if paths.get("unlocated"):
         # Excluded datasets and places outside India apply also to snapshots built before they were listed.
         con.execute(f"""CREATE OR REPLACE TABLE unl AS SELECT * FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL
@@ -736,6 +740,7 @@ def flags(con):
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
                gl.partners, coalesce(gl.interactions_india, false) AS interactions_india,
+               i.id IN (SELECT key FROM ledger_trait) AS traits,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
@@ -954,11 +959,13 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     unlisted, described_recent, dna = ([0] * n for _ in range(3))
     redlist = {k: [0] * n for k in REDLIST}
     interactions, interactions_india = [0] * n, [0] * n   # the Eltonian gap (GloBI)
-    for gi, u, d, s, ia, ii, *rl in con.sql(f"""
+    traits = [0] * n   # the Raunkiæran gap: a record placed in India with a life stage, a sex, or flowers or fruits
+    for gi, u, d, s, ia, ii, tr, *rl in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
                    count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
                    count(*) FILTER (WHERE status < 2 AND interactions_india),
+                   count(*) FILTER (WHERE status < 2 AND traits),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE'),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND observed AND len(states_observed) >= {ASSESSABLE_STATES}),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE' AND iucn_year < {since}),
@@ -966,7 +973,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND iucn IN {THREATENED} AND NOT coalesce(last_year >= {since}, false)),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
-        unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi] = u, d, s, ia, ii
+        unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi], traits[gi] = u, d, s, ia, ii, tr
         for k, v in zip(REDLIST, rl):
             redlist[k][gi] = v
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
@@ -976,12 +983,16 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     measured = value(con, "SELECT count(*) > 0 FROM globi")   # no GloBI table: not measured, not 0
     if measured:
         totals.update(interactions=sum(interactions), interactions_india=sum(interactions_india))
+    traits_measured = value(con, "SELECT count(*) > 0 FROM ledger_trait")   # an older ledger: not measured, not 0
+    if traits_measured:
+        totals["traits"] = sum(traits)
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
                "unlisted": unlisted, "described_recent": described_recent, "dna": dna, "redlist": redlist,
                "interactions": interactions if measured else None,
                "interactions_india": interactions_india if measured else None,
+               "traits": traits if traits_measured else None,
                "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
@@ -1068,7 +1079,7 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
 
 # Measures of the weekly history (history.json), for India and per group.
 MEASURES = ["documented", "unlisted", "observed", "in_state", "recent", "threatened", "waiting_species",
-            "waiting_observations", "described_recent", "dna", "interactions", "interactions_india"]
+            "waiting_observations", "described_recent", "dna", "interactions", "interactions_india", "traits"]
 
 
 def history_entry(summary):
@@ -1085,7 +1096,7 @@ def history_entry(summary):
         placed, recent = (rest[1:3] + [None, None])[:2]
         groups.append([d, own("unlisted", gi), o, placed, recent, sum(cats[k] for k in threat),
                        *(waiting[gi][:2] if gi < len(waiting) else [0, 0]), own("described_recent", gi), own("dna", gi),
-                       own("interactions", gi), own("interactions_india", gi)])
+                       own("interactions", gi), own("interactions_india", gi), own("traits", gi)])
     india = [None if any(v is None for v in col) else sum(col) for col in zip(*groups)]
     return {"period": summary.get("period") or summary.get("month"), "india": india, "groups": groups}
 

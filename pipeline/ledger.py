@@ -33,19 +33,27 @@ def unpack(key):
     return files[0]
 
 
+# Columns a newer query added: older cubes do not have them.
+OPTIONAL = {"last_year_not_dna": "INTEGER", "n_trait": "BIGINT"}
+
+
 def ensure_dna_column(con, table):
-    """Tables made before last_year_not_dna existed: no DNA information, so the same as last_year."""
-    if "last_year_not_dna" not in [c[0] for c in con.sql(f"DESCRIBE {table}").fetchall()]:
+    """Tables made before last_year_not_dna existed: no DNA information, so the same as last_year. Before n_trait:
+    null, so the Raunkiæran gap stays not measured."""
+    have = [c[0] for c in con.sql(f"DESCRIBE {table}").fetchall()]
+    if "last_year_not_dna" not in have:
         con.sql(f"ALTER TABLE {table} ADD COLUMN last_year_not_dna INTEGER")
         con.sql(f"UPDATE {table} SET last_year_not_dna = last_year")
+    if "n_trait" not in have:
+        con.sql(f"ALTER TABLE {table} ADD COLUMN n_trait BIGINT")
 
 
 def load_cube(con, tsv):
     cols = {'specieskey': 'VARCHAR', 'lat': 'DOUBLE', 'lon': 'DOUBLE', 'first_year': 'INTEGER',
             'last_year': 'INTEGER', 'n_records': 'BIGINT'}
     with open(tsv) as f:
-        if "last_year_not_dna" in f.readline():
-            cols["last_year_not_dna"] = 'INTEGER'
+        header = f.readline().rstrip("\n").split("\t")
+    cols.update({c: t for c, t in OPTIONAL.items() if c in header})
     con.sql(f"""
         CREATE OR REPLACE TABLE cube AS
         SELECT * FROM read_csv('{tsv}', delim = '\t', header = true, columns = {cols})
@@ -56,7 +64,7 @@ def load_cube(con, tsv):
 
 
 def build(con, out: Path, label: str, districts: Path = DISTRICTS):
-    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records)."""
+    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records[, last_year_not_dna, n_trait])."""
     out.mkdir(parents=True, exist_ok=True)
     ensure_dna_column(con, "cube")
     place_points(con, "cube", str(districts))
@@ -64,7 +72,7 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS):
         CREATE OR REPLACE TABLE ledger AS
         SELECT q.specieskey AS species_key, p.dist_lgd AS district_lgd, p.state_lgd,
                min(q.first_year) AS first_year, max(q.last_year) AS last_year,
-               max(q.last_year_not_dna) AS last_year_not_dna, sum(q.n_records) AS n_records,
+               max(q.last_year_not_dna) AS last_year_not_dna, sum(q.n_records) AS n_records, sum(q.n_trait) AS n_trait,
                coalesce(sum(q.n_records) FILTER (WHERE p.how = 'near'), 0) AS n_records_near_shore
         FROM cube q JOIN point_district p USING (lat, lon)
         WHERE p.dist_lgd IS NOT NULL

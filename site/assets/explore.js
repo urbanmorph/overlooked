@@ -10,7 +10,7 @@ import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps } from './gaps.js?v=c259c1e140';
+import { gaps } from './gaps.js?v=bbfe70b0e2';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -251,7 +251,7 @@ try {
   function paintGaps() {
     $('#gaps-sub').textContent = `${groupName()} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
     // Counts the group files cannot give: unfiltered only.
-    const D = { ...S, india: A.india, ...Object.fromEntries(['described_recent', 'dna', 'interactions', 'interactions_india']
+    const D = { ...S, india: A.india, ...Object.fromEntries(['described_recent', 'dna', 'interactions', 'interactions_india', 'traits']
       .map(k => [k, filtered() ? null : S[k]])) };
     for (const g of gaps(D, gisNow())) {
       const share = g.of ? g.value / g.of : null;

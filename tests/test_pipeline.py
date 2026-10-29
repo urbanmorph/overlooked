@@ -181,6 +181,26 @@ def test_old_cube_without_dna_column(districts, tmp_path):
     assert con.sql("SELECT last_year, last_year_not_dna FROM ledger").fetchall() == [(2019, 2019)]
 
 
+def test_records_with_a_trait_and_an_old_cube_without_the_count(districts, tmp_path):
+    """n_trait (the Raunkiæran gap): records with a life stage, a sex, or flowers or fruits. A cube made before the
+    column existed leaves it null (not measured), never 0."""
+    assert "lifestage.concept" in gbif.build_sql("ledger_cube") and "AS n_trait" in gbif.build_sql("ledger_cube")
+    cube = tmp_path / "c.tsv"
+    cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\tlast_year_not_dna\tn_trait\n"
+                    "S1\t10.5\t76.5\t1950\t2019\t3\t2019\t2\n"
+                    "S1\t10.6\t76.6\t1950\t2019\t1\t2019\t1\n"
+                    "S2\t10.5\t76.5\t1960\t2001\t2\t2001\t0\n")
+    con = duckdb.connect()
+    ledger.load_cube(con, cube)
+    ledger.build(con, tmp_path / "out", "test", districts)
+    assert dict(con.sql("SELECT species_key, n_trait FROM ledger").fetchall()) == {"S1": 3, "S2": 0}
+    old = tmp_path / "old.tsv"
+    old.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\nS1\t10.5\t76.5\t1950\t2019\t3\n")
+    ledger.load_cube(con, old)
+    ledger.build(con, tmp_path / "out2", "test", districts)
+    assert con.sql("SELECT n_trait FROM ledger").fetchall() == [(None,)]
+
+
 def test_rights_travel_with_the_data():
     """PDGI: attribution, licence and a disclaimer ride inside every published summary."""
     from pipeline import site_data
