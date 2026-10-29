@@ -15,7 +15,7 @@ import duckdb
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
-from wel import COLUMNS, by_group, flags  # noqa: E402
+from wel import COLUMNS, by_group, flags
 
 
 def waiting_only(layer: Path):

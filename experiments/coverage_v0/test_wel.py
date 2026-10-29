@@ -1,5 +1,7 @@
 """Tests for the coverage study. Run: .venv/bin/python -m pytest experiments/coverage_v0 -q -p no:cacheprovider"""
 
+from itertools import pairwise
+
 import duckdb
 import pytest
 from wel import COLUMNS, by_group, flags
@@ -50,4 +52,4 @@ def test_counts_by_group_nest_like_a_funnel(lists):
                           "in_district": 2, "recent": 1}
     funnel = ["species", "open_record", "in_state", "recent"]
     for counts in g.values():
-        assert all(counts[a] >= counts[b] for a, b in zip(funnel, funnel[1:]))
+        assert all(counts[a] >= counts[b] for a, b in pairwise(funnel))
