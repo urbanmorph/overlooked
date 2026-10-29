@@ -678,6 +678,10 @@ def flags(con):
         FROM id_names n JOIN globi g USING (name) GROUP BY n.id
     """)
     con.sql("""
+        CREATE OR REPLACE TABLE id_soib AS
+        SELECT n.id, bool_or(s.known) AS trend_known FROM id_names n JOIN soib s USING (name) GROUP BY n.id
+    """)
+    con.sql("""
         CREATE OR REPLACE TABLE id_flags AS
         SELECT i.id, coalesce(bool_or(e.observed), false) AS observed,
                coalesce(bool_or(e.located) FILTER (WHERE e.observed), false) AS located,
@@ -740,13 +744,13 @@ def flags(con):
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
                gl.partners, coalesce(gl.interactions_india, false) AS interactions_india,
-               i.id IN (SELECT key FROM ledger_trait) AS traits,
+               i.id IN (SELECT key FROM ledger_trait) AS traits, so.trend_known,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
-        LEFT JOIN id_globi gl USING (id)
+        LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id)
         ORDER BY gi, i.name
     """)
     con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
@@ -960,12 +964,15 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     redlist = {k: [0] * n for k in REDLIST}
     interactions, interactions_india = [0] * n, [0] * n   # the Eltonian gap (GloBI)
     traits = [0] * n   # the Raunkiæran gap: a record placed in India with a life stage, a sex, or flowers or fruits
-    for gi, u, d, s, ia, ii, tr, *rl in con.sql(f"""
+    # The Prestonian gap: species with a known population trend (State of India's Birds), null for a group it does not cover.
+    trend_known = [None] * n
+    for gi, u, d, s, ia, ii, tr, tk, *rl in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
                    count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
                    count(*) FILTER (WHERE status < 2 AND interactions_india),
                    count(*) FILTER (WHERE status < 2 AND traits),
+                   CASE WHEN bool_or(trend_known IS NOT NULL) THEN count(*) FILTER (WHERE status < 2 AND trend_known) END,
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE'),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND observed AND len(states_observed) >= {ASSESSABLE_STATES}),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE' AND iucn_year < {since}),
@@ -974,6 +981,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
         unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi], traits[gi] = u, d, s, ia, ii, tr
+        trend_known[gi] = tk
         for k, v in zip(REDLIST, rl):
             redlist[k][gi] = v
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
@@ -993,6 +1001,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "interactions": interactions if measured else None,
                "interactions_india": interactions_india if measured else None,
                "traits": traits if traits_measured else None,
+               "trend_known": trend_known if any(v is not None for v in trend_known) else None,
                "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
@@ -1234,6 +1243,12 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     else:
         con.sql("CREATE OR REPLACE TABLE globi (name VARCHAR, partners BIGINT, india BOOLEAN)")
         notes.append("GloBI's species table was not found: the Eltonian gap (interactions) is not measured.")
+    if inputs.get("soib"):
+        from pipeline import soib
+        con.sql(f"CREATE OR REPLACE TABLE soib AS {soib.trends_sql(inputs['soib'])}")
+    else:
+        con.sql("CREATE OR REPLACE TABLE soib (name VARCHAR, assessed BOOLEAN, known BOOLEAN)")
+        notes.append("State of India's Birds was not found: the Prestonian gap (population trends) is not measured.")
     if not inputs.get("zsi"):
         notes.append("ZSI checklists not found.")
     if not inputs.get("wcvp"):
@@ -1272,7 +1287,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi")), *(inputs.get("described") or {}).values()]:
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi", "soib")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1348,13 +1363,15 @@ def run(a):
     ns_doc, ns_month = layer_input(s3, "newspecies", "file", "new_species.json")
     genus_doc, _ = layer_input(s3, "inat", "genus_counts", "genus_counts.json")
     coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
+    http = requests.Session()
+    http.headers["User-Agent"] = health.ua()
+    from pipeline import soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3),
+              "soib": soib.refresh(http, s3, CACHE / "soib"),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
     con = duckdb.connect()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
     from pipeline import districts
     districts.ensure(health.ua())
     iucn_meta = iucn.table(con, http, s3)

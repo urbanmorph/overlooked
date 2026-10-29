@@ -6,7 +6,7 @@ import { GAPS, gaps, gapAbsent } from '../site/assets/gaps.js';
 
 const cats = n => [0, 0, 0, 0, n, 0, 0, 0, 0];
 const S = {
-  recent_from: 2016, described_recent: [3, 1], dna: [10, 5], interactions: [40, 9], interactions_india: [12, 3], traits: [7, 2],
+  recent_from: 2016, described_recent: [3, 1], dna: [10, 5], interactions: [40, 9], interactions_india: [12, 3], traits: [7, 2], trend_known: [null, 8],
   india: [[100, 60, cats(100), 3, 40, 15], [50, 20, cats(50), 1, 10, 2]],
 };
 
@@ -15,12 +15,15 @@ test('the seven gaps of Hortal et al. (2015), in their order, each with a plain 
   for (const g of GAPS) assert.ok(g.plain && g.question && (g.measure || g.source), g.term);
 });
 
-test('what we measure today, for some groups: all but Prestonian and Hutchinsonian', () => {
+test('what we measure today, for some groups: all but Hutchinsonian; Prestonian for the groups it covers', () => {
   const by = Object.fromEntries(gaps(S, [0, 1]).map(g => [g.term, g]));
   assert.equal(by.Linnean.value, 4);
   assert.deepEqual([by.Wallacean.value, by.Wallacean.of], [17, 150]);
   assert.deepEqual([by.Darwinian.value, by.Darwinian.of], [15, 150]);
-  assert.equal(by.Prestonian.value, null);
+  assert.deepEqual([by.Prestonian.value, by.Prestonian.of], [8, 50]);      // the covered group only (birds)
+  assert.match(by.Prestonian.note, /other groups are not measured/);
+  assert.equal(gaps(S, [0]).find(g => g.term === 'Prestonian').value, null);   // no covered group chosen
+  assert.equal(gaps({ ...S, trend_known: null }, [0, 1]).find(g => g.term === 'Prestonian').value, null);
   assert.equal(by.Hutchinsonian.value, null);
   assert.deepEqual([by['Raunkiæran'].value, by['Raunkiæran'].of], [9, 150]);   // a record with a trait, placed in India
   assert.deepEqual([by.Eltonian.value, by.Eltonian.of], [15, 150]);     // recorded in India
@@ -42,5 +45,5 @@ test('gapAbsent: a count left out by filters says so; a count not measured yet g
   const by = Object.fromEntries(gaps({ ...S, traits: null }, [0, 1]).map(g => [g.term, g]));
   assert.equal(gapAbsent(by['Raunkiæran'], false), 'Not measured yet. Data: iNaturalist annotations, through GBIF.');
   assert.equal(gapAbsent(by['Raunkiæran'], true), 'Not counted when filters are on.');
-  assert.match(gapAbsent(by.Prestonian, true), /^Not measured yet\. Data: IUCN/);   // no measure: never a filter
+  assert.match(gapAbsent(by.Hutchinsonian, true), /^Not measured yet\. Data: exact records/);   // no measure: never a filter
 });

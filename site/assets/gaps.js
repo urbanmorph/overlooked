@@ -13,7 +13,13 @@ export const GAPS = [
     measure: (S, gis) => ({ value: sumGroups(S.india, gis, 5), of: sumGroups(S.india, gis, 0) }),
     note: S => `of documented species recorded in a state since ${S.recent_from}` },
   { term: 'Prestonian', plain: 'How many there are', question: 'Do we know how many of each species there are, and if that changes?',
-    source: 'IUCN Red List population trends (IUCN has to permit us to publish counts from them); State of India\u2019s Birds for birds' },
+    // Only the groups a source covers (birds: State of India's Birds); none of them chosen: not measured.
+    measure: (S, gis) => {
+      const covered = gis.filter(gi => S.trend_known?.[gi] != null);
+      return covered.length ? { value: sumGroups(S.trend_known, covered), of: sumGroups(S.india, covered, 0) } : { value: null };
+    },
+    note: (S, gis) => `of documented birds have a known population trend, rising, stable or falling (State of India\u2019s Birds 2023)${gis.some(gi => S.trend_known?.[gi] == null) ? '; other groups are not measured' : ''}`,
+    source: 'State of India\u2019s Birds for birds; IUCN Red List population trends for other groups (IUCN has to permit us to publish counts from them)' },
   { term: 'Darwinian', plain: 'How species are related', question: 'Do we know each species’ place in the tree of life?',
     measure: (S, gis) => ({ value: sumGroups(S.dna, gis), of: sumGroups(S.india, gis, 0) }),
     note: () => 'of documented species have a DNA sequence or sample from India on GBIF' },

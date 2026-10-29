@@ -73,8 +73,13 @@ def inputs(tmp_path):
         t(name, year, authority)""", tmp_path / "wcvp_years.parquet")
     globi = write(con, """SELECT * FROM (VALUES ('Aus bus', 5, 3, ['eats'], 2, 1), ('Cus dus', 1, 1, ['pollinates'], 0, 1))
         t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
+    soib = tmp_path / "soib.csv"
+    soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
+                    "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
+                    "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
+                       "soib": soib,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -195,6 +200,23 @@ def test_a_ledger_without_the_trait_count_leaves_the_gap_unmeasured(inputs, tmp_
     s = master.build(con, {**inputs["paths"], "ledger": old}, tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=FakeGbif())
     assert s["traits"] is None and "traits" not in s["totals"]
+
+
+def test_population_trends_from_soib_the_prestonian_gap_for_birds(built):
+    """State of India's Birds: birds with a known trend; a group SoIB does not cover is not measured (null)."""
+    s = built["summary"]
+    birds = GROUPS.index("Birds")
+    assert s["trend_known"][birds] == 1                                    # Aus bus; Hus ius assessed, not known
+    assert all(v is None for gi, v in enumerate(s["trend_known"]) if gi != birds)
+
+
+def test_a_list_without_soib_leaves_the_prestonian_gap_unmeasured(inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "soib": None}, cache={}, http=FakeGbif())
+    assert s["trend_known"] is None
 
 
 def test_documented_and_with_an_open_record(built):
