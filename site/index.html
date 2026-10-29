@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=d5ea6698e0">
+<link rel="stylesheet" href="/assets/style.css?v=a95f10ec89">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/explore.js?v=38748ad55f"></script>
+<script type="module" src="/assets/explore.js?v=775fc7afdf"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -61,25 +61,12 @@
   <section class="card funnel-card" id="wallacean" aria-labelledby="funnel-h">
     <div class="bar-head"><h2 id="funnel-h" style="font-size:20px">Where species live: how far our knowledge goes <span class="g-term">Wallacean gap</span></h2><span class="muted" id="funnel-sub">All groups · India</span></div>
     <div class="pad kbody">
-      <p class="note" style="margin:0" id="knote">Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map.</p>
+      <p class="note" style="margin:0" id="knote">Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map. Each group has the same bar in the list of groups beside the map.</p>
       <p class="khero"><b class="mono" id="kbase">–</b> <span id="kbase-l">species documented in India</span></p>
       <div class="klegend" id="klegend"><span data-k="k1"><i class="k1"></i>Only in checklists and papers <b class="mono">–</b></span><span data-k="k2"><i class="k2"></i>Open record, no place <b class="mono">–</b></span><span data-k="k3"><i class="k3"></i>Placed, not recent <b class="mono">–</b></span><span data-k="k4"><i class="k4"></i>Recorded in the last 10 years <b class="mono">–</b></span></div>
       <div class="kbar" id="kbar" role="group" aria-label="Species of India by how far our knowledge goes"></div>
       <p class="kunl" id="kunl-p"><i aria-hidden="true"></i><span><button type="button" class="st-link" data-stage="unlisted" aria-pressed="false"><b class="mono" id="kunl">–</b> more names are not on the India list yet.</button> Only observations that wait for a name give them.</span></p>
       <p class="note kfix">Many open records have no exact place, or no species name. Their publishers can correct them: see the <a href="/fix" id="kfix">Records to fix</a>.</p>
-      <h3 class="kgroups-h">By group, the groups with the most recent records first</h3>
-      <div class="kgroups" id="kgroups">
-        <button type="button" class="kg" data-cat="insects" aria-pressed="false"><span class="kg-name">Insects</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="plants" aria-pressed="false"><span class="kg-name">Flowering plants and ferns</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="fungi" aria-pressed="false"><span class="kg-name">Fungi and lichens</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="mosses" aria-pressed="false"><span class="kg-name">Mosses, liverworts and algae</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="fish" aria-pressed="false"><span class="kg-name">Fish</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="inverts" aria-pressed="false"><span class="kg-name">Molluscs, spiders and crabs</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="herps" aria-pressed="false"><span class="kg-name">Amphibians and reptiles</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="birds" aria-pressed="false"><span class="kg-name">Birds</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="mammals" aria-pressed="false"><span class="kg-name">Mammals</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-        <button type="button" class="kg" data-cat="other" aria-pressed="false"><span class="kg-name">Other</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
-      </div>
     </div>
   </section>
 

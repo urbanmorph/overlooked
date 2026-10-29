@@ -18,7 +18,7 @@ export const GAPS = [
     measure: (S, gis) => ({ value: sumGroups(S.dna, gis), of: sumGroups(S.india, gis, 0) }),
     note: () => 'of documented species have a DNA sequence or sample from India on GBIF' },
   { term: 'Raunkiæran', plain: 'What species are like', question: 'Do we know each species’ traits: size, life cycle, when it flowers or breeds?',
-    source: 'iNaturalist annotations; India Biodiversity Portal traits' },
+    source: 'iNaturalist annotations' },
   { term: 'Hutchinsonian', plain: 'What conditions species need', question: 'Do we know the climate and habitat each species can live in?',
     source: 'exact records with climate maps' },
   { term: 'Eltonian', plain: 'How species interact', question: 'Do we know what each species eats, pollinates or lives on?',

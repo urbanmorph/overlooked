@@ -10,7 +10,7 @@ import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps } from './gaps.js?v=362b6014b5';
+import { gaps } from './gaps.js?v=c259c1e140';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -176,21 +176,27 @@ try {
     map.select(st.district);
   }
 
+  // The summary with the figures of the current filters, for knowledge().
+  const kData = () => ({ ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted });
+
   function paintCards() {
-    const place = placeName();
+    const place = placeName(), D = kData();
+    // In the open record and recent views each group shows the Wallacean bar (its four parts hold both shares).
+    const wallacean = st.view === 'observed' || st.view === 'recent';
     $('#cards-title').textContent = `Groups in ${place}`;
     $('#cards-sub').textContent = st.state ? VIEW_TEXT[st.view].unit : VIEW_TEXT[st.view].card;
     const rows = [{ key: null, name: 'All groups', gis: allGis }, ...cats];
     $('#cards').innerHTML = rows.map(c => {
       const here = fig(c.gis, st.state), v = value(here, !st.state), f = fig(c.gis, null);
-      // The bar: the share with an open record, the share threatened, or the share of waiting species for which one
-      // confirmation gives the first open record here.
-      const share = st.view === 'iucn' ? (f.doc ? f.thr / f.doc : 0) : st.view === 'waiting' ? (here.wait[0] ? here.wait[2] / here.wait[0] : 0)
-        : (f.doc ? (st.view === 'recent' ? f.recent : f.obs) / f.doc : 0);
+      // Else the share threatened, or the share of waiting species for which one confirmation gives the first open record here.
+      const share = st.view === 'iucn' ? (f.doc ? f.thr / f.doc : 0) : (here.wait[0] ? here.wait[2] / here.wait[0] : 0);
+      const k = wallacean && knowledge(D, c.gis, st.state);
+      const bar = k ? `<span class="kbar kmini" aria-hidden="true">${k.segments.map(s => segHTML(k, s, { mini: true })).join('')}</span>`
+        : `<span class="gbar" aria-hidden="true"><i style="width:${Math.min(100, 100 * share).toFixed(1)}%"></i></span>`;
       return `<button type="button" class="gcard" data-cat="${c.key ?? ''}" aria-pressed="${(c.key ?? null) === st.cat}">
         <span class="gtop"><b>${esc(c.name)}</b><span class="mono">${v.big}</span></span>
         <span class="gline">${esc(v.line)}</span>
-        <span class="gbar" aria-hidden="true"><i style="width:${Math.min(100, 100 * share).toFixed(1)}%"></i></span>
+        ${bar}
       </button>`;
     }).join('');
   }
@@ -272,14 +278,13 @@ try {
   }
   function paintKnowledge() {
     const place = placeName();
-    const D = { ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted };
-    const k = knowledge(D, gisNow(), st.state);
+    const k = knowledge(kData(), gisNow(), st.state);
     $('#funnel-sub').textContent = `${groupName()} · ${place}${filterText()}`;
     $('#kbase').textContent = fmt(k.base);
     $('#kbase-l').textContent = st.state ? `species with an open record in ${place}` : 'species documented in India';
     $('#knote').textContent = st.state
       ? 'Checklists do not give states yet, so in a state the bar starts at the open record. Choose a part to show it on the map.'
-      : 'Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map.';
+      : 'Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map. Each group has the same bar in the list of groups beside the map.';
     const changes = filtered() || st.state ? {} : segmentChanges(H, gisNow());
     $('#kbar').innerHTML = k.segments.map(s => segHTML(k, s, { label: true, changes })).join('');
     fitLabels();
@@ -290,11 +295,6 @@ try {
       $('#kunl').textContent = fmt(k.unlisted);
       $('#kunl-p button').setAttribute('aria-pressed', String(st.view === 'waiting'));
     }
-    const rows = cats.map(cat => ({ cat, k: knowledge(D, cat.gis, st.state) }))
-      .map(r => ({ ...r, top: r.k.base ? r.k.segments.at(-1).value / r.k.base : 0 })).sort((a, b) => b.top - a.top);
-    $('#kgroups').innerHTML = rows.map(({ cat, k: g }) => `<button type="button" class="kg" data-cat="${cat.key}" aria-pressed="${st.cat === cat.key}">
-        <span class="kg-name">${esc(cat.name)}</span><span class="kbar kmini" aria-hidden="true">${g.segments.map(s => segHTML(g, s, { mini: true })).join('')}</span>
-        <span class="kg-n mono">${fmt(g.base)}</span></button>`).join('');
     $('.funnel-also [data-view="iucn"]').setAttribute('aria-pressed', String(st.view === 'iucn'));
   }
 
@@ -455,8 +455,6 @@ try {
   });
   const card = document.querySelector('.funnel-card');
   card.addEventListener('click', e => {
-    const g = e.target.closest('.kg');
-    if (g) { st.cat = st.cat === g.dataset.cat ? null : g.dataset.cat; st.pick = null; shown = PAGE; paint(); return; }
     const b = e.target.closest('[data-view], [data-stage="unlisted"]'); if (!b) return;
     st.view = b.dataset.view || 'waiting'; shown = PAGE; paint();
   });

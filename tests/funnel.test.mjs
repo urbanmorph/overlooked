@@ -45,9 +45,10 @@ test('the change of each segment since the last list, from history.json; null wh
   assert.deepEqual(segmentChanges(null, [0]), {});
 });
 
-test('every step has a name and a sentence; the home page holds the bar, the legend and a row per group', () => {
+test('every step has a name and a sentence; the home page holds the bar and the legend, and one list of groups', () => {
   for (const s of STEPS) assert.ok(s.name && s.long, s.key);
   const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
-  assert.ok(html.includes('id="kbar"') && html.includes('id="kgroups"'));
+  assert.ok(html.includes('id="kbar"') && html.includes('id="cards"'));
+  assert.ok(!html.includes('id="kgroups"'));   // the group cards beside the map carry each group's bar
   for (const s of STEPS) assert.ok(html.includes(`<i class="${s.key}"></i>${s.name} <b class="mono">–</b></span>`), s.key);
 });

@@ -190,20 +190,10 @@ h2 .g-term { vertical-align: 3px; margin-left: 6px }
 .kunl .st-link { font: inherit; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 4px;
   min-height: 44px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
 .kunl .st-link[aria-pressed="true"] { border: 2px solid var(--ink); text-decoration: none }
-.kgroups-h { font-size: 13px; font-weight: 600; color: var(--muted); margin: 22px 0 6px }
-.kgroups { display: flex; flex-direction: column; gap: 2px }
-.kg { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr) 5.5em; gap: 4px 14px; align-items: center; width: 100%;
-  font: inherit; font-size: 14px; color: var(--ink); text-align: left; background: none; border: 1px solid transparent; border-radius: 8px;
-  padding: 5px 8px; min-height: 36px; cursor: pointer }
-.kg:hover { background: var(--ground) } .kg[aria-pressed="true"] { border: 2px solid var(--ink); padding: 4px 7px }
-.kbar.kmini { height: 16px } .kmini .seg { padding: 0 }
-.kg-n { text-align: right; color: var(--muted); font-size: 13px }
+.kbar.kmini { height: 10px; margin-top: 8px } .kmini .seg { padding: 0 }
 .funnel-also { padding-top: 12px }
 .funnel-also button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
 .ktip { position: fixed }
-@media (max-width: 700px) {
-  .kg { grid-template-columns: minmax(0, 1fr) auto } .kg .kmini { grid-column: 1 / -1; grid-row: 2 }
-}
 .search { position: relative; flex: 1 1 380px; max-width: 620px; display: flex; gap: 8px }
 .sbox { flex: 1; display: flex; align-items: center; gap: 10px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 12px; background: var(--surface); min-height: 48px }
 .sbox input { border: 0; outline: 0; padding: 0; min-height: 44px; font-size: 16px; background: transparent; width: 100% }
