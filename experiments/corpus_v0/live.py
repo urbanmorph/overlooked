@@ -15,7 +15,8 @@
                   first. Writes data/shortlist/<run>/latest.json and g/<key>.json (pages g/<key>.<n>.json when a
                   group passes MAX_BYTES), compact and deterministic, and shown.parquet (local only: every
                   published id with its full shortlist, for recheck.py --shown).
-  live.py rank <run>   the same order and "why" for a built run, in place, from the current master list.
+  live.py rank <run> <new run>   a built run ordered again from the current master list, as a new run (a
+                  published run never changes: its files are immutable in R2). prune ranks too.
   live.py prune <run> <date>   after recheck.py --shown <run> on <date>: a copy of the run without the observations
                   now research grade, casual or gone, as run <date> (latest.json gives sample, checked, removed).
 Nothing is posted anywhere; publish_live.py (run only when the owner agrees) copies the JSON files to R2.
@@ -161,44 +162,56 @@ def group_rows(run_dir, group):
             for r in json.loads((run_dir / "g" / page_name(group["key"], n)).read_text())["rows"]]
 
 
-def do_prune():
-    """A copy of the sample run without the observations a re-check found done (research grade, casual or gone), as a
-    new run named by the check date. The sample run and its shown.parquet stay as they are: the measure uses them.
-    Usage: live.py prune <sample run> <check date>   (after recheck.py --shown <sample run> on that date)"""
-    run, checked = sys.argv[2], sys.argv[3]
-    src, out_dir = OUT / run, OUT / checked
-    latest = json.loads((src / "latest.json").read_text())
-    answers = [json.loads(line) for line in (DATA / f"inat_recheck_shown_{run}_{checked}.jsonl").open()]
-    rows = {g["key"]: group_rows(src, g) for g in latest["groups"]}
-    done = done_ids(answers, [r["id"] for rs in rows.values() for r in rs])
-    (out_dir / "g").mkdir(parents=True, exist_ok=True)
-    for old in (out_dir / "g").glob("*.json"):
-        old.unlink()  # a second prune on the same date writes the same files again
-    for g in latest["groups"]:
-        keep = [r for r in rows[g["key"]] if r["id"] not in done]
-        g.update(rows=len(keep), pages=write_pages(out_dir, g["key"], keep))
-    latest.update(run=checked, sample=run, checked=checked, removed=len(done), rows=sum(g["rows"] for g in latest["groups"]))
-    (out_dir / "latest.json").write_text(compact(latest))
-    log(f"run {checked}: {latest['rows']:,} rows; {len(done):,} done since {run} left out")
-
-
-def do_rank():
-    """Order a built run again from the current master list, in place (docs/shortlist_data.md). Usage: live.py rank <run>"""
-    run_dir = OUT / sys.argv[2]
-    latest = json.loads((run_dir / "latest.json").read_text())
+def ranked_rows(src, latest, drop=()):
+    """A built run's rows per group, without the ids in drop, ordered again from the current master list
+    (logic.live_order; created_at from the sample). Returns (rows per group key, the master list build)."""
     facts, base = master_facts()
     sample = pd.read_parquet(SAMPLE, columns=["obs_id", "created_at"])
     created = dict(zip(sample.obs_id.astype(int), sample.created_at))
-    ranked = {g["key"]: live_order([{**no_nan(r), "created_at": created[r["id"]]} for r in group_rows(run_dir, g)], facts)
-              for g in latest["groups"]}
-    for old in (run_dir / "g").glob("*.json"):
-        old.unlink()  # the page count can change
+    drop = set(drop)
+    rows = {g["key"]: live_order([{**no_nan(r), "created_at": created[r["id"]]}
+                                  for r in group_rows(src, g) if r["id"] not in drop], facts)
+            for g in latest["groups"]}
+    return rows, base
+
+
+def write_run(out_dir, latest, rows, base):
+    """A run's group pages and latest.json (counts from rows, master: the list build it was ranked against). Files
+    published to R2 are immutable, so a changed run always gets a new name."""
+    (out_dir / "g").mkdir(parents=True, exist_ok=True)
+    for old in (out_dir / "g").glob("*.json"):
+        old.unlink()  # a second write of the same run writes the same files again
     for g in latest["groups"]:
-        g["pages"] = write_pages(run_dir, g["key"], ranked[g["key"]])
-    latest["master"] = base
-    (run_dir / "latest.json").write_text(compact(latest))
-    why = Counter(f for rs in ranked.values() for r in rs for f in r["why"])
-    log(f"run {latest['run']}: {latest['rows']:,} rows ranked against {base}; " + ", ".join(f"{k} {v:,}" for k, v in why.items()))
+        g.update(rows=len(rows[g["key"]]), pages=write_pages(out_dir, g["key"], rows[g["key"]]))
+    latest.update(rows=sum(g["rows"] for g in latest["groups"]), master=base)
+    (out_dir / "latest.json").write_text(compact(latest))
+    why = Counter(f for rs in rows.values() for r in rs for f in r["why"])
+    log(f"run {latest['run']}: {latest['rows']:,} rows, ranked against {base}; " + ", ".join(f"{k} {v:,}" for k, v in why.items()))
+
+
+def do_prune():
+    """A copy of the sample run without the observations a re-check found done (research grade, casual or gone), as a
+    new run named by the check date, ranked from the current master list. The sample run and its shown.parquet stay
+    as they are: the measure uses them.
+    Usage: live.py prune <sample run> <check date>   (after recheck.py --shown <sample run> on that date)"""
+    run, checked = sys.argv[2], sys.argv[3]
+    src = OUT / run
+    latest = json.loads((src / "latest.json").read_text())
+    answers = [json.loads(line) for line in (DATA / f"inat_recheck_shown_{run}_{checked}.jsonl").open()]
+    done = done_ids(answers, [r["id"] for g in latest["groups"] for r in group_rows(src, g)])
+    rows, base = ranked_rows(src, latest, done)
+    latest.update(run=checked, sample=run, checked=checked, removed=len(done))
+    write_run(OUT / checked, latest, rows, base)
+
+
+def do_rank():
+    """A built run ordered again from the current master list, as a new run (docs/shortlist_data.md).
+    Usage: live.py rank <run> <new run>"""
+    run, new = sys.argv[2], sys.argv[3]
+    latest = json.loads((OUT / run / "latest.json").read_text())
+    rows, base = ranked_rows(OUT / run, latest)
+    latest.update(run=new, sample=latest.get("sample", run))
+    write_run(OUT / new, latest, rows, base)
 
 
 def do_build():

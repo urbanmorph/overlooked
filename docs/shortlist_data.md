@@ -55,7 +55,8 @@ The contract between the shortlist job (made on this machine: the model and corp
   `why` lists those gaps, most useful first: `first_in_state` (no open record of the species in the observation's
   state), `threatened` (IUCN CR, EN or VU), `endemic` (endemic to India), `listed_only` (no open record in India).
   Empty for a genus row and a name not on the master list. latest.json `master` names the master list build used
-  (`live.py rank <run>` orders a built run again from the current one).
+  (`live.py rank <run> <new run>` orders a built run again from the current one, as a new run: published runs
+  never change; `prune` ranks too).
 - `state`: LGD state code when known (from the observation's place), else null.
 - Group keys: lower case, words joined by `-` (for example `bees-wasps-ants`).
 
