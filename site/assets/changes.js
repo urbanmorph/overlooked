@@ -13,7 +13,7 @@ const KINDS = [
 const KIND = Object.fromEntries(KINDS.map(([k, chip, label, dot]) => [k, { chip, label, dot }]));
 const PAGE = 50;
 
-// Totals by week: five tiles (value, change since the list before, a small line) pick the measure of one chart.
+// Totals by week: a tile per measure (value, change since the list before, a small line) pick the measure of one chart.
 function trend(H, groups) {
   const HT = 260, R = 16, T = 12, B = 30;
   let W = 800, L = 84;

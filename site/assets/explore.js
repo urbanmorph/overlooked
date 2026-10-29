@@ -1,12 +1,14 @@
 // Front page: India map, groups and search over the master species list (layers/master/<period>/).
-// Three views: an open record, waiting for a name, IUCN. Groups and states are wired both ways; the URL keeps the state.
+// The evidence funnel picks the view: an open record, recorded in the last 10 years, waiting for a name; and IUCN.
+// Groups and states are wired both ways; the URL keeps the state.
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
 import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 import { fixSection } from './fix.js';
-import { MEASURES, series, tile } from './trend.js';
+import { change, signed } from './trend.js';
+import { funnel, sumSeries } from './funnel.js';
 
 // Top-level groups for the cards, built from the 28 pipeline groups by name.
 const CATS = [
@@ -26,6 +28,7 @@ const STATUS = ['No open record yet', 'Open record', 'Not on the list: waits for
 const THREAT = new Set(['CR', 'EN', 'VU']);
 const VIEW_TEXT = {
   observed: { card: 'share with an open record', unit: 'species with an open record' },
+  recent: { card: 'share recorded in the last 10 years', unit: 'species recorded in the last 10 years' },
   waiting: { card: 'species that wait for a name', unit: 'species that wait for a name' },
   iucn: { card: 'threatened species', unit: 'threatened species with an open record' },
 };
@@ -47,9 +50,8 @@ function parseYears(v) {
 try {
   const latest = await getJSON('layers/master/latest.json');
   const base = latest.base;
-  getJSON(base + 'history.json').then(H => {   // This week: the totals and their change, each a link to its chart
-    if (H?.lists?.length) $('#week').innerHTML = MEASURES.map(m => tile(m, series(H, m.key), { href: `/changes?m=${m.key}` })).join('');
-  }).catch(() => {});
+  let H = null;   // history.json: the change of each funnel step since the last list
+  const history_ = getJSON(base + 'history.json').then(h => { H = h; }).catch(() => {});
   const snap = await snapshot();
   const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
   const fix = fixSection(snap);
@@ -64,7 +66,7 @@ try {
   const url = new URL(location.href);
   const asked = url.searchParams.get('view') === 'identified' ? 'waiting' : url.searchParams.get('view');  // old links
   const st = {
-    view: ['observed', 'waiting', 'iucn'].includes(asked) ? asked : 'observed',
+    view: ['observed', 'recent', 'waiting', 'iucn'].includes(asked) ? asked : 'observed',
     list: ['genus', 'coarse'].includes(url.searchParams.get('list')) ? url.searchParams.get('list') : 'wait',
     cat: cats.some(c => c.key === url.searchParams.get('group')) ? url.searchParams.get('group') : null,
     state: stIndex.has(url.searchParams.get('state') || '') ? url.searchParams.get('state') : null,
@@ -84,19 +86,20 @@ try {
 
   // Figures for a set of groups at India level or in one state, from A (summary.json, or counted for the filters).
   function fig(gis, state) {
-    let doc = 0, obs = 0, thr = 0, assessed = 0, thrObs = 0;
+    let doc = 0, obs = 0, thr = 0, assessed = 0, thrObs = 0, recent = 0;
     for (const gi of gis) {
-      const [d, o, iu, to] = A.india[gi];
+      const [d, o, iu, to, , rec] = A.india[gi];
       if (state == null) {
-        doc += d; obs += o; thrObs += to;
+        doc += d; obs += o; thrObs += to; recent += rec ?? 0;
         thr += threatIdx.reduce((a, k) => a + iu[k], 0);
         assessed += iu.reduce((a, n, k) => a + (S.iucn[k] === 'NE' ? 0 : n), 0);
       } else {
-        const v = A.by_state[state]?.[gi] || [0, 0];
+        const v = A.by_state[state]?.[gi] || [0, 0, 0];
         obs += v[0]; thrObs += v[1];
+        recent = recent == null || v[2] == null ? null : recent + v[2];   // null: not counted with filters
       }
     }
-    return { doc, obs, thr, assessed, thrObs, wait: waitFig(gis, state) };
+    return { doc, obs, thr, assessed, thrObs, recent, wait: waitFig(gis, state) };
   }
   // iNaturalist observations that wait for a name: [species, observations, species with no open record here].
   const W = S.waiting || { india: [], by_state: {}, places: {} };
@@ -113,7 +116,7 @@ try {
     return (key ? CARD_ICONIC[key] || [] : Object.keys(counts)).map(g => [g, counts[g] || 0]).filter(([, n]) => n);
   };
   // Figures for no filter come from summary.json; with filters, counted() builds the same shape from the group files.
-  const BASE = { india: S.india, by_state: S.by_state, wait: { india: W.india, by_state: W.by_state } };
+  const BASE = { india: S.india, by_state: S.by_state, unlisted: S.unlisted, wait: { india: W.india, by_state: W.by_state } };
   let A = BASE;
   const filtered = () => !!(st.years.from || st.years.to) || Object.values(st.filters).some(s => s.size);
   function filterText() {
@@ -123,26 +126,30 @@ try {
   }
   async function counted() {
     const nIucn = S.iucn.length, codes = S.states.map(s => String(s.code));
-    const india = S.groups.map(() => [0, 0, Array(nIucn).fill(0), 0]), byState = {}, wIndia = S.groups.map(() => [0, 0, 0]), wState = {};
+    const india = S.groups.map(() => [0, 0, Array(nIucn).fill(0), 0, 0, 0]), byState = {}, wIndia = S.groups.map(() => [0, 0, 0]), wState = {};
+    const unlisted = S.groups.map(() => 0);
     const cell = (o, code, w) => (o[code] ||= S.groups.map(() => Array(w).fill(0)));
     const [g, w] = await Promise.all([Promise.all(allGis.map(groupRows)), Promise.all(allGis.map(waitRows))]);
     for (const r of g.flat()) {
       if (!passes(r)) continue;
       const gi = r[G], row = india[gi], threat = THREAT.has(S.iucn[r[4]]);
+      const placed = r[3] === 1 && r[6] !== 0;
       row[0]++; row[1] += r[3] === 1; row[2][r[4]]++; row[3] += threat && r[3] === 1;
+      row[4] += placed; row[5] += placed && r[8] >= S.recent_from;
       for (let i = 0; i < codes.length; i++) {
         if (!bit(r[6], i)) continue;
-        const v = cell(byState, codes[i], 2)[gi];
-        v[0]++; v[1] += threat;
+        const v = cell(byState, codes[i], 3)[gi];
+        v[0]++; v[1] += threat; v[2] = null;   // the year of a record per state is not in the group files
       }
     }
     for (const [r, , nIndia, states] of w.flat()) {
       if (!passes(r)) continue;
       const gi = r[G];
       if (nIndia) { const v = wIndia[gi]; v[0]++; v[1] += nIndia; v[2] += r[3] !== 1; }
+      if (r[3] === 2) unlisted[gi]++;
       for (const [i, k] of states) { const v = cell(wState, codes[i], 3)[gi]; v[0]++; v[1] += k; v[2] += !bit(r[6], i); }
     }
-    return { india, by_state: byState, wait: { india: wIndia, by_state: wState } };
+    return { india, by_state: byState, unlisted, wait: { india: wIndia, by_state: wState } };
   }
   const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(a && a / b < 0.1 ? 1 : 0)}%` : '–');
   const catOf = key => cats.find(c => c.key === key);
@@ -152,6 +159,9 @@ try {
   // Value shown on the map and in the cards, by view.
   function value(f, india) {
     if (st.view === 'observed') return india ? { big: pct(f.obs, f.doc), line: `${fmt(f.obs)} of ${fmt(f.doc)} species have an open record`, n: f.obs } : { big: fmt(f.obs), line: 'species with an open record', n: f.obs };
+    if (st.view === 'recent') return india ? { big: pct(f.recent, f.doc), line: `${fmt(f.recent)} of ${fmt(f.doc)} species recorded in a state since ${S.recent_from}`, n: f.recent }
+      : f.recent == null ? { big: '–', line: 'records by year and state are not counted when filters are on', n: null }
+      : { big: fmt(f.recent), line: `species recorded here since ${S.recent_from}`, n: f.recent };
     if (st.view === 'waiting') return { big: fmt(f.wait[0]), line: `species wait for a name · ${fmt(f.wait[1])} observations`, n: f.wait[0] };
     return india ? { big: fmt(f.thr), line: `threatened (CR, EN, VU) · ${fmt(f.assessed)} of ${fmt(f.doc)} assessed`, n: f.thr } : { big: fmt(f.thrObs), line: 'threatened species with an open record here', n: f.thrObs };
   }
@@ -185,7 +195,7 @@ try {
       // The bar: the share with an open record, the share threatened, or the share of waiting species for which one
       // confirmation gives the first open record here.
       const share = st.view === 'iucn' ? (f.doc ? f.thr / f.doc : 0) : st.view === 'waiting' ? (here.wait[0] ? here.wait[2] / here.wait[0] : 0)
-        : (f.doc ? f.obs / f.doc : 0);
+        : (f.doc ? (st.view === 'recent' ? f.recent : f.obs) / f.doc : 0);
       return `<button type="button" class="gcard" data-cat="${c.key ?? ''}" aria-pressed="${(c.key ?? null) === st.cat}">
         <span class="gtop"><b>${esc(c.name)}</b><span class="mono">${v.big}</span></span>
         <span class="gline">${esc(v.line)}</span>
@@ -199,11 +209,12 @@ try {
     const v = value(f, india);
     const district = st.district && map.info.get(st.district)?.name;
     $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}${district ? ` / ${district}` : ''}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
-    $('#pq').textContent = india ? fmt(st.view === 'observed' ? f.obs : st.view === 'waiting' ? f.wait[0] : f.thr) : v.big;
+    $('#pq').textContent = india ? fmt({ observed: f.obs, recent: f.recent, waiting: f.wait[0] }[st.view] ?? f.thr) : v.big;
     const districtNote = district ? ` The figures are for all of ${stName.get(st.state)}: the list counts species by state, not by district.` : '';
     $('#psub').textContent = st.view === 'waiting' ? `species named in observations that wait for a name on iNaturalist.${districtNote}`
       : india
       ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`
+        : st.view === 'recent' ? `of ${fmt(f.doc)} documented species have a record placed in a state since ${S.recent_from} (${pct(f.recent, f.doc)}).`
         : `of ${fmt(f.doc)} documented species have an open record you can check online (${pct(f.obs, f.doc)}). The rest are known from checklists and papers.`)
       : `${v.line}.${districtNote}`;
     const w = f.wait, place = st.state ? stName.get(st.state) : 'India';
@@ -215,14 +226,47 @@ try {
         ? ` A further <b>${fmt(genus)}</b> are named only to genus, and <b>${fmt(coarse)}</b> only to a family or a higher level.` : '')
       + (c ? '' : ' Choose a group to see them.');
     $('#sel-actions').hidden = !st.state;
-    document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === st.view)));
+  }
+
+  // The evidence funnel: the steps for the chosen groups, in India or the chosen state. A step that sets the view is
+  // a button; the change since the last list shows for the whole list only (the history has no filters).
+  const PICK = { observed: 'observed', recent: 'recent' };
+  function paintFunnel() {
+    const c = st.cat ? catOf(st.cat) : null, gis = gisNow();
+    const f = funnel({ ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted }, gis, st.state);
+    $('#funnel-sub').textContent = `${c ? c.name : 'All groups'} · ${st.state ? stName.get(st.state) : 'India'}${filterText()}`;
+    const shown = new Set(f.stages.map(s => s.key));
+    for (const li of document.querySelectorAll('#funnel li[data-stage]')) {
+      const key = li.dataset.stage;
+      if (key === 'interactions') continue;
+      li.hidden = !shown.has(key);
+    }
+    f.stages.forEach((s, i) => {
+      const pts = filtered() || st.state ? [] : sumSeries(H, s.key, gis), ch = change(pts);
+      const delta = ch.delta == null ? (H && !filtered() && !st.state ? 'First week' : '') : `${signed(ch.delta)} since the last list`;
+      // Each step after the first names the gap above it; its line is always there, so rows keep their height.
+      const inner = `${i ? `<span class="st-lost">${esc(s.lostText)}</span>` : ''}<span class="st-label">${esc(s.label)}</span>
+        <span class="st-bar" aria-hidden="true"><i style="width:${(100 * s.share).toFixed(1)}%"></i></span>
+        <span class="st-n mono">${fmt(s.value)}</span><span class="st-share">${Math.round(100 * s.share)}%</span><span class="st-delta">${esc(delta)}</span>`;
+      $(`#funnel li[data-stage="${s.key}"]`).innerHTML = PICK[s.key]
+        ? `<button type="button" class="st" data-view="${PICK[s.key]}" aria-pressed="${st.view === PICK[s.key]}">${inner}</button>`
+        : `<div class="st">${inner}</div>`;
+    });
+    const u = $('#funnel .unlisted');
+    u.hidden = f.unlisted == null;
+    if (f.unlisted != null) {
+      u.querySelector('button').setAttribute('aria-pressed', String(st.view === 'waiting'));
+      u.querySelector('.mono').textContent = fmt(f.unlisted);
+    }
+    $('.funnel-also [data-view="iucn"]').setAttribute('aria-pressed', String(st.view === 'iucn'));
   }
 
   // Species list for the chosen group, filtered by state, view and the filter chips.
   let shown = PAGE;
-  // A g row: key, name, sources, status, IUCN, labels, states with an open record, year described;
-  // the group index is added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
-  const G = 8;
+  // A g row: key, name, sources, status, IUCN, labels, states with an open record, year described, latest year of a
+  // record placed in a state; the group index is added at G. A w row: that g row, then iNaturalist taxon,
+  // observations in India, [[state index, n]].
+  const G = 9;
   const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => [...r, gi]));
   function passes(r, f = st.filters, y = st.years) {
     const [, , src, status, iucn, labels, , year] = r;
@@ -235,7 +279,7 @@ try {
   }
   const iucnBadge = i => `<span class="iucn i-${esc(S.iucn[i])}" title="IUCN Red List">${esc(S.iucn[i] === 'NE' ? 'Not assessed' : S.iucn[i])}</span>`;
   const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
-  const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Described</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
+  const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Described</th><th>Latest record</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
   const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
@@ -324,8 +368,8 @@ try {
     $('#list-h').textContent = mode === 'genus' ? 'Genera' : mode === 'coarse' ? 'Groups' : 'Species';
     $('#list-head').innerHTML = { wait: HEAD_WAIT, genus: HEAD_GENUS, coarse: HEAD_COARSE }[mode] || HEAD_ALL;
     $('#list').closest('table').classList.toggle('waitlist', wait);
-    if (!c) { $('#list').innerHTML = '<tr><td colspan="7" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
-    $('#list').innerHTML = '<tr><td colspan="7" class="muted">Loading…</td></tr>';
+    if (!c) { $('#list').innerHTML = '<tr><td colspan="8" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
+    $('#list').innerHTML = '<tr><td colspan="8" class="muted">Loading…</td></tr>';
     if (mode === 'wait') return paintWait(c, my);
     if (mode === 'genus') return paintGenus(c, my);
     if (mode === 'coarse') return paintCoarse(c);
@@ -336,6 +380,8 @@ try {
       if (si != null) {
         if (!bit(r[6], si)) return false;
       } else if (st.view === 'observed' && r[3] !== 1) return false;
+      // Recent: the latest record placed in any state; the files give no year per state.
+      if (st.view === 'recent' && !(r[3] === 1 && r[8] >= S.recent_from)) return false;
       if (st.view === 'iucn' && !THREAT.has(S.iucn[r[4]])) return false;
       return passes(r);
     }).sort((a, b) => a[1].localeCompare(b[1]));
@@ -344,9 +390,9 @@ try {
     const picked = st.pick && parts.flat().find(r => !r[0] && r[1] === st.pick);
     if (picked) rows.splice(0, rows.length, picked, ...rows.filter(r => r !== picked));
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
-        <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
+        <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
         <td>${iucnBadge(r[4])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
-      || '<tr><td colspan="7" class="muted">No species match.</td></tr>';
+      || '<tr><td colspan="8" class="muted">No species match.</td></tr>';
     $('#more').hidden = rows.length <= shown;
   }
 
@@ -360,7 +406,7 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
+    paintFunnel(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
   }
   // Records to fix: GBIF counts, so they follow the state and group but not the filters.
   function paintFix() {
@@ -372,10 +418,11 @@ try {
   const bringIntoView = (el, block = 'center') => el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block });
 
   // Events.
-  document.querySelector('.views').addEventListener('click', e => {
-    const b = e.target.closest('[data-view]'); if (!b) return;
-    st.view = b.dataset.view; shown = PAGE; paint();
+  document.querySelector('.funnel-card').addEventListener('click', e => {
+    const b = e.target.closest('[data-view], [data-stage="unlisted"]'); if (!b) return;
+    st.view = b.dataset.view || 'waiting'; shown = PAGE; paint();
   });
+  history_.then(() => paintFunnel());
   $('#cards').addEventListener('click', e => {
     const b = e.target.closest('.gcard'); if (!b) return;
     st.cat = b.dataset.cat || null; st.pick = null; shown = PAGE; paint();

@@ -18,7 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from pipeline.master import MEASURES, history_entry
 
-TOTALS = ("documented", "observed")
+# Each total and where its groups hold it: the place in a summary's india row, or a list of its own.
+TOTALS = {"documented": 0, "observed": 1, "in_state": 4, "recent": 5, "unlisted": "unlisted"}
 
 
 def old_list(s):
@@ -36,9 +37,10 @@ def check_summary(s):
     """The India totals are the sum of the group rows the cards and the map show."""
     if old_list(s):
         return []
-    sums = [sum(r[n] for r in s["india"]) for n in range(len(TOTALS))]
+    sums = {k: sum(s[at]) if isinstance(at, str) else sum(r[at] for r in s["india"])
+            for k, at in TOTALS.items() if k in s["totals"]}
     return [f"summary {s.get('period') or s.get('month')}: totals {k} is {s['totals'][k]}, its groups add up to {v}"
-            for k, v in zip(TOTALS, sums) if s["totals"][k] != v]
+            for k, v in sums.items() if s["totals"][k] != v]
 
 
 def check_history(h, summaries):

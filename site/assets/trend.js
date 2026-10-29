@@ -5,17 +5,22 @@ import { fmt, esc } from './common.js';
 
 export const MEASURES = [
   { key: 'documented', label: 'Species documented in India' },
+  { key: 'unlisted', label: 'Names not on the India list yet, waiting for a name' },
   { key: 'observed', label: 'With an open record you can check online' },
+  { key: 'in_state', label: 'Open record placed in a state' },
+  { key: 'recent', label: 'Recorded in a state in the last 10 years' },
   { key: 'threatened', label: 'Threatened (IUCN CR, EN or VU)' },
   { key: 'waiting_species', label: 'Species named in observations not yet confirmed' },
   { key: 'waiting_observations', label: 'Observations named to species, not yet confirmed' },
 ];
 
-/** One measure over time, oldest first: [{period, value}]. group: a group index, or null for all of India. */
+/** One measure over time, oldest first: [{period, value}]. group: a group index, or null for all of India.
+ * A list from before the measure existed (null) is left out. */
 export function series(history, measure, group = null) {
   if (!history) return [];
   const i = history.measures.indexOf(measure);
-  return history.lists.map(l => ({ period: l.period, value: (group == null ? l.india : l.groups[group])[i] }));
+  return history.lists.map(l => ({ period: l.period, value: (group == null ? l.india : l.groups[group])[i] }))
+    .filter(p => p.value != null);
 }
 
 /** The latest value and its change since the list before (null when there is no list before). */

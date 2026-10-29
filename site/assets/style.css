@@ -166,11 +166,33 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 .ex { display: flex; flex-direction: column; gap: 16px; padding-top: 20px; padding-bottom: 40px }
 .ex-top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between }
-.views { display: flex; flex-wrap: wrap; gap: 6px }
-@media (max-width: 520px) { .views { display: grid; grid-template-columns: repeat(3, 1fr) } .views button { padding: 6px 10px } .views button span { font-size: 11px } }
-.views button { min-height: 52px; padding: 6px 14px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--field) }
-.views button b { display: block; font-size: 15px } .views button span { display: block; font-size: 12px; color: var(--muted) }
-.views button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink) } .views button[aria-selected="true"] span { color: #DADFDB }
+/* The evidence funnel: one bar per step on a common left baseline, one colour; the line above a step names the gap. */
+.funnel-card { margin-bottom: 20px }
+.funnel { list-style: none; margin: 0; padding: 0 12px 4px }
+.funnel .gap-h { font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 14px 8px 4px }
+.funnel .st { display: grid; grid-template-columns: minmax(0, 17em) minmax(0, 1fr) 6.5em 3em minmax(0, 11em); gap: 2px 14px;
+  align-items: center; width: 100%; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; font: inherit; color: var(--ink);
+  text-align: left; background: none; min-height: 44px }
+.funnel button.st { cursor: pointer } .funnel button.st:hover { background: var(--ground) }
+.funnel button.st[aria-pressed="true"] { border: 2px solid var(--ink); padding: 5px 7px }
+.funnel .st-lost { grid-column: 1 / -1; font-size: 13px; color: var(--muted); min-height: 1.4em }
+.funnel .st-label { font-size: 15px; font-weight: 500 }
+.funnel .st-bar { display: block; height: 12px; background: var(--zero) } .funnel .st-bar i { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0 }
+.funnel .st-n { text-align: right; font-size: 17px } .funnel .st-share { text-align: right; color: var(--ink-2); font-size: 14px }
+.funnel .st-delta { font-size: 13px; color: var(--muted) }
+.funnel .st.soon { grid-template-columns: minmax(0, 17em) 1fr } .funnel .st-soon { font-size: 14px; color: var(--muted) }
+.funnel .st-link { font: inherit; font-size: 14px; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 8px;
+  padding: 6px 8px; min-height: 44px; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.funnel .st-link[aria-pressed="true"] { border: 2px solid var(--ink); padding: 5px 7px; text-decoration: none }
+.funnel-also { padding-top: 8px }
+.funnel-also button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+@media (max-width: 760px) {
+  .funnel { padding-inline: 4px }
+  .funnel .st { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px }
+  .funnel .st-lost { grid-row: 1 } .funnel .st-label, .funnel .st-n, .funnel .st-share { grid-row: 2 }
+  .funnel .st-bar { grid-column: 1 / -1; grid-row: 3 } .funnel .st-delta { grid-column: 1 / -1; grid-row: 4 }
+  .funnel .st.soon { grid-template-columns: 1fr } .funnel .st.soon .st-label { grid-row: 1 } .funnel .st-soon { grid-row: 2 }
+}
 .search { position: relative; flex: 1 1 380px; max-width: 620px; display: flex; gap: 8px }
 .sbox { flex: 1; display: flex; align-items: center; gap: 10px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 12px; background: var(--surface); min-height: 48px }
 .sbox input { border: 0; outline: 0; padding: 0; min-height: 44px; font-size: 16px; background: transparent; width: 100% }
@@ -256,8 +278,6 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .kpi .delta { margin-top: 4px; font-size: 14px; color: var(--muted) } .kpi .spark { display: block; margin-top: 10px; width: 100%; height: 28px }
 .trend svg { display: block; width: 100%; height: auto; touch-action: pan-y }
 .trend .axis { font: 12px var(--mono); fill: var(--muted) } .trend .grid { stroke: var(--line-2); stroke-width: 1 }
-.kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)) }
-@media (max-width: 1099px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
-@media (max-width: 899px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px } .kpis.five .kpi { padding: 14px }
-  .kpis.five .kpi b { font-size: 22px } .kpis.five .delta { min-height: 2.9em }
-  .kpis.five > :last-child { grid-column: 1 / -1 } }   /* the fifth tile takes the last row, not half of it */   /* placeholder and filled tiles keep one height */
+.kpis.four { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+@media (max-width: 899px) { .kpis.four { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px } .kpis.four .kpi { padding: 14px }
+  .kpis.four .kpi b { font-size: 22px } .kpis.four .delta { min-height: 2.9em } }   /* tiles keep one height */

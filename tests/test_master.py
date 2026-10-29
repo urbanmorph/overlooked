@@ -28,7 +28,7 @@ def inputs(tmp_path):
     dec = write(con, """SELECT * FROM (VALUES ('K1', 2010, 'HUMAN_OBSERVATION', 5), ('K2', 1900, 'PRESERVED_SPECIMEN', 1),
         ('K3', 2010, 'MATERIAL_SAMPLE', 2), ('G1', 2000, 'HUMAN_OBSERVATION', 1)) t(species_key, decade, basis, n_records)""",
                 tmp_path / "species_decade.parquet")
-    led = write(con, """SELECT * FROM (VALUES ('K1', 101, 32, 2010, 2015, 5), ('K2', 201, 29, 1900, 1900, 1),
+    led = write(con, """SELECT * FROM (VALUES ('K1', 101, 32, 2010, 2020, 5), ('K2', 201, 29, 1900, 1900, 1),
         ('K3', 101, 32, 2011, 2011, 2), ('G1', 101, 32, 2000, 2000, 1))
         t(species_key, district_lgd, state_lgd, first_year, last_year, n_records)""", tmp_path / "ledger.parquet")
     zsi = tmp_path / "zsi.csv"
@@ -126,23 +126,33 @@ def built(inputs, tmp_path, monkeypatch):
     out = tmp_path / "out"
     summary = master.build(con, inputs["paths"], out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"},
                            inputs["districts"], inputs["inputs"], cache={}, http=http)
-    rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed"], r))
+    rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed",
+                            "last_year"], r))
             for r in duckdb.sql(f"SELECT * FROM '{out / 'master.parquet'}'").fetchall()}
     return {"summary": summary, "rows": rows, "out": out, "http": http}
+
+
+def test_the_latest_year_of_a_record_with_a_place(built):
+    """The latest year of a record placed in a state: recorded in the last 10 years or not, for the funnel."""
+    r = built["rows"]
+    assert r["Aus bus"]["last_year"] == 2020 and r["Hus ius"]["last_year"] == 2000
+    assert r["Wus xus"]["last_year"] is None and r["Gus hus"]["last_year"] is None   # no place; no record
+    assert master.recent_from("2026-10-26") == 2016 and master.recent_from("2026-10") == 2016
 
 
 def test_documented_and_with_an_open_record(built):
     """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
     one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
     t = built["summary"]["totals"]
-    assert t == {"documented": 10, "observed": 5}   # Wus xus: a record under the name as published
+    assert (t["documented"], t["observed"]) == (10, 5)   # Wus xus: a record under the name as published
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
     assert r["Aus bus"]["observed"] and r["Aus bus"]["states_observed"] == [32]
     assert r["Hus ius"]["states_observed"] == [32]    # GBIF; its needs-ID observations add nothing
     assert "Zus zus" not in r                        # only needs ID
     assert not r["Gus hus"]["observed"]
-    assert set(r["Aus bus"]) == {"key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed"}
+    assert set(r["Aus bus"]) == {"key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed",
+                                 "last_year"}
 
 
 def test_sources_and_labels(built):
@@ -187,13 +197,16 @@ def test_site_files(built):
     assert s["india"][birds][2][s["iucn"].index("EN")] == 1 and s["india"][birds][3] == 1
     assert [st["code"] for st in s["states"]] == ["29", "32"]
     assert {"licence", "attribution", "disclaimer"} <= set(s)
-    assert s["by_state"]["29"][birds] == [0, 0]              # Zus zus: needs ID only
-    assert s["by_state"]["32"][birds] == [2, 1]
+    assert s["india"][birds][4:] == [2, 1]                   # in a state: Aus, Hus; recorded since 2016: Aus
+    assert s["by_state"]["29"][birds] == [0, 0, 0]           # Zus zus: needs ID only
+    assert s["by_state"]["32"][birds] == [2, 1, 1]           # [open record, threatened, recorded since 2016]
+    assert s["unlisted"][birds] == 1 and s["recent_from"] == 2016
+    assert s["totals"] == {"documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
     assert aus[0] == "K1" and aus[3] == 1 and aus[6] == 1 << 1      # an open record in state index 1 (32)
-    assert aus[7] == 1758 and len(aus) == 8                         # year described
+    assert aus[7] == 1758 and aus[8] == 2020 and len(aus) == 9      # year described, latest placed record
     assert "Zus zus" not in {x[1] for x in g}
     assert aus[5] & (1 << labels.index("end")) and aus[2] == 0b1011001  # ZSI, GBIF, iNaturalist, IUCN
     search = json.loads((out / "search" / "au.json").read_text())["rows"]
@@ -218,9 +231,9 @@ def test_waiting_for_a_name(built):
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     # The species' g row (with the year), then iNaturalist taxon (the species, not a subspecies), observations in India,
     # [[state index, n]]. Zus zus is on no list (status 2), but its observations still wait.
-    assert rows[0][:8] == g["Hus ius"]
+    assert rows[0][:9] == g["Hus ius"]
     assert rows[1][1] == "Zus zus" and rows[1][3] == 2 and rows[1][6] == 0
-    assert [r[8:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
+    assert [r[9:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):
@@ -437,7 +450,7 @@ def test_a_list_from_before_open_records_is_compared_by_the_same_rule(tmp_path):
                                                                                  [{}, {}], [2, 0], [9, 0])})
     assert s["india"][0][:2] == [3, 2] and s["india"][0][3] == 1   # documented, open record, threatened (Cus dus)
     assert s["waiting"] == {"india": [[2, 9, 0], [0, 0, 0]]} and s["period"] == "2026-10-26"
-    assert master.history_entry(s)["india"] == [3, 2, 1, 2, 9]
+    assert master.history_entry(s)["india"] == [3, None, 2, 1, None, 1, 2, 9]   # in a state: K3; no years before
 
 
 def test_first_month_has_no_changes(built):
@@ -604,10 +617,12 @@ def test_history_has_one_entry_per_list_with_the_totals_by_group():
     s2 = summary_now("2026-10-26", [11, 5], [7, 2], [{"CR": 1, "VU": 3}, {"EN": 1}], [2, 1], [25, 7])
     h = master.history(None, s1)
     h = master.history(h, s2)
-    assert h["measures"] == ["documented", "observed", "threatened", "waiting_species", "waiting_observations"]
+    assert h["measures"] == ["documented", "unlisted", "observed", "in_state", "recent", "threatened",
+                             "waiting_species", "waiting_observations"]
     assert [e["period"] for e in h["lists"]] == ["2026-10", "2026-10-26"]
-    assert h["lists"][1]["india"] == [16, 9, 5, 3, 32]
-    assert h["lists"][1]["groups"] == [[11, 7, 4, 2, 25], [5, 2, 1, 1, 7]]
+    # A summary from before the funnel has no in_state, recent or unlisted: null, not 0.
+    assert h["lists"][1]["india"] == [16, None, 9, None, None, 5, 3, 32]
+    assert h["lists"][1]["groups"] == [[11, None, 7, None, None, 4, 2, 25], [5, None, 2, None, None, 1, 1, 7]]
     assert master.history(h, s2) == h                              # the same list again changes nothing
     assert [e["period"] for e in master.history(h, {**s1, "period": "2026-11-02"})["lists"]] == ["2026-10", "2026-10-26", "2026-11-02"]
 
@@ -620,6 +635,12 @@ def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
     s3 = {**s2, "period": "2026-11-02"}
     assert len(master.next_history({"summary": s2, "history": first_week}, s3)["lists"]) == 3
     assert [e["period"] for e in master.next_history(None, s1)["lists"]] == ["2026-10"]
+    # A history from before the funnel: its entries keep their values under the new measures, null where new.
+    five = {"measures": ["documented", "observed", "threatened", "waiting_species", "waiting_observations"],
+            "lists": [{"period": "2026-10", "india": [1, 2, 3, 4, 5], "groups": [[1, 2, 3, 4, 5], [0, 0, 0, 0, 0]]}]}
+    h = master.next_history({"summary": s1, "history": five}, s2)
+    assert h["lists"][0] == {"period": "2026-10", "india": [1, None, 2, None, None, 3, 4, 5],
+                             "groups": [[1, None, 2, None, None, 3, 4, 5], [0, None, 0, None, None, 0, 0, 0]]}
     # A history with the measures of before (identified): only the previous list, read with today's rule.
     old = {"measures": ["documented", "observed", "identified"], "lists": [{"period": "2026-10"}]}
     h = master.next_history({"summary": s2, "history": old}, s3)

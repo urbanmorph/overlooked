@@ -43,23 +43,24 @@
 <main id="main" class="wrap ex">
   <h1 class="sr">Species of India: open records, names that wait, and IUCN status</h1>
 
-  <section class="week" aria-labelledby="week-h">
-    <h2 id="week-h" style="font-size:20px;margin:0">This week</h2>
-    <div class="kpis five" id="week" style="margin-top:12px">
-      <a class="card kpi" href="/changes?m=documented"><b>–</b><span>Species documented in India</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=observed"><b>–</b><span>With an open record you can check online</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=threatened"><b>–</b><span>Threatened (IUCN CR, EN or VU)</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=waiting_species"><b>–</b><span>Species named in observations not yet confirmed</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-      <a class="card kpi" href="/changes?m=waiting_observations"><b>–</b><span>Observations named to species, not yet confirmed</span><span class="delta">– since the last list</span><svg class="spark" viewBox="0 0 200 28" aria-hidden="true"></svg></a>
-    </div>
+  <section class="card funnel-card" aria-labelledby="funnel-h">
+    <div class="bar-head"><h2 id="funnel-h" style="font-size:20px">What India knows about its species</h2><span class="muted" id="funnel-sub">All groups · India</span></div>
+    <p class="pad note" style="margin:0;padding-top:0">Each step keeps only the species of the step before it. The space between two steps is a gap in what we know. Choose a step to show it on the map and in the groups.</p>
+    <ol class="funnel" id="funnel">
+      <li class="gap-h">Linnean gap: is the species named and listed?</li>
+      <li data-stage="documented"><div class="st"><span class="st-label">Documented in India</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
+      <li class="unlisted"><button type="button" class="st-link" data-stage="unlisted"><span class="mono">–</span> names not on the India list yet, known only from observations that wait for a name</button></li>
+      <li class="gap-h">Wallacean gap: do we know where it lives?</li>
+      <li data-stage="observed"><div class="st"><span class="st-lost"></span><span class="st-label">With an open record</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
+      <li data-stage="in_state"><div class="st"><span class="st-lost"></span><span class="st-label">Open record placed in a state</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
+      <li data-stage="recent"><div class="st"><span class="st-lost"></span><span class="st-label">Recorded in a state in the last 10 years</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
+      <li class="gap-h">Eltonian gap: do we know how it interacts with other species?</li>
+      <li data-stage="interactions"><div class="st soon"><span class="st-label">Any recorded interaction</span><span class="st-soon">We have not measured this yet.</span></div></li>
+    </ol>
+    <div class="pad funnel-also"><button type="button" class="b" data-view="iucn" aria-pressed="false">IUCN Red List: threatened species</button></div>
   </section>
 
   <section class="ex-top">
-    <div class="views" role="tablist" aria-label="What the map and groups show">
-      <button type="button" role="tab" data-view="observed" aria-selected="true"><b>Open record</b><span>A record you can check online</span></button>
-      <button type="button" role="tab" data-view="waiting" aria-selected="false"><b>Waiting</b><span>Observations to name</span></button>
-      <button type="button" role="tab" data-view="iucn" aria-selected="false"><b>IUCN</b><span>Red List status</span></button>
-    </div>
     <div class="search">
       <label class="sbox">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -114,8 +115,8 @@
     <p class="pad muted wait-help" data-for="coarse" hidden>Observations on iNaturalist named only to a family, an order or a higher level. A person who knows the group can often name the genus or the species. Each link opens the observations of one group.</p>
     <div class="tablebox">
       <table class="sp-table">
-        <thead id="list-head"><tr><th>Species</th><th>Group</th><th>Described</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr></thead>
-        <tbody id="list"><tr><td colspan="7" class="muted">Choose a group to list its species.</td></tr></tbody>
+        <thead id="list-head"><tr><th>Species</th><th>Group</th><th>Described</th><th>Latest record</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr></thead>
+        <tbody id="list"><tr><td colspan="8" class="muted">Choose a group to list its species.</td></tr></tbody>
       </table>
     </div>
     <div class="pad" style="padding-top:0"><button type="button" class="b" id="more" hidden>Show more</button></div>

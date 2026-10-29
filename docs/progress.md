@@ -2,6 +2,12 @@
 
 Newest first. Updated as work happens.
 
+## 29 October 2026
+
+- Home page: an evidence funnel replaces the weekly tiles and the view buttons. Linnean gap: documented in India (1,64,280), and beside it the names not on the list yet (9,182). Wallacean gap: with an open record (96,855, 59%), placed in a state (69,767, 42%), recorded in a state in the last 10 years (29,867, 18%). Eltonian gap: not measured yet. The line above each step names the gap; a step sets the map and the group cards (new view: recorded in the last 10 years); the change since the last list shows on each step. The species list has a Latest record column.
+- Master list: each species and species x state keeps the latest year of a record with a place (`last_year`); summary.json adds per group "in a state", "recent" (since `recent_from`, 10 years before the list) and `unlisted`; history.json adds the three measures (older lists: null where they had no such count, kept by name). check_numbers checks the new totals.
+- Coverage study, step 1 (`experiments/coverage_v0/`): the Linnean and Wallacean columns by group from the list and the snapshot.
+
 ## 28 October 2026
 
 - One folder per master-list build (`layers/master/<week>/<build>/`, named by build time, never changed after). Files first (16 at once, each retried, `r2.UploadFailed` names any that fail), then the week's `current.json`, then `latest.json`: a publish never shows a mix of two builds. Builds of the week older than the one before are deleted. Earlier lists are read from R2 through their pointer, never from a local copy. Publishing the master list: 15.5 minutes to about 70 seconds.

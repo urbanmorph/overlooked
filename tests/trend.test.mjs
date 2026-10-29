@@ -5,16 +5,20 @@ import assert from 'node:assert/strict';
 import { MEASURES, series, change, geometry, nearest, tile } from '../site/assets/trend.js';
 
 const H = {
-  measures: ['documented', 'observed', 'threatened', 'waiting_species', 'waiting_observations'],
+  measures: ['documented', 'unlisted', 'observed', 'in_state', 'recent', 'threatened', 'waiting_species', 'waiting_observations'],
   groups: ['Birds', 'Fish'],
   lists: [
-    { period: '2026-10', india: [15, 8, 3, 4, 37], groups: [[10, 6, 3, 3, 30], [5, 2, 0, 1, 7]] },
-    { period: '2026-10-26', india: [16, 9, 5, 3, 32], groups: [[11, 7, 4, 2, 25], [5, 2, 1, 1, 7]] },
+    { period: '2026-10', india: [15, null, 8, null, null, 3, 4, 37], groups: [[10, null, 6, null, null, 3, 3, 30], [5, null, 2, null, null, 0, 1, 7]] },
+    { period: '2026-10-26', india: [16, 4, 9, 7, 3, 5, 3, 32], groups: [[11, 3, 7, 5, 2, 4, 2, 25], [5, 1, 2, 2, 1, 1, 1, 7]] },
   ],
 };
 
 test('MEASURES name every measure history.json holds, in its order', () => {
   assert.deepEqual(MEASURES.map(m => m.key), H.measures);
+});
+
+test('series: a week that does not have the measure is left out', () => {
+  assert.deepEqual(series(H, 'recent'), [{ period: '2026-10-26', value: 3 }]);
 });
 
 test('series: one measure for India or for a group, oldest first', () => {
@@ -50,12 +54,8 @@ test('tile: value, change since the list before, and a small line; a button or a
   assert.match(b, /^<button type="button" class="card kpi" aria-pressed="true" data-m="documented">/);
   assert.match(b, /<b>16<\/b><span>Species documented in India<\/span>/);
   assert.match(b, /\+1 since the last list/);
-  const a = tile(MEASURES[2], series(H, 'threatened'), { href: '/changes?m=threatened' });
+  const a = tile(MEASURES[5], series(H, 'threatened'), { href: '/changes?m=threatened' });
   assert.match(a, /^<a class="card kpi" href="\/changes\?m=threatened">/);
   assert.match(tile(MEASURES[0], series(H, 'documented').slice(0, 1), {}), /First week/);
 });
 
-test('the home page holds a placeholder tile for every measure, with the same label, so nothing moves when they fill', () => {
-  const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
-  for (const m of MEASURES) assert.ok(html.includes(`href="/changes?m=${m.key}"><b>–</b><span>${m.label}</span>`), m.key);
-});

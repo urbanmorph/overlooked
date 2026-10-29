@@ -75,3 +75,13 @@ def test_a_week_is_read_from_the_build_its_pointer_names():
     get = files.get
     assert cn.week_base(get, "2026-11-02") == "layers/master/2026-11-02/20261102T010000Z/"
     assert cn.week_base(get, "2026-10-26") == "layers/master/2026-10-26/"     # a list from before builds
+
+
+def test_the_funnel_totals_are_the_sum_of_their_groups():
+    s = {"period": "2026-11-02", "groups": ["G0", "G1"], "unlisted": [2, 1],
+         "india": [[10, 6, [0] * len(CATS), 1, 5, 3], [5, 2, [0] * len(CATS), 0, 2, 1]],
+         "totals": {"documented": 15, "observed": 8, "in_state": 7, "recent": 4, "unlisted": 3}}
+    assert cn.check_summary(s) == []
+    assert cn.check_summary({**s, "totals": {**s["totals"], "recent": 5, "unlisted": 9}}) == [
+        "summary 2026-11-02: totals recent is 5, its groups add up to 4",
+        "summary 2026-11-02: totals unlisted is 9, its groups add up to 3"]
