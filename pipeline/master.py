@@ -922,15 +922,19 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
             GROUP BY ALL""").fetchall():
         by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [obs, thr, rec]
     # Names not on the list, known only from observations that wait for a name (status 2), per group.
-    unlisted = [0] * n
-    for gi, k in con.sql("SELECT gi, count(*) FROM master WHERE status = 2 GROUP BY gi").fetchall():
-        unlisted[gi] = k
+    per_group = lambda sql: [dict(con.sql(sql).fetchall()).get(gi, 0) for gi in range(n)]
+    unlisted = per_group("SELECT gi, count(*) FROM master WHERE status = 2 GROUP BY gi")
+    # Linnean gap: species on the list described in `since` or later. Darwinian gap: a DNA sequence or sample from
+    # India on GBIF (label dna).
+    described_recent = per_group(f"SELECT gi, count(*) FROM listed WHERE year >= {since} GROUP BY gi")
+    dna = per_group("SELECT gi, count(*) FROM listed WHERE list_contains(labels, 'dna') GROUP BY gi")
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
-              "in_state": sum(r[4] for r in india), "recent": sum(r[5] for r in india), "unlisted": sum(unlisted)}
+              "in_state": sum(r[4] for r in india), "recent": sum(r[5] for r in india), "unlisted": sum(unlisted),
+              "described_recent": sum(described_recent), "dna": sum(dna)}
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
-               "unlisted": unlisted, "recent_from": since,
+               "unlisted": unlisted, "described_recent": described_recent, "dna": dna, "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
@@ -1016,22 +1020,23 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
 
 # Measures of the weekly history (history.json), for India and per group.
 MEASURES = ["documented", "unlisted", "observed", "in_state", "recent", "threatened", "waiting_species",
-            "waiting_observations"]
+            "waiting_observations", "described_recent", "dna"]
 
 
 def history_entry(summary):
     """One list's totals from its summary.json: per group [documented, not on the list (named only in observations
     that wait), with an open record, of them in a state, of them recorded in the last 10 years, threatened (IUCN CR,
     EN or VU), species and observations on iNaturalist named to species but not yet confirmed (needs ID)], and their
-    sum for India. A measure a summary does not have (lists from before the funnel) is null, not 0."""
+    sum for India; then species described in the last 10 years (the Linnean gap) and species with a DNA sequence or
+    sample (the Darwinian gap). A measure a summary does not have (older lists) is null, not 0."""
     threat = [IUCN_CATS.index(c) for c in THREATENED]
     waiting = (summary.get("waiting") or {}).get("india") or []
-    unlisted = summary.get("unlisted")
+    own = lambda key, gi: summary[key][gi] if summary.get(key) else None
     groups = []
     for gi, (d, o, cats, *rest) in enumerate(summary["india"]):
         placed, recent = (rest[1:3] + [None, None])[:2]
-        groups.append([d, unlisted[gi] if unlisted else None, o, placed, recent, sum(cats[k] for k in threat),
-                       *(waiting[gi][:2] if gi < len(waiting) else [0, 0])])
+        groups.append([d, own("unlisted", gi), o, placed, recent, sum(cats[k] for k in threat),
+                       *(waiting[gi][:2] if gi < len(waiting) else [0, 0]), own("described_recent", gi), own("dna", gi)])
     india = [None if any(v is None for v in col) else sum(col) for col in zip(*groups)]
     return {"period": summary.get("period") or summary.get("month"), "india": india, "groups": groups}
 

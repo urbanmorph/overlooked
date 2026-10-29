@@ -10,6 +10,7 @@ import { drawMap, legendHTML } from './map.js';
 import { fixSection } from './fix.js';
 import { signed } from './trend.js';
 import { knowledge, segmentChanges } from './funnel.js';
+import { gaps } from './gaps.js';
 
 // Top-level groups for the cards, built from the 28 pipeline groups by name.
 const CATS = [
@@ -250,6 +251,22 @@ try {
     }
   }
   addEventListener('resize', fitLabels);
+  // The seven gaps in what we know, for the chosen groups, for India. Counts the group files cannot give with filters
+  // on (species described lately, DNA) say so; a gap with no open data yet says where its data would come from.
+  function paintGaps() {
+    const c = st.cat ? catOf(st.cat) : null;
+    $('#gaps-sub').textContent = `${c ? c.name : 'All groups'} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
+    const D = { ...S, india: A.india, described_recent: filtered() ? null : S.described_recent, dna: filtered() ? null : S.dna };
+    for (const g of gaps(D, gisNow())) {
+      const share = g.of ? g.value / g.of : null;
+      $(`#gaps li[data-gap="${g.term}"] .g-v`).innerHTML = g.value != null
+        ? `<b class="mono">${fmt(g.value)}</b>${share != null ? ` <span class="g-share">${pct(g.value, g.of)}</span>` : ''}
+           <span class="g-note">${esc(g.note)}${g.term === 'Wallacean' ? '. <a href="#wallacean">See the gaps below</a>' : ''}</span>
+           ${share != null ? `<span class="meter" aria-hidden="true"><i style="width:${(100 * share).toFixed(1)}%"></i></span>` : ''}`
+        : g.measure ? '<span class="g-not">Not counted when filters are on.</span>'
+        : `<span class="g-not">Not measured yet. Data: ${esc(g.source)}.</span>`;
+    }
+  }
   function paintKnowledge() {
     const c = st.cat ? catOf(st.cat) : null, place = st.state ? stName.get(st.state) : 'India';
     const D = { ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted };
@@ -423,7 +440,7 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintKnowledge(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
+    paintGaps(); paintKnowledge(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
   }
   // Records to fix: GBIF counts, so they follow the state and group but not the filters.
   function paintFix() {

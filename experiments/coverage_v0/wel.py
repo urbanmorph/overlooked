@@ -1,6 +1,6 @@
 """Coverage study: for each species of the India list, which kinds of knowledge exist, grouped by the gaps they
-measure. Linnean: is the species named and listed. Wallacean: do we know where it lives. Eltonian (later): do we
-know how it interacts. Each column nests in the one before where the funnel needs it: in_state needs an open
+measure (the shortfalls of Hortal et al. 2015). Linnean: is the species described and named. Wallacean: do we know
+where it lives (a listing for India is the coarsest step of it). Eltonian (later): do we know how it interacts. Each column nests in the one before where the funnel needs it: in_state needs an open
 record, recent needs a record placed in a state.
 
 Inputs: master.parquet (the list), and the GBIF snapshot's ledger.parquet (species x district, years) and
@@ -10,7 +10,7 @@ unlocated.parquet (records that cannot go in a district; state_lgd when the stat
 # Column -> the gap it measures. Order: the order of the funnel and of the matrix.
 COLUMNS = {
     "accepted_name": "Linnean",   # matches the Catalogue of Life (no "name not matched" label)
-    "checklist": "Linnean",       # listed by a checklist or paper source, not only by a record
+    "checklist": "Wallacean",     # listed for India by a checklist or paper source, not only by a record
     "open_record": "Wallacean",   # a GBIF record or an iNaturalist research-grade observation
     "in_state": "Wallacean",      # an open record placed in a state
     "in_district": "Wallacean",   # a GBIF record placed in a district

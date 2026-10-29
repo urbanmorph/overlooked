@@ -201,7 +201,12 @@ def test_site_files(built):
     assert s["by_state"]["29"][birds] == [0, 0, 0]           # Zus zus: needs ID only
     assert s["by_state"]["32"][birds] == [2, 1, 1]           # [open record, threatened, recorded since 2016]
     assert s["unlisted"][birds] == 1 and s["recent_from"] == 2016
-    assert s["totals"] == {"documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1}
+    # Linnean: on the list and described in recent_from or later (Gus hus 2020, Wus xus 2021).
+    assert s["described_recent"][birds] == 2
+    # Darwinian: a DNA sequence or sample from India on GBIF (Eus fus).
+    assert s["dna"][GROUPS.index("Insects: beetles")] == 1 and s["dna"][birds] == 0
+    assert s["totals"] == {"documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1,
+                           "described_recent": 2, "dna": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
@@ -450,7 +455,7 @@ def test_a_list_from_before_open_records_is_compared_by_the_same_rule(tmp_path):
                                                                                  [{}, {}], [2, 0], [9, 0])})
     assert s["india"][0][:2] == [3, 2] and s["india"][0][3] == 1   # documented, open record, threatened (Cus dus)
     assert s["waiting"] == {"india": [[2, 9, 0], [0, 0, 0]]} and s["period"] == "2026-10-26"
-    assert master.history_entry(s)["india"] == [3, None, 2, 1, None, 1, 2, 9]   # in a state: K3; no years before
+    assert master.history_entry(s)["india"] == [3, None, 2, 1, None, 1, 2, 9, None, None]   # in a state: K3
 
 
 def test_first_month_has_no_changes(built):
@@ -618,11 +623,12 @@ def test_history_has_one_entry_per_list_with_the_totals_by_group():
     h = master.history(None, s1)
     h = master.history(h, s2)
     assert h["measures"] == ["documented", "unlisted", "observed", "in_state", "recent", "threatened",
-                             "waiting_species", "waiting_observations"]
+                             "waiting_species", "waiting_observations", "described_recent", "dna"]
     assert [e["period"] for e in h["lists"]] == ["2026-10", "2026-10-26"]
-    # A summary from before the funnel has no in_state, recent or unlisted: null, not 0.
-    assert h["lists"][1]["india"] == [16, None, 9, None, None, 5, 3, 32]
-    assert h["lists"][1]["groups"] == [[11, None, 7, None, None, 4, 2, 25], [5, None, 2, None, None, 1, 1, 7]]
+    # A summary from before the funnel has no in_state, recent, unlisted, described_recent or dna: null, not 0.
+    assert h["lists"][1]["india"] == [16, None, 9, None, None, 5, 3, 32, None, None]
+    assert h["lists"][1]["groups"] == [[11, None, 7, None, None, 4, 2, 25, None, None],
+                                       [5, None, 2, None, None, 1, 1, 7, None, None]]
     assert master.history(h, s2) == h                              # the same list again changes nothing
     assert [e["period"] for e in master.history(h, {**s1, "period": "2026-11-02"})["lists"]] == ["2026-10", "2026-10-26", "2026-11-02"]
 
@@ -639,8 +645,9 @@ def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
     five = {"measures": ["documented", "observed", "threatened", "waiting_species", "waiting_observations"],
             "lists": [{"period": "2026-10", "india": [1, 2, 3, 4, 5], "groups": [[1, 2, 3, 4, 5], [0, 0, 0, 0, 0]]}]}
     h = master.next_history({"summary": s1, "history": five}, s2)
-    assert h["lists"][0] == {"period": "2026-10", "india": [1, None, 2, None, None, 3, 4, 5],
-                             "groups": [[1, None, 2, None, None, 3, 4, 5], [0, None, 0, None, None, 0, 0, 0]]}
+    assert h["lists"][0] == {"period": "2026-10", "india": [1, None, 2, None, None, 3, 4, 5, None, None],
+                             "groups": [[1, None, 2, None, None, 3, 4, 5, None, None],
+                                        [0, None, 0, None, None, 0, 0, 0, None, None]]}
     # A history with the measures of before (identified): only the previous list, read with today's rule.
     old = {"measures": ["documented", "observed", "identified"], "lists": [{"period": "2026-10"}]}
     h = master.next_history({"summary": s2, "history": old}, s3)

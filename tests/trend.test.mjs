@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import { MEASURES, series, change, geometry, nearest, tile } from '../site/assets/trend.js';
 
 const H = {
-  measures: ['documented', 'unlisted', 'observed', 'in_state', 'recent', 'threatened', 'waiting_species', 'waiting_observations'],
+  measures: ['documented', 'unlisted', 'observed', 'in_state', 'recent', 'threatened', 'waiting_species', 'waiting_observations', 'described_recent', 'dna'],
   groups: ['Birds', 'Fish'],
   lists: [
-    { period: '2026-10', india: [15, null, 8, null, null, 3, 4, 37], groups: [[10, null, 6, null, null, 3, 3, 30], [5, null, 2, null, null, 0, 1, 7]] },
-    { period: '2026-10-26', india: [16, 4, 9, 7, 3, 5, 3, 32], groups: [[11, 3, 7, 5, 2, 4, 2, 25], [5, 1, 2, 2, 1, 1, 1, 7]] },
+    { period: '2026-10', india: [15, null, 8, null, null, 3, 4, 37, null, null], groups: [[10, null, 6, null, null, 3, 3, 30, null, null], [5, null, 2, null, null, 0, 1, 7, null, null]] },
+    { period: '2026-10-26', india: [16, 4, 9, 7, 3, 5, 3, 32, 2, 1], groups: [[11, 3, 7, 5, 2, 4, 2, 25, 1, 1], [5, 1, 2, 2, 1, 1, 1, 7, 1, 0]] },
   ],
 };
 

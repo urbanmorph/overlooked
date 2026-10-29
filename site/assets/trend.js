@@ -12,6 +12,8 @@ export const MEASURES = [
   { key: 'threatened', label: 'Threatened (IUCN CR, EN or VU)' },
   { key: 'waiting_species', label: 'Species named in observations not yet confirmed' },
   { key: 'waiting_observations', label: 'Observations named to species, not yet confirmed' },
+  { key: 'described_recent', label: 'On the list, described in the last 10 years' },
+  { key: 'dna', label: 'With a DNA sequence or sample from India' },
 ];
 
 /** One measure over time, oldest first: [{period, value}]. group: a group index, or null for all of India.

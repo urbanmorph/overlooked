@@ -171,6 +171,22 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 :root { --k1: #93BCAC; --k2: #5F9E87; --k3: #2E7A62; --k4: #0B5D4B }
 .k1 { background: var(--k1) } .k2 { background: var(--k2) } .k3 { background: var(--k3) } .k4 { background: var(--k4) }
 .obs { background: var(--k3) }
+/* The seven gaps: a row per gap, its plain name with the technical term, its question, and what we measure today. */
+.gaps-card { margin-bottom: 20px }
+.gaps { list-style: none; margin: 0; padding: 4px 22px 14px }
+.gaps li { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr) minmax(0, 22em); gap: 4px 18px; align-items: start;
+  padding: 12px 0; border-top: 1px solid var(--line-2) }
+.gaps li:first-child { border-top: 0 }
+.g-name b { display: block; font-size: 16px; font-weight: 600 }
+.g-term { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--accent); background: #E6F0EC;
+  border-radius: 4px; padding: 1px 6px; margin-top: 3px }
+h2 .g-term { vertical-align: 3px; margin-left: 6px }
+.g-q { font-size: 15px; color: var(--ink-2) }
+.g-v b { font: 500 18px var(--mono) } .g-share { font-size: 14px; color: var(--ink-2) }
+.g-note { display: block; font-size: 13px; color: var(--muted) } .g-not { font-size: 14px; color: var(--muted) }
+.meter { display: block; height: 6px; margin-top: 6px; background: var(--zero); border-radius: 3px; overflow: hidden }
+.meter i { display: block; height: 100%; background: var(--k4) }
+@media (max-width: 760px) { .gaps { padding-inline: 16px } .gaps li { grid-template-columns: 1fr } }
 .funnel-card { margin-bottom: 20px } .kbody { padding-top: 0 }
 .khero { margin: 14px 0 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px }
 .khero b { font: 500 clamp(30px, 3.4vw, 40px)/1 var(--mono) } .khero span { font-size: 17px; color: var(--ink-2) }
