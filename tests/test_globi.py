@@ -1,0 +1,120 @@
+"""GloBI (Global Biotic Interactions): the snapshot download (resumable, skipped when unchanged) and the species
+table for the Eltonian gap. Small fixtures stand in for the 2.66 GB snapshot and the LGD districts."""
+
+import gzip
+import json
+
+import duckdb
+import pytest
+
+from pipeline import globi
+
+HEADER = ["sourceTaxonSpeciesName", "interactionTypeName", "targetTaxonSpeciesName", "decimalLatitude",
+          "decimalLongitude", "localityName", "sourceNamespace", "otherColumn"]
+
+
+def snapshot(path, rows):
+    with gzip.open(path, "wt") as f:
+        f.write("\t".join(HEADER) + "\n")
+        for r in rows:
+            f.write("\t".join(r) + "\n")
+    return path
+
+
+@pytest.fixture
+def districts(tmp_path):
+    """Two square districts in one state, around (lat 10..11, lon 76..77) and (lat 20..21, lon 80..81)."""
+    con = duckdb.connect()
+    con.sql("INSTALL spatial; LOAD spatial")
+    path = tmp_path / "districts.parquet"
+    con.sql(f"""COPY (SELECT * FROM (VALUES
+        (101, 32, 'A', 'S', ST_GeomFromText('POLYGON((76 10, 77 10, 77 11, 76 11, 76 10))')),
+        (102, 32, 'B', 'S', ST_GeomFromText('POLYGON((80 20, 81 20, 81 21, 80 21, 80 20))')))
+        t(dist_lgd, state_lgd, dtname, stname, geometry)) TO '{path}' (FORMAT parquet)""")
+    return path
+
+
+def test_one_row_per_species_from_both_sides_of_each_interaction(tmp_path, districts):
+    tsv = snapshot(tmp_path / "i.tsv.gz", [
+        ["Aus bus", "eats", "Cus dus", "10.5", "76.5", "", "ds/one", "x"],          # in India (district 101)
+        ["Aus bus", "pollinates", "Eus fus", "", "", "Kerala, India", "ds/two", "x"],   # no point: the locality says India
+        ["Aus bus", "eats", "Cus dus", "40.0", "-3.0", "Spain", "ds/one", "x"],          # abroad
+        ["Gus hus", "parasiteOf", "", "20.5", "80.5", "", "ds/one", "x"],               # partner not named to species
+        ["broken row with no tabs"],
+    ])
+    out = tmp_path / "species.parquet"
+    globi.species_table(duckdb.connect(), tsv, districts, out)
+    rows = {r[0]: r[1:] for r in duckdb.sql(
+        f"SELECT name, records, partners, types, records_india, datasets FROM '{out}' ORDER BY name").fetchall()}
+    assert rows["Aus bus"] == (3, 2, ["eats", "pollinates"], 2, 2)
+    assert rows["Cus dus"] == (2, 1, ["eats"], 1, 1)                   # a target counts as well as a source
+    assert rows["Eus fus"][3] == 1                                     # India from the locality name
+    assert rows["Gus hus"] == (1, 0, ["parasiteOf"], 1, 1)
+
+
+class Resp:
+    def __init__(self, status, body=b"", headers=None):
+        self.status_code, self.body, self.headers = status, body, headers or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(self.status_code)
+
+    def iter_content(self, n):
+        for i in range(0, len(self.body), n):
+            yield self.body[i:i + n]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class Http:
+    """A file served with an ETag and Range; stop_after: bytes to send before the connection drops."""
+
+    def __init__(self, body, etag='"e1"', stop_after=None):
+        self.body, self.etag, self.stop_after, self.ranges = body, etag, stop_after, []
+
+    def head(self, url, **kw):
+        return Resp(200, headers={"ETag": self.etag, "Content-Length": str(len(self.body))})
+
+    def get(self, url, headers=None, **kw):
+        start = int((headers or {}).get("Range", "bytes=0-")[6:].rstrip("-") or 0)
+        self.ranges.append(start)
+        part = self.body[start:]
+        if self.stop_after is not None:
+            part, self.stop_after = part[:self.stop_after], None
+            r = Resp(206 if start else 200, part)
+
+            def broken(n, part=part):
+                yield from Resp(0, part).iter_content(n)
+                raise ConnectionError("dropped")
+            r.iter_content = broken
+            return r
+        return Resp(206 if start else 200, part)
+
+
+def test_the_download_resumes_and_a_second_run_downloads_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(globi, "CHUNK", 4)
+    body = b"0123456789" * 5
+    dest = tmp_path / "i.tsv.gz"
+    http = Http(body, stop_after=17)
+    with pytest.raises(ConnectionError):
+        globi.download(http, dest)
+    assert (tmp_path / "i.tsv.gz.part").stat().st_size == 17 and not dest.exists()   # every byte received is kept
+    assert globi.download(http, dest) is True and dest.read_bytes() == body
+    assert http.ranges == [0, 17]                                                       # continued, not restarted
+    again = Http(body)
+    assert globi.download(again, dest) is False and again.ranges == []                  # same ETag: nothing to do
+    meta = json.loads((tmp_path / "i.tsv.gz.json").read_text())
+    assert meta["etag"] == '"e1"' and meta["length"] == len(body)
+
+
+def test_a_new_snapshot_is_downloaded_from_the_start(tmp_path, monkeypatch):
+    monkeypatch.setattr(globi, "CHUNK", 4)
+    dest = tmp_path / "i.tsv.gz"
+    globi.download(Http(b"old snapshot"), dest)
+    new = Http(b"a newer snapshot", etag='"e2"')
+    assert globi.download(new, dest) is True and dest.read_bytes() == b"a newer snapshot" and new.ranges == [0]
