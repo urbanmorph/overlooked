@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML, groupFiles, sampleNote } from '../site/assets/shortlist.js';
+import { shortlistOf, filterRows, bandCounts, goHref, photoCredit, taxonHTML, groupFiles, sampleNote, whyText } from '../site/assets/shortlist.js';
 
 const FIX = new URL('./fixtures/shortlist/layers/shortlist/', import.meta.url);
 const latest = JSON.parse(readFileSync(new URL('latest.json', FIX)));
@@ -100,4 +100,15 @@ test('sampleNote: a pruned run keeps the sample date and says what the check lef
   assert.match(t, /120 days before 20 October 2026/);
   assert.match(t, /On 27 October 2026 we checked them on iNaturalist: 320 that got a name or were removed since are no longer listed\./);
   assert.doesNotMatch(sampleNote({ run: '2026-10-20', rows: 13842 }), /checked/);
+});
+
+test('whyText: what a confirmation would add if the first name is right, most useful first; nothing for no reason', () => {
+  const states = new Map([['32', 'Kerala']]);
+  assert.deepEqual(whyText({ state: '32', why: ['first_in_state', 'endemic'] }, states),
+    ['First record of this species in Kerala', 'Species endemic to India']);
+  assert.deepEqual(whyText({ state: null, why: ['threatened', 'listed_only'] }, states),
+    ['Threatened species (IUCN Red List)', 'No open record of this species in India yet']);
+  assert.deepEqual(whyText({ state: '99', why: ['first_in_state'] }, states), ['First record of this species in its state']);
+  assert.deepEqual(whyText({ why: ['unknown'] }, states), []);
+  assert.deepEqual(whyText({}, states), []);                              // a run built before the ranking
 });

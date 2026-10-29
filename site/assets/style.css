@@ -278,6 +278,7 @@ a.idlink { font-weight: 500; overflow-wrap: anywhere }
 .sl-body { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 16px; font-size: 15px }
 .sl-body p { margin: 0 } .sl-body .note { padding-bottom: 6px } .sl-h { font-size: 13px; font-weight: 600; color: var(--ink-2) }
 .sl-names { margin: 0; padding-left: 22px; font-size: 16px; line-height: 1.5 }
+.sl-why { font-size: 13px; font-weight: 600; color: var(--accent-dark) }
 .sl-body a.b.go { margin-top: auto; justify-content: center; background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600 }
 #ginfo { min-height: 3em } #bands { min-height: 44px }
 @media (max-width: 600px) { #ginfo { min-height: 6em } }

@@ -2,6 +2,7 @@
 observation reached research grade, name matching, and the small classifier and probability helpers."""
 
 import hashlib
+import math
 import re
 
 import numpy as np
@@ -325,17 +326,29 @@ EASE_OF = {"quick": "Quick to confirm", "genus": "For an expert", "expert": "For
 
 
 def compact(obj):
-    """Compact JSON, keys in insertion order, UTF-8 kept: the same object always gives the same bytes."""
+    """Compact JSON, keys in insertion order, UTF-8 kept: the same object always gives the same bytes. NaN is refused:
+    browsers cannot read it (see no_nan)."""
     import json
 
-    return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(obj, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+
+
+def no_nan(v):
+    """v with every NaN (pandas' empty value) as None, in dicts and lists too."""
+    if isinstance(v, float) and math.isnan(v):
+        return None
+    if isinstance(v, dict):
+        return {k: no_nan(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [no_nan(x) for x in v]
+    return v
 
 
 def public_row(o, band, names, genera, state):
     """One row of a group file, as the contract: no coordinates, no probabilities. o: the iNaturalist API
     observation; state: its LGD state code (dropped when the location is obscured)."""
     ph, t = (o.get("photos") or [{}])[0], o.get("taxon") or {}
-    return {
+    return no_nan({
         "id": o["id"],
         "url": f"https://www.inaturalist.org/observations/{o['id']}",
         "photo": medium_from_api_url(ph.get("url")),
@@ -348,15 +361,34 @@ def public_row(o, band, names, genera, state):
         "band": band,
         "names": list(names)[:MAX_NAMES] if band == "quick" else [],
         "genera": list(genera)[:MAX_GENERA_SHOWN],
-    }
+    })
 
 
-def live_order(rows):
-    """Most useful first: pipeline.shortlist priority (value with no flags is 1, so the band's ease: quick before
-    genus), then the longest waiting (oldest created), then id."""
-    from pipeline.shortlist import priority, value
+def value_flags(row, facts):
+    """Why confirming a row would fill a gap (pipeline.shortlist.VALUE_FLAGS), if its first (most likely) name is
+    right. facts: {name: (observed, threatened, endemic, states observed)} from the master list. None for a genus row
+    or a name not on the list."""
+    f = facts.get(row["names"][0]) if row.get("names") else None
+    if f is None:
+        return {}
+    observed, threatened, endemic, states = f
+    first = row.get("state") is not None and int(row["state"]) not in states
+    flags = {"first_in_state": first, "threatened": threatened, "endemic": endemic, "listed_only": not observed}
+    return {k: True for k, v in flags.items() if v}
 
-    return sorted(rows, key=lambda r: (-priority(value({}), EASE_OF[r["band"]]), r["created_at"], r["id"]))
+
+def live_order(rows, facts=None):
+    """Most useful first: pipeline.shortlist priority (the value of the gaps a confirmation fills, times the band's
+    ease: quick before genus), then the longest waiting (oldest created), then id. Each row gets "why", its flags in
+    VALUE_FLAGS order, and loses created_at (the input rows are not changed)."""
+    from pipeline.shortlist import VALUE_FLAGS, priority, value
+
+    out = []
+    for r in rows:
+        flags = value_flags(r, facts or {})
+        out.append((r, [f for f in VALUE_FLAGS if f in flags], priority(value(flags), EASE_OF[r["band"]])))
+    out.sort(key=lambda x: (-x[2], x[0]["created_at"], x[0]["id"]))
+    return [{**{k: v for k, v in r.items() if k != "created_at"}, "why": why} for r, why, _ in out]
 
 
 def paginate(rows, encode, max_bytes):

@@ -55,6 +55,18 @@ export function sampleNote(latest) {
     'We keep some recent observations back to test the lists, so some groups are small. If the page is useful, we will add more.';
 }
 
+// Why a confirmation matters, if the first name is right (pipeline.shortlist VALUE_FLAGS; the file's order uses them).
+const WHY = {
+  first_in_state: st => `First record of this species in ${st}`,
+  threatened: () => 'Threatened species (IUCN Red List)',
+  endemic: () => 'Species endemic to India',
+  listed_only: () => 'No open record of this species in India yet',
+};
+
+/** The reasons a row is near the top, as text, in the row's order. stName: state code -> name. */
+export const whyText = (r, stName) =>
+  (r.why || []).filter(k => k in WHY).map(k => WHY[k](stName.get(r.state) || 'its state'));
+
 /** The counted link to an observation, or null for an id that is not an iNaturalist observation id. */
 export function goHref(id, group) {
   const s = String(id ?? '');
@@ -117,6 +129,7 @@ async function main() {
         <div class="sl-body">
           <span><span class="badge ${s.band === 'quick' ? 'st-ok' : 'st-paper'}">${s.label}</span></span>
           <p>On iNaturalist now: ${taxonHTML(r.now)}</p>
+          ${whyText(r, stName).map(w => `<p class="sl-why">${esc(w)}, if the first name is right</p>`).join('')}
           <p class="sl-h">${s.rank === 'species' ? 'Species' : 'Genera'} to check, the most likely first</p>
           <ol class="sl-names">${s.names.map(n => `<li><i>${esc(n)}</i></li>`).join('')}</ol>
           <p class="note">Observed ${r.observed ? esc(monthName(r.observed)) : 'on a date not given'}${r.place ? ` · ${esc(r.place)}` : ''}</p>

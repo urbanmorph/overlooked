@@ -20,7 +20,7 @@ The contract between the shortlist job (made on this machine: the model and corp
 ```json
 {"run": "2026-10-21", "built": "2026-10-21T10:00:00Z",
  "model": "BioCLIP 2.5 + corpus v0 classifier", "corpus": "v0", "calibration": "ce7c9b55be8e",
- "rows": 12345,
+ "rows": 12345, "master": "layers/master/2026-10-26/20261029T173738Z/",
  "groups": [{"key": "true-bugs", "name": "True bugs", "verdict": "Quick to confirm", "rows": 950, "pages": 2,
              "t1": {"n": 121, "top1": 90.1, "cov90": 94.0}}]}
 ```
@@ -34,7 +34,8 @@ The contract between the shortlist job (made on this machine: the model and corp
    "attribution": "(c) name, some rights reserved (CC BY)", "licence": "cc-by",
    "observed": "2026-09-30", "place": "Kodagu, Karnataka", "state": "29",
    "now": {"name": "Halyomorpha", "rank": "genus"},
-   "band": "quick", "names": ["Halyomorpha halys", "Halyomorpha picus"], "genera": ["Halyomorpha"]}]}
+   "band": "quick", "names": ["Halyomorpha halys", "Halyomorpha picus"], "genera": ["Halyomorpha"],
+   "why": ["first_in_state"]}]}
 ```
 
 - **Pages.** A group file stays under 300 KB. A larger group is split in priority order: page 1 is
@@ -49,6 +50,12 @@ The contract between the shortlist job (made on this machine: the model and corp
   always uses the sample run's shown set.
 - `t1.cov90`: coverage of the 90% set at the group's level: species for Quick to confirm, genus for Genus first.
 - `names`: the species shortlist in order, at most 3; empty for `genus`. `genera`: at most 5.
+- **Order** (`experiments/corpus_v0/logic.py` `live_order`): the value of the gaps a confirmation fills if the
+  first name is right, times the band's ease (`pipeline.shortlist` `priority`), then the longest waiting, then id.
+  `why` lists those gaps, most useful first: `first_in_state` (no open record of the species in the observation's
+  state), `threatened` (IUCN CR, EN or VU), `endemic` (endemic to India), `listed_only` (no open record in India).
+  Empty for a genus row and a name not on the master list. latest.json `master` names the master list build used
+  (`live.py rank <run>` orders a built run again from the current one).
 - `state`: LGD state code when known (from the observation's place), else null.
 - Group keys: lower case, words joined by `-` (for example `bees-wasps-ants`).
 

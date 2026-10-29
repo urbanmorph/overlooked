@@ -447,6 +447,19 @@ def test_public_row_quick_caps_and_fields():
     assert r["now"] == {"name": "Halyomorpha", "rank": "genus"} and r["state"] == "29"
 
 
+def test_a_missing_field_is_null_never_nan():
+    """pandas reads an absent place as NaN; json.dumps writes it as NaN, which browsers refuse (the whole group
+    file fails to load). The row has null, and compact() refuses NaN."""
+    from logic import compact, no_nan, public_row
+
+    r = public_row(live_obs(place_guess=float("nan"), observed_on=float("nan")), "quick", ["A a"], ["A"], state="29")
+    assert r["place"] is None and r["observed"] is None
+    assert no_nan({"place": float("nan"), "now": {"name": "A", "rank": float("nan")}, "names": ["A a"]}) == \
+        {"place": None, "now": {"name": "A", "rank": None}, "names": ["A a"]}
+    with pytest.raises(ValueError):
+        compact({"place": float("nan")})
+
+
 def test_public_row_genus_has_no_names_and_obscured_has_no_state():
     from logic import public_row
 
@@ -464,6 +477,35 @@ def test_live_order_quick_first_then_oldest():
         {"id": 4, "band": "quick", "created_at": "2026-07-01T00:00:00+00:00"},
     ]
     assert [r["id"] for r in live_order(rows)] == [1, 4, 2, 3]
+
+
+def test_live_order_puts_the_gaps_a_confirmation_fills_first():
+    """The first (most likely) name decides why a confirmation matters: a first record in the observation's state
+    outranks a threatened species, which outranks an endemic one; a genus row and an unknown name have no reason."""
+    from logic import live_order
+
+    facts = {  # name: (observed, threatened, endemic, states observed)
+        "A a": (True, False, False, [29]),
+        "A b": (True, True, False, [29, 32]),
+        "A c": (True, False, True, [29]),
+        "A d": (False, False, False, []),
+    }
+    old, new = "2026-07-01T00:00:00+00:00", "2026-09-01T00:00:00+00:00"
+    rows = [
+        {"id": 1, "band": "quick", "state": "29", "names": ["A a", "A b"], "created_at": old},  # nothing new
+        {"id": 2, "band": "quick", "state": "29", "names": ["A c"], "created_at": new},         # endemic
+        {"id": 3, "band": "quick", "state": "29", "names": ["A b"], "created_at": new},         # threatened
+        {"id": 4, "band": "quick", "state": "33", "names": ["A a"], "created_at": new},         # first in state 33
+        {"id": 5, "band": "quick", "state": None, "names": ["A d"], "created_at": new},         # never observed
+        {"id": 6, "band": "quick", "state": "29", "names": ["Z z"], "created_at": old},         # not on the list
+        {"id": 7, "band": "genus", "state": "33", "names": [], "genera": ["A"], "created_at": old},
+    ]
+    out = live_order(rows, facts)
+    assert [r["id"] for r in out] == [4, 3, 2, 5, 1, 6, 7]
+    why = {r["id"]: r["why"] for r in out}
+    assert why == {1: [], 2: ["endemic"], 3: ["threatened"], 4: ["first_in_state"], 5: ["listed_only"], 6: [], 7: []}
+    assert "why" not in rows[0] and "created_at" in rows[0]                         # the input rows stay as they were
+    assert all("created_at" not in r for r in out)                                  # the page has no use for it
 
 
 def test_paginate_by_bytes():

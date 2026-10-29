@@ -10,27 +10,30 @@
   live.py build   shortlists with the frozen calibration (calibration_<drawn>.json, version ce7c9b55be8e) and the best
                   method per group; band from the group's verdict (quick: up to 3 species; genus: up to 5 genera;
                   expert rows are not published); LGD state from the coordinates (pipeline.places, the pipeline's
-                  district file), null when obscured or absent; order by pipeline.shortlist priority, then oldest
+                  district file), null when obscured or absent; order by pipeline.shortlist priority (the gaps a
+                  confirmation fills if the first name is right: logic.live_order, from the master list), then oldest
                   first. Writes data/shortlist/<run>/latest.json and g/<key>.json (pages g/<key>.<n>.json when a
                   group passes MAX_BYTES), compact and deterministic, and shown.parquet (local only: every
                   published id with its full shortlist, for recheck.py --shown).
+  live.py rank <run>   the same order and "why" for a built run, in place, from the current master list.
   live.py prune <run> <date>   after recheck.py --shown <run> on <date>: a copy of the run without the observations
                   now research grade, casual or gone, as run <date> (latest.json gives sample, checked, removed).
 Nothing is posted anywhere; publish_live.py (run only when the owner agrees) copies the JSON files to R2.
-Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/live.py draw|build|prune
+Run: data/model_check/.venv/bin/python -u experiments/corpus_v0/live.py draw|build|rank|prune
 """
 
 import hashlib
 import json
 import sys
 import time
+from collections import Counter
 
 import duckdb
 import numpy as np
 import pandas as pd
 from evaluate import SCORES
 from freeze import TOP, band, joined
-from lib import DATA, RESULTS, ROOT, atomic_parquet, atomic_write_json, log
+from lib import DATA, RESULTS, ROOT, atomic_parquet, atomic_write_json, log, ua
 from logic import (
     EXPERT,
     GENUS_FIRST,
@@ -38,6 +41,7 @@ from logic import (
     compact,
     done_ids,
     live_order,
+    no_nan,
     page_name,
     paginate,
     public_row,
@@ -52,6 +56,8 @@ MAX_BYTES = 300_000
 CALIBRATION = "ce7c9b55be8e"
 BAND_KEY = {QUICK: "quick", GENUS_FIRST: "genus", EXPERT: "expert"}
 MODEL_NAME = "BioCLIP 2.5 + corpus v0 classifier"
+SITE_DATA = "https://overlooked-india.pages.dev/data/"
+THREATENED = ("CR", "EN", "VU")
 
 
 def live_row(o, group, cand, how):
@@ -70,6 +76,30 @@ def live_row(o, group, cand, how):
         "lon": lon,
         "quality_grade": o.get("quality_grade"),
     }
+
+
+def master_facts():
+    """{name: (observed, threatened, endemic, states observed)} from the published master list, and its build. The
+    build's master.parquet is kept in data/corpus_v0/master/, so ranking again against the same build sends one
+    small request (latest.json) and gives the same order."""
+    import requests
+
+    r = requests.get(SITE_DATA + "layers/master/latest.json", headers={"User-Agent": ua()}, timeout=60)
+    r.raise_for_status()
+    base = r.json()["base"]
+    path = DATA / "master" / (base.strip("/").replace("/", "_") + ".parquet")
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        r = requests.get(SITE_DATA + base + "master.parquet", headers={"User-Agent": ua()}, timeout=300)
+        r.raise_for_status()
+        tmp = path.with_suffix(".part")
+        tmp.write_bytes(r.content)
+        tmp.replace(path)
+    rows = duckdb.sql(f"""SELECT name, bool_or(observed), bool_or(iucn IN {THREATENED}),
+                                 bool_or(list_contains(labels, 'end')), list_distinct(flatten(list(states_observed)))
+                          FROM '{path}' GROUP BY name""").fetchall()
+    log(f"master list {base}: {len(rows):,} names")
+    return {r[0]: tuple(r[1:]) for r in rows}, base
 
 
 def passed_groups():
@@ -152,9 +182,29 @@ def do_prune():
     log(f"run {checked}: {latest['rows']:,} rows; {len(done):,} done since {run} left out")
 
 
+def do_rank():
+    """Order a built run again from the current master list, in place (docs/shortlist_data.md). Usage: live.py rank <run>"""
+    run_dir = OUT / sys.argv[2]
+    latest = json.loads((run_dir / "latest.json").read_text())
+    facts, base = master_facts()
+    sample = pd.read_parquet(SAMPLE, columns=["obs_id", "created_at"])
+    created = dict(zip(sample.obs_id.astype(int), sample.created_at))
+    ranked = {g["key"]: live_order([{**no_nan(r), "created_at": created[r["id"]]} for r in group_rows(run_dir, g)], facts)
+              for g in latest["groups"]}
+    for old in (run_dir / "g").glob("*.json"):
+        old.unlink()  # the page count can change
+    for g in latest["groups"]:
+        g["pages"] = write_pages(run_dir, g["key"], ranked[g["key"]])
+    latest["master"] = base
+    (run_dir / "latest.json").write_text(compact(latest))
+    why = Counter(f for rs in ranked.values() for r in rs for f in r["why"])
+    log(f"run {latest['run']}: {latest['rows']:,} rows ranked against {base}; " + ", ".join(f"{k} {v:,}" for k, v in why.items()))
+
+
 def do_build():
     from pipeline import shortlist as sl
 
+    facts, master = master_facts()
     df = pd.read_parquet(SAMPLE)
     run = df.drawn.iloc[0]
     cal = json.loads((DATA / "calibration_2026-10-20.json").read_text())
@@ -194,7 +244,7 @@ def do_build():
                     "method": str(z["method"]), "calibration_version": CALIBRATION, "drawn": run,
                 }
             )  # fmt: skip
-        rows = [{k: v for k, v in r.items() if k != "created_at"} for r in live_order(rows)]
+        rows = live_order(rows, facts)
         key = sl.slug(group)
         t1 = gates.loc[group]
         groups.append(
@@ -207,7 +257,7 @@ def do_build():
     built = json.loads(STATE.read_text())["finished"]
     latest = {
         "run": run, "built": built, "model": MODEL_NAME, "corpus": "v0", "calibration": CALIBRATION,
-        "rows": total, "groups": groups,
+        "rows": total, "master": master, "groups": groups,
     }  # fmt: skip
     (out_dir / "latest.json").write_text(compact(latest))
     sh = pd.DataFrame(shown).sort_values(["group", "obs_id"]).reset_index(drop=True)
@@ -220,4 +270,4 @@ def do_build():
 
 
 if __name__ == "__main__":
-    {"draw": do_draw, "build": do_build, "prune": do_prune}[sys.argv[1]]()
+    {"draw": do_draw, "build": do_build, "rank": do_rank, "prune": do_prune}[sys.argv[1]]()
