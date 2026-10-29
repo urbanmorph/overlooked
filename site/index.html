@@ -44,20 +44,29 @@
   <h1 class="sr">Species of India: open records, names that wait, and IUCN status</h1>
 
   <section class="card funnel-card" aria-labelledby="funnel-h">
-    <div class="bar-head"><h2 id="funnel-h" style="font-size:20px">What India knows about its species</h2><span class="muted" id="funnel-sub">All groups · India</span></div>
-    <p class="pad note" style="margin:0;padding-top:0">Each step keeps only the species of the step before it. The space between two steps is a gap in what we know. Choose a step to show it on the map and in the groups.</p>
-    <ol class="funnel" id="funnel">
-      <li class="gap-h">Linnean gap: is the species named and listed?</li>
-      <li data-stage="documented"><div class="st"><span class="st-label">Documented in India</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
-      <li class="unlisted"><button type="button" class="st-link" data-stage="unlisted"><span class="mono">–</span> names not on the India list yet, known only from observations that wait for a name</button></li>
-      <li class="gap-h">Wallacean gap: do we know where it lives?</li>
-      <li data-stage="observed"><div class="st"><span class="st-lost"></span><span class="st-label">With an open record</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
-      <li data-stage="in_state"><div class="st"><span class="st-lost"></span><span class="st-label">Open record placed in a state</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
-      <li data-stage="recent"><div class="st"><span class="st-lost"></span><span class="st-label">Recorded in a state in the last 10 years</span><span class="st-bar" aria-hidden="true"><i></i></span><span class="st-n mono">–</span><span class="st-share">–</span><span class="st-delta">– since the last list</span></div></li>
-      <li class="gap-h">Eltonian gap: do we know how it interacts with other species?</li>
-      <li data-stage="interactions"><div class="st soon"><span class="st-label">Any recorded interaction</span><span class="st-soon">We have not measured this yet.</span></div></li>
-    </ol>
-    <div class="pad funnel-also"><button type="button" class="b" data-view="iucn" aria-pressed="false">IUCN Red List: threatened species</button></div>
+    <div class="bar-head"><h2 id="funnel-h" style="font-size:20px">How far does our knowledge go?</h2><span class="muted" id="funnel-sub">All groups · India</span></div>
+    <div class="pad kbody">
+      <p class="note" style="margin:0" id="knote">Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map.</p>
+      <p class="khero"><b class="mono" id="kbase">–</b> <span id="kbase-l">species documented in India</span></p>
+      <div class="klegend" id="klegend"><span data-k="k1"><i class="k1"></i>Only in checklists and papers <b class="mono">–</b></span><span data-k="k2"><i class="k2"></i>Open record, no place <b class="mono">–</b></span><span data-k="k3"><i class="k3"></i>Placed, not recent <b class="mono">–</b></span><span data-k="k4"><i class="k4"></i>Recorded in the last 10 years <b class="mono">–</b></span></div>
+      <div class="kbar" id="kbar" role="group" aria-label="Species of India by how far our knowledge goes"></div>
+      <p class="kunl" id="kunl-p"><i aria-hidden="true"></i><span><button type="button" class="st-link" data-stage="unlisted" aria-pressed="false"><b class="mono" id="kunl">–</b> more names are not on the India list yet.</button> Only observations that wait for a name give them.</span></p>
+      <h3 class="kgroups-h">By group, the groups with the most recent records first</h3>
+      <div class="kgroups" id="kgroups">
+        <button type="button" class="kg" data-cat="insects" aria-pressed="false"><span class="kg-name">Insects</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="plants" aria-pressed="false"><span class="kg-name">Flowering plants and ferns</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="fungi" aria-pressed="false"><span class="kg-name">Fungi and lichens</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="mosses" aria-pressed="false"><span class="kg-name">Mosses, liverworts and algae</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="fish" aria-pressed="false"><span class="kg-name">Fish</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="inverts" aria-pressed="false"><span class="kg-name">Molluscs, spiders and crabs</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="herps" aria-pressed="false"><span class="kg-name">Amphibians and reptiles</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="birds" aria-pressed="false"><span class="kg-name">Birds</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="mammals" aria-pressed="false"><span class="kg-name">Mammals</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+        <button type="button" class="kg" data-cat="other" aria-pressed="false"><span class="kg-name">Other</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
+      </div>
+      <p class="note keltonian">The Eltonian gap (do we know how a species interacts with other species?) joins the bar as a fifth part when we measure it.</p>
+      <div class="funnel-also"><button type="button" class="b" data-view="iucn" aria-pressed="false">IUCN Red List: threatened species</button></div>
+    </div>
   </section>
 
   <section class="ex-top">

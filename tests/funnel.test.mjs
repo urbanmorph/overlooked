@@ -1,7 +1,8 @@
-// Tests for the evidence funnel (site/assets/funnel.js). Run: node --test tests/funnel.test.mjs
+// Tests for "How far does our knowledge go?" (site/assets/funnel.js). Run: node --test tests/funnel.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { funnel, sumSeries } from '../site/assets/funnel.js';
+import { readFileSync } from 'node:fs';
+import { knowledge, segmentChanges, STEPS } from '../site/assets/funnel.js';
 
 const cats = n => [0, 0, 0, 0, n, 0, 0, 0, 0];
 // Two groups; india rows [documented, open record, IUCN counts, threatened, in a state, recorded since recent_from].
@@ -11,43 +12,42 @@ const S = {
   by_state: { 32: [[30, 2, 12], [5, 0, 1]] },
 };
 
-test('India: each stage nests in the one before, with the gap between them named', () => {
-  const f = funnel(S, [0, 1]);
-  assert.deepEqual(f.stages.map(s => [s.key, s.value]), [['documented', 150], ['observed', 80], ['in_state', 50], ['recent', 17]]);
-  assert.deepEqual(f.stages.map(s => s.gap), ['Linnean', 'Wallacean', 'Wallacean', 'Wallacean']);
-  assert.deepEqual(f.stages.map(s => Math.round(100 * s.share)), [100, 53, 33, 11]);   // share of documented
-  assert.equal(f.stages[1].lost, 70);
-  assert.match(f.stages[1].lostText, /70 .*checklists and papers/);
-  assert.match(f.stages[3].lostText, /33 .*since 2016/);
-  assert.equal(f.unlisted, 9);
-  for (let i = 1; i < f.stages.length; i++) assert.ok(f.stages[i].value <= f.stages[i - 1].value);
+test('India: each documented species counted once, at the furthest step we know; the segments add up', () => {
+  const k = knowledge(S, [0, 1]);
+  assert.equal(k.base, 150);
+  assert.deepEqual(k.segments.map(s => [s.key, s.value]), [['k1', 70], ['k2', 30], ['k3', 33], ['k4', 17]]);
+  assert.equal(k.segments.reduce((a, s) => a + s.value, 0), k.base);
+  assert.deepEqual(k.segments.map(s => s.view), [null, 'observed', 'observed', 'recent']);   // checklists have no states
+  assert.equal(Math.round(100 * k.segments[0].share), 47);
+  assert.equal(k.unlisted, 9);
 });
 
-test('one group, or a state: the same stages from its own rows; a state starts at the open record', () => {
-  assert.equal(funnel(S, [1]).stages[0].value, 50);
-  const st = funnel(S, [0, 1], '32');
-  assert.deepEqual(st.stages.map(s => [s.key, s.value]), [['observed', 35], ['recent', 13]]);
-  assert.equal(st.stages[0].share, 1);
-  assert.equal(st.unlisted, null);   // names not on the list are counted for India only
+test('a state: the bar starts at the open record, as checklists give no states yet', () => {
+  const k = knowledge(S, [0, 1], '32');
+  assert.equal(k.base, 35);
+  assert.deepEqual(k.segments.map(s => [s.key, s.value]), [['k3', 22], ['k4', 13]]);
+  assert.equal(k.unlisted, null);
+  // With filters the year per state is not known: one segment, the open record here.
+  const f = knowledge({ ...S, by_state: { 32: [[30, 2, null], [5, 0, null]] } }, [0, 1], '32');
+  assert.deepEqual(f.segments.map(s => [s.key, s.value]), [['obs', 35]]);
 });
 
-test('a summary from before the funnel (no in_state or recent) gives only the stages it has', () => {
+test('a summary from before the funnel (no in_state or recent): checklists only, and the open record', () => {
   const old = { india: [[100, 60, cats(100), 3]], by_state: {} };
-  assert.deepEqual(funnel(old, [0]).stages.map(s => s.key), ['documented', 'observed']);
+  assert.deepEqual(knowledge(old, [0]).segments.map(s => [s.key, s.value]), [['k1', 40], ['obs', 60]]);
 });
 
-test('history: a measure summed over groups, oldest first; a list without the measure is left out', () => {
-  const H = { measures: ['documented', 'recent'], lists: [
-    { period: '2026-10', groups: [[90, null], [40, null]] },
-    { period: '2026-10-26', groups: [[100, 15], [50, 2]] }] };
-  assert.deepEqual(sumSeries(H, 'documented', [0, 1]), [{ period: '2026-10', value: 130 }, { period: '2026-10-26', value: 150 }]);
-  assert.deepEqual(sumSeries(H, 'recent', [0, 1]), [{ period: '2026-10-26', value: 17 }]);
-  assert.deepEqual(sumSeries(null, 'recent', [0]), []);
+test('the change of each segment since the last list, from history.json; null where a list lacks a measure', () => {
+  const H = { measures: ['documented', 'unlisted', 'observed', 'in_state', 'recent'], lists: [
+    { period: '2026-10', groups: [[90, null, 50, 30, null], [40, null, 20, 10, null]] },
+    { period: '2026-10-26', groups: [[100, 7, 60, 40, 15], [50, 2, 20, 10, 2]] }] };
+  assert.deepEqual(segmentChanges(H, [0, 1]), { k1: 10, k2: 0, k3: null, k4: null });
+  assert.deepEqual(segmentChanges(null, [0]), {});
 });
 
-test('the home page holds a placeholder row for every India step, with the same label, so nothing moves when they fill', async () => {
-  const { readFileSync } = await import('node:fs');
+test('every step has a name and a sentence; the home page holds the bar, the legend and a row per group', () => {
+  for (const s of STEPS) assert.ok(s.name && s.long, s.key);
   const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
-  funnel(S, [0, 1]).stages.forEach((s, i) => assert.ok(html.includes(
-    `data-stage="${s.key}"><div class="st">${i ? '<span class="st-lost"></span>' : ''}<span class="st-label">${s.label}</span>`), s.key));
+  assert.ok(html.includes('id="kbar"') && html.includes('id="kgroups"'));
+  for (const s of STEPS) assert.ok(html.includes(`<i class="${s.key}"></i>${s.name} <b class="mono">–</b></span>`), s.key);
 });

@@ -1,5 +1,6 @@
 // Front page: India map, groups and search over the master species list (layers/master/<period>/).
-// The evidence funnel picks the view: an open record, recorded in the last 10 years, waiting for a name; and IUCN.
+// "How far does our knowledge go?" picks the view: an open record, recorded in the last 10 years, waiting for a
+// name; and IUCN.
 // Groups and states are wired both ways; the URL keeps the state.
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
@@ -7,8 +8,8 @@
 import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
 import { fixSection } from './fix.js';
-import { change, signed } from './trend.js';
-import { funnel, sumSeries } from './funnel.js';
+import { signed } from './trend.js';
+import { knowledge, segmentChanges } from './funnel.js';
 
 // Top-level groups for the cards, built from the 28 pipeline groups by name.
 const CATS = [
@@ -50,7 +51,7 @@ function parseYears(v) {
 try {
   const latest = await getJSON('layers/master/latest.json');
   const base = latest.base;
-  let H = null;   // history.json: the change of each funnel step since the last list
+  let H = null;   // history.json: the change of each part of the knowledge bar since the last list
   const history_ = getJSON(base + 'history.json').then(h => { H = h; }).catch(() => {});
   const snap = await snapshot();
   const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
@@ -228,36 +229,52 @@ try {
     $('#sel-actions').hidden = !st.state;
   }
 
-  // The evidence funnel: the steps for the chosen groups, in India or the chosen state. A step that sets the view is
-  // a button; the change since the last list shows for the whole list only (the history has no filters).
-  const PICK = { observed: 'observed', recent: 'recent' };
-  function paintFunnel() {
-    const c = st.cat ? catOf(st.cat) : null, gis = gisNow();
-    const f = funnel({ ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted }, gis, st.state);
-    $('#funnel-sub').textContent = `${c ? c.name : 'All groups'} · ${st.state ? stName.get(st.state) : 'India'}${filterText()}`;
-    const shown = new Set(f.stages.map(s => s.key));
-    for (const li of document.querySelectorAll('#funnel li[data-stage]')) {
-      const key = li.dataset.stage;
-      if (key === 'interactions') continue;
-      li.hidden = !shown.has(key);
+  // "How far does our knowledge go?": one bar for the chosen groups, in India or the chosen state, then the same bar
+  // for each group family. A part that has a map view is a button; the part only in checklists has no states.
+  const tipK = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'tip ktip', hidden: true }));
+  // label: the number inside a wide part. mini: a part of a group's bar, inside the group's button (no button of its own).
+  function segHTML(k, s, { label, changes, mini } = {}) {
+    const ch = changes?.[s.key];
+    const tip = `<b>${esc(s.name)}</b><br>${fmt(s.value)} species · ${pct(s.value, k.base)}${ch == null ? '' : ` · ${signed(ch)} since the last list`}<br>${esc(s.long)}`;
+    const inner = label && s.share > 0.09 ? `<span class="in"><b>${fmt(s.value)}</b><span>${pct(s.value, k.base)}</span></span>` : '';
+    const attrs = `class="seg ${s.key}" style="flex:${s.value} 0 0" data-tip="${esc(tip)}" aria-label="${esc(`${s.name}: ${fmt(s.value)} species, ${pct(s.value, k.base)}`)}"`;
+    if (mini) return `<span ${attrs}></span>`;
+    return s.view ? `<button type="button" ${attrs} data-view="${s.view}" aria-pressed="${st.view === s.view}">${inner}</button>`
+      : `<span ${attrs} tabindex="0" role="img">${inner}</span>`;
+  }
+  // A number inside a part shows only where it fits; else the legend and the tooltip carry it.
+  function fitLabels() {
+    for (const el of document.querySelectorAll('#kbar .in')) {
+      el.hidden = false;
+      el.hidden = el.scrollWidth > el.parentElement.clientWidth - 16;
     }
-    f.stages.forEach((s, i) => {
-      const pts = filtered() || st.state ? [] : sumSeries(H, s.key, gis), ch = change(pts);
-      const delta = ch.delta == null ? (H && !filtered() && !st.state ? 'First week' : '') : `${signed(ch.delta)} since the last list`;
-      // Each step after the first names the gap above it; its line is always there, so rows keep their height.
-      const inner = `${i ? `<span class="st-lost">${esc(s.lostText)}</span>` : ''}<span class="st-label">${esc(s.label)}</span>
-        <span class="st-bar" aria-hidden="true"><i style="width:${(100 * s.share).toFixed(1)}%"></i></span>
-        <span class="st-n mono">${fmt(s.value)}</span><span class="st-share">${Math.round(100 * s.share)}%</span><span class="st-delta">${esc(delta)}</span>`;
-      $(`#funnel li[data-stage="${s.key}"]`).innerHTML = PICK[s.key]
-        ? `<button type="button" class="st" data-view="${PICK[s.key]}" aria-pressed="${st.view === PICK[s.key]}">${inner}</button>`
-        : `<div class="st">${inner}</div>`;
-    });
-    const u = $('#funnel .unlisted');
-    u.hidden = f.unlisted == null;
-    if (f.unlisted != null) {
-      u.querySelector('button').setAttribute('aria-pressed', String(st.view === 'waiting'));
-      u.querySelector('.mono').textContent = fmt(f.unlisted);
+  }
+  addEventListener('resize', fitLabels);
+  function paintKnowledge() {
+    const c = st.cat ? catOf(st.cat) : null, place = st.state ? stName.get(st.state) : 'India';
+    const D = { ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted };
+    const k = knowledge(D, gisNow(), st.state);
+    $('#funnel-sub').textContent = `${c ? c.name : 'All groups'} · ${place}${filterText()}`;
+    $('#kbase').textContent = fmt(k.base);
+    $('#kbase-l').textContent = st.state ? `species with an open record in ${place}` : 'species documented in India';
+    $('#knote').textContent = st.state
+      ? 'Checklists do not give states yet, so in a state the bar starts at the open record. Choose a part to show it on the map.'
+      : 'Each species of the India list counted once, at the furthest step we know about it. Each part of the bar is a gap in what we know. Choose a part to show it on the map.';
+    const changes = filtered() || st.state ? {} : segmentChanges(H, gisNow());
+    $('#kbar').innerHTML = k.segments.map(s => segHTML(k, s, { label: true, changes })).join('');
+    fitLabels();
+    // The legend carries every part's number, so none depends on hover or on fitting inside the bar.
+    $('#klegend').innerHTML = k.segments.map(s => `<span data-k="${s.key}"><i class="${s.key}"></i>${esc(s.name)} <b class="mono">${fmt(s.value)}</b> <span class="muted">${pct(s.value, k.base)}</span></span>`).join('');
+    $('#kunl-p').hidden = k.unlisted == null;
+    if (k.unlisted != null) {
+      $('#kunl').textContent = fmt(k.unlisted);
+      $('#kunl-p button').setAttribute('aria-pressed', String(st.view === 'waiting'));
     }
+    const rows = cats.map(cat => ({ cat, k: knowledge(D, cat.gis, st.state) }))
+      .map(r => ({ ...r, top: r.k.base ? r.k.segments.at(-1).value / r.k.base : 0 })).sort((a, b) => b.top - a.top);
+    $('#kgroups').innerHTML = rows.map(({ cat, k: g }) => `<button type="button" class="kg" data-cat="${cat.key}" aria-pressed="${st.cat === cat.key}">
+        <span class="kg-name">${esc(cat.name)}</span><span class="kbar kmini" aria-hidden="true">${g.segments.map(s => segHTML(g, s, { mini: true })).join('')}</span>
+        <span class="kg-n mono">${fmt(g.base)}</span></button>`).join('');
     $('.funnel-also [data-view="iucn"]').setAttribute('aria-pressed', String(st.view === 'iucn'));
   }
 
@@ -406,7 +423,7 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintFunnel(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
+    paintKnowledge(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
   }
   // Records to fix: GBIF counts, so they follow the state and group but not the filters.
   function paintFix() {
@@ -418,11 +435,25 @@ try {
   const bringIntoView = (el, block = 'center') => el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block });
 
   // Events.
-  document.querySelector('.funnel-card').addEventListener('click', e => {
+  const card = document.querySelector('.funnel-card');
+  card.addEventListener('click', e => {
+    const g = e.target.closest('.kg');
+    if (g) { st.cat = st.cat === g.dataset.cat ? null : g.dataset.cat; st.pick = null; shown = PAGE; paint(); return; }
     const b = e.target.closest('[data-view], [data-stage="unlisted"]'); if (!b) return;
     st.view = b.dataset.view || 'waiting'; shown = PAGE; paint();
   });
-  history_.then(() => paintFunnel());
+  // A part's numbers on hover and on focus, under the part.
+  const showTip = (el, x) => {
+    tipK.innerHTML = el.dataset.tip; tipK.hidden = false;
+    const r = el.getBoundingClientRect();
+    tipK.style.left = `${Math.max(8, Math.min(innerWidth - tipK.offsetWidth - 8, (x ?? r.left + r.width / 2) - tipK.offsetWidth / 2))}px`;
+    tipK.style.top = `${r.bottom + 8}px`;
+  };
+  card.addEventListener('pointermove', e => { const el = e.target.closest('[data-tip]'); if (el) showTip(el, e.clientX); else tipK.hidden = true; });
+  card.addEventListener('pointerleave', () => { tipK.hidden = true; });
+  card.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el) showTip(el); });
+  card.addEventListener('focusout', () => { tipK.hidden = true; });
+  history_.then(() => paintKnowledge());
   $('#cards').addEventListener('click', e => {
     const b = e.target.closest('.gcard'); if (!b) return;
     st.cat = b.dataset.cat || null; st.pick = null; shown = PAGE; paint();

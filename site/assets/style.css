@@ -166,32 +166,44 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 .ex { display: flex; flex-direction: column; gap: 16px; padding-top: 20px; padding-bottom: 40px }
 .ex-top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between }
-/* The evidence funnel: one bar per step on a common left baseline, one colour; the line above a step names the gap. */
-.funnel-card { margin-bottom: 20px }
-.funnel { list-style: none; margin: 0; padding: 0 12px 4px }
-.funnel .gap-h { font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 14px 8px 4px }
-.funnel .st { display: grid; grid-template-columns: minmax(0, 17em) minmax(0, 1fr) 6.5em 3em minmax(0, 11em); gap: 2px 14px;
-  align-items: center; width: 100%; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; font: inherit; color: var(--ink);
-  text-align: left; background: none; min-height: 44px }
-.funnel button.st { cursor: pointer } .funnel button.st:hover { background: var(--ground) }
-.funnel button.st[aria-pressed="true"] { border: 2px solid var(--ink); padding: 5px 7px }
-.funnel .st-lost { grid-column: 1 / -1; font-size: 13px; color: var(--muted); min-height: 1.4em }
-.funnel .st-label { font-size: 15px; font-weight: 500 }
-.funnel .st-bar { display: block; height: 12px; background: var(--zero) } .funnel .st-bar i { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0 }
-.funnel .st-n { text-align: right; font-size: 17px } .funnel .st-share { text-align: right; color: var(--ink-2); font-size: 14px }
-.funnel .st-delta { font-size: 13px; color: var(--muted) }
-.funnel .st.soon { grid-template-columns: minmax(0, 17em) 1fr } .funnel .st-soon { font-size: 14px; color: var(--muted) }
-.funnel .st-link { font: inherit; font-size: 14px; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 8px;
-  padding: 6px 8px; min-height: 44px; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
-.funnel .st-link[aria-pressed="true"] { border: 2px solid var(--ink); padding: 5px 7px; text-decoration: none }
-.funnel-also { padding-top: 8px }
+/* "How far does our knowledge go?": one 100% bar, each part a gap; the same bar per group family. The four parts
+   are an ordinal ramp of one hue (dataviz validate_palette.js --ordinal: monotone, steps >= 0.06, light end 2.09:1). */
+:root { --k1: #93BCAC; --k2: #5F9E87; --k3: #2E7A62; --k4: #0B5D4B }
+.k1 { background: var(--k1) } .k2 { background: var(--k2) } .k3 { background: var(--k3) } .k4 { background: var(--k4) }
+.obs { background: var(--k3) }
+.funnel-card { margin-bottom: 20px } .kbody { padding-top: 0 }
+.khero { margin: 14px 0 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px }
+.khero b { font: 500 clamp(30px, 3.4vw, 40px)/1 var(--mono) } .khero span { font-size: 17px; color: var(--ink-2) }
+.klegend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-bottom: 10px }
+.klegend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px }
+.kbar { display: flex; gap: 2px; height: 56px }
+.kbar .seg { box-sizing: border-box; margin: 0; border: 0; font: inherit; color: inherit; text-align: left; min-width: 2px; height: 100%; display: flex; flex-direction: column; justify-content: center;
+  align-items: flex-start; padding: 0 10px; overflow: hidden; cursor: default }
+.kbar button.seg { cursor: pointer }
+.kbar .seg:first-child { border-radius: 4px 0 0 4px } .kbar .seg:last-child { border-radius: 0 4px 4px 0 }
+.kbar .seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+.kbar button.seg[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--ink) }
+.kbar .in { color: #fff; font-size: 13px; line-height: 1.25; white-space: nowrap } .kbar .in[hidden] { display: none } .kbar .in b { display: block; font: 500 16px var(--mono) }
+.kbar .k1 .in { color: var(--ink) }
+.kunl { margin: 12px 0 0; display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--ink-2) }
+.kunl > i { flex: none; width: 54px; height: 16px; margin-top: 14px; border: 2px dashed var(--k3); border-radius: 4px }
+.kunl .st-link { font: inherit; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 4px;
+  min-height: 44px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.kunl .st-link[aria-pressed="true"] { border: 2px solid var(--ink); text-decoration: none }
+.kgroups-h { font-size: 13px; font-weight: 600; color: var(--muted); margin: 22px 0 6px }
+.kgroups { display: flex; flex-direction: column; gap: 2px }
+.kg { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr) 5.5em; gap: 4px 14px; align-items: center; width: 100%;
+  font: inherit; font-size: 14px; color: var(--ink); text-align: left; background: none; border: 1px solid transparent; border-radius: 8px;
+  padding: 5px 8px; min-height: 36px; cursor: pointer }
+.kg:hover { background: var(--ground) } .kg[aria-pressed="true"] { border: 2px solid var(--ink); padding: 4px 7px }
+.kbar.kmini { height: 16px } .kmini .seg { padding: 0 }
+.kg-n { text-align: right; color: var(--muted); font-size: 13px }
+.keltonian { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-2) }
+.funnel-also { padding-top: 12px }
 .funnel-also button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
-@media (max-width: 760px) {
-  .funnel { padding-inline: 4px }
-  .funnel .st { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px }
-  .funnel .st-lost { grid-row: 1 } .funnel .st-label, .funnel .st-n, .funnel .st-share { grid-row: 2 }
-  .funnel .st-bar { grid-column: 1 / -1; grid-row: 3 } .funnel .st-delta { grid-column: 1 / -1; grid-row: 4 }
-  .funnel .st.soon { grid-template-columns: 1fr } .funnel .st.soon .st-label { grid-row: 1 } .funnel .st-soon { grid-row: 2 }
+.ktip { position: fixed }
+@media (max-width: 700px) {
+  .kg { grid-template-columns: minmax(0, 1fr) auto } .kg .kmini { grid-column: 1 / -1; grid-row: 2 }
 }
 .search { position: relative; flex: 1 1 380px; max-width: 620px; display: flex; gap: 8px }
 .sbox { flex: 1; display: flex; align-items: center; gap: 10px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 12px; background: var(--surface); min-height: 48px }

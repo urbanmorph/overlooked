@@ -1,25 +1,23 @@
-// The evidence funnel on the home page: from the species documented in India to where and when they are recorded.
-// Each stage nests in the one before and belongs to the gap it measures: Linnean (is the species named and listed),
-// Wallacean (do we know where it lives). Built from summary.json; history.json gives the change since the last list.
+// "How far does our knowledge go?": each species of the India list counted once, at the furthest step we know about
+// it. The segments add up to the documented species, and each one is a gap: Linnean (only in checklists and papers),
+// Wallacean (no record with a place; no recent record). Built from summary.json; history.json gives the changes.
 
-import { fmt } from './common.js';
-
-// India rows of summary.json: [documented, open record, IUCN counts, threatened, open record in a state,
-// of them recorded in a state since recent_from]. A state row: [open record, threatened, recorded since recent_from].
-const INDIA = [
-  { key: 'documented', gap: 'Linnean', at: 0, label: 'Documented in India' },
-  { key: 'observed', gap: 'Wallacean', at: 1, label: 'With an open record',
-    lost: n => `${fmt(n)} known only from checklists and papers: no open record yet` },
-  { key: 'in_state', gap: 'Wallacean', at: 4, label: 'Open record placed in a state',
-    lost: n => `${fmt(n)} with no record placed in a state` },
-  { key: 'recent', gap: 'Wallacean', at: 5, label: 'Recorded in a state in the last 10 years',
-    lost: (n, S) => `${fmt(n)} not recorded in a state since ${S.recent_from}` },
+// The steps, least known first. view: the map view a segment selects (checklists give no states: none).
+export const STEPS = [
+  { key: 'k1', view: null, name: 'Only in checklists and papers',
+    long: 'Documented, but no open record yet: known from checklists, papers and specimens that are not online.' },
+  { key: 'k2', view: 'observed', name: 'Open record, no place',
+    long: 'An open record, but none placed in a state.' },
+  { key: 'k3', view: 'observed', name: 'Placed, not recent',
+    long: 'An open record placed in a state, but none in the last 10 years.' },
+  { key: 'k4', view: 'recent', name: 'Recorded in the last 10 years',
+    long: 'An open record placed in a state in the last 10 years.' },
 ];
-const STATE = [
-  { key: 'observed', gap: 'Wallacean', at: 0, label: 'With an open record here' },
-  { key: 'recent', gap: 'Wallacean', at: 2, label: 'Recorded here in the last 10 years',
-    lost: (n, S) => `${fmt(n)} not recorded here since ${S.recent_from}` },
-];
+const STEP = Object.fromEntries(STEPS.map(s => [s.key, s]));
+// When a summary lacks the years (lists from before 29 October 2026, or a state with filters on).
+const OBS = { key: 'obs', view: 'observed', name: 'With an open record', long: 'At least one open record.' };
+const HERE = { k3: { name: 'Open record here, not recent', long: 'An open record in this state, but none in the last 10 years.' },
+  k4: { name: 'Recorded here in the last 10 years', long: 'An open record in this state in the last 10 years.' } };
 
 const sum = (rows, gis, at) => {
   let total = 0;
@@ -31,26 +29,33 @@ const sum = (rows, gis, at) => {
   return total;
 };
 
-/** The stages for some groups, for India or one state (a state code). A stage the summary does not have is left
- * out. Each stage: {key, gap, label, value, share (of the first stage), lost (to the stage before), lostText}.
- * unlisted: names not on the India list, known only from observations that wait (India only). */
-export function funnel(S, gis, state = null) {
-  const defs = state == null ? INDIA : STATE, rows = state == null ? S.india : S.by_state?.[state];
-  const stages = [];
-  for (const d of defs) {
-    const value = sum(rows, gis, d.at);
-    if (value == null) continue;
-    const before = stages.at(-1), lost = before ? before.value - value : 0;
-    stages.push({ key: d.key, gap: d.gap, label: d.label, value,
-      share: stages.length ? (stages[0].value ? value / stages[0].value : 0) : 1, lost,
-      lostText: before && d.lost ? d.lost(lost, S) : '' });
+/** The segments for some groups, for India or one state (a state code). India rows of summary.json: [documented,
+ * open record, IUCN counts, threatened, open record in a state, of them recent]; a state row: [open record,
+ * threatened, recent]. Returns {base, segments: [{key, view, name, long, value, share}], unlisted (India only)}. */
+export function knowledge(S, gis, state = null) {
+  const seg = (def, value, base) => ({ ...def, value, share: base ? value / base : 0 });
+  if (state != null) {
+    const rows = S.by_state?.[state], obs = sum(rows, gis, 0) ?? 0, recent = sum(rows, gis, 2);
+    const segments = recent == null ? [seg(OBS, obs, obs)]
+      : [seg({ ...STEP.k3, ...HERE.k3 }, obs - recent, obs), seg({ ...STEP.k4, ...HERE.k4 }, recent, obs)];
+    return { base: obs, segments, unlisted: null };
   }
-  return { stages, unlisted: state == null && S.unlisted ? gis.reduce((a, gi) => a + (S.unlisted[gi] || 0), 0) : null };
+  const doc = sum(S.india, gis, 0), obs = sum(S.india, gis, 1), placed = sum(S.india, gis, 4), recent = sum(S.india, gis, 5);
+  const segments = placed == null || recent == null ? [seg(STEP.k1, doc - obs, doc), seg(OBS, obs, doc)]
+    : [seg(STEP.k1, doc - obs, doc), seg(STEP.k2, obs - placed, doc), seg(STEP.k3, placed - recent, doc), seg(STEP.k4, recent, doc)];
+  return { base: doc, segments, unlisted: S.unlisted ? gis.reduce((a, gi) => a + (S.unlisted[gi] || 0), 0) : null };
 }
 
-/** One history.json measure summed over groups, oldest first; a list that lacks it is left out. */
-export function sumSeries(H, measure, gis) {
-  const i = H?.measures?.indexOf(measure) ?? -1;
-  if (i < 0) return [];
-  return H.lists.map(l => ({ period: l.period, value: sum(l.groups, gis, i) })).filter(p => p.value != null);
+/** Each India segment's change since the list before, from history.json, summed over groups: {k1: n or null, ...}. */
+export function segmentChanges(H, gis) {
+  if (!H?.lists?.length || H.lists.length < 2) return {};
+  const at = m => H.measures.indexOf(m);
+  const parts = l => {
+    const v = m => (at(m) < 0 ? null : sum(l.groups, gis, at(m)));
+    const [d, o, p, r] = ['documented', 'observed', 'in_state', 'recent'].map(v);
+    const minus = (a, b) => (a == null || b == null ? null : a - b);
+    return { k1: minus(d, o), k2: minus(o, p), k3: minus(p, r), k4: r };
+  };
+  const [before, now] = H.lists.slice(-2).map(parts);
+  return Object.fromEntries(Object.keys(now).map(k => [k, now[k] == null || before[k] == null ? null : now[k] - before[k]]));
 }
