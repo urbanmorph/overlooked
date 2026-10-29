@@ -9,7 +9,8 @@ import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './comm
 import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
-import { gaps } from './gaps.js?v=53d52b5afe';
+import { redlist } from './redlist.js?v=5c50848c5d';
+import { gaps } from './gaps.js?v=97728f5651';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -254,6 +255,19 @@ try {
         : `<span class="g-not">Not measured yet. Data: ${esc(g.source)}.</span>`;
     }
   }
+  // Red List assessments for the chosen groups, for India: IUCN categories and assessment years with our records.
+  function paintRedlist() {
+    $('#rl-sub').textContent = `${groupName()} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
+    const rows = filtered() ? [] : redlist(S, gisNow());
+    for (const li of document.querySelectorAll('#rl li[data-rl]')) {
+      const r = rows.find(x => x.key === li.dataset.rl);
+      if (r) li.querySelector('.g-name b').textContent = r.label;
+      li.querySelector('.g-q').textContent = r ? r.note : '';
+      li.querySelector('.g-v').innerHTML = !r ? '<span class="g-not">Not counted when filters are on.</span>'
+        : `<b class="mono">${fmt(r.value)}</b>${r.of ? ` <span class="g-share">${pct(r.value, r.of)} of documented species</span>
+           <span class="meter" aria-hidden="true"><i style="width:${(100 * r.value / r.of).toFixed(1)}%"></i></span>` : ''}`;
+    }
+  }
   function paintKnowledge() {
     const place = placeName();
     const D = { ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted };
@@ -427,13 +441,16 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintGaps(); paintKnowledge(); paintCards(); paintHead(); paintMap(); await paintList();
+    paintGaps(); paintKnowledge(); paintRedlist(); paintCards(); paintHead(); paintMap(); await paintList();
   }
   function setState(code, district = null) { st.state = code; st.district = district; shown = PAGE; return paint(); }
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const bringIntoView = (el, block = 'center') => el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block });
 
   // Events.
+  document.querySelector('.rl-card').addEventListener('click', e => {
+    if (e.target.closest('[data-view="iucn"]')) { st.view = 'iucn'; shown = PAGE; paint(); }
+  });
   const card = document.querySelector('.funnel-card');
   card.addEventListener('click', e => {
     const g = e.target.closest('.kg');

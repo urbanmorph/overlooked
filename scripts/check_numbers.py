@@ -40,8 +40,12 @@ def check_summary(s):
         return []
     sums = {k: sum(s[at]) if isinstance(at, str) else sum(r[at] for r in s["india"])
             for k, at in TOTALS.items() if k in s["totals"]}
-    return [f"summary {s.get('period') or s.get('month')}: totals {k} is {s['totals'][k]}, its groups add up to {v}"
-            for k, v in sums.items() if s["totals"][k] != v]
+    name = s.get("period") or s.get("month")
+    out = [f"summary {name}: totals {k} is {s['totals'][k]}, its groups add up to {v}"
+           for k, v in sums.items() if s["totals"][k] != v]
+    rl = s["totals"].get("redlist") or {}
+    return out + [f"summary {name}: totals redlist {k} is {v}, its groups add up to {sum(s['redlist'][k])}"
+                  for k, v in rl.items() if v != sum(s["redlist"][k])]
 
 
 def check_history(h, summaries):

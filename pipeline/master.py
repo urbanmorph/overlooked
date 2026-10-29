@@ -652,10 +652,12 @@ def flags(con):
         WITH names AS (SELECT id, name, 0 AS p FROM ids
                        UNION SELECT id, name, 1 FROM names_in_r UNION SELECT id, name, 1 FROM evidence_r
                        WHERE name IS NOT NULL)
-        SELECT n.id, arg_min(i.category, n.p * 10 + CASE WHEN i.accepted THEN 0 ELSE 5 END) AS iucn
-        FROM names n JOIN iucn i ON i.name = n.name JOIN ids d ON d.id = n.id
-        WHERE i.kingdom IS NULL OR d.kingdom IS NULL OR i.kingdom = d.kingdom
-        GROUP BY n.id
+        SELECT id, a.c AS iucn, a.y AS iucn_year, a.d AS iucn_doi FROM (
+            SELECT n.id, arg_min({'c': i.category, 'y': i.year, 'd': i.doi},
+                                 n.p * 10 + CASE WHEN i.accepted THEN 0 ELSE 5 END) AS a
+            FROM names n JOIN iucn i ON i.name = n.name JOIN ids d ON d.id = n.id
+            WHERE i.kingdom IS NULL OR d.kingdom IS NULL OR i.kingdom = d.kingdom
+            GROUP BY n.id)
     """)
     con.sql("""
         CREATE OR REPLACE TABLE id_flags AS
@@ -718,7 +720,7 @@ def flags(con):
                s.sources, s.sources_mask, f.observed,
                -- 0: on the list, no open record yet; 1: an open record; 2: not on the list, a name that waits.
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
-               coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i,
+               coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
@@ -845,18 +847,19 @@ def species_files(con, out: Path):
     """sp/<shard>.json for the species page: {key: [name, group index, sources, status, IUCN, labels,
     states with an open record, iNaturalist taxon, observations waiting in India, [[state index, n]],
     year described, authority, paper of a new species [sources, journal, link, after the description, latest year
-    after, year of the paper]]}.
+    after, year of the paper], year and DOI of the IUCN assessment (from IUCN's CC BY copy on GBIF)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
-    for key, *row, taxon, n_india, states, year, authority, paper in con.sql("""
+    for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
-                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper
+                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
+                   s.iucn_year, s.iucn_doi
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
-                                                    json.loads(paper) if paper else None]
+                                                    json.loads(paper) if paper else None, iucn_year, iucn_doi]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -868,6 +871,8 @@ def described_summary(con):
 
 
 RECENT_YEARS = 10
+ASSESSABLE_STATES = 5   # not assessed by IUCN, but with open records in this many states or more
+REDLIST = ["assessed", "assessable", "out_of_date", "dd_newer", "threatened_not_recent", "endemic_not_assessed"]
 
 
 def recent_from(period):
@@ -924,19 +929,34 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     # Per group, in one pass: names not on the list, known only from observations that wait for a name (status 2);
     # the Linnean gap, species on the list described in `since` or later; the Darwinian gap, species on the list with
     # a DNA sequence or sample from India on GBIF (label dna).
+    # Red List assessments, from IUCN's CC BY copy (category, year) with the list's own records: assessed; not
+    # assessed but with open records in ASSESSABLE_STATES states or more; assessed before `since` (IUCN aims to
+    # reassess every 5-10 years); Data Deficient with a placed record after the assessment; threatened with no placed
+    # record since `since`; endemic and not assessed.
     unlisted, described_recent, dna = ([0] * n for _ in range(3))
-    for gi, u, d, s in con.sql(f"""
+    redlist = {k: [0] * n for k in REDLIST}
+    for gi, u, d, s, *rl in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
-                   count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna'))
+                   count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
+                   count(*) FILTER (WHERE status < 2 AND iucn <> 'NE'),
+                   count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND observed AND len(states_observed) >= {ASSESSABLE_STATES}),
+                   count(*) FILTER (WHERE status < 2 AND iucn <> 'NE' AND iucn_year < {since}),
+                   count(*) FILTER (WHERE status < 2 AND iucn = 'DD' AND last_year > iucn_year),
+                   count(*) FILTER (WHERE status < 2 AND iucn IN {THREATENED} AND NOT coalesce(last_year >= {since}, false)),
+                   count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
         unlisted[gi], described_recent[gi], dna[gi] = u, d, s
+        for k, v in zip(REDLIST, rl):
+            redlist[k][gi] = v
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
               "in_state": sum(r[4] for r in india), "recent": sum(r[5] for r in india), "unlisted": sum(unlisted),
-              "described_recent": sum(described_recent), "dna": sum(dna)}
+              "described_recent": sum(described_recent), "dna": sum(dna),
+              "redlist": {k: sum(v) for k, v in redlist.items()}}
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
-               "unlisted": unlisted, "described_recent": described_recent, "dna": dna, "recent_from": since,
+               "unlisted": unlisted, "described_recent": described_recent, "dna": dna, "redlist": redlist,
+               "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
@@ -1188,8 +1208,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     described_years(con)
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
-    con.sql(f"""COPY (SELECT key, name, "group", sources, observed, iucn, labels, states_observed, last_year, year,
-                            authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
+    con.sql(f"""COPY (SELECT key, name, "group", sources, observed, iucn, labels, states_observed, last_year, iucn_year,
+                            year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
             f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),

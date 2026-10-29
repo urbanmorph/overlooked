@@ -6,7 +6,8 @@ archive holds every assessed species with its global category (distribution exte
 and the synonyms IUCN lists. About 21 MB; downloaded only when its ETag changes.
 
 Creates table iucn: name (canonical "Genus epithet"), category (CR, EN, VU, NT, LC, DD, EW, EX),
-accepted (true for the assessed name, false for a synonym), iucn_id, kingdom, phylum, class, "order", family.
+accepted (true for the assessed name, false for a synonym), iucn_id, kingdom, phylum, class, "order", family,
+year and doi of the assessment (from its citation, which IUCN publishes in this CC BY copy).
 
 A later IUCN API route (env IUCN_TOKEN) only has to produce the same table; see `table`.
 """
@@ -25,6 +26,7 @@ URL = "https://hosted-datasets.gbif.org/datasets/iucn/iucn-latest.zip"
 DATASET = "19491596-35ae-4a91-9a98-85cf505f1bd3"
 CACHE = ROOT / "data" / "cache" / "master"
 PARQUET, META = "iucn.parquet", "iucn_meta.json"
+PARSED = 2   # the parquet's columns; a cached copy parsed by an older version is parsed again
 
 # threatStatus text -> category. Old "Lower Risk" categories map to their present equivalents.
 CATEGORY = {"critically endangered": "CR", "endangered": "EN", "vulnerable": "VU", "near threatened": "NT",
@@ -44,21 +46,26 @@ def parse(con, folder: Path, out: Path):
     con.sql(f"""
         CREATE OR REPLACE TABLE iucn AS
         WITH t AS (SELECT * FROM {read('taxon.txt', TAXON_COLS)}),
-        d AS (SELECT id, CASE lower(threat) {cases} END AS category FROM {read('distribution.txt', DIST_COLS)}
+        d AS (SELECT id, CASE lower(threat) {cases} END AS category,
+                     -- The citation: "Authors. 2013. Name. The IUCN Red List of Threatened Species 2013: https://doi.org/..."
+                     TRY_CAST(nullif(regexp_extract(source, 'Threatened Species (\\d{{4}})', 1), '') AS INTEGER) AS year,
+                     nullif(rtrim(regexp_extract(source, 'https://doi\\.org/\\S+'), '.'), '') AS doi
+              FROM {read('distribution.txt', DIST_COLS)}
               WHERE coalesce(locality, 'Global') = 'Global'),
-        acc AS (SELECT t.id, t.genus || ' ' || t.epithet AS name, d.category,
+        acc AS (SELECT t.id, t.genus || ' ' || t.epithet AS name, d.category, d.year, d.doi,
                        initcap(t.kingdom) AS kingdom, initcap(t.phylum) AS phylum, initcap(t.class) AS class,
                        initcap(t."order") AS "order", initcap(t.family) AS family
                 FROM t JOIN d USING (id)
                 WHERE t.status = 'accepted' AND t.rank = 'species' AND t.infraspecific IS NULL AND d.category IS NOT NULL),
         syn AS (SELECT a.id, regexp_extract(s.scientificname, '^([A-Z][a-z-]+ [a-z][a-z-]+)', 1) AS name, a.category,
-                       a.kingdom, a.phylum, a.class, a."order", a.family
+                       a.year, a.doi, a.kingdom, a.phylum, a.class, a."order", a.family
                 FROM t s JOIN acc a ON a.id = s.accepted_id
                 WHERE s.status = 'synonym'
                   AND NOT regexp_matches(s.scientificname, '^[A-Z][a-z-]+ [a-z][a-z-]+ (ssp\\.|subsp\\.|var\\.|[a-z][a-z-]+( |$))'))
-        SELECT DISTINCT name, category, true AS accepted, id AS iucn_id, kingdom, phylum, class, "order", family FROM acc
+        SELECT DISTINCT name, category, true AS accepted, id AS iucn_id, kingdom, phylum, class, "order", family, year, doi
+        FROM acc
         UNION ALL
-        SELECT DISTINCT name, category, false, id, kingdom, phylum, class, "order", family FROM syn
+        SELECT DISTINCT name, category, false, id, kingdom, phylum, class, "order", family, year, doi FROM syn
         WHERE name <> '' AND name NOT IN (SELECT name FROM acc)
     """)
     con.sql(f"COPY iucn TO '{out}' (FORMAT parquet, COMPRESSION zstd)")
@@ -85,7 +92,7 @@ def from_gbif(con, http, s3=None, cache=CACHE):
         tag = _remote_tag(http)
     except requests.RequestException:
         tag = None  # GBIF's file host is down: keep the cached copy if there is one
-    if not (meta and local.exists() and (tag is None or meta.get("etag") == tag)):
+    if not (meta and local.exists() and meta.get("parsed") == PARSED and (tag is None or meta.get("etag") == tag)):
         if tag is None:
             raise RuntimeError("IUCN archive not reachable and no cached copy")
         zpath = cache / "iucn-latest.zip"
@@ -100,7 +107,7 @@ def from_gbif(con, http, s3=None, cache=CACHE):
         with zipfile.ZipFile(zpath) as z:
             z.extractall(folder)
         parse(con, folder, local)
-        meta = {"etag": tag, "url": URL, "dataset": DATASET, "doi": "10.15468/0qnb58", "licence": "CC BY 4.0 (on GBIF)",
+        meta = {"etag": tag, "parsed": PARSED, "url": URL, "dataset": DATASET, "doi": "10.15468/0qnb58", "licence": "CC BY 4.0 (on GBIF)",
                 "rows": value(con, "SELECT count(*) FROM iucn")}
         meta_path.write_text(json.dumps(meta, indent=1))
         if s3:

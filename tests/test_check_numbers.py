@@ -85,3 +85,10 @@ def test_the_funnel_totals_are_the_sum_of_their_groups():
     assert cn.check_summary({**s, "totals": {**s["totals"], "recent": 5, "unlisted": 9}}) == [
         "summary 2026-11-02: totals recent is 5, its groups add up to 4",
         "summary 2026-11-02: totals unlisted is 9, its groups add up to 3"]
+
+
+def test_the_red_list_totals_are_the_sum_of_their_groups():
+    s = {"period": "2026-11-02", "groups": ["G0", "G1"], "india": [[1, 0, [0] * len(CATS), 0], [1, 0, [0] * len(CATS), 0]],
+         "redlist": {"assessed": [3, 1], "out_of_date": [2, 0]},
+         "totals": {"documented": 2, "observed": 0, "redlist": {"assessed": 4, "out_of_date": 3}}}
+    assert cn.check_summary(s) == ["summary 2026-11-02: totals redlist out_of_date is 3, its groups add up to 2"]

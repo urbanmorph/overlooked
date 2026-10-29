@@ -13,7 +13,7 @@ export const GAPS = [
     measure: (S, gis) => ({ value: sumGroups(S.india, gis, 5), of: sumGroups(S.india, gis, 0) }),
     note: S => `of documented species recorded in a state since ${S.recent_from}` },
   { term: 'Prestonian', plain: 'How many there are', question: 'Do we know how many of each species there are, and if that changes?',
-    source: 'IUCN Red List population trends; counts in GBIF records' },
+    source: 'IUCN Red List population trends (IUCN has to permit us to publish counts from them); State of India\u2019s Birds for birds' },
   { term: 'Darwinian', plain: 'How species are related', question: 'Do we know each species’ place in the tree of life?',
     measure: (S, gis) => ({ value: sumGroups(S.dna, gis), of: sumGroups(S.india, gis, 0) }),
     note: () => 'of documented species have a DNA sequence or sample from India on GBIF' },

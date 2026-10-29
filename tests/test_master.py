@@ -111,14 +111,16 @@ class FakeGbif:
 
 def iucn_table(con):
     con.sql("""CREATE TABLE iucn AS SELECT * FROM (VALUES
-        ('Aus bus', 'EN', true, '1', 'Animalia', 'Chordata', 'Aves', 'Passeriformes', 'Muscicapidae'),
-        ('Cus dus', 'VU', false, '2', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae'))
-        t(name, category, accepted, iucn_id, kingdom, phylum, class, "order", family)""")
+        ('Aus bus', 'EN', true, '1', 'Animalia', 'Chordata', 'Aves', 'Passeriformes', 'Muscicapidae', 2012, 'https://doi.org/10.2305/A'),
+        ('Cus dus', 'VU', false, '2', 'Plantae', 'Tracheophyta', 'Liliopsida', 'Asparagales', 'Orchidaceae', 2021, 'https://doi.org/10.2305/C'),
+        ('Hus ius', 'DD', true, '3', 'Animalia', 'Chordata', 'Aves', 'Passeriformes', 'Muscicapidae', 1996, NULL))
+        t(name, category, accepted, iucn_id, kingdom, phylum, class, "order", family, year, doi)""")
 
 
 @pytest.fixture
 def built(inputs, tmp_path, monkeypatch):
     monkeypatch.setattr(layer_newspecies.time, "sleep", lambda s: None)
+    monkeypatch.setattr(master, "ASSESSABLE_STATES", 1)   # the fixture's species are in one state at most
     monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
     con = duckdb.connect()
     iucn_table(con)
@@ -127,7 +129,7 @@ def built(inputs, tmp_path, monkeypatch):
     summary = master.build(con, inputs["paths"], out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"},
                            inputs["districts"], inputs["inputs"], cache={}, http=http)
     rows = {r[1]: dict(zip(["key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed",
-                            "last_year"], r))
+                            "last_year", "iucn_year"], r))
             for r in duckdb.sql(f"SELECT * FROM '{out / 'master.parquet'}'").fetchall()}
     return {"summary": summary, "rows": rows, "out": out, "http": http}
 
@@ -138,6 +140,22 @@ def test_the_latest_year_of_a_record_with_a_place(built):
     assert r["Aus bus"]["last_year"] == 2020 and r["Hus ius"]["last_year"] == 2000
     assert r["Wus xus"]["last_year"] is None and r["Gus hus"]["last_year"] is None   # no place; no record
     assert master.recent_from("2026-10-26") == 2016 and master.recent_from("2026-10") == 2016
+
+
+def test_red_list_assessment_gaps_from_the_open_copy_and_our_records(built):
+    """From IUCN's own CC BY copy (category, year of the assessment) and the list's own records, per group: assessed;
+    not assessed but with open records in ASSESSABLE_STATES states or more; assessed before recent_from (IUCN aims
+    to reassess every 5-10 years); Data Deficient with a placed record after the assessment; threatened with no
+    placed record since recent_from; endemic and not assessed."""
+    s = built["summary"]
+    birds, beetles, orchids = (GROUPS.index(g) for g in ("Birds", "Insects: beetles", "Plants: orchids"))
+    rl = s["redlist"]
+    assert [rl["assessed"][g] for g in (birds, orchids)] == [2, 1]           # Aus bus EN, Hus ius DD; Cus dus VU
+    assert rl["assessable"][beetles] == 1                                   # Eus fus: not assessed, one state
+    assert rl["out_of_date"][birds] == 2 and rl["out_of_date"][orchids] == 0  # 2012 and 1996; Cus dus 2021
+    assert rl["dd_newer"][birds] == 1                                       # Hus ius: 1996, a record of 2000
+    assert rl["threatened_not_recent"][orchids] == 1 and rl["threatened_not_recent"][birds] == 0
+    assert s["totals"]["redlist"] == {k: sum(v) for k, v in rl.items()}
 
 
 def test_documented_and_with_an_open_record(built):
@@ -152,7 +170,7 @@ def test_documented_and_with_an_open_record(built):
     assert "Zus zus" not in r                        # only needs ID
     assert not r["Gus hus"]["observed"]
     assert set(r["Aus bus"]) == {"key", "name", "group", "sources", "observed", "iucn", "labels", "states_observed",
-                                 "last_year"}
+                                 "last_year", "iucn_year"}
 
 
 def test_sources_and_labels(built):
@@ -167,7 +185,7 @@ def test_sources_and_labels(built):
 
 def test_iucn_by_name_and_synonym(built):
     r = built["rows"]
-    assert r["Aus bus"]["iucn"] == "EN"
+    assert r["Aus bus"]["iucn"] == "EN" and r["Aus bus"]["iucn_year"] == 2012
     assert r["Cus dus"]["iucn"] == "VU"       # through an IUCN synonym
     assert r["Eus fus"]["iucn"] == "NE"
 
@@ -205,8 +223,8 @@ def test_site_files(built):
     assert s["described_recent"][birds] == 2
     # Darwinian: a DNA sequence or sample from India on GBIF (Eus fus).
     assert s["dna"][GROUPS.index("Insects: beetles")] == 1 and s["dna"][birds] == 0
-    assert s["totals"] == {"documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1,
-                           "described_recent": 2, "dna": 1}
+    assert {k: v for k, v in s["totals"].items() if k != "redlist"} == {
+        "documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
@@ -270,10 +288,12 @@ def test_species_files(built):
     # [name, group index, sources, status, IUCN, labels, states with an open record,
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
-    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None]
+    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None]
+    aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    assert aus[-2:] == [2012, "https://doi.org/10.2305/A"]                 # assessed in, and the assessment's DOI
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
-    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020]]
+    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -325,12 +345,13 @@ def test_iucn_parse(tmp_path):
         "1\tAus bus L.\tANIMALIA\tCHORDATA\tAVES\tPASSERIFORMES\tMUSCICAPIDAE\tAus\tbus\tL.\tspecies\t\taccepted\t1\tc\tr\n"
         "9\tAus cus L.\t\t\t\t\t\t\t\t\t\t\tsynonym\t1\t\t\n"
         "8\tAus bus minor L.\t\t\t\t\t\t\t\t\t\t\tsynonym\t1\t\t\n")
-    (tmp_path / "distribution.txt").write_text("1\t\tGlobal\tc\t\tLower Risk/near threatened\tPresent\n"
-                                               .replace("Lower Risk/near threatened", "near threatened"))
+    cite = "Smith, A. 2013. Aus bus. The IUCN Red List of Threatened Species 2013: https://doi.org/10.2305/IUCN.UK.2013-1.RLTS.T1A2.en."
+    (tmp_path / "distribution.txt").write_text(f"1\t\tGlobal\t{cite}\t\tnear threatened\tPresent\n")
     con = duckdb.connect()
     iucn.parse(con, tmp_path, tmp_path / "iucn.parquet")
-    rows = con.sql("SELECT name, category, accepted, kingdom, class FROM iucn ORDER BY name").fetchall()
-    assert rows == [("Aus bus", "NT", True, "Animalia", "Aves"), ("Aus cus", "NT", False, "Animalia", "Aves")]
+    rows = con.sql("SELECT name, category, accepted, kingdom, class, year, doi FROM iucn ORDER BY name").fetchall()
+    doi = "https://doi.org/10.2305/IUCN.UK.2013-1.RLTS.T1A2.en"
+    assert rows == [("Aus bus", "NT", True, "Animalia", "Aves", 2013, doi), ("Aus cus", "NT", False, "Animalia", "Aves", 2013, doi)]
 
 
 def test_match_survives_a_timeout(tmp_path, monkeypatch):

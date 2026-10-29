@@ -15,7 +15,7 @@
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/explore.js?v=b9d22679a8"></script>
+<script type="module" src="/assets/explore.js?v=adb0844d21"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -80,8 +80,21 @@
         <button type="button" class="kg" data-cat="mammals" aria-pressed="false"><span class="kg-name">Mammals</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
         <button type="button" class="kg" data-cat="other" aria-pressed="false"><span class="kg-name">Other</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
       </div>
-      <div class="funnel-also"><button type="button" class="b" data-view="iucn" aria-pressed="false">IUCN Red List: threatened species</button></div>
     </div>
+  </section>
+
+  <section class="card gaps-card rl-card" aria-labelledby="rl-h">
+    <div class="bar-head"><h2 id="rl-h" style="font-size:20px">Red List assessments: what is assessed, and what waits</h2><span class="muted" id="rl-sub">All groups · India</span></div>
+    <p class="pad note" style="margin:0;padding-top:0">From IUCN's categories and the year of each assessment (IUCN 2026, The IUCN Red List of Threatened Species, via GBIF), with the open records of this list. An assessor can use these lists to choose what to assess next.</p>
+    <ol class="gaps" id="rl">
+      <li data-rl="assessed"><span class="g-name"><b>Assessed by IUCN</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+      <li data-rl="assessable"><span class="g-name"><b>Not assessed, with open records in 5 or more states</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+      <li data-rl="out_of_date"><span class="g-name"><b>Assessed more than 10 years ago</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+      <li data-rl="dd_newer"><span class="g-name"><b>Data Deficient, with newer records</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+      <li data-rl="threatened_not_recent"><span class="g-name"><b>Threatened, with no recent record</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+      <li data-rl="endemic_not_assessed"><span class="g-name"><b>Endemic to India, not assessed</b></span><span class="g-q"></span><span class="g-v"><b class="mono">–</b></span></li>
+    </ol>
+    <div class="pad funnel-also" style="padding-top:0"><button type="button" class="b" data-view="iucn" aria-pressed="false">Show threatened species on the map</button></div>
   </section>
 
   <section class="ex-top">
