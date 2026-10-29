@@ -2,9 +2,9 @@
 // Evolution, and Systematics 46: 523-549), with what the master list measures of each today. A gap we do not
 // measure yet says where its data would come from.
 
-import { sumGroups } from './common.js?v=9455fd8cc8';
+import { fmt, sumGroups } from './common.js?v=9455fd8cc8';
 
-// measure(S, gis) -> {value, of?}: a count, and the species it is a share of. note(S): what the count is.
+// measure(S, gis) -> {value, of?}: a count, and the species it is a share of. note(S, gis): what the count is.
 export const GAPS = [
   { term: 'Linnean', plain: 'Which species exist', question: 'Is every species described and named?',
     measure: (S, gis) => ({ value: sumGroups(S.described_recent, gis) }),
@@ -22,6 +22,8 @@ export const GAPS = [
   { term: 'Hutchinsonian', plain: 'What conditions species need', question: 'Do we know the climate and habitat each species can live in?',
     source: 'exact records with climate maps' },
   { term: 'Eltonian', plain: 'How species interact', question: 'Do we know what each species eats, pollinates or lives on?',
+    measure: (S, gis) => ({ value: sumGroups(S.interactions_india, gis), of: sumGroups(S.india, gis, 0) }),
+    note: (S, gis) => `of documented species have an interaction recorded in India (GloBI); ${fmt(sumGroups(S.interactions, gis))} have one recorded anywhere`,
     source: 'GloBI, the Global Biotic Interactions database' },
 ];
 
@@ -30,6 +32,6 @@ export function gaps(S, gis) {
   return GAPS.map(g => {
     const m = g.measure ? g.measure(S, gis) : { value: null };
     const measured = m.value != null && (m.of === undefined || m.of != null);
-    return { ...g, value: measured ? m.value : null, of: measured ? m.of : null, note: measured && g.note ? g.note(S) : '' };
+    return { ...g, value: measured ? m.value : null, of: measured ? m.of : null, note: measured && g.note ? g.note(S, gis) : '' };
   });
 }

@@ -121,3 +121,18 @@ def test_a_new_snapshot_is_downloaded_from_the_start(tmp_path, monkeypatch):
     globi.download(Http(b"old snapshot"), dest)
     new = Http(b"a newer snapshot", etag='"e2"')
     assert globi.download(new, dest) is True and dest.read_bytes() == b"a newer snapshot" and new.ranges == [0]
+
+
+def test_refresh_publishes_the_table_and_a_run_with_the_same_snapshot_does_nothing(tmp_path, monkeypatch, districts):
+    """On GitHub Actions each run starts with an empty disk: the snapshot's ETag is kept in R2 next to the table, so a
+    week with no new snapshot downloads nothing. Only the species table goes to R2 (cache/, never served)."""
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(globi, "CHUNK", 1 << 16)
+    body = gzip.compress(("\t".join(HEADER) + "\nAus bus\teats\tCus dus\t10.5\t76.5\t\td\tx\n").encode())
+    s3, http = FakeS3(), Http(body)
+    assert globi.refresh(http, s3, tmp_path / "one", districts) == "published"
+    assert sorted(s3.store) == ["cache/globi/meta.json", "cache/globi/species.parquet"]
+    again = Http(body)
+    assert globi.refresh(again, s3, tmp_path / "two", districts) == "unchanged" and again.ranges == []
+    assert globi.refresh(Http(body, etag='"e2"'), s3, tmp_path / "three", districts) == "published"

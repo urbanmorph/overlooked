@@ -20,7 +20,8 @@ from pipeline.master import MEASURES, history_entry
 
 # Each total and where its groups hold it: the place in a summary's india row, or a list of its own.
 TOTALS = {"documented": 0, "observed": 1, "in_state": 4, "recent": 5, "unlisted": "unlisted",
-          "described_recent": "described_recent", "dna": "dna"}
+          "described_recent": "described_recent", "dna": "dna", "interactions": "interactions",
+          "interactions_india": "interactions_india"}
 
 
 def old_list(s):

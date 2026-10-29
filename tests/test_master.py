@@ -71,8 +71,10 @@ def inputs(tmp_path):
         ('G1', 1849, 'Moore, 1849')) t(id, year, authority)""", tmp_path / "col_years.parquet")
     wcvp_y = write(con, """SELECT * FROM (VALUES ('Cus dus', 1753, '(L.) DC.'), ('Aus bus', 1700, 'X'))
         t(name, year, authority)""", tmp_path / "wcvp_years.parquet")
+    globi = write(con, """SELECT * FROM (VALUES ('Aus bus', 5, 3, ['eats'], 2, 1), ('Cus dus', 1, 1, ['pollinates'], 0, 1))
+        t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None},
-            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc,
+            "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -158,6 +160,25 @@ def test_red_list_assessment_gaps_from_the_open_copy_and_our_records(built):
     assert s["totals"]["redlist"] == {k: sum(v) for k, v in rl.items()}
 
 
+def test_interactions_from_globi_the_eltonian_gap(built):
+    """GloBI's species table: any recorded interaction, and one recorded in India, per group."""
+    s = built["summary"]
+    birds, orchids = GROUPS.index("Birds"), GROUPS.index("Plants: orchids")
+    assert (s["interactions"][birds], s["interactions_india"][birds]) == (1, 1)        # Aus bus
+    assert (s["interactions"][orchids], s["interactions_india"][orchids]) == (1, 0)    # Cus dus: not in India
+    assert (s["totals"]["interactions"], s["totals"]["interactions_india"]) == (2, 1)
+
+
+def test_a_list_without_the_globi_table_leaves_the_gap_unmeasured(inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "globi": None}, cache={}, http=FakeGbif())
+    assert s["interactions"] is None and s["interactions_india"] is None and "interactions" not in s["totals"]
+    assert any("GloBI" in n for n in s["notes"])
+
+
 def test_documented_and_with_an_open_record(built):
     """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
     one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
@@ -224,7 +245,8 @@ def test_site_files(built):
     # Darwinian: a DNA sequence or sample from India on GBIF (Eus fus).
     assert s["dna"][GROUPS.index("Insects: beetles")] == 1 and s["dna"][birds] == 0
     assert {k: v for k, v in s["totals"].items() if k != "redlist"} == {
-        "documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1}
+        "documented": 10, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
+        "interactions": 2, "interactions_india": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
@@ -288,12 +310,13 @@ def test_species_files(built):
     # [name, group index, sources, status, IUCN, labels, states with an open record,
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
-    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None]
+    assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
+                          None, False]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-2:] == [2012, "https://doi.org/10.2305/A"]                 # assessed in, and the assessment's DOI
+    assert aus[-4:] == [2012, "https://doi.org/10.2305/A", 3, True]        # IUCN year and DOI; GloBI partners, in India
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
-    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None]
+    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -476,7 +499,7 @@ def test_a_list_from_before_open_records_is_compared_by_the_same_rule(tmp_path):
                                                                                  [{}, {}], [2, 0], [9, 0])})
     assert s["india"][0][:2] == [3, 2] and s["india"][0][3] == 1   # documented, open record, threatened (Cus dus)
     assert s["waiting"] == {"india": [[2, 9, 0], [0, 0, 0]]} and s["period"] == "2026-10-26"
-    assert master.history_entry(s)["india"] == [3, None, 2, 1, None, 1, 2, 9, None, None]   # in a state: K3
+    assert master.history_entry(s)["india"] == [3, None, 2, 1, None, 1, 2, 9, None, None, None, None]   # K3 in a state
 
 
 def test_first_month_has_no_changes(built):
@@ -644,12 +667,13 @@ def test_history_has_one_entry_per_list_with_the_totals_by_group():
     h = master.history(None, s1)
     h = master.history(h, s2)
     assert h["measures"] == ["documented", "unlisted", "observed", "in_state", "recent", "threatened",
-                             "waiting_species", "waiting_observations", "described_recent", "dna"]
+                             "waiting_species", "waiting_observations", "described_recent", "dna", "interactions",
+                             "interactions_india"]
     assert [e["period"] for e in h["lists"]] == ["2026-10", "2026-10-26"]
     # A summary from before the funnel has no in_state, recent, unlisted, described_recent or dna: null, not 0.
-    assert h["lists"][1]["india"] == [16, None, 9, None, None, 5, 3, 32, None, None]
-    assert h["lists"][1]["groups"] == [[11, None, 7, None, None, 4, 2, 25, None, None],
-                                       [5, None, 2, None, None, 1, 1, 7, None, None]]
+    assert h["lists"][1]["india"] == [16, None, 9, None, None, 5, 3, 32, None, None, None, None]
+    assert h["lists"][1]["groups"] == [[11, None, 7, None, None, 4, 2, 25, None, None, None, None],
+                                       [5, None, 2, None, None, 1, 1, 7, None, None, None, None]]
     assert master.history(h, s2) == h                              # the same list again changes nothing
     assert [e["period"] for e in master.history(h, {**s1, "period": "2026-11-02"})["lists"]] == ["2026-10", "2026-10-26", "2026-11-02"]
 
@@ -666,9 +690,9 @@ def test_next_history_continues_the_previous_list_or_starts_from_its_summary():
     five = {"measures": ["documented", "observed", "threatened", "waiting_species", "waiting_observations"],
             "lists": [{"period": "2026-10", "india": [1, 2, 3, 4, 5], "groups": [[1, 2, 3, 4, 5], [0, 0, 0, 0, 0]]}]}
     h = master.next_history({"summary": s1, "history": five}, s2)
-    assert h["lists"][0] == {"period": "2026-10", "india": [1, None, 2, None, None, 3, 4, 5, None, None],
-                             "groups": [[1, None, 2, None, None, 3, 4, 5, None, None],
-                                        [0, None, 0, None, None, 0, 0, 0, None, None]]}
+    assert h["lists"][0] == {"period": "2026-10", "india": [1, None, 2, None, None, 3, 4, 5, None, None, None, None],
+                             "groups": [[1, None, 2, None, None, 3, 4, 5, None, None, None, None],
+                                        [0, None, 0, None, None, 0, 0, 0, None, None, None, None]]}
     # A history with the measures of before (identified): only the previous list, read with today's rule.
     old = {"measures": ["documented", "observed", "identified"], "lists": [{"period": "2026-10"}]}
     h = master.next_history({"summary": s2, "history": old}, s3)

@@ -1,0 +1,51 @@
+name: GloBI layer
+
+# GloBI (Global Biotic Interactions): species with a recorded interaction, and with one in India, for the
+# Eltonian gap. Weekly, the day after GloBI's snapshot usually updates; it downloads the 2.7 GB snapshot only when
+# its ETag changed (kept in R2 cache/globi/meta.json), and stores only the species table (about 5 MB) in R2's
+# cache/. Scheduled runs need the repository variable PIPELINE_ENABLED = true.
+
+on:
+  schedule:
+    - cron: "41 4 * * 3"
+  workflow_dispatch:
+
+concurrency:
+  group: globi
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  globi:
+    if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - uses: actions/cache@v6
+        with:
+          path: data/ref
+          key: lgd-districts-v1
+      - name: Build the layer
+        env:
+          GBIF_EMAIL: ${{ secrets.GBIF_EMAIL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python -u -m pipeline.globi --publish --minutes 90
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "GloBI layer failed ($(date -u +%Y-%m-%d))" \
+            --body "The GloBI workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

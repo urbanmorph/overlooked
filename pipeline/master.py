@@ -202,6 +202,13 @@ def wcvp_input(s3):
     return WCVP_LOCAL if WCVP_LOCAL.exists() else r2_file(s3, "cache/master/wcvp_india.parquet", CACHE / "wcvp_india.parquet")
 
 
+def globi_input(s3):
+    """GloBI's species table (pipeline/globi.py). With R2, always R2's copy (a local one can be out of date)."""
+    from pipeline import globi
+    return r2_file(s3, globi.R2_PREFIX + "species.parquet", CACHE / "globi_species.parquet") if s3 else (
+        globi.CACHE / "species.parquet" if (globi.CACHE / "species.parquet").exists() else None)
+
+
 def bsi_input(s3):
     return BSI_LOCAL if BSI_LOCAL.exists() else r2_file(s3, "cache/bsi/bsi_checklist.csv", CACHE / "bsi_checklist.csv")
 
@@ -646,18 +653,25 @@ def flags(con):
     src_idx = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))
     lab_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(CODES))
     cat_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(IUCN_CATS))
+    con.sql("""
+        CREATE OR REPLACE TABLE id_names AS   -- every name of a species: its display name first (p 0)
+        SELECT id, name, 0 AS p FROM ids
+        UNION SELECT id, name, 1 FROM names_in_r UNION SELECT id, name, 1 FROM evidence_r WHERE name IS NOT NULL
+    """)
     # IUCN: the assessed name equal to the display name first, then any accepted name, then a synonym.
     con.sql("""
         CREATE OR REPLACE TABLE id_iucn AS
-        WITH names AS (SELECT id, name, 0 AS p FROM ids
-                       UNION SELECT id, name, 1 FROM names_in_r UNION SELECT id, name, 1 FROM evidence_r
-                       WHERE name IS NOT NULL)
         SELECT id, a.c AS iucn, a.y AS iucn_year, a.d AS iucn_doi FROM (
             SELECT n.id, arg_min({'c': i.category, 'y': i.year, 'd': i.doi},
                                  n.p * 10 + CASE WHEN i.accepted THEN 0 ELSE 5 END) AS a
-            FROM names n JOIN iucn i ON i.name = n.name JOIN ids d ON d.id = n.id
+            FROM id_names n JOIN iucn i ON i.name = n.name JOIN ids d ON d.id = n.id
             WHERE i.kingdom IS NULL OR d.kingdom IS NULL OR i.kingdom = d.kingdom
             GROUP BY n.id)
+    """)
+    con.sql("""
+        CREATE OR REPLACE TABLE id_globi AS
+        SELECT n.id, max(g.partners) AS partners, bool_or(g.india) AS interactions_india
+        FROM id_names n JOIN globi g USING (name) GROUP BY n.id
     """)
     con.sql("""
         CREATE OR REPLACE TABLE id_flags AS
@@ -721,11 +735,13 @@ def flags(con):
                -- 0: on the list, no open record yet; 1: an open record; 2: not on the list, a name that waits.
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
+               gl.partners, coalesce(gl.interactions_india, false) AS interactions_india,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
+        LEFT JOIN id_globi gl USING (id)
         ORDER BY gi, i.name
     """)
     con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
@@ -847,19 +863,21 @@ def species_files(con, out: Path):
     """sp/<shard>.json for the species page: {key: [name, group index, sources, status, IUCN, labels,
     states with an open record, iNaturalist taxon, observations waiting in India, [[state index, n]],
     year described, authority, paper of a new species [sources, journal, link, after the description, latest year
-    after, year of the paper], year and DOI of the IUCN assessment (from IUCN's CC BY copy on GBIF)]}.
+    after, year of the paper], year and DOI of the IUCN assessment (from IUCN's CC BY copy on GBIF), GloBI partner
+    species (null: no recorded interaction), an interaction recorded in India]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
-    for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi in con.sql("""
+    for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
-                   s.iucn_year, s.iucn_doi
+                   s.iucn_year, s.iucn_doi, s.partners, s.interactions_india
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
-                                                    json.loads(paper) if paper else None, iucn_year, iucn_doi]
+                                                    json.loads(paper) if paper else None, iucn_year, iucn_doi,
+                                                    partners, inter_india]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -935,9 +953,12 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     # record since `since`; endemic and not assessed.
     unlisted, described_recent, dna = ([0] * n for _ in range(3))
     redlist = {k: [0] * n for k in REDLIST}
-    for gi, u, d, s, *rl in con.sql(f"""
+    interactions, interactions_india = [0] * n, [0] * n   # the Eltonian gap (GloBI)
+    for gi, u, d, s, ia, ii, *rl in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
+                   count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
+                   count(*) FILTER (WHERE status < 2 AND interactions_india),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE'),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND observed AND len(states_observed) >= {ASSESSABLE_STATES}),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE' AND iucn_year < {since}),
@@ -945,17 +966,22 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND iucn IN {THREATENED} AND NOT coalesce(last_year >= {since}, false)),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
-        unlisted[gi], described_recent[gi], dna[gi] = u, d, s
+        unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi] = u, d, s, ia, ii
         for k, v in zip(REDLIST, rl):
             redlist[k][gi] = v
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
               "in_state": sum(r[4] for r in india), "recent": sum(r[5] for r in india), "unlisted": sum(unlisted),
               "described_recent": sum(described_recent), "dna": sum(dna),
               "redlist": {k: sum(v) for k, v in redlist.items()}}
+    measured = value(con, "SELECT count(*) > 0 FROM globi")   # no GloBI table: not measured, not 0
+    if measured:
+        totals.update(interactions=sum(interactions), interactions_india=sum(interactions_india))
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
                "unlisted": unlisted, "described_recent": described_recent, "dna": dna, "redlist": redlist,
+               "interactions": interactions if measured else None,
+               "interactions_india": interactions_india if measured else None,
                "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
@@ -1042,7 +1068,7 @@ def changes(con, prev_parquet, prev_period, period_id, n_groups=len(GROUPS)):
 
 # Measures of the weekly history (history.json), for India and per group.
 MEASURES = ["documented", "unlisted", "observed", "in_state", "recent", "threatened", "waiting_species",
-            "waiting_observations", "described_recent", "dna"]
+            "waiting_observations", "described_recent", "dna", "interactions", "interactions_india"]
 
 
 def history_entry(summary):
@@ -1058,7 +1084,8 @@ def history_entry(summary):
     for gi, (d, o, cats, *rest) in enumerate(summary["india"]):
         placed, recent = (rest[1:3] + [None, None])[:2]
         groups.append([d, own("unlisted", gi), o, placed, recent, sum(cats[k] for k in threat),
-                       *(waiting[gi][:2] if gi < len(waiting) else [0, 0]), own("described_recent", gi), own("dna", gi)])
+                       *(waiting[gi][:2] if gi < len(waiting) else [0, 0]), own("described_recent", gi), own("dna", gi),
+                       own("interactions", gi), own("interactions_india", gi)])
     india = [None if any(v is None for v in col) else sum(col) for col in zip(*groups)]
     return {"period": summary.get("period") or summary.get("month"), "india": india, "groups": groups}
 
@@ -1189,6 +1216,13 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     if inputs.get("newspecies"):
         load_newspecies(con, inputs["newspecies"])
     load_described(con, inputs.get("described") or {})
+    # GloBI: a recorded interaction anywhere (partners: distinct partner species), and one recorded in India.
+    if inputs.get("globi"):
+        con.sql(f"""CREATE OR REPLACE TABLE globi AS
+                    SELECT name, partners, records_india > 0 AS india FROM '{inputs["globi"]}'""")
+    else:
+        con.sql("CREATE OR REPLACE TABLE globi (name VARCHAR, partners BIGINT, india BOOLEAN)")
+        notes.append("GloBI's species table was not found: the Eltonian gap (interactions) is not measured.")
     if not inputs.get("zsi"):
         notes.append("ZSI checklists not found.")
     if not inputs.get("wcvp"):
@@ -1227,7 +1261,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi")), *(inputs.get("described") or {}).values()]:
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1303,7 +1337,8 @@ def run(a):
     ns_doc, ns_month = layer_input(s3, "newspecies", "file", "new_species.json")
     genus_doc, _ = layer_input(s3, "inat", "genus_counts", "genus_counts.json")
     coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
-    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "inat": inat_doc, "newspecies": ns_doc,
+    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3),
+              "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
     con = duckdb.connect()

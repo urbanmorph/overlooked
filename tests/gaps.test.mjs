@@ -6,7 +6,7 @@ import { GAPS, gaps } from '../site/assets/gaps.js';
 
 const cats = n => [0, 0, 0, 0, n, 0, 0, 0, 0];
 const S = {
-  recent_from: 2016, described_recent: [3, 1], dna: [10, 5],
+  recent_from: 2016, described_recent: [3, 1], dna: [10, 5], interactions: [40, 9], interactions_india: [12, 3],
   india: [[100, 60, cats(100), 3, 40, 15], [50, 20, cats(50), 1, 10, 2]],
 };
 
@@ -21,6 +21,8 @@ test('what we measure today, for some groups: Linnean, Wallacean, Darwinian; the
   assert.deepEqual([by.Wallacean.value, by.Wallacean.of], [17, 150]);
   assert.deepEqual([by.Darwinian.value, by.Darwinian.of], [15, 150]);
   assert.equal(by.Prestonian.value, null);
+  assert.deepEqual([by.Eltonian.value, by.Eltonian.of], [15, 150]);     // recorded in India
+  assert.match(by.Eltonian.note, /49 .*anywhere/);                    // and anywhere, for the same groups
   assert.equal(gaps(S, [1]).find(g => g.term === 'Darwinian').value, 5);
 });
 

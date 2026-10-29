@@ -12,7 +12,11 @@ with no point, a locality with the word India (not Indiana, Indian Head or "Indi
 Output: species.parquet, one row per species name: records (interactions it is part of, as source or target),
 partners (distinct partner species), types (interaction types), records_india, datasets (distinct source datasets).
 
-Usage: .venv/bin/python -m pipeline.globi [--minutes 120]
+Weekly on GitHub Actions (globi.yml, --publish): the snapshot's ETag is kept in R2 next to the table
+(cache/globi/meta.json, cache/globi/species.parquet; R2's cache/ is never served), so a week with no new snapshot
+downloads nothing. The 2.7 GB snapshot itself is never stored in R2.
+
+Usage: .venv/bin/python -m pipeline.globi [--minutes 120] [--publish]
 """
 
 import argparse
@@ -24,10 +28,12 @@ import duckdb
 import requests
 
 from pipeline import places
+from pipeline.util import first
 
 ROOT = Path(__file__).resolve().parent.parent
 URL = "https://depot.globalbioticinteractions.org/snapshot/target/data/tsv/interactions.tsv.gz"
 CACHE = ROOT / "data" / "cache" / "globi"
+R2_PREFIX = "cache/globi/"
 CHUNK = 8 << 20                      # bytes per write
 LOG_EVERY = 256 << 20                # a progress line every 256 MB
 BOX = (5.0, 38.0, 67.0, 99.0)        # lat min, lat max, lon min, lon max: points worth placing in districts
@@ -101,14 +107,41 @@ def species_table(con, tsv: Path, districts_path, out: Path):
     return out
 
 
+def refresh(http, s3, cache: Path, districts_path, deadline=None, log=print):
+    """The species table in R2 for the current snapshot. "unchanged" when R2 already has it (nothing downloaded),
+    "published" when it was built and uploaded, "stopped" at the time limit (the .part file stays)."""
+    from pipeline import r2
+    head = http.head(URL, timeout=60, allow_redirects=True)
+    head.raise_for_status()
+    etag = head.headers.get("ETag")
+    if (r2.get_json(s3, R2_PREFIX + "meta.json") or {}).get("etag") == etag and r2.exists(s3, R2_PREFIX + "species.parquet"):
+        return "unchanged"
+    tsv, out = cache / "interactions.tsv.gz", cache / "species.parquet"
+    if download(http, tsv, deadline=deadline, log=log) is None:
+        return "stopped"
+    species_table(duckdb.connect(), tsv, districts_path, out)
+    r2.sync_file(s3, out, R2_PREFIX + out.name, immutable=False)
+    r2.put_json(s3, {"etag": etag, "url": URL}, R2_PREFIX + "meta.json")   # last: it marks the table as current
+    return "published"
+
+
 def main():
     from pipeline import districts, health
     p = argparse.ArgumentParser()
     p.add_argument("--minutes", type=float, help="stop the download after this many minutes; the next run continues")
+    p.add_argument("--publish", action="store_true", help="keep the species table in R2 (cache/globi/)")
     a = p.parse_args()
     http = requests.Session()
     http.headers["User-Agent"] = health.ua()
     deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
+    if a.publish:
+        from dotenv import load_dotenv
+
+        from pipeline import r2
+        load_dotenv(ROOT / ".env", override=True)
+        districts.ensure(health.ua())
+        print(f"GloBI: {refresh(http, r2.client(), CACHE, districts.PATH, deadline, log=lambda m: print(m, flush=True))}", flush=True)
+        return
     tsv, out = CACHE / "interactions.tsv.gz", CACHE / "species.parquet"
     got = download(http, tsv, deadline=deadline, log=lambda m: print(m, flush=True))
     if got is None:
@@ -117,7 +150,7 @@ def main():
         districts.ensure(health.ua())
         t = time.monotonic()
         species_table(duckdb.connect(), tsv, districts.PATH, out)
-        n, india = duckdb.sql(f"SELECT count(*), count(*) FILTER (WHERE records_india > 0) FROM '{out}'").fetchone()
+        n, india = first(duckdb.connect(), f"SELECT count(*), count(*) FILTER (WHERE records_india > 0) FROM '{out}'")
         print(f"{n} species with a recorded interaction, {india} with one in India ({time.monotonic() - t:.0f} s)", flush=True)
     else:
         print("GloBI snapshot unchanged; species table up to date", flush=True)
