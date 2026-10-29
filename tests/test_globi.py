@@ -40,6 +40,8 @@ def test_one_row_per_species_from_both_sides_of_each_interaction(tmp_path, distr
         ["Aus bus", "pollinates", "Eus fus", "", "", "Kerala, India", "ds/two", "x"],   # no point: the locality says India
         ["Aus bus", "eats", "Cus dus", "40.0", "-3.0", "Spain", "ds/one", "x"],          # abroad
         ["Gus hus", "parasiteOf", "", "20.5", "80.5", "", "ds/one", "x"],               # partner not named to species
+        ["Hus ius", "eats", "Ius jus", "", "", "USA: Indiana", "ds/one", "x"],           # not India: a whole word only
+        ["Hus ius", "eats", "Ius jus", "", "", "Indian subregion", "ds/one", "x"],
         ["broken row with no tabs"],
     ])
     out = tmp_path / "species.parquet"
@@ -50,6 +52,7 @@ def test_one_row_per_species_from_both_sides_of_each_interaction(tmp_path, distr
     assert rows["Cus dus"] == (2, 1, ["eats"], 1, 1)                   # a target counts as well as a source
     assert rows["Eus fus"][3] == 1                                     # India from the locality name
     assert rows["Gus hus"] == (1, 0, ["parasiteOf"], 1, 1)
+    assert rows["Hus ius"][3] == 0                                     # "Indiana", "Indian subregion": not India
 
 
 class Resp:

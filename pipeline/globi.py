@@ -7,7 +7,7 @@ cite GloBI (Poelen, Simons and Mungall 2014, Ecological Informatics 24: 148-159)
 
 Download: resumable (HTTP Range into a .part file), skipped when the snapshot's ETag is unchanged; progress lines
 while it runs. In India: a point inside an LGD district (pipeline.places, with its 5 km tolerance at the coast), or,
-with no point, a locality that names India.
+with no point, a locality with the word India (not Indiana, Indian Head or "Indian subregion").
 
 Output: species.parquet, one row per species name: records (interactions it is part of, as source or target),
 partners (distinct partner species), types (interaction types), records_india, datasets (distinct source datasets).
@@ -87,7 +87,9 @@ def species_table(con, tsv: Path, districts_path, out: Path):
     con.sql(f"""
         COPY (
             WITH r AS (
-                SELECT g.*, p.dist_lgd IS NOT NULL OR (g.lat IS NULL AND g.locality ILIKE '%india%') AS india
+                SELECT g.*, p.dist_lgd IS NOT NULL
+                            -- the word India: not Indiana, Indian Head or the Indian subregion
+                            OR (g.lat IS NULL AND regexp_matches(coalesce(g.locality, ''), '(?i)\\bindia\\b')) AS india
                 FROM gi g LEFT JOIN point_district p ON p.lat = g.lat AND p.lon = g.lon),
             e AS (SELECT s AS name, t AS partner, type, india, ns FROM r WHERE s IS NOT NULL
                   UNION ALL SELECT t, s, type, india, ns FROM r WHERE t IS NOT NULL)
