@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Records to fix · Overlooked</title>
+<meta name="description" content="For data publishers: GBIF records from India that have no exact location or no species name, by dataset, state and group.">
+<!-- part:head -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css">
+<!-- /part:head -->
+<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="/assets/common.js">
+<script type="module" src="/assets/fixpage.js"></script>
+</head>
+<body>
+<!-- part:noscript -->
+<noscript><div class="wrap" style="padding:16px 0"><b>This page needs JavaScript to draw the map and lists.</b> The same data is open without it: see <a href="/llms.txt">the data guide</a>, the files under <a href="/data/layers/master/latest.json">/data/</a>, and <a href="/method">Sources and method</a>.</div></noscript>
+<!-- /part:noscript -->
+<!-- part:header -->
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M27 10.5A12.5 12.5 0 1 0 27 21.5" fill="none" stroke="#16201C" stroke-width="3.4" stroke-linecap="round"/><path d="M15 16h4l2-4.5 3 9 2-4.5h4" fill="none" stroke="#B4480E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="/">Explore</a>
+      <a href="/changes">Changes</a>
+      <a href="/shortlist">Shortlists</a>
+      <a href="/fix" aria-current="page">Records to fix</a>
+      <a href="/method">Sources and method</a>
+    </nav>
+  </div>
+</header>
+<!-- /part:header -->
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <h1 class="page">Records to fix</h1>
+    <p class="lede">For data publishers. GBIF has these records from India, but this site cannot use all of them: some have no exact location, and some have no species name. Correct them in your dataset. The next weekly update then uses them, and the species move closer to the right end of the bar on the home page.</p>
+  </section>
+
+  <section class="card" id="fix" aria-labelledby="fix-h" style="margin-top:24px" hidden>
+    <div class="bar-head">
+      <h2 id="fix-h" style="font-size:20px">Records that this site cannot use in full</h2>
+      <span class="muted" id="fix-sub"></span>
+    </div>
+    <div class="filters pad" style="padding-top:0">
+      <label class="f">State <select id="fstate"><option value="">All of India</option></select></label>
+      <label class="f">Group <select id="fgroup"><option value="">All groups</option></select></label>
+    </div>
+    <div class="kpis fix-kpis pad" id="fix-kpis"></div>
+    <div id="fix-holders"></div>
+    <div id="fix-only"></div>
+    <p class="pad muted note" id="fix-source" style="padding-top:0"></p>
+  </section>
+</main>
+
+<!-- part:footer -->
+<footer>
+  <div class="wrap">
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · Local Government Directory, via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
+  </div>
+</footer>
+<!-- /part:footer -->
+</body>
+</html>

@@ -34,6 +34,7 @@
       <a href="/" aria-current="page">Explore</a>
       <a href="/changes">Changes</a>
       <a href="/shortlist">Shortlists</a>
+      <a href="/fix">Records to fix</a>
       <a href="/method">Sources and method</a>
     </nav>
   </div>
@@ -65,6 +66,7 @@
       <div class="klegend" id="klegend"><span data-k="k1"><i class="k1"></i>Only in checklists and papers <b class="mono">–</b></span><span data-k="k2"><i class="k2"></i>Open record, no place <b class="mono">–</b></span><span data-k="k3"><i class="k3"></i>Placed, not recent <b class="mono">–</b></span><span data-k="k4"><i class="k4"></i>Recorded in the last 10 years <b class="mono">–</b></span></div>
       <div class="kbar" id="kbar" role="group" aria-label="Species of India by how far our knowledge goes"></div>
       <p class="kunl" id="kunl-p"><i aria-hidden="true"></i><span><button type="button" class="st-link" data-stage="unlisted" aria-pressed="false"><b class="mono" id="kunl">–</b> more names are not on the India list yet.</button> Only observations that wait for a name give them.</span></p>
+      <p class="note kfix">Many open records have no exact place, or no species name. Their publishers can correct them: see the <a href="/fix" id="kfix">Records to fix</a>.</p>
       <h3 class="kgroups-h">By group, the groups with the most recent records first</h3>
       <div class="kgroups" id="kgroups">
         <button type="button" class="kg" data-cat="insects" aria-pressed="false"><span class="kg-name">Insects</span><span class="kbar kmini" aria-hidden="true"></span><span class="kg-n mono">–</span></button>
@@ -142,18 +144,6 @@
       </table>
     </div>
     <div class="pad" style="padding-top:0"><button type="button" class="b" id="more" hidden>Show more</button></div>
-  </section>
-
-  <section class="card" id="fix" aria-labelledby="fix-h" hidden>
-    <div class="bar-head">
-      <h2 id="fix-h" style="font-size:20px">Records to fix</h2>
-      <span class="muted" id="fix-sub"></span>
-    </div>
-    <p class="pad muted" style="padding-top:0;padding-bottom:0">For data publishers. GBIF has these records from India, but this site cannot use all of them: some have no exact location, and some have no species name. Correct them in your dataset. The next weekly update then uses them.</p>
-    <div class="kpis fix-kpis pad" id="fix-kpis"></div>
-    <div id="fix-holders"></div>
-    <div id="fix-only"></div>
-    <p class="pad muted note" id="fix-source" style="padding-top:0"></p>
   </section>
 </main>
 

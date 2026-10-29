@@ -1,6 +1,9 @@
-// "How far does our knowledge go?": each species of the India list counted once, at the furthest step we know about
-// it. The segments add up to the documented species, and each one is a gap: Linnean (only in checklists and papers),
-// Wallacean (no record with a place; no recent record). Built from summary.json; history.json gives the changes.
+// "Where species live: how far our knowledge goes" (the Wallacean gap): each species of the India list counted once,
+// at the furthest step we know about it. The segments add up to the documented species, and each one is a degree of
+// the gap: only in checklists and papers, no record with a place, no recent record. Built from summary.json;
+// history.json gives the changes.
+
+import { sumGroups } from './common.js';
 
 // The steps, least known first. view: the map view a segment selects (checklists give no states: none).
 export const STEPS = [
@@ -19,28 +22,18 @@ const OBS = { key: 'obs', view: 'observed', name: 'With an open record', long: '
 const HERE = { k3: { name: 'Open record here, not recent', long: 'An open record in this state, but none in the last 10 years.' },
   k4: { name: 'Recorded here in the last 10 years', long: 'An open record in this state in the last 10 years.' } };
 
-const sum = (rows, gis, at) => {
-  let total = 0;
-  for (const gi of gis) {
-    const v = (rows?.[gi] || [])[at];
-    if (v == null) return null;
-    total += v;
-  }
-  return total;
-};
-
 /** The segments for some groups, for India or one state (a state code). India rows of summary.json: [documented,
  * open record, IUCN counts, threatened, open record in a state, of them recent]; a state row: [open record,
  * threatened, recent]. Returns {base, segments: [{key, view, name, long, value, share}], unlisted (India only)}. */
 export function knowledge(S, gis, state = null) {
   const seg = (def, value, base) => ({ ...def, value, share: base ? value / base : 0 });
   if (state != null) {
-    const rows = S.by_state?.[state], obs = sum(rows, gis, 0) ?? 0, recent = sum(rows, gis, 2);
+    const rows = S.by_state?.[state], obs = sumGroups(rows, gis, 0) ?? 0, recent = sumGroups(rows, gis, 2);
     const segments = recent == null ? [seg(OBS, obs, obs)]
       : [seg({ ...STEP.k3, ...HERE.k3 }, obs - recent, obs), seg({ ...STEP.k4, ...HERE.k4 }, recent, obs)];
     return { base: obs, segments, unlisted: null };
   }
-  const doc = sum(S.india, gis, 0), obs = sum(S.india, gis, 1), placed = sum(S.india, gis, 4), recent = sum(S.india, gis, 5);
+  const doc = sumGroups(S.india, gis, 0), obs = sumGroups(S.india, gis, 1), placed = sumGroups(S.india, gis, 4), recent = sumGroups(S.india, gis, 5);
   const segments = placed == null || recent == null ? [seg(STEP.k1, doc - obs, doc), seg(OBS, obs, doc)]
     : [seg(STEP.k1, doc - obs, doc), seg(STEP.k2, obs - placed, doc), seg(STEP.k3, placed - recent, doc), seg(STEP.k4, recent, doc)];
   return { base: doc, segments, unlisted: S.unlisted ? gis.reduce((a, gi) => a + (S.unlisted[gi] || 0), 0) : null };
@@ -51,7 +44,7 @@ export function segmentChanges(H, gis) {
   if (!H?.lists?.length || H.lists.length < 2) return {};
   const at = m => H.measures.indexOf(m);
   const parts = l => {
-    const v = m => (at(m) < 0 ? null : sum(l.groups, gis, at(m)));
+    const v = m => (at(m) < 0 ? null : sumGroups(l.groups, gis, at(m)));
     const [d, o, p, r] = ['documented', 'observed', 'in_state', 'recent'].map(v);
     const minus = (a, b) => (a == null || b == null ? null : a - b);
     return { k1: minus(d, o), k2: minus(o, p), k3: minus(p, r), k4: r };

@@ -15,7 +15,7 @@ SITE = ROOT / "site"
 PARTS = ROOT / "site-parts"
 PAGES = sorted(p for p in SITE.glob("*.html") if not p.name.startswith("google"))  # not the search-console token
 NAV = [("/", "Explore", "index"), ("/changes", "Changes", "changes"), ("/shortlist", "Shortlists", "shortlist"),
-       ("/method", "Sources and method", "method")]
+       ("/fix", "Records to fix", "fix"), ("/method", "Sources and method", "method")]
 MARK = re.compile(r"(<!-- part:(\w+) -->\n).*?(<!-- /part:\2 -->)", re.S)
 
 

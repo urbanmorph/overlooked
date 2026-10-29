@@ -33,6 +33,18 @@ export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 export const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
 export const $ = (sel, el = document) => el.querySelector(sel);
 
+/** A figure of summary.json summed over some groups: rows[gi][at], or rows[gi] when at is not given. null when a
+ * group lacks it (a list from before the figure existed), never a 0 that would read as a fall. */
+export function sumGroups(rows, gis, at) {
+  let total = 0;
+  for (const gi of gis) {
+    const v = at == null ? rows?.[gi] : (rows?.[gi] || [])[at];
+    if (v == null) return null;
+    total += v;
+  }
+  return total;
+}
+
 /** A snapshot or list id as words: a weekly id ("2026-10-26", its Monday) or an earlier monthly one ("2026-10"). */
 export function periodName(id) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(id || '')) return `week of ${monthName(id)}`;

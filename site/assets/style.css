@@ -44,7 +44,6 @@ nav.main span { color: #6B7771 } nav.main span small { font-size: 11px; margin-l
 .dev .wrap { padding-block: 8px }
 
 /* Type */
-.eyebrow { margin: 0 0 12px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--quiet); font-weight: 600 }
 h1 { margin: 0; font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.02em; font-weight: 600 }
 h1.page { font-size: clamp(30px, 4vw, 40px) }
 .lede { margin: 18px 0 0; font-size: 18px; line-height: 1.55; color: var(--ink-2) }
@@ -99,19 +98,12 @@ td.n, th.n { text-align: right }
 td.sp a { font-style: italic }
 .muted { color: var(--muted) }
 .bar { height: 10px; background: #EEF0ED; border-radius: 2px } .bar i { display: block; height: 10px; border-radius: 2px; background: var(--q2) }
-.gbars { display: flex; flex-direction: column; gap: 6px; font-size: 14px }
-.gbars div { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(48px, 1fr) 44px; gap: 10px; align-items: center }
-.gbars span:last-child { text-align: right; font-family: var(--mono) }
-.gbars.wide div { grid-template-columns: minmax(0, 1.6fr) minmax(40px, 1fr) 5.8em } /* numbers up to 99,99,999 */
 dl.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 15px }
 dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) } dl.stats dd.q { color: var(--quiet); font-weight: 500 }
 .bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 18px 6px }
 .pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; font-size: 14px; color: var(--muted) }
 
 /* Modules, act, footer */
-.mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 18px }
-.mod { display: flex; flex-direction: column; gap: 8px; padding: 22px; text-decoration: none; color: var(--ink) }
-.mod .mono { font-size: 13px; color: var(--muted) } .mod b { font-size: 19px; font-weight: 600 } .mod span { font-size: 15px; color: var(--ink-2); line-height: 1.5 }
 .mod.later { border-style: dashed; background: transparent }
 .act { background: var(--ink); color: #F5F6F3; border-radius: 12px; padding: 28px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between }
 .act p { margin: 8px 0 0; color: #C9D1CC } .act .links { display: flex; flex-wrap: wrap; gap: 10px }
@@ -127,8 +119,6 @@ main { min-height: 100svh }
 footer { margin-top: 56px; border-top: 1px solid var(--line); background: var(--surface) }
 footer .wrap { padding-block: 28px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; line-height: 1.6; color: var(--ink-2) }
 footer .grow { flex: 999 1 480px }
-.tagu { display: inline-block; margin-top: 2px; font-size: 12px; color: #6B5A1E; background: #FFF4D6; border-radius: 3px; padding: 1px 6px }
-.tagi { display: inline-block; margin-top: 2px; font-size: 12px; font-style: normal; color: #1F3F73; background: #E5EDF9; border-radius: 3px; padding: 1px 6px }
 .steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px }
 .steps li { padding: 16px; display: flex; flex-direction: column; gap: 6px }
 .steps .mono { font-size: 12px; color: var(--muted) } .steps b { font-size: 16px } .steps span:last-child { font-size: 14px; color: var(--ink-2); line-height: 1.5 }
@@ -144,23 +134,17 @@ ul.feed li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap
 ul.feed .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px } ul.feed .kind { font-size: 13px; font-weight: 600 }
 ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 @media (max-width: 600px) { ul.feed li { grid-template-columns: 12px minmax(0, 1fr) } ul.feed .why { grid-column: 2; text-align: left; white-space: normal } }
-.tags { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px } .tag2 { border: 1px solid var(--field); border-radius: 999px; padding: 5px 12px; font-size: 13px }
 .hist { margin-top: 18px; height: 200px; display: flex; gap: 4px; align-items: stretch }
 .hist .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px }
 .hist .stack { flex: 1; display: flex; flex-direction: column-reverse; border-bottom: 1px solid #9AA49E }
 .hist .stack i { display: block; width: 100% } .hist .col.old .stack { background: #FBF3EC }
 .hist .col span { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; align-self: center }
-.sbars { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-size: 14px }
-.sbars div { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr) 92px; gap: 10px; align-items: center }
-.sbars .mono { text-align: right; font-size: 12px }
-.stackbar { display: flex; height: 16px; border-radius: 2px; overflow: hidden; background: #EEF0ED } .stackbar i { display: block; height: 16px }
 /* Space kept for content that arrives with the data, so the page does not move (CLS). */
 #snap { min-height: 160px } #group { width: 15em } #runline { min-height: 1.5em } #sbars { min-height: 480px } #ybars { min-height: 300px }
 #classif { min-height: 1.55em } #tags { min-height: 32px } #latest { min-height: 248px } #hlegend { min-height: 20px } #histnote { min-height: 1.5em }
 @media (max-width: 600px) { #runline, #crumbs { min-height: 3em } #histnote { min-height: 4.5em } #classif { min-height: 3.1em } #hlegend { min-height: 47px } }
 .badge { display: inline-block; font-size: 13px; font-weight: 500; padding: 3px 8px; border-radius: 4px; white-space: nowrap }
 .st-ok { background: #DCEEE8; color: #063F33 } .st-paper { background: #EEF0ED; color: #2D3833 } .st-none { background: #FBEBDD; color: #7A3208 }
-.tagd { font-size: 12px; color: var(--ink-2); background: var(--chip); border-radius: 3px; padding: 1px 5px; white-space: nowrap }
 
 /* Front page: explore */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
@@ -214,7 +198,6 @@ h2 .g-term { vertical-align: 3px; margin-left: 6px }
 .kg:hover { background: var(--ground) } .kg[aria-pressed="true"] { border: 2px solid var(--ink); padding: 4px 7px }
 .kbar.kmini { height: 16px } .kmini .seg { padding: 0 }
 .kg-n { text-align: right; color: var(--muted); font-size: 13px }
-.keltonian { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-2) }
 .funnel-also { padding-top: 12px }
 .funnel-also button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
 .ktip { position: fixed }

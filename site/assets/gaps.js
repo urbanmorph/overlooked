@@ -2,29 +2,20 @@
 // Evolution, and Systematics 46: 523-549), with what the master list measures of each today. A gap we do not
 // measure yet says where its data would come from.
 
-const sum = (list, gis) => (list ? gis.reduce((a, gi) => a + (list[gi] || 0), 0) : null);
-const col = (rows, gis, at) => {
-  let total = 0;
-  for (const gi of gis) {
-    const v = (rows?.[gi] || [])[at];
-    if (v == null) return null;
-    total += v;
-  }
-  return total;
-};
+import { sumGroups } from './common.js';
 
 // measure(S, gis) -> {value, of?}: a count, and the species it is a share of. note(S): what the count is.
 export const GAPS = [
   { term: 'Linnean', plain: 'Which species exist', question: 'Is every species described and named?',
-    measure: (S, gis) => ({ value: sum(S.described_recent, gis) }),
+    measure: (S, gis) => ({ value: sumGroups(S.described_recent, gis) }),
     note: S => `species on the India list described since ${S.recent_from}: the list is still growing` },
   { term: 'Wallacean', plain: 'Where species live', question: 'Do we know where each species lives?',
-    measure: (S, gis) => ({ value: col(S.india, gis, 5), of: col(S.india, gis, 0) }),
+    measure: (S, gis) => ({ value: sumGroups(S.india, gis, 5), of: sumGroups(S.india, gis, 0) }),
     note: S => `of documented species recorded in a state since ${S.recent_from}` },
   { term: 'Prestonian', plain: 'How many there are', question: 'Do we know how many of each species there are, and if that changes?',
     source: 'IUCN Red List population trends; counts in GBIF records' },
   { term: 'Darwinian', plain: 'How species are related', question: 'Do we know each species’ place in the tree of life?',
-    measure: (S, gis) => ({ value: sum(S.dna, gis), of: col(S.india, gis, 0) }),
+    measure: (S, gis) => ({ value: sumGroups(S.dna, gis), of: sumGroups(S.india, gis, 0) }),
     note: () => 'of documented species have a DNA sequence or sample from India on GBIF' },
   { term: 'Raunkiæran', plain: 'What species are like', question: 'Do we know each species’ traits: size, life cycle, when it flowers or breeds?',
     source: 'iNaturalist annotations; India Biodiversity Portal traits' },

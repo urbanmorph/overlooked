@@ -921,13 +921,15 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
             FROM master_state s JOIN listed m USING (id)
             GROUP BY ALL""").fetchall():
         by_state.setdefault(str(st), [[0, 0, 0] for _ in range(n)])[gi] = [obs, thr, rec]
-    # Names not on the list, known only from observations that wait for a name (status 2), per group.
-    per_group = lambda sql: [dict(con.sql(sql).fetchall()).get(gi, 0) for gi in range(n)]
-    unlisted = per_group("SELECT gi, count(*) FROM master WHERE status = 2 GROUP BY gi")
-    # Linnean gap: species on the list described in `since` or later. Darwinian gap: a DNA sequence or sample from
-    # India on GBIF (label dna).
-    described_recent = per_group(f"SELECT gi, count(*) FROM listed WHERE year >= {since} GROUP BY gi")
-    dna = per_group("SELECT gi, count(*) FROM listed WHERE list_contains(labels, 'dna') GROUP BY gi")
+    # Per group, in one pass: names not on the list, known only from observations that wait for a name (status 2);
+    # the Linnean gap, species on the list described in `since` or later; the Darwinian gap, species on the list with
+    # a DNA sequence or sample from India on GBIF (label dna).
+    unlisted, described_recent, dna = ([0] * n for _ in range(3))
+    for gi, u, d, s in con.sql(f"""
+            SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
+                   count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna'))
+            FROM master GROUP BY gi""").fetchall():
+        unlisted[gi], described_recent[gi], dna[gi] = u, d, s
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
               "in_state": sum(r[4] for r in india), "recent": sum(r[5] for r in india), "unlisted": sum(unlisted),
               "described_recent": sum(described_recent), "dna": sum(dna)}

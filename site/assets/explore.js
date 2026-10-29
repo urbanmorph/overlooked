@@ -7,24 +7,11 @@
 
 import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
 import { drawMap, legendHTML } from './map.js';
-import { fixSection } from './fix.js';
 import { signed } from './trend.js';
 import { knowledge, segmentChanges } from './funnel.js';
 import { gaps } from './gaps.js';
+import { CATS } from './cats.js';
 
-// Top-level groups for the cards, built from the 28 pipeline groups by name.
-const CATS = [
-  ['insects', 'Insects', g => g.startsWith('Insects:')],
-  ['plants', 'Flowering plants and ferns', g => g.startsWith('Plants:')],
-  ['fungi', 'Fungi and lichens', g => g === 'Fungi' || g === 'Lichens'],
-  ['mosses', 'Mosses, liverworts and algae', g => g === 'Mosses & liverworts' || g === 'Algae & diatoms'],
-  ['fish', 'Fish', g => g === 'Fish'],
-  ['inverts', 'Molluscs, spiders and crabs', g => ['Molluscs', 'Spiders & other arachnids', 'Crabs, shrimps & kin'].includes(g)],
-  ['herps', 'Amphibians and reptiles', g => g === 'Amphibians' || g === 'Reptiles'],
-  ['birds', 'Birds', g => g === 'Birds'],
-  ['mammals', 'Mammals', g => g.startsWith('Mammals')],
-  ['other', 'Other', g => g === 'Other'],
-];
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
 const STATUS = ['No open record yet', 'Open record', 'Not on the list: waits for a name'];
 const THREAT = new Set(['CR', 'EN', 'VU']);
@@ -56,7 +43,6 @@ try {
   const history_ = getJSON(base + 'history.json').then(h => { H = h; }).catch(() => {});
   const snap = await snapshot();
   const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
-  const fix = fixSection(snap);
   const stIndex = new Map(S.states.map((s, i) => [String(s.code), i]));
   const stName = new Map(S.states.map(s => [String(s.code), s.name]));
   const cats = CATS.map(([key, name, test]) => ({ key, name, gis: S.groups.map((g, i) => (test(g) ? i : -1)).filter(i => i >= 0) }))
@@ -157,6 +143,8 @@ try {
   const catOf = key => cats.find(c => c.key === key);
   const catOfGi = gi => cats.find(c => c.gis.includes(gi));
   const gisNow = () => (st.cat ? catOf(st.cat).gis : allGis);
+  const placeName = () => (st.state ? stName.get(st.state) : 'India');
+  const groupName = () => (st.cat ? catOf(st.cat).name : 'All groups');
 
   // Value shown on the map and in the cards, by view.
   function value(f, india) {
@@ -188,7 +176,7 @@ try {
   }
 
   function paintCards() {
-    const place = st.state ? stName.get(st.state) : 'India';
+    const place = placeName();
     $('#cards-title').textContent = `Groups in ${place}`;
     $('#cards-sub').textContent = st.state ? VIEW_TEXT[st.view].unit : VIEW_TEXT[st.view].card;
     const rows = [{ key: null, name: 'All groups', gis: allGis }, ...cats];
@@ -210,7 +198,7 @@ try {
     const c = st.cat ? catOf(st.cat) : null, gis = gisNow(), f = fig(gis, st.state), india = !st.state;
     const v = value(f, india);
     const district = st.district && map.info.get(st.district)?.name;
-    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}${district ? ` / ${district}` : ''}` : 'India'} · ${c ? c.name : 'All groups'}${filterText()}`;
+    $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}${district ? ` / ${district}` : ''}` : 'India'} · ${groupName()}${filterText()}`;
     $('#pq').textContent = india ? fmt({ observed: f.obs, recent: f.recent, waiting: f.wait[0] }[st.view] ?? f.thr) : v.big;
     const districtNote = district ? ` The figures are for all of ${stName.get(st.state)}: the list counts species by state, not by district.` : '';
     $('#psub').textContent = st.view === 'waiting' ? `species named in observations that wait for a name on iNaturalist.${districtNote}`
@@ -219,7 +207,7 @@ try {
         : st.view === 'recent' ? `of ${fmt(f.doc)} documented species have a record placed in a state since ${S.recent_from} (${pct(f.recent, f.doc)}).`
         : `of ${fmt(f.doc)} documented species have an open record you can check online (${pct(f.obs, f.doc)}). The rest are known from checklists and papers.`)
       : `${v.line}.${districtNote}`;
-    const w = f.wait, place = st.state ? stName.get(st.state) : 'India';
+    const w = f.wait, place = placeName();
     const genus = genusFig(gis, st.state)[1], coarse = coarseRows(st.cat, st.state).reduce((a, [, n]) => a + n, 0);
     $('#pwait').hidden = st.view !== 'waiting' || !w[0];
     $('#pwait').innerHTML = `<b>${fmt(w[1])}</b> observations of <b>${fmt(w[0])}</b> species wait for a name on iNaturalist. `
@@ -254,8 +242,7 @@ try {
   // The seven gaps in what we know, for the chosen groups, for India. Counts the group files cannot give with filters
   // on (species described lately, DNA) say so; a gap with no open data yet says where its data would come from.
   function paintGaps() {
-    const c = st.cat ? catOf(st.cat) : null;
-    $('#gaps-sub').textContent = `${c ? c.name : 'All groups'} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
+    $('#gaps-sub').textContent = `${groupName()} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
     const D = { ...S, india: A.india, described_recent: filtered() ? null : S.described_recent, dna: filtered() ? null : S.dna };
     for (const g of gaps(D, gisNow())) {
       const share = g.of ? g.value / g.of : null;
@@ -268,10 +255,10 @@ try {
     }
   }
   function paintKnowledge() {
-    const c = st.cat ? catOf(st.cat) : null, place = st.state ? stName.get(st.state) : 'India';
+    const place = placeName();
     const D = { ...S, india: A.india, by_state: A.by_state, unlisted: A.unlisted };
     const k = knowledge(D, gisNow(), st.state);
-    $('#funnel-sub').textContent = `${c ? c.name : 'All groups'} · ${place}${filterText()}`;
+    $('#funnel-sub').textContent = `${groupName()} · ${place}${filterText()}`;
     $('#kbase').textContent = fmt(k.base);
     $('#kbase-l').textContent = st.state ? `species with an open record in ${place}` : 'species documented in India';
     $('#knote').textContent = st.state
@@ -324,7 +311,7 @@ try {
   // Species with observations that wait for a name, most useful first.
   let listSeq = 0;
   async function paintWait(c, my) {
-    const si = st.state ? stIndex.get(st.state) : null, place = st.state ? stName.get(st.state) : 'India';
+    const si = st.state ? stIndex.get(st.state) : null, place = placeName();
     const w = await Promise.all(c.gis.map(gi => waitRows(gi)));
     if (my !== listSeq) return;
     const pid = placeId(), rows = [];
@@ -440,12 +427,7 @@ try {
       if (my !== paintSeq) return;
       A = a;
     } else A = BASE;
-    paintGaps(); paintKnowledge(); paintCards(); paintHead(); paintMap(); paintFix(); await paintList();
-  }
-  // Records to fix: GBIF counts, so they follow the state and group but not the filters.
-  function paintFix() {
-    const c = st.cat ? catOf(st.cat) : null, names = c && new Set(c.gis.map(gi => S.groups[gi]));
-    fix.then(f => f.paint(st.state, names && (g => names.has(g)), st.state ? stName.get(st.state) : 'India', c ? c.name : 'All groups'));
+    paintGaps(); paintKnowledge(); paintCards(); paintHead(); paintMap(); await paintList();
   }
   function setState(code, district = null) { st.state = code; st.district = district; shown = PAGE; return paint(); }
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -1,4 +1,4 @@
-// "Records to fix" on the front page: GBIF records from India that the site cannot use in full, for data publishers.
+// The Records to fix page (/fix): GBIF records from India that the site cannot use in full, for data publishers.
 // unlocated.json (records that cannot go in a district) and unresolved.json (records not named to species) are in the GBIF
 // snapshot. The section follows the chosen state and group.
 

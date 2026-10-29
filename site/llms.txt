@@ -33,6 +33,7 @@ For the status of a species, people should consult BSI, ZSI, the IUCN Red List a
 - / — map of India, groups, search with filters by year described, source, status, IUCN category and label (the filters drive the map and the figures; `?described=2007-` gives the species described since 2007); in the Waiting view, the observations that wait for a name, with links to iNaturalist's Identify page
 - /species?key={key} — one species: sources, status, IUCN, where it has an open record, observations that wait for a name, GBIF records by decade and district
 - /changes — what changed since last week
+- /fix — records to fix, for data publishers: GBIF records from India with no exact location or no species name, by dataset, state and group (`?state={LGD code}&group={family}`)
 - /shortlist: (experimental) observations on iNaturalist that wait for a name, each with a short list of names from a model for a person to check; we post nothing to iNaturalist
 - /method — sources, terms, definitions, downloads
 - Code (MIT): https://github.com/urbanmorph/overlooked
