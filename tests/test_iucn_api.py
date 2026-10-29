@@ -132,3 +132,13 @@ def test_the_client_waits_on_a_rate_limit_retries_a_server_error_and_returns_non
     assert api.get("taxa/scientific_name", {}) is None
     with pytest.raises(iucn_api.ApiDown):
         iucn_api.Api("tok", session=type("S", (), {"headers": {}, "get": lambda *a, **k: Resp(503)})(), tries=2).get("x")
+
+
+def test_nothing_from_the_api_reaches_the_public_files():
+    """IUCN's terms allow categories anywhere but other Red List data only for internal analysis until IUCN grants a
+    written waiver: the extractor writes only to cache/, locally and in R2, and the site never serves cache/."""
+    assert iucn_api.CACHE.relative_to(iucn_api.ROOT).parts[:2] == ("data", "cache")
+    assert iucn_api.R2_PREFIX.startswith("cache/")
+    data_function = (iucn_api.ROOT / "functions" / "data" / "[[path]].js").read_text()
+    assert "key.startsWith('cache/')" in data_function
+    assert "iucn_api" not in (iucn_api.ROOT / "pipeline" / "master.py").read_text()
