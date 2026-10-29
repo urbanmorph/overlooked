@@ -10,11 +10,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=9ab9715c48">
 <!-- /part:head -->
-<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
-<link rel="modulepreload" href="/assets/common.js">
-<script type="module" src="/assets/fixpage.js"></script>
+<script>window.early = Object.fromEntries(['latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
+<link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
+<script type="module" src="/assets/fixpage.js?v=26c45d50e3"></script>
 </head>
 <body>
 <!-- part:noscript -->

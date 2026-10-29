@@ -5,7 +5,9 @@ const cache = new Map();
 
 export function getJSON(path) {
   if (!cache.has(path)) {
-    cache.set(path, fetch(DATA + path).then(r => {
+    // A request the page started in its <head> before its scripts loaded (window.early: {path: fetch promise}). A
+    // preload link would do this, but WebKit does not reuse a preloaded fetch and asks twice.
+    cache.set(path, (globalThis.early?.[path] || fetch(DATA + path)).then(r => {
       if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
       return r.json();
     }));

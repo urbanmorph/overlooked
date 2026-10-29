@@ -1,9 +1,9 @@
 // One species: what the master list knows (sources, open record, IUCN, labels, year described, waiting observations),
 // the states with an open record and with observations that wait, and its GBIF records when the snapshot has them.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js';
-import { drawMap } from './map.js';
-import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=9455fd8cc8';
+import { drawMap } from './map.js?v=b39659b5ac';
+import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {

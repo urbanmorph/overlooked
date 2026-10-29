@@ -92,7 +92,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m pipeline.run request --state Kerala   # a test run for one state (never published)
 .venv/bin/python -m pipeline.run build --run-id <week>-kerala
 .venv/bin/python scripts/serve.py                         # the site at http://127.0.0.1:8790/
-.venv/bin/python scripts/pages.py                         # after editing site-parts/ (shared head, header, footer)
+.venv/bin/python scripts/pages.py                         # after editing site-parts/ or site/assets/: shared parts, and ?v= versions on every script and stylesheet
 ```
 
 Secrets go in `.env` (never committed): `GBIF_USER`, `GBIF_PASSWORD`, `GBIF_EMAIL`, `R2_ACCESS_KEY_ID`,

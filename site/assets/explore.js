@@ -5,12 +5,12 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js';
-import { drawMap, legendHTML } from './map.js';
-import { signed } from './trend.js';
-import { knowledge, segmentChanges } from './funnel.js';
-import { gaps } from './gaps.js';
-import { CATS } from './cats.js';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js?v=9455fd8cc8';
+import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
+import { signed } from './trend.js?v=e7af3381b1';
+import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
+import { gaps } from './gaps.js?v=53d52b5afe';
+import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
 const STATUS = ['No open record yet', 'Open record', 'Not on the list: waits for a name'];

@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=9ab9715c48">
 <!-- /part:head -->
-<link rel="preload" href="/data/layers/master/latest.json" as="fetch" crossorigin>
-<link rel="modulepreload" href="/assets/common.js">
-<link rel="modulepreload" href="/assets/map.js">
-<script type="module" src="/assets/explore.js"></script>
+<script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
+<link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
+<link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
+<script type="module" src="/assets/explore.js?v=b9d22679a8"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>

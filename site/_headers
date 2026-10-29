@@ -2,3 +2,8 @@
 /fonts/*.woff2
   Cache-Control: public, max-age=31536000, immutable
   Access-Control-Allow-Origin: *
+
+# Scripts and the stylesheet: every address carries ?v=<a hash of the contents> (scripts/pages.py), so a new
+# version has a new address and the old one never changes.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

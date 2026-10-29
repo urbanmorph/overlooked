@@ -10,11 +10,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=9ab9715c48">
 <!-- /part:head -->
-<link rel="preload" href="/data/latest.json" as="fetch" crossorigin>
-<link rel="modulepreload" href="/assets/common.js">
-<script type="module" src="/assets/method.js"></script>
+<script>window.early = Object.fromEntries(['latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
+<link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
+<script type="module" src="/assets/method.js?v=d1f1d0a819"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Dataset","name":"Overlooked: species of India and their open records","description":"A weekly master list of species documented from India from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, Plazi and the IUCN Red List, with open records, observations that wait for a name, and IUCN status by group and state.","url":"https://overlooked-india.pages.dev/method","license":"https://creativecommons.org/licenses/by/4.0/","creator":{"@type":"Person","name":"Sathya Sankaran"},"creditText":"Overlooked (overlooked-india.pages.dev), CC BY 4.0, Sathya Sankaran. Sources: GBIF.org, iNaturalist, Botanical Survey of India, Zoological Survey of India, Royal Botanic Gardens Kew, Plazi, IUCN Red List, Catalogue of Life.","isAccessibleForFree":true,"spatialCoverage":{"@type":"Place","name":"India"},"temporalCoverage":"../..","distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/layers/master/latest.json"},{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://overlooked-india.pages.dev/data/latest.json"}]}</script>
 </head>
 <body>

@@ -10,13 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=9ab9715c48">
 <!-- /part:head -->
-<link rel="preload" href="/data/layers/shortlist/latest.json" as="fetch" crossorigin>
-<link rel="preload" href="/data/layers/master/latest.json" as="fetch" crossorigin>
 <link rel="preconnect" href="https://inaturalist-open-data.s3.amazonaws.com">
-<link rel="modulepreload" href="/assets/common.js">
-<script type="module" src="/assets/shortlist.js"></script>
+<script>window.early = Object.fromEntries(['layers/shortlist/latest.json', 'layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
+<link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
+<script type="module" src="/assets/shortlist.js?v=486bd9c467"></script>
 </head>
 <body>
 <!-- part:noscript -->
