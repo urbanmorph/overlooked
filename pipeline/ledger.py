@@ -34,18 +34,21 @@ def unpack(key):
 
 
 # Columns a newer query added: older cubes do not have them.
-OPTIONAL = {"last_year_not_dna": "INTEGER", "n_trait": "BIGINT"}
+OPTIONAL = {"last_year_not_dna": "INTEGER", "n_trait": "BIGINT", "n_precise": "BIGINT"}
+# Area of occupancy: 2 km cells (IUCN's grid size) of an equal-area sinusoidal projection centred on India (80 E).
+CELL_M, EARTH_M, CENTRE_LON = 2000, 6371007.181, 80.0
 
 
 def ensure_dna_column(con, table):
     """Tables made before last_year_not_dna existed: no DNA information, so the same as last_year. Before n_trait:
-    null, so the Raunkiæran gap stays not measured."""
+    null, so the Raunkiæran gap stays not measured; the same for n_precise (the Hutchinsonian gap)."""
     have = [c[0] for c in con.sql(f"DESCRIBE {table}").fetchall()]
     if "last_year_not_dna" not in have:
         con.sql(f"ALTER TABLE {table} ADD COLUMN last_year_not_dna INTEGER")
         con.sql(f"UPDATE {table} SET last_year_not_dna = last_year")
-    if "n_trait" not in have:
-        con.sql(f"ALTER TABLE {table} ADD COLUMN n_trait BIGINT")
+    for col in ("n_trait", "n_precise"):
+        if col not in have:
+            con.sql(f"ALTER TABLE {table} ADD COLUMN {col} BIGINT")
 
 
 def load_cube(con, tsv):
@@ -81,6 +84,18 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS):
     """)
     path = out / "ledger.parquet"
     con.sql(f"COPY ledger TO '{path}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)")
+    # Per species, over points inside India's districts: places (110 m points) with a record placed to 1 km or better,
+    # null for a cube without n_precise; and occupied 2 km cells.
+    con.sql(f"""
+        COPY (
+            SELECT q.specieskey AS species_key,
+                   CASE WHEN count(q.n_precise) > 0 THEN count(*) FILTER (WHERE q.n_precise > 0) END AS places_precise,
+                   count(DISTINCT (floor({EARTH_M} * radians(q.lon - {CENTRE_LON}) * cos(radians(q.lat)) / {CELL_M}),
+                                   floor({EARTH_M} * radians(q.lat) / {CELL_M}))) AS cells_2km
+            FROM cube q JOIN point_district p USING (lat, lon)
+            WHERE p.dist_lgd IS NOT NULL
+            GROUP BY 1 ORDER BY 1
+        ) TO '{out / 'species_places.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
 
     one = lambda s: value(con, s)
     by_how = dict(con.sql("""SELECT how, sum(n_records) FROM cube JOIN point_district USING (lat, lon)

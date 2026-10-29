@@ -3,6 +3,8 @@
 -- against 1.6% for a 1.7 km grid.
 -- n_trait: records with a trait (the Raunkiæran gap): a life stage, a sex, or flowers or fruits (iNaturalist annotations
 -- reach GBIF as lifeStage, sex and reproductiveCondition); "Unknown", "Indeterminate" and "no flowers or fruits" do not count.
+-- n_precise: records placed to 1 km or better (the Hutchinsonian gap: enough exact places to relate a species to
+-- climate maps); a record with no stated uncertainty does not count.
 -- {region_filter} is empty for the national run, or an extra AND clause for a test region.
 SELECT
   specieskey,
@@ -16,7 +18,8 @@ SELECT
              OR (sex.concept IS NOT NULL AND sex.concept <> 'Indeterminate')
              OR (reproductivecondition IS NOT NULL AND reproductivecondition <> ''
                  AND reproductivecondition <> 'no flowers or fruits')
-           THEN 1 ELSE 0 END) AS n_trait
+           THEN 1 ELSE 0 END) AS n_trait,
+  SUM(CASE WHEN coordinateuncertaintyinmeters <= 1000 THEN 1 ELSE 0 END) AS n_precise
 FROM occurrence
 WHERE countrycode = 'IN'
   AND hascoordinate = TRUE

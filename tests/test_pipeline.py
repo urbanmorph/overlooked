@@ -201,6 +201,29 @@ def test_records_with_a_trait_and_an_old_cube_without_the_count(districts, tmp_p
     assert con.sql("SELECT n_trait FROM ledger").fetchall() == [(None,)]
 
 
+def test_species_places_precise_places_and_2km_cells(districts, tmp_path):
+    """species_places.parquet: per species, the places (110 m points) with a record placed to 1 km or better (the
+    Hutchinsonian gap), and the 2 km cells of an equal-area grid with any record (area of occupancy). Points outside
+    India's districts do not count. Null precise places for a cube from before n_precise."""
+    cube = tmp_path / "c.tsv"
+    cube.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\tlast_year_not_dna\tn_trait\tn_precise\n"
+                    "S1\t10.500\t76.500\t2000\t2019\t3\t2019\t0\t2\n"
+                    "S1\t10.501\t76.500\t2000\t2019\t1\t2019\t0\t1\n"     # 110 m away: same 2 km cell
+                    "S1\t10.700\t76.700\t2000\t2019\t1\t2019\t0\t0\n"     # another cell, not precise
+                    "S1\t40.000\t-3.000\t2000\t2019\t1\t2019\t0\t1\n"     # outside India
+                    "S2\t10.500\t76.500\t2000\t2001\t2\t2001\t0\t0\n")
+    con = duckdb.connect()
+    ledger.load_cube(con, cube)
+    ledger.build(con, tmp_path / "out", "test", districts)
+    got = {r[0]: r[1:] for r in duckdb.sql(f"SELECT * FROM '{tmp_path / 'out' / 'species_places.parquet'}'").fetchall()}
+    assert got == {"S1": (2, 2), "S2": (0, 1)}
+    old = tmp_path / "old.tsv"
+    old.write_text("specieskey\tlat\tlon\tfirst_year\tlast_year\tn_records\nS1\t10.5\t76.5\t1950\t2019\t3\n")
+    ledger.load_cube(con, old)
+    ledger.build(con, tmp_path / "out2", "test", districts)
+    assert duckdb.sql(f"SELECT * FROM '{tmp_path / 'out2' / 'species_places.parquet'}'").fetchall() == [("S1", None, 1)]
+
+
 def test_rights_travel_with_the_data():
     """PDGI: attribution, licence and a disclaimer ride inside every published summary."""
     from pipeline import site_data

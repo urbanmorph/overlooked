@@ -76,7 +76,7 @@ try {
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
   const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia] = row;
+    partners, interactionsIndia, cells] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -96,6 +96,8 @@ try {
       <dt>Interactions</dt><dd>${partners == null ? '<span class="muted">None recorded</span>'
         : `${fmt(partners)} partner species${interactionsIndia ? ', some recorded in India' : ', none recorded in India'}`}
         <span class="muted">· <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">GloBI</a></span></dd>
+      <dt>Area of occupancy</dt><dd>${cells == null ? '<span class="muted">Not counted yet</span>'
+        : `${fmt(4 * cells)} km² <span class="muted">· ${fmt(cells)} ${cells === 1 ? 'cell' : 'cells'} of 2 × 2 km with an open record placed in India</span>`}</dd>
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>${iucnYear
         ? ` <span class="muted">· assessed in ${iucnYear}${iucnDoi ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
       <dt>Open record in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>

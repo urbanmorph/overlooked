@@ -73,11 +73,13 @@ def inputs(tmp_path):
         t(name, year, authority)""", tmp_path / "wcvp_years.parquet")
     globi = write(con, """SELECT * FROM (VALUES ('Aus bus', 5, 3, ['eats'], 2, 1), ('Cus dus', 1, 1, ['pollinates'], 0, 1))
         t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
+    places = write(con, """SELECT * FROM (VALUES ('K1', 12, 9), ('K2', 3, 2), ('K3', 0, 1))
+        t(species_key, places_precise, cells_2km)""", tmp_path / "species_places.parquet")
     soib = tmp_path / "soib.csv"
     soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
                     "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
                     "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
-    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None},
+    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "soib": soib,
                        "described": {"col": col, "wcvp": wcvp_y},
@@ -219,6 +221,22 @@ def test_a_list_without_soib_leaves_the_prestonian_gap_unmeasured(inputs, tmp_pa
     assert s["trend_known"] is None
 
 
+def test_exact_places_the_hutchinsonian_gap(built):
+    """Species with records placed to 1 km or better at 10 or more places (species_places), per group."""
+    s = built["summary"]
+    assert s["niche"][GROUPS.index("Birds")] == 1 and sum(s["niche"]) == 1          # Aus bus: 12 places
+
+
+def test_a_snapshot_without_species_places_leaves_the_gap_unmeasured(inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    s = master.build(con, {**inputs["paths"], "species_places": None}, tmp_path / "o",
+                     {"period": "2026-10-26", "snapshot": "s", "built": "x"}, inputs["districts"], inputs["inputs"],
+                     cache={}, http=FakeGbif())
+    assert s["niche"] is None
+
+
 def test_documented_and_with_an_open_record(built):
     """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
     one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
@@ -351,12 +369,12 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False]
+                          None, False, None]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-4:] == [2012, "https://doi.org/10.2305/A", 3, True]        # IUCN year and DOI; GloBI partners, in India
+    assert aus[-5:] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
-    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False]
+    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 

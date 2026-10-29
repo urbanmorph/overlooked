@@ -226,7 +226,7 @@ def snapshot_input(s3, run_id):
     """Paths of the snapshot files; missing ones are fetched from R2 snapshots/<run>/."""
     folder = SNAPSHOTS / run_id
     paths = {}
-    for name in ("species", "ledger", "species_decade", "unlocated"):
+    for name in ("species", "ledger", "species_decade", "unlocated", "species_places"):
         p = folder / f"{name}.parquet"
         if not p.exists() and s3:
             r2_file(s3, f"snapshots/{run_id}/{name}.parquet", p)
@@ -309,6 +309,10 @@ def load_gbif(con, paths):
     trait_sql = (f"SELECT species_key AS key FROM '{paths['ledger']}' GROUP BY 1 HAVING sum(n_trait) > 0"
                  if "n_trait" in cols else "SELECT NULL::VARCHAR AS key WHERE false")
     con.sql(f"CREATE OR REPLACE TABLE ledger_trait AS {trait_sql}")
+    # Places with a record to 1 km or better, and 2 km cells (snapshots built after species_places was added).
+    con.sql(f"CREATE OR REPLACE TABLE gbif_places AS SELECT species_key AS key, places_precise, cells_2km FROM '{paths['species_places']}'"
+            if paths.get("species_places") else
+            "CREATE OR REPLACE TABLE gbif_places (key VARCHAR, places_precise BIGINT, cells_2km BIGINT)")
     if paths.get("unlocated"):
         # Excluded datasets and places outside India apply also to snapshots built before they were listed.
         con.execute(f"""CREATE OR REPLACE TABLE unl AS SELECT * FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL
@@ -744,13 +748,13 @@ def flags(con):
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
                gl.partners, coalesce(gl.interactions_india, false) AS interactions_india,
-               i.id IN (SELECT key FROM ledger_trait) AS traits, so.trend_known,
+               i.id IN (SELECT key FROM ledger_trait) AS traits, so.trend_known, gp.places_precise, gp.cells_2km,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
-        LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id)
+        LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id) LEFT JOIN gbif_places gp ON gp.key = i.id
         ORDER BY gi, i.name
     """)
     con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
@@ -873,20 +877,21 @@ def species_files(con, out: Path):
     states with an open record, iNaturalist taxon, observations waiting in India, [[state index, n]],
     year described, authority, paper of a new species [sources, journal, link, after the description, latest year
     after, year of the paper], year and DOI of the IUCN assessment (from IUCN's CC BY copy on GBIF), GloBI partner
-    species (null: no recorded interaction), an interaction recorded in India]}.
+    species (null: no recorded interaction), an interaction recorded in India, 2 km cells with an open record placed in
+    India (area of occupancy; null: not counted)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
-    for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india in con.sql("""
+    for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
-                   s.iucn_year, s.iucn_doi, s.partners, s.interactions_india
+                   s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
-                                                    partners, inter_india]
+                                                    partners, inter_india, cells]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -899,6 +904,7 @@ def described_summary(con):
 
 RECENT_YEARS = 10
 ASSESSABLE_STATES = 5   # not assessed by IUCN, but with open records in this many states or more
+NICHE_PLACES = 10       # places with an exact record (1 km or better): a common minimum to relate a species to climate maps
 REDLIST = ["assessed", "assessable", "out_of_date", "dd_newer", "threatened_not_recent", "endemic_not_assessed"]
 
 
@@ -966,13 +972,15 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     traits = [0] * n   # the Raunkiæran gap: a record placed in India with a life stage, a sex, or flowers or fruits
     # The Prestonian gap: species with a known population trend (State of India's Birds), null for a group it does not cover.
     trend_known = [None] * n
-    for gi, u, d, s, ia, ii, tr, tk, *rl in con.sql(f"""
+    niche = [0] * n   # the Hutchinsonian gap: records placed to 1 km or better at NICHE_PLACES places or more
+    for gi, u, d, s, ia, ii, tr, tk, ni, *rl in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
                    count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
                    count(*) FILTER (WHERE status < 2 AND interactions_india),
                    count(*) FILTER (WHERE status < 2 AND traits),
                    CASE WHEN bool_or(trend_known IS NOT NULL) THEN count(*) FILTER (WHERE status < 2 AND trend_known) END,
+                   count(*) FILTER (WHERE status < 2 AND places_precise >= {NICHE_PLACES}),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE'),
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND observed AND len(states_observed) >= {ASSESSABLE_STATES}),
                    count(*) FILTER (WHERE status < 2 AND iucn <> 'NE' AND iucn_year < {since}),
@@ -981,7 +989,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
         unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi], traits[gi] = u, d, s, ia, ii, tr
-        trend_known[gi] = tk
+        trend_known[gi], niche[gi] = tk, ni
         for k, v in zip(REDLIST, rl):
             redlist[k][gi] = v
     totals = {"documented": sum(r[0] for r in india), "observed": sum(r[1] for r in india),
@@ -1002,6 +1010,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "interactions_india": interactions_india if measured else None,
                "traits": traits if traits_measured else None,
                "trend_known": trend_known if any(v is not None for v in trend_known) else None,
+               "niche": niche if value(con, "SELECT count(places_precise) > 0 FROM gbif_places") else None,
                "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
