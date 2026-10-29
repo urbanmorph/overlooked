@@ -113,6 +113,9 @@ def compact(a, country="IN"):
         "india": None if here is None else {"origin": here.get("origin"), "presence": here.get("presence"),
                                             "endemic": bool(here.get("is_endemic"))},
         "url": a.get("url"),
+        # IUCN asks that an assessment be cited like a journal paper: its authors (the assessors) and year.
+        "citation": a.get("citation"),
+        "assessors": next((c.get("full") for c in a.get("credits") or [] if c.get("credit_type_name") == "assessor"), None),
     }
 
 
@@ -188,7 +191,8 @@ def rows(store):
                     "possibly_extinct": a["possibly_extinct"], "possibly_extinct_in_the_wild": a["possibly_extinct_in_the_wild"],
                     "threats": [t[0] for t in a["threats"]], "habitats": [h[0] for h in a["habitats"]],
                     "in_india_list": name in india, "india_origin": here.get("origin"),
-                    "india_presence": here.get("presence"), "india_endemic": here.get("endemic"), "url": a["url"]})
+                    "india_presence": here.get("presence"), "india_endemic": here.get("endemic"), "url": a["url"],
+                    "citation": a.get("citation"), "assessors": a.get("assessors")})
     return out
 
 

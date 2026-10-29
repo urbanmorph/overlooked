@@ -18,7 +18,10 @@ def assessment(aid, name, cat="LC", year="2020", trend="Stable", india=True):
             "systems": [{"description": {"en": "Terrestrial"}, "code": "0"}],
             "locations": ([{"code": "IN", "origin": "Native", "presence": "Extant", "is_endemic": True}] if india else [])
             + [{"code": "NP", "origin": "Native", "presence": "Extant", "is_endemic": False}],
-            "url": f"https://www.iucnredlist.org/species/{aid * 10}/{aid}"}
+            "url": f"https://www.iucnredlist.org/species/{aid * 10}/{aid}",
+            "citation": f"Smith, A. & Rao, B. {year}. {name}. The IUCN Red List of Threatened Species {year}: e.T{aid * 10}A{aid}.",
+            "credits": [{"credit_type_name": "assessor", "full": "Smith, A. & Rao, B."},
+                        {"credit_type_name": "evaluator", "full": "Cox, N.A."}]}
 
 
 def listed(aid, name, cat="LC", latest=True, scope="1"):
@@ -56,6 +59,8 @@ def test_compact_keeps_what_the_gaps_need():
     assert c["habitats"] == [["1_5", "Yes", "Suitable"]]
     assert c["india"] == {"origin": "Native", "presence": "Extant", "endemic": True}
     assert iucn_api.compact(assessment(3, "Cus dus", india=False))["india"] is None
+    # Each assessment is cited like a journal paper (IUCN's citation guidance): keep its citation and assessors.
+    assert c["citation"].startswith("Smith, A. & Rao, B. 2020. Bus cus. The IUCN Red List") and c["assessors"] == "Smith, A. & Rao, B." 
 
 
 def test_harvest_reads_india_then_looks_up_the_rest_then_every_assessment(tmp_path):
