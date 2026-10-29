@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GAPS, gaps } from '../site/assets/gaps.js';
+import { GAPS, gaps, gapAbsent } from '../site/assets/gaps.js';
 
 const cats = n => [0, 0, 0, 0, n, 0, 0, 0, 0];
 const S = {
@@ -36,4 +36,11 @@ test('a summary without a count leaves that gap unmeasured, not 0', () => {
 test('the home page holds a row for every gap, with its terms, so nothing moves when the numbers fill', () => {
   const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
   for (const g of GAPS) assert.ok(html.includes(`data-gap="${g.term}"`) && html.includes(`<b>${g.plain}</b>`), g.term);
+});
+
+test('gapAbsent: a count left out by filters says so; a count not measured yet gives its data source', () => {
+  const by = Object.fromEntries(gaps({ ...S, traits: null }, [0, 1]).map(g => [g.term, g]));
+  assert.equal(gapAbsent(by['Raunkiæran'], false), 'Not measured yet. Data: iNaturalist annotations, through GBIF.');
+  assert.equal(gapAbsent(by['Raunkiæran'], true), 'Not counted when filters are on.');
+  assert.match(gapAbsent(by.Prestonian, true), /^Not measured yet\. Data: IUCN/);   // no measure: never a filter
 });

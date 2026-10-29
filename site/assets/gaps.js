@@ -37,3 +37,7 @@ export function gaps(S, gis) {
     return { ...g, value: measured ? m.value : null, of: measured ? m.of : null, note: measured && g.note ? g.note(S, gis) : '' };
   });
 }
+
+/** The text for a gap with no count: left out by the filters (a count the group files cannot give), or not measured
+ * yet, with where its data would come from. */
+export const gapAbsent = (g, filtered) => (g.measure && filtered ? 'Not counted when filters are on.' : `Not measured yet. Data: ${g.source}.`);

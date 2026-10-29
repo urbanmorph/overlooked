@@ -10,7 +10,7 @@ import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps } from './gaps.js?v=bbfe70b0e2';
+import { gaps, gapAbsent } from './gaps.js?v=1ce82287cf';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -259,8 +259,7 @@ try {
         ? `<b class="mono">${fmt(g.value)}</b>${share != null ? ` <span class="g-share">${pct(g.value, g.of)}</span>` : ''}
            <span class="g-note">${esc(g.note)}${g.term === 'Wallacean' ? '. <a href="#wallacean">See the gaps below</a>' : ''}</span>
            ${share != null ? `<span class="meter" aria-hidden="true"><i style="width:${(100 * share).toFixed(1)}%"></i></span>` : ''}`
-        : g.measure ? '<span class="g-not">Not counted when filters are on.</span>'
-        : `<span class="g-not">Not measured yet. Data: ${esc(g.source)}.</span>`;
+        : `<span class="g-not">${esc(gapAbsent(g, filtered()))}</span>`;
     }
   }
   // Red List assessments for the chosen groups, for India: IUCN categories and assessment years with our records.
