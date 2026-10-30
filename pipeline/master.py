@@ -224,6 +224,26 @@ def lichens_input(s3):
     return r2_file(s3, lichens.R2_DIR + lichens.TABLE, CACHE / lichens.TABLE) if s3 else (local if local.exists() else None)
 
 
+ZOTERO_MINUTES = 20   # the bird bibliography's pass at most this long per run; the next run continues
+
+
+def zotero_input_refreshed(http, s3):
+    """The bird bibliography brought up to date (pipeline/zotero.py), else the last table in R2."""
+    from pipeline import zotero
+    try:
+        return zotero.refresh(http, s3, deadline=time.monotonic() + ZOTERO_MINUTES * 60)
+    except Exception as e:  # noqa: BLE001 - any failure: last week's table
+        print(f"zotero: not refreshed ({e}); using the copy in R2", flush=True)
+        return zotero_input(s3)
+
+
+def zotero_input(s3):
+    """The bird bibliography's table (pipeline/zotero.py): R2's copy, else the local one."""
+    from pipeline import zotero
+    local = zotero.CACHE / zotero.TABLE
+    return r2_file(s3, zotero.R2_DIR + zotero.TABLE, CACHE / zotero.TABLE) if s3 else (local if local.exists() else None)
+
+
 def bryophytes_input(s3):
     """The bryophyte checklist table (pipeline/bryophytes.py): R2's copy, else the local one."""
     from pipeline import bryophytes
@@ -558,7 +578,10 @@ def to_match(con, cache):
             UNION ALL SELECT name, CASE source WHEN 'WCVP' THEN 2 ELSE 3 END FROM names_in
             WHERE key IS NULL AND source IN ('WCVP', 'BSI', 'Lichens', 'Bryophytes')
             -- Names that count for a species but list nothing: GloBI's with a record in India, BOLD's from India.
-            UNION ALL SELECT name, 4 FROM globi WHERE india UNION ALL SELECT name, 4 FROM bold)
+            UNION ALL SELECT name, 4 FROM globi WHERE india UNION ALL SELECT name, 4 FROM bold
+            -- The bird bibliography's tags mix places and topics with names: only a tag with a bird genus.
+            UNION ALL SELECT name, 5 FROM lit WHERE split_part(name, ' ', 1) IN
+                (SELECT DISTINCT split_part(name, ' ', 1) FROM names_in WHERE class = 'Aves'))
         SELECT name FROM want WHERE name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM alias a WHERE a.name = want.name)
         GROUP BY name ORDER BY min(prio), name
     """).fetchall()
@@ -751,6 +774,12 @@ def flags(con):
         FROM id_names n JOIN globi g USING (name) GROUP BY n.id
     """)
     con.sql("""
+        CREATE OR REPLACE TABLE id_lit AS
+        SELECT n.id, sum(l.papers) AS papers, max(l.latest) AS papers_latest
+        FROM (SELECT DISTINCT id, name FROM id_names) n JOIN lit l USING (name)
+        GROUP BY n.id
+    """)
+    con.sql("""
         CREATE OR REPLACE TABLE id_bold AS SELECT DISTINCT n.id FROM id_names n JOIN bold b USING (name)
     """)
     con.sql("""
@@ -824,14 +853,14 @@ def flags(con):
                ev.types, ev.photos,
                -- 2: a barcode from India (BOLD); 1: a barcode anywhere (iBOL on GBIF); 0: none.
                CASE WHEN i.id IN (SELECT id FROM id_bold) THEN 2 WHEN ev.barcodes > 0 THEN 1 ELSE 0 END AS barcode,
-               ev.names AS local_names,
+               ev.names AS local_names, li.papers, li.papers_latest,
                l.labels, l.labels_mask,
                coalesce(t.states_observed, []) AS states_observed, t.last_year,
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
         LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id) LEFT JOIN gbif_places gp ON gp.key = i.id
-        LEFT JOIN evid ev ON ev.key = i.id
+        LEFT JOIN evid ev ON ev.key = i.id LEFT JOIN id_lit li ON li.id = i.id
         ORDER BY gi, i.name
     """)
     con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
@@ -958,24 +987,26 @@ def species_files(con, out: Path):
     India (area of occupancy; null: not counted), records from India with a type status, records from India with a
     photo, DNA barcode (2: from India, BOLD; 1: anywhere, iBOL on GBIF; 0: none), names in Indian languages
     [[language code, name]], a known population trend (State of India's Birds; null: not covered), a record placed in
-    India with a trait, places with an exact record (null: not counted)]}.
+    India with a trait, places with an exact record (null: not counted), papers in the Bibliography of South Asian
+    Ornithology and the year of the latest (birds; null: none)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
-            types, photos, barcode, names, trend, traits, precise in con.sql("""
+            types, photos, barcode, names, trend, traits, precise, papers, papers_latest in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
-                   s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise
+                   s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
+                   s.papers, s.papers_latest
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
-                                                    trend, traits, precise]
+                                                    trend, traits, precise, papers, papers_latest]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -1112,7 +1143,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     # Evidence per species: a type specimen and a photo from India (Linnean), a DNA barcode anywhere and from India
     # (Darwinian), a name in an Indian language.
     evidence = {k: [0] * n for k in EVIDENCE}
-    for gi, u, d, s, ia, ii, tr, tk, ni, *rest in con.sql(f"""
+    papers = [None] * n   # birds with a paper in the Bibliography of South Asian Ornithology (it covers birds only)
+    for gi, u, d, s, ia, ii, tr, tk, ni, pa, *rest in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
                    count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
@@ -1120,6 +1152,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND traits),
                    CASE WHEN bool_or(trend_known IS NOT NULL) THEN count(*) FILTER (WHERE status < 2 AND trend_known) END,
                    count(*) FILTER (WHERE status < 2 AND places_precise >= {NICHE_PLACES}),
+                   count(*) FILTER (WHERE status < 2 AND papers > 0),
                    count(*) FILTER (WHERE status < 2 AND types > 0), count(*) FILTER (WHERE status < 2 AND photos > 0),
                    count(*) FILTER (WHERE status < 2 AND barcode > 0), count(*) FILTER (WHERE status < 2 AND barcode = 2),
                    count(*) FILTER (WHERE status < 2 AND len(local_names) > 0),
@@ -1132,6 +1165,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
             FROM master GROUP BY gi""").fetchall():
         unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi], traits[gi] = u, d, s, ia, ii, tr
         trend_known[gi], niche[gi] = tk, ni
+        if GROUPS[gi] == "Birds":
+            papers[gi] = pa
         for k, v in zip(EVIDENCE, rest):
             evidence[k][gi] = v
         for k, v in zip(REDLIST, rest[len(EVIDENCE):]):
@@ -1146,6 +1181,9 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     traits_measured = value(con, "SELECT count(*) > 0 FROM ledger_trait")   # an older ledger: not measured, not 0
     if traits_measured:
         totals["traits"] = sum(traits)
+    papers_measured = value(con, "SELECT count(*) > 0 FROM lit")
+    if papers_measured:
+        totals["papers"] = sum(p or 0 for p in papers)
     evidence_measured = value(con, "SELECT count(*) > 0 FROM evid")   # no evidence table: not measured, not 0
     if evidence_measured:
         totals.update({k: sum(v) for k, v in evidence.items()})
@@ -1159,6 +1197,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "trend_known": trend_known if any(v is not None for v in trend_known) else None,
                "niche": niche if value(con, "SELECT count(places_precise) > 0 FROM gbif_places") else None,
                **{k: v if evidence_measured else None for k, v in evidence.items()},
+               "papers": papers if papers_measured else None,
                "recent_from": since,
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
@@ -1410,6 +1449,13 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     else:
         con.sql("CREATE OR REPLACE TABLE globi (name VARCHAR, partners BIGINT, india BOOLEAN)")
         notes.append("GloBI's species table was not found: the Eltonian gap (interactions) is not measured.")
+    # The Bibliography of South Asian Ornithology (pipeline/zotero.py): papers per bird name.
+    if inputs.get("zotero"):
+        con.sql(f"""CREATE OR REPLACE TABLE lit AS SELECT name, papers::BIGINT AS papers, latest_year::INTEGER AS latest
+                    FROM read_csv('{inputs["zotero"]}', header = true, all_varchar = true)""")
+    else:
+        con.sql("CREATE OR REPLACE TABLE lit (name VARCHAR, papers BIGINT, latest INTEGER)")
+        notes.append("The Bibliography of South Asian Ornithology was not found: papers per bird are not counted.")
     if inputs.get("soib"):
         from pipeline import soib
         con.sql(f"CREATE OR REPLACE TABLE soib AS {soib.trends_sql(inputs['soib'])}")
@@ -1471,7 +1517,7 @@ def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "lichens",
-                                                     "bryophytes", "evidence", "bold")), *(inputs.get("described") or {}).values()]:
+                                                     "bryophytes", "zotero", "evidence", "bold")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1552,7 +1598,7 @@ def run(a):
     from pipeline import soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
-              "bryophytes": bryophytes_input(s3),
+              "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
               "bsi_monographs": bsi_monographs_input(s3),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}

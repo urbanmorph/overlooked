@@ -5,7 +5,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
-import { KINDS, VERBS, gapStates, layout, webSVG, whereFill } from './web.js?v=dd8b6274fa';
+import { KINDS, VERBS, gapStates, ringSVG, tree, whereFill } from './web.js?v=df9ffadc20';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -92,7 +92,7 @@ try {
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
   const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise] = row;
+    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise, papers, papersLatest] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -114,7 +114,8 @@ try {
         <span class="muted">· <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">GloBI</a></span></dd>
       <dt>Area of occupancy</dt><dd>${cells == null ? '<span class="muted">Not counted yet</span>'
         : `${fmt(4 * cells)} km² <span class="muted">· ${fmt(cells)} ${cells === 1 ? 'cell' : 'cells'} of 2 × 2 km with an open record placed in India</span>`}</dd>
-${evidenceRows(S, name, types, photos, barcode, localPairs)}
+${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != null ? `
+      <dt>Papers</dt><dd>${papers ? `${fmt(papers)} in the Bibliography of South Asian Ornithology${papersLatest ? `, latest ${papersLatest}` : ''}` : '<span class="muted">None in the Bibliography of South Asian Ornithology</span>'} <span class="muted">· <a href="https://southasiaornith.in">A. Pittie</a></span></dd>` : ''}
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>${iucnYear
         ? ` <span class="muted">· assessed in ${iucnYear}${iucnDoi ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
       <dt>Open record in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>
@@ -139,13 +140,20 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}
   const latestYear = gbif?.districts?.length ? Math.max(...gbif.districts.map(d => d[2] ?? 0)) || null : null;
   const gaps = gapStates({ year, latest: latestYear, trend, dna: codes.has('dna'), barcode, traits, precise, partners,
     interactionsIndia }, S);
-  const L = layout(web || { n: {}, p: {} });
-  $('#web').innerHTML = webSVG(L, gaps, name);
+  const T = tree(web || { n: {}, p: {} });
   const kindOf = Object.fromEntries(KINDS.map(k => [k.k, k]));
-  $('#weblegend').innerHTML = KINDS.filter(k => web?.n?.[k.k]).map(k => `<span class="lbl"><i class="sw" style="background:${k.color};border:0"></i>${k.label}</span>`).join('')
-    + (web ? '<span class="lbl"><i class="sw" style="background:#fff;border:2px solid var(--muted)"></i>No record from India</span>' : '');
+  $('#web').innerHTML = `<div class="wtree${T.length ? '' : ' alone'}"><div class="wroot">${ringSVG(gaps, name)}</div>
+    <div class="wbranches">${T.map(br => `<section class="wb" style="--c:${br.color}">
+      <h3>${esc(br.label)} <span class="note">${fmt(br.total)} species</span></h3>
+      <ul>${br.rows.map((r, i) => `<li${r.shown ? '' : ' hidden'}><button type="button" class="wp" data-k="${br.kind}" data-i="${i}">
+        <i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${esc(r.name)}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span></button></li>`).join('')}</ul>
+      ${br.rows.some(r => !r.shown) ? `<button type="button" class="linkish wmore" data-k="${br.kind}">Show all ${fmt(br.rows.length)}</button>` : ''}
+      ${br.total > br.rows.length ? `<p class="note" style="margin:4px 0 0 18px">The ${fmt(br.rows.length)} with most records are here; all ${fmt(br.total)} are on GloBI.</p>` : ''}
+    </section>`).join('')}</div></div>`;
+  $('#weblegend').innerHTML = web ? `<span class="lbl"><i class="dot in" style="--c:var(--ink-2)"></i>A record of the link from India</span>
+    <span class="lbl"><i class="dot" style="--c:var(--ink-2)"></i>None from India</span><span class="lbl">Bar and number: records of the link</span>` : '';
   $('#webnote').innerHTML = web
-    ? `Partner species from GloBI (Global Biotic Interactions), by kind of link; a dot is filled when a record of the link is from India, and larger with more records. <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">All links on GloBI</a>.`
+    ? `Partner species from GloBI (Global Biotic Interactions), by kind of link, the most records first. Pick one for its details. <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">All links on GloBI</a>.`
     : web === undefined ? 'The partner species show here from the next weekly list. The ring shows the seven gaps for this species.'
       : 'No interaction recorded in GloBI. The ring shows the seven gaps for this species.';
   const gapList = () => {
@@ -155,29 +163,26 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}
       <span class="lbl"><i class="pip gap"></i>Open gap</span><span class="lbl"><i class="pip na"></i>Not measured</span></div>`;
   };
   let on = null;
-  const pickNode = i => {
-    const n = L.nodes[i], k = kindOf[n.kind];
-    on?.classList.remove('on'); on = $(`#web .wn[data-i="${i}"]`); on?.classList.add('on');
+  const pickRow = (btn, kind, i) => {
+    const r = T.find(br => br.kind === kind).rows[i], k = kindOf[kind];
+    on?.classList.remove('on'); on = btn; on.classList.add('on');
     $('#pick').innerHTML = `<div class="crumb" style="color:${k.color}">${esc(k.label)}</div>
-      <p class="sp-big" style="font-style:italic">${n.key ? `<a href="/species?key=${encodeURIComponent(n.key)}">${esc(n.name)}</a>` : esc(n.name)}</p>
-      <p class="note" style="margin:4px 0 10px">${esc(n.types.map(t => VERBS[t] || t).join(', '))}</p>
-      <dl class="stats"><dt>Records of the link</dt><dd>${fmt(n.n)}</dd><dt>From India</dt><dd>${n.india ? 'yes' : 'none'}</dd>
-        <dt>On the India list</dt><dd>${n.key ? 'yes' : '<span class="muted">no</span>'}</dd></dl>
+      <p class="sp-big" style="font-style:italic">${r.key ? `<a href="/species?key=${encodeURIComponent(r.key)}">${esc(r.name)}</a>` : esc(r.name)}</p>
+      <p class="note" style="margin:4px 0 10px">${esc(r.types.map(t => VERBS[t] || t).join(', '))}</p>
+      <dl class="stats"><dt>Records of the link</dt><dd>${fmt(r.n)}</dd><dt>From India</dt><dd>${r.india ? 'yes' : 'none'}</dd>
+        <dt>On the India list</dt><dd>${r.key ? 'yes' : '<span class="muted">no</span>'}</dd></dl>
       <p style="margin:12px 0 0"><button type="button" class="linkish" id="gapsback">Show the seven gaps</button></p>`;
     $('#gapsback').addEventListener('click', () => { on?.classList.remove('on'); on = null; gapList(); });
   };
-  for (const g of document.querySelectorAll('#web .wn')) {
-    const i = +g.dataset.i;
-    g.addEventListener('click', () => pickNode(i));
-    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickNode(i); } });
-  }
+  $('#web').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.classList.contains('wmore')) {
+      for (const li of b.closest('.wb').querySelectorAll('li[hidden]')) li.hidden = false;
+      b.remove();
+    } else if (b.classList.contains('wp')) pickRow(b, b.dataset.k, +b.dataset.i);
+  });
   gapList();
-  if (web) {
-    $('#partners').innerHTML = L.sectors.flatMap(sec => web.p[sec.kind].map(([pn, pk, n, india]) =>
-      `<tr><td><i>${pk ? `<a href="/species?key=${encodeURIComponent(pk)}">${esc(pn)}</a>` : esc(pn)}</i></td><td>${esc(kindOf[sec.kind].label)}</td>
-        <td class="n mono">${fmt(n)}</td><td class="n mono">${india ? fmt(india) : '–'}</td></tr>`)).join('');
-    $('#web-table').hidden = false;
-  }
 
   // Map: each district by its latest GBIF record; else its state by an open record. Waiting observations in the tip.
   const byState = new Map(states.map(s => [Number(s.code), s]));

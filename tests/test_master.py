@@ -84,6 +84,8 @@ def inputs(tmp_path):
         t(name, partner, type, outgoing, pkingdom, pclass, records, records_india)""", tmp_path / "edges.parquet")
     places = write(con, """SELECT * FROM (VALUES ('K1', 12, 9), ('K2', 3, 2), ('K3', 0, 1))
         t(species_key, places_precise, cells_2km)""", tmp_path / "species_places.parquet")
+    lit = tmp_path / "zotero.csv"
+    lit.write_text("name,papers,first_year,latest_year\nAus bus,5,1900,2020\nSri lanka,40,1800,2025\nHus newus,1,1950,1950\n")
     bryo = tmp_path / "bryophytes.csv"
     bryo.write_text("section,no,name,phylum,genus,page,unnamed\nmosses,1,Bus bryum,Bryophyta,Bus,2,False\n"
                     "liverworts,1,,Marchantiophyta,Cus,90,True\n")
@@ -107,7 +109,7 @@ def inputs(tmp_path):
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "globi_edges": edges,
                        "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
-                       "bryophytes": bryo,
+                       "bryophytes": bryo, "zotero": lit,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -329,7 +331,7 @@ def test_names_matched_or_kept(built):
     assert "Aus bus minor" not in r                          # subspecies counted as its species
     # iNaturalist, WCVP, BSI and lichens, then BOLD (and GloBI) names no source gives; never ZSI
     assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Bus bryum", "Lus mus", "Mus nus", "Pus qus",
-                                   "Zz zz"]
+                                   "Zz zz", "Hus newus"]
     assert "Hia ius" not in r                                # an older name of Hus ius
 
 
@@ -359,7 +361,8 @@ def test_site_files(built):
     assert {k: v for k, v in s["totals"].items() if k != "redlist"} == {
         "documented": 13, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
         "interactions": 2, "interactions_india": 1, "traits": 1,
-        "types": 1, "photos": 2, "barcodes": 2, "barcodes_india": 1, "local_names": 1}
+        "types": 1, "photos": 2, "barcodes": 2, "barcodes_india": 1, "local_names": 1,
+        "papers": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
@@ -424,17 +427,17 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None, None, None, 0, None, False, False, None]
+                          None, False, None, None, None, 0, None, False, False, None, None, None]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-12:-7] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
-    assert aus[-7:-3] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
-    assert aus[-3:] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
+    assert aus[-14:-9] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-9:-5] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
+    assert aus[-5:-2] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
     eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
-    assert eus[-7:-3] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
+    assert eus[-9:-5] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
-                        None, None, 0, None, None, False, None]
+                        None, None, 0, None, None, False, None, None, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -476,7 +479,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     http = FakeGbif()
     s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
-    assert http.asked == [] and s["names_pending_match"] == 8
+    assert http.asked == [] and s["names_pending_match"] == 9
     assert any("not yet matched" in n for n in s["notes"])
 
 
@@ -995,3 +998,15 @@ def test_partner_files_keep_the_top_partners_of_each_kind_and_need_the_partner_t
     aus = json.loads((tmp_path / "o" / "web" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
     assert aus["n"]["eats"] == 2 and aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"]]]
     assert not (tmp_path / "none" / "web").exists()                    # no partner table: no files
+
+
+def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
+    """Papers and the latest year per species (birds only); a tag is asked of GBIF only when its genus is a bird genus
+    on the list, so places such as Sri Lanka are never asked."""
+    from pipeline import site_data
+    s, birds = built["summary"], GROUPS.index("Birds")
+    assert s["papers"][birds] == 1 and s["totals"]["papers"] == 1                  # Aus bus
+    assert all(v is None for gi, v in enumerate(s["papers"]) if gi != birds)
+    assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
+    aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    assert aus[-2:] == [5, 2020]

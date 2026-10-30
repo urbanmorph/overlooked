@@ -1,7 +1,7 @@
 // The species web (site/assets/web.js): the seven gaps for one species, and the layout of its partners.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KINDS, gapStates, layout } from '../site/assets/web.js';
+import { KINDS, gapStates, tree, ringSVG } from '../site/assets/web.js';
 
 const S = { recent_from: 2016, traits: [0], niche: [0], types: [0], trend_known: [null] };
 
@@ -19,19 +19,28 @@ test('each gap for one species: known, part known, open or not measured', () => 
   assert.ok(g.every(x => x.text.length > 0));
 });
 
-test('partners sit in their kind of link, most records nearest the centre, the rest counted', () => {
-  const p = (name, n, india) => [name, null, n, india, ['eats']];
-  const web = { n: { eats: 40, hosts: 1 }, p: { eats: Array.from({ length: 30 }, (_, i) => p(`E${i}`, 100 - i, i % 2)), hosts: [p('H', 2, 0)] } };
-  const L = layout(web, { cap: 12 });
-  const eats = L.nodes.filter(n => n.kind === 'eats');
-  assert.equal(eats.length, 12);
-  assert.equal(L.sectors.find(s => s.kind === 'eats').more, 28);              // 40 in all, 12 drawn
-  assert.ok(Math.hypot(eats[0].x, eats[0].y) < Math.hypot(eats[11].x, eats[11].y));
-  assert.ok(eats[0].r > eats[11].r && eats[1].india === true && eats[0].india === false);
-  const [a, b] = L.sectors;
-  assert.ok(a.a1 <= b.a0, 'sectors do not overlap');
-  assert.deepEqual(L.sectors.map(s => s.kind), KINDS.filter(k => web.n[k.k]).map(k => k.k));
-  assert.deepEqual(layout({ n: {}, p: {} }).nodes, []);
+test('the tree: a branch per kind of link in a fixed order, the partners with most records first, the rest counted', () => {
+  const p = (name, n, india, key = null) => [name, key, n, india, ['eats']];
+  const web = { n: { hosts: 1, eats: 40 }, p: { eats: Array.from({ length: 30 }, (_, i) => p(`E${i}`, 100 - i, i % 2)), hosts: [p('H', 2, 0, 'K9')] } };
+  const T = tree(web, { top: 8 });
+  assert.deepEqual(T.map(b => b.kind), ['eats', 'hosts']);                       // KINDS order, not the data's
+  assert.equal(T[0].rows.length, 30);
+  assert.deepEqual(T[0].rows.slice(0, 8).map(r => r.shown), Array(8).fill(true));
+  assert.equal(T[0].rows[8].shown, false);
+  assert.equal(T[0].total, 40);
+  assert.equal(T[0].rows[0].bar, 1);                                            // bars scale to the kind's largest
+  assert.ok(Math.abs(T[0].rows[29].bar - 71 / 100) < 1e-9);
+  assert.deepEqual(T[1].rows[0], { name: 'H', key: 'K9', n: 2, india: false, types: ['eats'], bar: 1, shown: true });
+  assert.deepEqual(tree({ n: {}, p: {} }), []);
+  assert.deepEqual(KINDS.map(k => k.k), ['eats', 'eaten', 'flowers', 'lives', 'hosts', 'other']);
+});
+
+test('the ring: one segment per gap, its state as a class, the name at the centre', () => {
+  const svg = ringSVG([{ term: 'Linnean', state: 'known', text: 'x' }, { term: 'Wallacean', state: 'gap', text: 'y' }], 'Aus bus');
+  assert.equal((svg.match(/<path/g) || []).length, 2);
+  assert.match(svg, /class="g-known"/);
+  assert.match(svg, /class="g-gap"/);
+  assert.match(svg, />Aus</);
 });
 
 test('the map: a district by its latest GBIF record, else its state by an open record', async () => {

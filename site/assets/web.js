@@ -1,5 +1,6 @@
-// The species web: one species at the centre, ringed by the seven gaps, with its partners (GloBI) around it by kind of
-// link. Pure functions: the gaps for one species, the layout, and the SVG; species.js draws and wires it.
+// The species web: the species ringed by its seven gaps, with its partners (GloBI) as a tree, a branch per kind of
+// link. Pure functions: the gaps for one species, the tree, the ring; species.js draws and wires them. A radial layout
+// was tried first: with 30 partners per kind the names collided.
 
 import { esc, fmt } from './common.js?v=9455fd8cc8';
 
@@ -46,73 +47,34 @@ export function gapStates(f, S) {
   ];
 }
 
-const R0 = 150, RINGS = [190, 240, 290, 340], PAD = 0.06;
-const pol = (r, a) => [r * Math.sin(a), -r * Math.cos(a)];
-
-/** Positions for the partners: a sector per kind of link (wider for more partners), the `cap` with most records in
- * each, out from the centre ring by ring. {sectors: [{kind, a0, a1, mid, total, more}], nodes: [{kind, name, key, n,
- * india, types, x, y, r, a, labelled}]} */
-export function layout(web, { cap = 24 } = {}) {
-  const kinds = KINDS.filter(k => web.n?.[k.k]);
-  const shown = Object.fromEntries(kinds.map(k => [k.k, (web.p[k.k] || []).slice(0, cap)]));
-  const w = kinds.map(k => Math.max(Math.sqrt(shown[k.k].length), 1.2));
-  const total = w.reduce((a, b) => a + b, 0), span = 2 * Math.PI - PAD * kinds.length;
-  const sectors = [], nodes = [];
-  let a0 = -Math.PI * 0.6;
-  kinds.forEach((k, ki) => {
-    const width = span * w[ki] / total, list = shown[k.k];
-    const per = Math.max(3, Math.ceil(list.length / RINGS.length));
-    list.forEach(([name, key, n, india, types], i) => {
-      const ring = Math.min(Math.floor(i / per), RINGS.length - 1);
-      const inRing = list.slice(ring * per, ring * per + per).length, j = i - ring * per;
-      const a = a0 + width * (0.08 + 0.84 * (inRing === 1 ? 0.5 : (j + 0.5) / inRing));
-      const [x, y] = pol(RINGS[ring], a);
-      nodes.push({ kind: k.k, name, key, n, india: india > 0, types, x, y, a, r: 3.5 + 2.6 * Math.log10(n + 1), labelled: i < 2 });
-    });
-    sectors.push({ kind: k.k, a0, a1: a0 + width, mid: a0 + width / 2, total: web.n[k.k], more: web.n[k.k] - list.length });
-    a0 += width + PAD;
+/** The partner tree: one branch per kind of link the species has (in KINDS order), its partners with most records
+ * first, `top` of them shown at first. [{kind, label, color, total, rows: [{name, key, n, india, types, bar, shown}]}];
+ * bar: records as a share of the kind's largest. */
+export function tree(web, { top = 8 } = {}) {
+  return KINDS.filter(k => web.n?.[k.k]).map(k => {
+    const list = web.p[k.k] || [], max = Math.max(1, ...list.map(r => r[2]));
+    return { kind: k.k, label: k.label, color: k.color, total: web.n[k.k],
+      rows: list.map(([name, key, n, india, types], i) => ({ name, key, n, india: india > 0, types, bar: n / max, shown: i < top })) };
   });
-  return { sectors, nodes };
 }
 
+const pol = (r, a) => [r * Math.sin(a), -r * Math.cos(a)];
 const arc = (r1, r2, b0, b1) => {
   const [x0, y0] = pol(r2, b0), [x1, y1] = pol(r2, b1), [x2, y2] = pol(r1, b1), [x3, y3] = pol(r1, b0);
-  return `M${x0},${y0}A${r2},${r2} 0 0 1 ${x1},${y1}L${x2},${y2}A${r1},${r1} 0 0 0 ${x3},${y3}Z`;
+  return `M${x0.toFixed(1)},${y0.toFixed(1)}A${r2},${r2} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}A${r1},${r1} 0 0 0 ${x3.toFixed(1)},${y3.toFixed(1)}Z`;
 };
-const f1 = v => v.toFixed(1);
-const short = s => (s.length > 24 ? `${s.slice(0, 23)}…` : s);
 
-/** The SVG: partners (each a focusable button with data-i, its index in L.nodes), sector labels, the gap ring and
- * the name at the centre. */
-export function webSVG(L, gaps, name) {
-  const kind = Object.fromEntries(KINDS.map(k => [k.k, k]));
-  let lines = '', dots = '', text = '';
-  L.nodes.forEach((n, i) => {
-    const c = kind[n.kind].color, [lx, ly] = pol(R0 + 4, n.a);
-    lines += `<line x1="${f1(lx)}" y1="${f1(ly)}" x2="${f1(n.x)}" y2="${f1(n.y)}" stroke="${c}" stroke-opacity=".3"/>`;
-    dots += `<g class="wn" data-i="${i}" tabindex="0" role="button" aria-label="${esc(n.name)}: ${esc(kind[n.kind].label)}">`
-      + `<circle class="hit" cx="${f1(n.x)}" cy="${f1(n.y)}" r="${f1(n.r + 7)}" fill="transparent"/>`
-      + `<circle cx="${f1(n.x)}" cy="${f1(n.y)}" r="${f1(n.r)}" fill="${n.india ? c : '#fff'}" stroke="${c}" stroke-width="2"/></g>`;
-    if (n.labelled) {
-      const [tx, ty] = pol(Math.hypot(n.x, n.y) + n.r + 9, n.a), right = Math.sin(n.a) >= 0;
-      text += `<text x="${f1(tx)}" y="${f1(ty + 5)}" text-anchor="${right ? 'start' : 'end'}" class="wl">${esc(short(n.name))}</text>`;
-    }
-  });
-  for (const s of L.sectors) {
-    const [x, y] = pol(388, s.mid), side = Math.sin(s.mid), anchor = side > 0.1 ? 'start' : side < -0.1 ? 'end' : 'middle';
-    text += `<text x="${f1(x)}" y="${f1(y)}" text-anchor="${anchor}" class="ws">${esc(kind[s.kind].label)}</text>`
-      + `<text x="${f1(x)}" y="${f1(y + 22)}" text-anchor="${anchor}" class="wm">${s.more > 0 ? `${fmt(s.total)} species, ${fmt(s.total - s.more)} shown` : `${fmt(s.total)} species`}</text>`;
-  }
-  let ring = '';
-  gaps.forEach((g, i) => {
-    const b0 = i * 2 * Math.PI / 7 + 0.04, b1 = (i + 1) * 2 * Math.PI / 7 - 0.04, [tx, ty] = pol(R0 - 6, (b0 + b1) / 2);
-    ring += `<path class="g-${g.state}" d="${arc(R0 - 46, R0 - 22, b0, b1)}"><title>${esc(g.term)}: ${esc(g.text)}</title></path>`
-      + `<text x="${f1(tx)}" y="${f1(ty + 5)}" text-anchor="middle" class="wg">${esc(g.term.slice(0, 4))}</text>`;
-  });
+/** The species ringed by its seven gaps: a segment per gap (class g-<state>, with its text as a title), the
+ * first four letters of each gap beside it, and the name at the centre. */
+export function ringSVG(gaps, name) {
+  const n = gaps.length;
+  const ring = gaps.map((g, i) => {
+    const b0 = i * 2 * Math.PI / n + 0.05, b1 = (i + 1) * 2 * Math.PI / n - 0.05, [tx, ty] = pol(122, (b0 + b1) / 2);
+    return `<path class="g-${g.state}" d="${arc(80, 104, b0, b1)}"><title>${esc(g.term)}: ${esc(g.text)}</title></path>`
+      + `<text x="${tx.toFixed(1)}" y="${(ty + 5).toFixed(1)}" text-anchor="middle" class="wg">${esc(g.term.slice(0, 4))}</text>`;
+  }).join('');
   const [genus, ...rest] = name.split(' ');
-  return `<svg viewBox="-560 -450 1120 900" role="img" aria-label="${esc(name)}: its partner species by kind of link, around the seven gaps">`
-    + `<g>${lines}</g><g>${dots}</g><g>${text}</g><g>${ring}</g>`
-    + `<circle r="${R0 - 52}" fill="#fff" stroke="var(--line)"/>`
+  return `<svg viewBox="-150 -150 300 300" role="img" aria-label="${esc(name)} and the seven gaps">${ring}`
     + `<text y="-4" text-anchor="middle" class="wc">${esc(genus)}</text><text y="20" text-anchor="middle" class="wc">${esc(rest.join(' '))}</text></svg>`;
 }
 
