@@ -76,7 +76,7 @@ CHECKPOINT = 600  # seconds between saves of the match cache
 RETRIES, BACKOFF = 5, 30  # GBIF match: tries per name, and names failing in a row before stopping; seconds
 WORKERS = 4  # GBIF match requests at once
 
-SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN"]
+SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN", "Lichens"]
 LABELS = [
     ("rg", "Research grade (iNaturalist)", "id"),
     ("nid", "Needs ID (iNaturalist)", "id"),
@@ -207,6 +207,13 @@ def globi_input(s3):
     from pipeline import globi
     return r2_file(s3, globi.R2_PREFIX + "species.parquet", CACHE / "globi_species.parquet") if s3 else (
         globi.CACHE / "species.parquet" if (globi.CACHE / "species.parquet").exists() else None)
+
+
+def lichens_input(s3):
+    """The lichen checklist table (pipeline/lichens.py): R2's copy, else the local one."""
+    from pipeline import lichens
+    local = lichens.CACHE / lichens.TABLE
+    return r2_file(s3, lichens.R2_DIR + lichens.TABLE, CACHE / lichens.TABLE) if s3 else (local if local.exists() else None)
 
 
 def bsi_input(s3):
@@ -361,6 +368,14 @@ def load_zsi(con, path):
                     FROM zsi WHERE rank = 'species' AND authority IS NOT NULL""")
     con.sql("""INSERT INTO alias SELECT DISTINCT binomial(name), col_accepted_id, binomial(coalesce(col_accepted_name, name)), 2
                FROM zsi WHERE matched AND rank = 'species'""")
+
+
+def load_lichens(con, path):
+    """The lichen checklist of India (pipeline/lichens.py; Sinha, Nayaka & Mishra 2024, CC BY-NC 4.0): accepted
+    names, with the paper's endemic mark. Its synonyms are other names of the same species, so they are not listed."""
+    con.sql(f"""INSERT INTO names_in SELECT DISTINCT 'Lichens', binomial(name), NULL, 'Fungi', 'Ascomycota',
+                'Lecanoromycetes', NULL, NULL, NULL, NULL, endemic::BOOLEAN, false, 5
+                FROM read_csv('{path}', header = true, all_varchar = true) WHERE coalesce(name, '') <> ''""")
 
 
 def load_wcvp(con, path):
@@ -1230,6 +1245,10 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         load_zsi(con, inputs["zsi"])
     if inputs.get("wcvp"):
         load_wcvp(con, inputs["wcvp"])
+    if inputs.get("lichens"):
+        load_lichens(con, inputs["lichens"])
+    else:
+        notes.append("The lichen checklist of India was not found: lichens are listed only from records and BSI.")
     if inputs.get("bsi"):
         load_bsi(con, inputs["bsi"])
     else:
@@ -1296,7 +1315,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi", "soib")), *(inputs.get("described") or {}).values()]:
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi", "soib", "lichens")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1376,7 +1395,7 @@ def run(a):
     http.headers["User-Agent"] = health.ua()
     from pipeline import soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3),
-              "soib": soib.refresh(http, s3, CACHE / "soib"),
+              "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
