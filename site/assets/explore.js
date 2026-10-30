@@ -10,7 +10,7 @@ import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps, gapAbsent } from './gaps.js?v=e18674154d';
+import { gaps, gapAbsent } from './gaps.js?v=802c130cf2';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.

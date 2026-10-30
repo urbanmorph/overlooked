@@ -48,3 +48,14 @@ test('gapAbsent: a count left out by filters says so; a count not measured yet g
   const none = { ...GAPS[0], measure: undefined, source: 'X' };
   assert.equal(gapAbsent(none, true), 'Not measured yet. Data: X.');                 // no measure: never a filter
 });
+
+test('the Linnean and Darwinian notes add type specimens, local names and barcodes when the list measures them', () => {
+  const S = { recent_from: 2016, described_recent: [3, 1], india: [[10, 5, [], 0, 4, 2], [5, 2, [], 0, 1, 1]], dna: [2, 0],
+    types: [4, 1], local_names: [6, 0], barcodes: [7, 2], barcodes_india: [3, 1] };
+  const [lin, , , dar] = gaps(S, [0, 1]);
+  assert.match(lin.note, /5 have a type specimen from India on GBIF; 6 have a name in an Indian language/);
+  assert.match(dar.note, /9 have a DNA barcode on BOLD \(4 from India\)/);
+  const old = gaps({ ...S, types: undefined, barcodes: undefined }, [0, 1]);
+  assert.doesNotMatch(old[0].note, /type specimen/);
+  assert.doesNotMatch(old[3].note, /BOLD/);
+});

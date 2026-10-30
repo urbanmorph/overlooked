@@ -4,6 +4,7 @@
 import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=9455fd8cc8';
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
+import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -64,6 +65,19 @@ function history(s) {
   $('#gbif-hist').hidden = false;
 }
 
+// Type specimens, photos, DNA barcode and local names; nothing when this list does not measure them.
+function evidenceRows(S, name, types, photos, barcode, names) {
+  if (S.types == null) return '';
+  const none = text => `<span class="muted">${text}</span>`;
+  const t = countText(types, true, 'record'), p = countText(photos, true, 'record'), b = barcodeText(barcode);
+  const local = localNames(names);
+  return `<dt>Type specimen</dt><dd>${t ? `${t} from India with a type status <span class="muted">· GBIF</span>` : none('None from India on GBIF')}</dd>
+      <dt>Photo</dt><dd>${p ? `${p} from India with a photo <span class="muted">· GBIF</span>` : none('None from India on GBIF')}</dd>
+      <dt>DNA barcode</dt><dd>${b ? `${b} <span class="muted">· <a href="https://portal.boldsystems.org/result?query=${encodeURIComponent(name)}[tax]">BOLD</a></span>` : none('None on BOLD')}</dd>
+      <dt>Local names</dt><dd>${local.length ? local.map(l => `${esc(l.names.join(', '))} <span class="muted">(${esc(l.lang)})</span>`).join('; ')
+        : none('None in Wikidata yet')}</dd>`;
+}
+
 try {
   const key = new URLSearchParams(location.search).get('key');
   if (!key) throw new Error('no species key in the address');
@@ -76,7 +90,7 @@ try {
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
   const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia, cells] = row;
+    partners, interactionsIndia, cells, types, photos, barcode, names] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -98,6 +112,7 @@ try {
         <span class="muted">· <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">GloBI</a></span></dd>
       <dt>Area of occupancy</dt><dd>${cells == null ? '<span class="muted">Not counted yet</span>'
         : `${fmt(4 * cells)} km² <span class="muted">· ${fmt(cells)} ${cells === 1 ? 'cell' : 'cells'} of 2 × 2 km with an open record placed in India</span>`}</dd>
+${evidenceRows(S, name, types, photos, barcode, names)}
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>${iucnYear
         ? ` <span class="muted">· assessed in ${iucnYear}${iucnDoi ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
       <dt>Open record in</dt><dd>${fmt(nObs)} state${nObs === 1 ? '' : 's'}</dd>

@@ -75,6 +75,14 @@ def inputs(tmp_path):
         t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
     places = write(con, """SELECT * FROM (VALUES ('K1', 12, 9), ('K2', 3, 2), ('K3', 0, 1))
         t(species_key, places_precise, cells_2km)""", tmp_path / "species_places.parquet")
+    bryo = tmp_path / "bryophytes.csv"
+    bryo.write_text("section,no,name,phylum,genus,page,unnamed\nmosses,1,Bus bryum,Bryophyta,Bus,2,False\n"
+                    "liverworts,1,,Marchantiophyta,Cus,90,True\n")
+    evid = tmp_path / "evidence.parquet"
+    con.sql(f"""COPY (SELECT * FROM (VALUES ('K1', 2, 3, NULL, [{{'lang': 'hi', 'name': 'एक'}}]), ('K2', NULL, 1, 5, NULL),
+        ('K3', NULL, NULL, 7, NULL)) t(key, types, photos, barcodes, names)) TO '{evid}' (FORMAT parquet)""")
+    bold = tmp_path / "bold_india.csv"
+    bold.write_text("name,n\nEus fus,4\nZz zz,1\n")
     mono = tmp_path / "bsi_monographs.csv"
     mono.write_text("source,checklist,group,family,name,rank,authority,status,states,page,edition,url\n"
                     "BSI,Macrolichens of Sikkim,lichens,,Lus mus,species,,accepted,Sikkim,9,e,u\n"
@@ -88,7 +96,8 @@ def inputs(tmp_path):
                     "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
-                       "soib": soib, "lichens": lichens, "bsi_monographs": mono,
+                       "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
+                       "bryophytes": bryo,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -106,7 +115,8 @@ class Resp:
 
 
 class FakeGbif:
-    """GBIF v2 match: 'Wus vus' matches K5, 'Hia ius' (an older name) matches G1 (Hus ius); else no exact match."""
+    """GBIF v2 match: 'Wus vus' matches K5, 'Hia ius' and 'Old ius' (older names) match G1 (Hus ius); else no
+    exact match."""
 
     def __init__(self):
         self.headers, self.asked = {}, []
@@ -118,7 +128,7 @@ class FakeGbif:
                          "classification": [{"rank": "KINGDOM", "name": "Plantae"}, {"rank": "PHYLUM", "name": "Tracheophyta"},
                                             {"rank": "FAMILY", "name": "Orchidaceae"}],
                          "diagnostics": {"matchType": "EXACT"}})
-        if params["scientificName"] == "Hia ius":
+        if params["scientificName"] in ("Hia ius", "Old ius"):
             return Resp({"usage": {"key": "G1", "name": "Hus ius L.", "canonicalName": "Hus ius"},
                          "classification": [{"rank": "KINGDOM", "name": "Animalia"}],
                          "diagnostics": {"matchType": "EXACT"}})
@@ -228,6 +238,26 @@ def test_a_list_without_soib_leaves_the_prestonian_gap_unmeasured(inputs, tmp_pa
     assert s["trend_known"] is None
 
 
+def test_type_specimens_photos_barcodes_and_local_names(built):
+    """GBIF counts (types and photos from India, barcodes anywhere), BOLD's India names, Wikidata names, per group."""
+    s = built["summary"]
+    birds, orchids, beetles = GROUPS.index("Birds"), GROUPS.index("Plants: orchids"), GROUPS.index("Insects: beetles")
+    assert (s["types"][birds], s["photos"][birds], s["local_names"][birds]) == (1, 1, 1)          # Aus bus
+    assert (s["photos"][orchids], s["barcodes"][orchids], s["barcodes_india"][orchids]) == (1, 1, 0)   # Cus dus
+    assert (s["barcodes"][beetles], s["barcodes_india"][beetles]) == (1, 1)                       # Eus fus: BOLD India
+    assert {k: s["totals"][k] for k in ("types", "photos", "barcodes", "barcodes_india", "local_names")} == {
+        "types": 1, "photos": 2, "barcodes": 2, "barcodes_india": 1, "local_names": 1}
+
+
+def test_a_list_without_the_evidence_tables_leaves_them_unmeasured(inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "evidence": None, "bold": None}, cache={}, http=FakeGbif())
+    assert all(s[k] is None and k not in s["totals"] for k in ("types", "photos", "barcodes", "barcodes_india", "local_names"))
+
+
 def test_exact_places_the_hutchinsonian_gap(built):
     """Species with records placed to 1 km or better at 10 or more places (species_places), per group."""
     s = built["summary"]
@@ -248,7 +278,7 @@ def test_documented_and_with_an_open_record(built):
     """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
     one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
     t = built["summary"]["totals"]
-    assert (t["documented"], t["observed"]) == (12, 5)   # Lus mus (lichens), Mus nus (a BSI regional book); Wus xus: a record under the name as published
+    assert (t["documented"], t["observed"]) == (13, 5)   # Bus bryum (bryophytes), Lus mus (lichens), Mus nus (a BSI regional book); Wus xus: a record under the name as published
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
     assert r["Aus bus"]["observed"] and r["Aus bus"]["states_observed"] == [32]
@@ -287,7 +317,9 @@ def test_names_matched_or_kept(built):
     assert r["Xus yus"]["key"] is None and "nm" in r["Xus yus"]["labels"]   # kept, subgenus dropped
     assert r["Hus ius"]["key"] == "G1"                       # ZSI's key folded into GBIF's for the same name
     assert "Aus bus minor" not in r                          # subspecies counted as its species
-    assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Lus mus", "Mus nus", "Pus qus"]  # iNaturalist, WCVP, BSI and lichens; never ZSI
+    # iNaturalist, WCVP, BSI and lichens, then BOLD (and GloBI) names no source gives; never ZSI
+    assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Bus bryum", "Lus mus", "Mus nus", "Pus qus",
+                                   "Zz zz"]
     assert "Hia ius" not in r                                # an older name of Hus ius
 
 
@@ -315,8 +347,9 @@ def test_site_files(built):
     # Darwinian: a DNA sequence or sample from India on GBIF (Eus fus).
     assert s["dna"][GROUPS.index("Insects: beetles")] == 1 and s["dna"][birds] == 0
     assert {k: v for k, v in s["totals"].items() if k != "redlist"} == {
-        "documented": 12, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
-        "interactions": 2, "interactions_india": 1, "traits": 1}
+        "documented": 13, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
+        "interactions": 2, "interactions_india": 1, "traits": 1,
+        "types": 1, "photos": 2, "barcodes": 2, "barcodes_india": 1, "local_names": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
@@ -381,12 +414,16 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None]
+                          None, False, None, None, None, 0, None]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-5:] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-9:-4] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-4:] == [2, 3, 0, [["hi", "एक"]]]       # type specimens and photos from India, barcode, local names
+    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
+    assert eus[-4:] == [None, None, 2, None]          # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
-    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None]
+    assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
+                        None, None, 0, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -404,7 +441,7 @@ def test_year_described_from_the_first_source_that_has_one(built):
     assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
     assert years["Eus fus"] is None
     d = built["summary"]["described"]
-    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 6   # Wus xus: its paper, 2021; Lus mus, Mus nus: no year
+    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 7   # Wus xus: its paper, 2021; Lus mus, Mus nus, Bus bryum: no year
 
 
 def test_prefix():
@@ -428,7 +465,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     http = FakeGbif()
     s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
-    assert http.asked == [] and s["names_pending_match"] == 6
+    assert http.asked == [] and s["names_pending_match"] == 8
     assert any("not yet matched" in n for n in s["notes"])
 
 
@@ -879,3 +916,43 @@ def test_retention_keeps_the_last_build_of_each_past_week(monkeypatch):
         "layers/master/2026-11-02/current.json", "layers/master/latest.json", "snapshots/2026-10-26/species.parquet"])
     master.prune(s3, "2026-11-02", "20261103T010000Z")                     # idempotent
     assert len(r2.list_keys(s3, "")) == 9
+
+
+def test_evidence_asks_for_the_snapshot_and_previous_list_and_falls_back_when_it_fails(inputs, tmp_path, monkeypatch):
+    from pipeline import evidence
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    prev = write(duckdb.connect(), "SELECT * FROM (VALUES ('K9'), (NULL)) t(key)", tmp_path / "prev.parquet")
+    asked = []
+    monkeypatch.setattr(evidence, "refresh", lambda http, s3, keys, deadline=None: asked.append(keys) or ("t", "b"))
+    assert master.evidence_input(None, None, inputs["paths"], {"parquet": prev}) == ("t", "b")
+    assert asked == [["G1", "K1", "K2", "K3", "K9"]]
+
+    def down(*a, **k):
+        raise ConnectionError("GBIF down")
+    monkeypatch.setattr(evidence, "refresh", down)
+    assert master.evidence_input(None, None, inputs["paths"], None) == (None, None)
+
+
+def test_globi_and_bold_names_under_an_older_name_count_for_the_species(inputs, tmp_path, monkeypatch):
+    """GloBI (with a record in India) and BOLD names that no source gives are matched with GBIF like other names: an
+    older name ('Old ius', which GBIF matches to G1, Hus ius) counts for its species."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    globi = write(con, """SELECT * FROM (VALUES ('Old ius', 4, 2, ['eats'], 3, 1), ('Qia qia', 1, 1, ['eats'], 0, 1))
+        t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi_old.parquet")
+    bold = tmp_path / "bold_old.csv"
+    bold.write_text("name,n\nOld ius,2\n")
+    http = FakeGbif()
+    out = tmp_path / "o"
+    s = master.build(con, inputs["paths"], out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "globi": globi, "bold": bold}, cache={}, http=http)
+    birds = GROUPS.index("Birds")
+    assert s["interactions_india"][birds] == 1 and s["barcodes_india"][birds] == 1     # Hus ius, through 'Old ius'
+    assert "Qia qia" not in http.asked                     # no record in India: not asked
+
+
+def test_bryophytes_from_the_2011_checklist_are_a_source(built):
+    r = built["rows"]
+    assert "Bryophytes" in r["Bus bryum"]["sources"] and r["Bus bryum"]["group"] == "Mosses & liverworts"
+    assert "Bus bryum" in built["http"].asked                       # matched with GBIF like other checklist names

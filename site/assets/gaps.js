@@ -8,7 +8,8 @@ import { fmt, sumGroups } from './common.js?v=9455fd8cc8';
 export const GAPS = [
   { term: 'Linnean', plain: 'Which species exist', question: 'Is every species described and named?',
     measure: (S, gis) => ({ value: sumGroups(S.described_recent, gis) }),
-    note: S => `species on the India list described since ${S.recent_from}: the list is still growing` },
+    note: (S, gis) => `species on the India list described since ${S.recent_from}: the list is still growing${S.types == null ? ''
+      : `. ${fmt(sumGroups(S.types, gis))} have a type specimen from India on GBIF; ${fmt(sumGroups(S.local_names, gis))} have a name in an Indian language on Wikidata`}` },
   { term: 'Wallacean', plain: 'Where species live', question: 'Do we know where each species lives?',
     measure: (S, gis) => ({ value: sumGroups(S.india, gis, 5), of: sumGroups(S.india, gis, 0) }),
     note: S => `of documented species recorded in a state since ${S.recent_from}` },
@@ -22,7 +23,8 @@ export const GAPS = [
     source: 'State of India\u2019s Birds for birds; IUCN Red List population trends for other groups (IUCN has to permit us to publish counts from them)' },
   { term: 'Darwinian', plain: 'How species are related', question: 'Do we know each species’ place in the tree of life?',
     measure: (S, gis) => ({ value: sumGroups(S.dna, gis), of: sumGroups(S.india, gis, 0) }),
-    note: () => 'of documented species have a DNA sequence or sample from India on GBIF' },
+    note: (S, gis) => `of documented species have a DNA sequence or sample from India on GBIF${S.barcodes == null ? ''
+      : `; ${fmt(sumGroups(S.barcodes, gis))} have a DNA barcode on BOLD (${fmt(sumGroups(S.barcodes_india, gis))} from India)`}` },
   { term: 'Raunkiæran', plain: 'What species are like', question: 'Do we know each species’ traits: size, life cycle, when it flowers or breeds?',
     measure: (S, gis) => ({ value: sumGroups(S.traits, gis), of: sumGroups(S.india, gis, 0) }),
     note: () => 'of documented species have a record placed in India with a life stage, a sex, or flowers or fruits (on GBIF, mostly iNaturalist annotations)',
