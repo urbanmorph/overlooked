@@ -54,3 +54,19 @@ def test_book_rows_once_each_at_the_first_page():
                                       "Parmotrema nilgherense": "Parmotrema nilgherrense"})
     assert [(r["name"], r["page"], r["states"], r["source"]) for r in rows] == [
         ("Parmotrema nilgherrense", 9, "Sikkim", "BSI")]
+
+
+def test_a_slow_answer_is_asked_again():
+    import requests
+
+    class Slow(Http):
+        def get(self, url, params=None, **kw):
+            if not self.asked:
+                self.asked.append("timeout")
+                raise requests.exceptions.ReadTimeout("slow")
+            return super().get(url, params, **kw)
+
+    http = Slow({"Ulva lactuca": {"matchType": "EXACT", "rank": "SPECIES", "kingdom": "Plantae", "confidence": 99,
+                                  "canonicalName": "Ulva lactuca"}})
+    assert bm.verify(["Ulva lactuca"], "algae", http, {}, pause=0)[0][1] == "Ulva lactuca"
+    assert http.asked == ["timeout", "Ulva lactuca"]

@@ -93,6 +93,20 @@ def candidates(lines):
     return out
 
 
+def match(http, name, pause, tries=3):
+    """GBIF's match for one name; a timeout or a dropped connection is asked again, waiting longer each time."""
+    import requests
+    for i in range(tries):
+        try:
+            r = http.get(MATCH, params={"name": name, "strict": "true"}, timeout=60)
+            r.raise_for_status()
+            return r.json()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            if i == tries - 1:
+                raise
+            time.sleep(pause * 10 * (i + 1))
+
+
 def verify(names, group, http, cache, pause=1.0, save=None):
     """[(name as read, GBIF's name or None, the match)]: kept when GBIF matches it to a species-rank name of the
     book's kingdom, exactly or with a close spelling (confidence MIN_CONFIDENCE or more). cache: {name: match},
@@ -100,9 +114,7 @@ def verify(names, group, http, cache, pause=1.0, save=None):
     out, new = [], 0
     for name in names:
         if name not in cache:
-            r = http.get(MATCH, params={"name": name, "strict": "true"}, timeout=60)
-            r.raise_for_status()
-            cache[name] = r.json()
+            cache[name] = match(http, name, pause)
             new += 1
             if save and new % 100 == 0:
                 save()
