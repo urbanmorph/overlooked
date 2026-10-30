@@ -216,6 +216,12 @@ def lichens_input(s3):
     return r2_file(s3, lichens.R2_DIR + lichens.TABLE, CACHE / lichens.TABLE) if s3 else (local if local.exists() else None)
 
 
+def bsi_monographs_input(s3):
+    """BSI's regional and family books (pipeline/bsi_monographs.py): the local table, else R2's."""
+    local = BSI_LOCAL.with_name("bsi_monographs.csv")
+    return local if local.exists() else r2_file(s3, "cache/bsi/bsi_monographs.csv", CACHE / "bsi_monographs.csv")
+
+
 def bsi_input(s3):
     return BSI_LOCAL if BSI_LOCAL.exists() else r2_file(s3, "cache/bsi/bsi_checklist.csv", CACHE / "bsi_checklist.csv")
 
@@ -501,13 +507,13 @@ def save_match_cache(cache, s3):
 
 def to_match(con, cache):
     """Names no key or alias gives, not yet asked of GBIF: iNaturalist research grade first, then needs ID,
-    WCVP and BSI. ZSI names were matched against the same Catalogue of Life release in fnf, so not asked again."""
+    WCVP, BSI and the lichen checklist. ZSI names were matched against the same Catalogue of Life release in fnf, so not asked again."""
     rows = con.sql("""
         WITH want AS (
             SELECT name, CASE WHEN label = 'rg' THEN 0 ELSE 1 END AS prio FROM evidence
             WHERE key IS NULL AND source = 'iNaturalist'
             UNION ALL SELECT name, CASE source WHEN 'WCVP' THEN 2 ELSE 3 END FROM names_in
-            WHERE key IS NULL AND source IN ('WCVP', 'BSI'))
+            WHERE key IS NULL AND source IN ('WCVP', 'BSI', 'Lichens'))
         SELECT name FROM want WHERE name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM alias a WHERE a.name = want.name)
         GROUP BY name ORDER BY min(prio), name
     """).fetchall()
@@ -1249,6 +1255,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         load_lichens(con, inputs["lichens"])
     else:
         notes.append("The lichen checklist of India was not found: lichens are listed only from records and BSI.")
+    if inputs.get("bsi_monographs"):
+        load_bsi(con, inputs["bsi_monographs"])   # BSI's regional and family books on lichens, algae and fungi
     if inputs.get("bsi"):
         load_bsi(con, inputs["bsi"])
     else:
@@ -1315,7 +1323,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "globi", "soib", "lichens")), *(inputs.get("described") or {}).values()]:
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "soib", "lichens")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1396,6 +1404,7 @@ def run(a):
     from pipeline import soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
+              "bsi_monographs": bsi_monographs_input(s3),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)

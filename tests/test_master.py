@@ -75,6 +75,10 @@ def inputs(tmp_path):
         t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
     places = write(con, """SELECT * FROM (VALUES ('K1', 12, 9), ('K2', 3, 2), ('K3', 0, 1))
         t(species_key, places_precise, cells_2km)""", tmp_path / "species_places.parquet")
+    mono = tmp_path / "bsi_monographs.csv"
+    mono.write_text("source,checklist,group,family,name,rank,authority,status,states,page,edition,url\n"
+                    "BSI,Macrolichens of Sikkim,lichens,,Lus mus,species,,accepted,Sikkim,9,e,u\n"
+                    "BSI,Algal Flora of Dehradun District,algae,,Mus nus,species,,accepted,Uttarakhand,3,e,u\n")
     lichens = tmp_path / "lichens.csv"
     lichens.write_text("no,name,authority,synonyms,growth_form,substratum,states,regions,endemic,page\n"
                        "1,Lus mus,Nyl.,Lus oldus Nyl.,CR,CO,Kerala,WG,True,8\n")
@@ -84,7 +88,7 @@ def inputs(tmp_path):
                     "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
-                       "soib": soib, "lichens": lichens,
+                       "soib": soib, "lichens": lichens, "bsi_monographs": mono,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -244,7 +248,7 @@ def test_documented_and_with_an_open_record(built):
     """An open record: any GBIF record, or an iNaturalist research-grade observation. A needs-ID observation is not
     one: it waits for a name. A species named only in needs-ID observations is not on the list (it still waits)."""
     t = built["summary"]["totals"]
-    assert (t["documented"], t["observed"]) == (11, 5)   # Lus mus (lichens); Wus xus: a record under the name as published
+    assert (t["documented"], t["observed"]) == (12, 5)   # Lus mus (lichens), Mus nus (a BSI regional book); Wus xus: a record under the name as published
     assert built["rows"]["Qus rus"]["key"] == "K7"
     r = built["rows"]
     assert r["Aus bus"]["observed"] and r["Aus bus"]["states_observed"] == [32]
@@ -263,8 +267,10 @@ def test_sources_and_labels(built):
     assert "Old dus" not in r and r["Pus qus"]["group"] == "Plants: ferns & lycophytes" and r["Cus dus"]["labels"] == ["sp", "end"]
     assert r["Eus fus"]["labels"] == ["dna", "do"]
     # The lichen checklist of India (2024): a lichen, endemic; its synonym is not a second species.
-    assert r["Lus mus"]["sources"] == ["Lichens"] and r["Lus mus"]["group"] == "Lichens" and "end" in r["Lus mus"]["labels"]
+    assert r["Lus mus"]["group"] == "Lichens" and "end" in r["Lus mus"]["labels"]
     assert "Lus oldus" not in r
+    # BSI's regional books: a lichen also in the lichen checklist, and an alga.
+    assert r["Lus mus"]["sources"] == ["BSI", "Lichens"] and r["Mus nus"]["sources"] == ["BSI"]
     assert r["Gus hus"]["sources"] == ["ZSI", "Plazi"] and r["Gus hus"]["labels"] == ["chk", "nra"]
 
 
@@ -281,7 +287,7 @@ def test_names_matched_or_kept(built):
     assert r["Xus yus"]["key"] is None and "nm" in r["Xus yus"]["labels"]   # kept, subgenus dropped
     assert r["Hus ius"]["key"] == "G1"                       # ZSI's key folded into GBIF's for the same name
     assert "Aus bus minor" not in r                          # subspecies counted as its species
-    assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Pus qus"]  # iNaturalist, WCVP, BSI; never ZSI
+    assert built["http"].asked == ["Hia ius", "Zus zus", "Wus vus", "Lus mus", "Mus nus", "Pus qus"]  # iNaturalist, WCVP, BSI and lichens; never ZSI
     assert "Hia ius" not in r                                # an older name of Hus ius
 
 
@@ -309,7 +315,7 @@ def test_site_files(built):
     # Darwinian: a DNA sequence or sample from India on GBIF (Eus fus).
     assert s["dna"][GROUPS.index("Insects: beetles")] == 1 and s["dna"][birds] == 0
     assert {k: v for k, v in s["totals"].items() if k != "redlist"} == {
-        "documented": 11, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
+        "documented": 12, "observed": 5, "in_state": 4, "recent": 1, "unlisted": 1, "described_recent": 2, "dna": 1,
         "interactions": 2, "interactions_india": 1, "traits": 1}
     labels = [lab["code"] for lab in s["labels"]]
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
@@ -398,7 +404,7 @@ def test_year_described_from_the_first_source_that_has_one(built):
     assert years["Cus dus"] == 1753        # WCVP: Catalogue of Life gives no year for this plant
     assert years["Eus fus"] is None
     d = built["summary"]["described"]
-    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 5   # Wus xus: its paper, 2021; Lus mus: no year
+    assert d["from"] == 1753 and d["to"] == 2021 and d["unknown"] == 6   # Wus xus: its paper, 2021; Lus mus, Mus nus: no year
 
 
 def test_prefix():
@@ -422,7 +428,7 @@ def test_match_stops_at_deadline(inputs, tmp_path, monkeypatch):
     http = FakeGbif()
     s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "m", "snapshot": "s", "built": "x"},
                      inputs["districts"], inputs["inputs"], cache={}, http=http, deadline=0)
-    assert http.asked == [] and s["names_pending_match"] == 4
+    assert http.asked == [] and s["names_pending_match"] == 6
     assert any("not yet matched" in n for n in s["notes"])
 
 
