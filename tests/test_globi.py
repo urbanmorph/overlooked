@@ -10,14 +10,15 @@ import pytest
 from pipeline import globi
 
 HEADER = ["sourceTaxonSpeciesName", "interactionTypeName", "targetTaxonSpeciesName", "decimalLatitude",
-          "decimalLongitude", "localityName", "sourceNamespace", "otherColumn"]
+          "decimalLongitude", "localityName", "sourceNamespace", "otherColumn", "sourceTaxonKingdomName",
+          "sourceTaxonClassName", "targetTaxonKingdomName", "targetTaxonClassName"]
 
 
 def snapshot(path, rows):
     with gzip.open(path, "wt") as f:
         f.write("\t".join(HEADER) + "\n")
         for r in rows:
-            f.write("\t".join(r) + "\n")
+            f.write("\t".join(r + [""] * (len(HEADER) - len(r)) if len(r) > 1 else r) + "\n")
     return path
 
 
@@ -45,7 +46,7 @@ def test_one_row_per_species_from_both_sides_of_each_interaction(tmp_path, distr
         ["broken row with no tabs"],
     ])
     out = tmp_path / "species.parquet"
-    globi.species_table(duckdb.connect(), tsv, districts, out)
+    globi.species_table(duckdb.connect(), tsv, districts, out, tmp_path / "edges.parquet")
     rows = {r[0]: r[1:] for r in duckdb.sql(
         f"SELECT name, records, partners, types, records_india, datasets FROM '{out}' ORDER BY name").fetchall()}
     assert rows["Aus bus"] == (3, 2, ["eats", "pollinates"], 2, 2)
@@ -53,6 +54,24 @@ def test_one_row_per_species_from_both_sides_of_each_interaction(tmp_path, distr
     assert rows["Eus fus"][3] == 1                                     # India from the locality name
     assert rows["Gus hus"] == (1, 0, ["parasiteOf"], 1, 1)
     assert rows["Hus ius"][3] == 0                                     # "Indiana", "Indian subregion": not India
+
+
+def test_partners_one_row_per_species_partner_and_kind_of_link_from_both_sides(tmp_path, districts):
+    """edges.parquet: what each species does to each partner (outgoing) or has done to it (incoming), with the
+    partner's kingdom and class, records and records in India."""
+    tsv = snapshot(tmp_path / "i.tsv.gz", [
+        ["Aus bus", "eats", "Cus dus", "10.5", "76.5", "", "ds/one", "x", "Animalia", "Mammalia", "Plantae", "Magnoliopsida"],
+        ["Aus bus", "eats", "Cus dus", "40.0", "-3.0", "Spain", "ds/two", "x", "Animalia", "Mammalia", "Plantae", "Magnoliopsida"],
+        ["Vus wus", "pathogenOf", "Aus bus", "", "", "India", "ds/one", "x", "Orthornavirae", "", "Animalia", "Mammalia"],
+        ["Aus bus", "eats", "", "", "", "", "ds/one", "x"],                                   # no partner species
+    ])
+    edges = tmp_path / "edges.parquet"
+    globi.species_table(duckdb.connect(), tsv, districts, tmp_path / "s.parquet", edges)
+    rows = sorted(duckdb.sql(f"SELECT name, partner, type, outgoing, pkingdom, pclass, records, records_india FROM '{edges}'").fetchall())
+    assert rows == [("Aus bus", "Cus dus", "eats", True, "Plantae", "Magnoliopsida", 2, 1),
+                    ("Aus bus", "Vus wus", "pathogenOf", False, "Orthornavirae", None, 1, 1),
+                    ("Cus dus", "Aus bus", "eats", False, "Animalia", "Mammalia", 2, 1),
+                    ("Vus wus", "Aus bus", "pathogenOf", True, "Animalia", "Mammalia", 1, 1)]
 
 
 class Resp:
@@ -129,10 +148,10 @@ def test_refresh_publishes_the_table_and_a_run_with_the_same_snapshot_does_nothi
     from tests.r2_fake import FakeS3
     monkeypatch.setenv("R2_BUCKET", "b")
     monkeypatch.setattr(globi, "CHUNK", 1 << 16)
-    body = gzip.compress(("\t".join(HEADER) + "\nAus bus\teats\tCus dus\t10.5\t76.5\t\td\tx\n").encode())
+    body = gzip.compress(("\t".join(HEADER) + "\nAus bus\teats\tCus dus\t10.5\t76.5\t\td\tx\t\t\t\t\n").encode())
     s3, http = FakeS3(), Http(body)
     assert globi.refresh(http, s3, tmp_path / "one", districts) == "published"
-    assert sorted(s3.store) == ["cache/globi/meta.json", "cache/globi/species.parquet"]
+    assert sorted(s3.store) == ["cache/globi/edges.parquet", "cache/globi/meta.json", "cache/globi/species.parquet"]
     again = Http(body)
     assert globi.refresh(again, s3, tmp_path / "two", districts) == "unchanged" and again.ranges == []
     assert globi.refresh(Http(body, etag='"e2"'), s3, tmp_path / "three", districts) == "published"

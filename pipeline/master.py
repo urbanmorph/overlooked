@@ -209,6 +209,14 @@ def globi_input(s3):
         globi.CACHE / "species.parquet" if (globi.CACHE / "species.parquet").exists() else None)
 
 
+def globi_edges_input(s3):
+    """GloBI's partner table (pipeline/globi.py edges.parquet). With R2, always R2's copy."""
+    from pipeline import globi
+    local = globi.CACHE / "edges.parquet"
+    return r2_file(s3, globi.R2_PREFIX + "edges.parquet", CACHE / "globi_edges.parquet") if s3 else (
+        local if local.exists() else None)
+
+
 def lichens_input(s3):
     """The lichen checklist table (pipeline/lichens.py): R2's copy, else the local one."""
     from pipeline import lichens
@@ -949,25 +957,78 @@ def species_files(con, out: Path):
     species (null: no recorded interaction), an interaction recorded in India, 2 km cells with an open record placed in
     India (area of occupancy; null: not counted), records from India with a type status, records from India with a
     photo, DNA barcode (2: from India, BOLD; 1: anywhere, iBOL on GBIF; 0: none), names in Indian languages
-    [[language code, name]]]}.
+    [[language code, name]], a known population trend (State of India's Birds; null: not covered), a record placed in
+    India with a trait, places with an exact record (null: not counted)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
-            types, photos, barcode, names in con.sql("""
+            types, photos, barcode, names, trend, traits, precise in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
-                   s.types, s.photos, s.barcode, s.local_names
+                   s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
-                                                    [[x["lang"], x["name"]] for x in names] if names else None]
+                                                    [[x["lang"], x["name"]] for x in names] if names else None,
+                                                    trend, traits, precise]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
+
+
+# Kinds of link, from the species' own side: a GloBI type and whether the species is its subject (outgoing).
+WEB_TOP = 30   # partners kept per species and kind of link (the most records first); the total is kept too
+WEB_FEEDS = ("eats", "preysOn", "kills")
+WEB_FLOWERS = ("pollinates", "visitsFlowersOf", "visits", "dispersesSeedsOf", "hasDispersalVector")
+WEB_LIVES = ("hasHost", "parasiteOf", "pathogenOf", "ectoparasiteOf", "endoparasiteOf", "parasitoidOf",
+             "endoparasitoidOf", "kleptoparasiteOf", "hyperparasiteOf", "epiphyteOf", "laysEggsOn", "livesOn",
+             "livesInsideOf", "hasVector", "hasReservoirHost")
+
+
+def web_files(con, edges, out: Path):
+    """web/<shard>.json for the species web: {key: {"n": {kind: partners}, "p": {kind: [[partner name, its key on the
+    list or null, records, records in India, [GloBI types]]]}}}, the WEB_TOP partners with most records per kind.
+    Kinds: eats, eaten (by), flowers (pollinates, visits, disperses seeds, from either side), lives (on or in a host),
+    hosts, other. A partner is a species on the list when one of its names is (synonyms count), else GloBI's name."""
+    from pipeline.site_data import shard_of
+    shutil.rmtree(out / "web", ignore_errors=True)
+    q = lambda xs: "(" + ", ".join(f"'{x}'" for x in xs) + ")"
+    con.sql("CREATE OR REPLACE TABLE name_id AS SELECT name, arg_min(id, p) AS id FROM id_names GROUP BY name")
+    con.sql(f"""
+        CREATE OR REPLACE TABLE web AS
+        WITH e AS (
+            SELECT n.id, x.partner, x.type, x.records, x.records_india,
+                   CASE WHEN x.type IN {q(WEB_FEEDS)} THEN CASE WHEN x.outgoing THEN 'eats' ELSE 'eaten' END
+                        WHEN x.type IN {q(WEB_FLOWERS)} THEN 'flowers'
+                        WHEN x.type IN {q(WEB_LIVES)} THEN CASE WHEN x.outgoing THEN 'lives' ELSE 'hosts' END
+                        ELSE 'other' END AS kind
+            FROM '{edges}' x JOIN name_id n ON n.name = x.name
+            WHERE n.id IN (SELECT id FROM listed WHERE key IS NOT NULL)),
+        p AS (
+            SELECT e.id, e.kind, coalesce(i.name, e.partner) AS pname,
+                   CASE WHEN NOT starts_with(m.id, 'n:') THEN m.id END AS pkey,
+                   sum(e.records) AS records, sum(e.records_india) AS india, list(DISTINCT e.type ORDER BY e.type) AS types
+            FROM e LEFT JOIN name_id m ON m.name = e.partner LEFT JOIN ids i ON i.id = m.id
+            WHERE m.id IS NULL OR m.id <> e.id
+            GROUP BY e.id, e.kind, coalesce(m.id, e.partner), coalesce(i.name, e.partner), pkey)
+        SELECT id, kind, pname, pkey, records, india, types,
+               row_number() OVER (PARTITION BY id, kind ORDER BY records DESC, pname) AS rank,
+               count(*) OVER (PARTITION BY id, kind) AS total
+        FROM p""")
+    parts = {}
+    for key, kind, total, rows in con.sql(f"""
+            SELECT id, kind, any_value(total), list({{'n': pname, 'k': pkey, 'r': records, 'i': india, 't': types}} ORDER BY rank)
+            FROM web WHERE rank <= {int(WEB_TOP)} GROUP BY id, kind ORDER BY id, kind""").fetchall():
+        sp = parts.setdefault(shard_of(key), {}).setdefault(key, {"n": {}, "p": {}})
+        sp["n"][kind] = total
+        sp["p"][kind] = [[r["n"], r["k"], int(r["r"]), int(r["i"]), r["t"]] for r in rows]
+    for i, part in parts.items():
+        dump(part, out / "web" / f"{i}.json")
+    return len(parts)
 
 
 def described_summary(con):
@@ -1386,6 +1447,10 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     described_years(con)
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
+    if inputs.get("globi_edges"):
+        web_files(con, inputs["globi_edges"], out)
+    else:
+        shutil.rmtree(out / "web", ignore_errors=True)
     con.sql(f"""COPY (SELECT key, name, "group", sources, observed, iucn, labels, states_observed, last_year, iucn_year,
                             year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
@@ -1405,7 +1470,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "soib", "lichens",
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "lichens",
                                                      "bryophytes", "evidence", "bold")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
@@ -1485,7 +1550,7 @@ def run(a):
     http = requests.Session()
     http.headers["User-Agent"] = health.ua()
     from pipeline import soib
-    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3),
+    inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
               "bryophytes": bryophytes_input(s3),
               "bsi_monographs": bsi_monographs_input(s3),

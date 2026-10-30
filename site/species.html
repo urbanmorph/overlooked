@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=a95f10ec89">
+<link rel="stylesheet" href="/assets/style.css?v=e320d82e44">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/species.js?v=2d62b46acb"></script>
+<script type="module" src="/assets/species.js?v=9ce813159f"></script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -47,18 +47,25 @@
     <p class="lede" id="classif" style="margin-top:8px"></p>
   </section>
 
-  <section class="ex-main sp-main">
-    <div class="card pad sp-status" id="status" aria-live="polite"></div>
-    <div class="card ex-map">
-      <div class="ex-sel"><div class="grow"><div class="muted crumb">Where in India</div>
-        <p class="headline" id="where"></p></div></div>
-      <div id="map" class="mapbox" aria-label="Map"></div>
-      <div class="legend" id="legend">
-        <span class="lbl"><i class="sw" style="background:var(--q3);border:0"></i>Open record</span>
-        <span class="lbl"><i class="sw" style="background:var(--q1);border:0"></i>Observations wait for a name</span>
-        <span class="lbl"><i class="sw" style="background:var(--zero);border:0"></i>No open record</span>
-      </div>
+  <section class="sp-top">
+    <div class="card pad sp-webcard">
+      <div class="muted crumb">How it connects</div>
+      <div id="web" class="webbox"></div>
+      <div class="legend" id="weblegend"></div>
+      <p class="note" id="webnote"></p>
     </div>
+    <div class="sp-side">
+      <div class="card pad" id="pick" aria-live="polite"></div>
+      <div class="card pad sp-status" id="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="card ex-map sp-map">
+    <div class="ex-sel"><div class="grow"><div class="muted crumb">Where in India</div>
+      <p class="headline" id="where"></p></div></div>
+    <div id="map" class="mapbox" aria-label="Map"></div>
+    <div class="legend" id="legend"></div>
+    <p class="note" id="waiting"></p>
   </section>
 
   <section class="card pad" id="gbif-hist" hidden>
@@ -71,11 +78,19 @@
   </section>
 
   <section class="row">
-    <div class="grow card" id="gbif-districts" hidden>
-      <div class="bar-head"><h2 style="font-size:20px" id="dh">Districts with GBIF records</h2></div>
-      <div class="tablebox"><table style="min-width:560px">
-        <thead><tr><th>District</th><th>State</th><th class="n">First record</th><th class="n">Latest record</th><th class="n">Records</th></tr></thead>
-        <tbody id="districts"></tbody></table></div>
+    <div class="grow" style="display:flex;flex-direction:column;gap:20px;min-width:0">
+      <details class="card" id="gbif-districts" hidden>
+        <summary class="pad"><b id="dh">Districts with GBIF records</b> <span class="note">as a table</span></summary>
+        <div class="tablebox"><table style="min-width:560px">
+          <thead><tr><th>District</th><th>State</th><th class="n">First record</th><th class="n">Latest record</th><th class="n">Records</th></tr></thead>
+          <tbody id="districts"></tbody></table></div>
+      </details>
+      <details class="card" id="web-table" hidden>
+        <summary class="pad"><b>Partner species</b> <span class="note">as a table</span></summary>
+        <div class="tablebox"><table style="min-width:560px">
+          <thead><tr><th>Species</th><th>Link</th><th class="n">Records</th><th class="n">In India</th></tr></thead>
+          <tbody id="partners"></tbody></table></div>
+      </details>
     </div>
     <div class="side" style="display:flex;flex-direction:column;gap:20px">
       <div class="card pad"><h2 style="font-size:18px">Look further</h2><ul class="plain" id="links"></ul></div>

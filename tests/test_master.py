@@ -73,6 +73,15 @@ def inputs(tmp_path):
         t(name, year, authority)""", tmp_path / "wcvp_years.parquet")
     globi = write(con, """SELECT * FROM (VALUES ('Aus bus', 5, 3, ['eats'], 2, 1), ('Cus dus', 1, 1, ['pollinates'], 0, 1))
         t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi.parquet")
+    edges = write(con, """SELECT * FROM (VALUES
+        ('Aus bus', 'Cus dus', 'eats', true, 'Plantae', 'Liliopsida', 3, 1),
+        ('Aus bus', 'Cus dus', 'visitsFlowersOf', true, 'Plantae', 'Liliopsida', 1, 0),
+        ('Aus bus', 'Zz virus', 'pathogenOf', false, 'Orthornavirae', NULL, 2, 0),
+        ('Aus bus', 'Pp qq', 'eats', false, 'Animalia', 'Aves', 1, 1),
+        ('Aus bus', 'Mm nn', 'interactsWith', true, 'Animalia', 'Insecta', 5, 0),
+        ('Aus bus', 'Ee ff', 'eats', true, 'Plantae', 'Magnoliopsida', 1, 0),
+        ('Cus dus', 'Aus bus', 'eats', false, 'Animalia', 'Aves', 3, 1))
+        t(name, partner, type, outgoing, pkingdom, pclass, records, records_india)""", tmp_path / "edges.parquet")
     places = write(con, """SELECT * FROM (VALUES ('K1', 12, 9), ('K2', 3, 2), ('K3', 0, 1))
         t(species_key, places_precise, cells_2km)""", tmp_path / "species_places.parquet")
     bryo = tmp_path / "bryophytes.csv"
@@ -96,6 +105,7 @@ def inputs(tmp_path):
                     "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
+                       "globi_edges": edges,
                        "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
                        "bryophytes": bryo,
                        "described": {"col": col, "wcvp": wcvp_y},
@@ -414,16 +424,17 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None, None, None, 0, None]
+                          None, False, None, None, None, 0, None, False, False, None]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-9:-4] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
-    assert aus[-4:] == [2, 3, 0, [["hi", "एक"]]]       # type specimens and photos from India, barcode, local names
+    assert aus[-12:-7] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-7:-3] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
+    assert aus[-3:] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
     eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
-    assert eus[-4:] == [None, None, 2, None]          # barcode: 2 from India (BOLD), 1 anywhere, 0 none
+    assert eus[-7:-3] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
-                        None, None, 0, None]
+                        None, None, 0, None, None, False, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -956,3 +967,31 @@ def test_bryophytes_from_the_2011_checklist_are_a_source(built):
     r = built["rows"]
     assert "Bryophytes" in r["Bus bryum"]["sources"] and r["Bus bryum"]["group"] == "Mosses & liverworts"
     assert "Bus bryum" in built["http"].asked                       # matched with GBIF like other checklist names
+
+
+def test_partner_files_group_each_species_partners_by_kind_of_link(built):
+    """web/<shard>.json: per species, partners by kind of link from its own side (eaten by = the reverse of eats),
+    the most records first, a partner on the list with its key; and the total per kind."""
+    from pipeline import site_data
+    out = built["out"]
+    aus = json.loads((out / "web" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    assert aus["n"] == {"eats": 2, "eaten": 1, "flowers": 1, "hosts": 1, "other": 1}
+    assert aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"]], ["Ee ff", None, 1, 0, ["eats"]]]
+    assert aus["p"]["eaten"] == [["Pp qq", None, 1, 1, ["eats"]]]          # Pp qq eats Aus bus
+    assert aus["p"]["hosts"] == [["Zz virus", None, 2, 0, ["pathogenOf"]]]
+    cus = json.loads((out / "web" / f"{site_data.shard_of('K2')}.json").read_text())["K2"]
+    assert cus["p"] == {"eaten": [["Aus bus", "K1", 3, 1, ["eats"]]]}
+
+
+def test_partner_files_keep_the_top_partners_of_each_kind_and_need_the_partner_table(inputs, tmp_path, monkeypatch):
+    from pipeline import site_data
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    monkeypatch.setattr(master, "WEB_TOP", 1)
+    for edges, out in ((inputs["inputs"]["globi_edges"], tmp_path / "o"), (None, tmp_path / "none")):
+        con = duckdb.connect()
+        iucn_table(con)
+        master.build(con, inputs["paths"], out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "globi_edges": edges}, cache={}, http=FakeGbif())
+    aus = json.loads((tmp_path / "o" / "web" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    assert aus["n"]["eats"] == 2 and aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"]]]
+    assert not (tmp_path / "none" / "web").exists()                    # no partner table: no files

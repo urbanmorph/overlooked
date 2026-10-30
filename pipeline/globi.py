@@ -2,8 +2,9 @@
 India. The Eltonian gap (how species interact) of Hortal et al. 2015.
 
 Source: GloBI's weekly snapshot of all its interactions (interactions.tsv.gz, about 2.7 GB), compiled from about 460
-datasets, each with its own licence. We publish only our own counts per species, never the interaction rows, and
-cite GloBI (Poelen, Simons and Mungall 2014, Ecological Informatics 24: 148-159) and its datasets.
+datasets, each with its own licence. We publish our own counts per species and, on species pages, the names of a
+species' partners by kind of link (owner's decision, 30 October 2026), never the interaction rows, and cite GloBI
+(Poelen, Simons and Mungall 2014, Ecological Informatics 24: 148-159) and its datasets.
 
 Download: resumable (HTTP Range into a .part file), skipped when the snapshot's ETag is unchanged; progress lines
 while it runs. In India: a point inside an LGD district (pipeline.places, with its 5 km tolerance at the coast), or,
@@ -11,6 +12,8 @@ with no point, a locality with the word India (not Indiana, Indian Head or "Indi
 
 Output: species.parquet, one row per species name: records (interactions it is part of, as source or target),
 partners (distinct partner species), types (interaction types), records_india, datasets (distinct source datasets).
+edges.parquet, one row per species, partner and interaction type: outgoing (what the species does to the partner, or
+false: what the partner does to it), the partner's kingdom and class (as GloBI gives them), records, records_india.
 
 Weekly on GitHub Actions (globi.yml, --publish): the snapshot's ETag is kept in R2 next to the table
 (cache/globi/meta.json, cache/globi/species.parquet; R2's cache/ is never served), so a week with no new snapshot
@@ -77,33 +80,46 @@ def download(http, dest: Path, url=URL, deadline=None, log=print):
     return True
 
 
-def species_table(con, tsv: Path, districts_path, out: Path):
-    """One row per species name from both sides of each interaction (see the module docstring)."""
+def species_table(con, tsv: Path, districts_path, out: Path, edges: Path | None = None):
+    """One row per species name from both sides of each interaction (see the module docstring); with edges, also the
+    partner table."""
     con.sql(f"""
         CREATE OR REPLACE TABLE gi AS
         SELECT nullif(trim(sourceTaxonSpeciesName), '') AS s, nullif(trim(targetTaxonSpeciesName), '') AS t,
                interactionTypeName AS type, TRY_CAST(decimalLatitude AS DOUBLE) AS lat,
-               TRY_CAST(decimalLongitude AS DOUBLE) AS lon, localityName AS locality, sourceNamespace AS ns
+               TRY_CAST(decimalLongitude AS DOUBLE) AS lon, localityName AS locality, sourceNamespace AS ns,
+               nullif(sourceTaxonKingdomName, '') AS sk, nullif(sourceTaxonClassName, '') AS sc,
+               nullif(targetTaxonKingdomName, '') AS tk, nullif(targetTaxonClassName, '') AS tc
         FROM read_csv('{tsv}', delim = '\t', header = true, quote = '', escape = '', all_varchar = true,
                       ignore_errors = true, null_padding = true)
         WHERE coalesce(sourceTaxonSpeciesName, '') <> '' OR coalesce(targetTaxonSpeciesName, '') <> ''""")
     lat0, lat1, lon0, lon1 = BOX
     places.place_points(con, f"(SELECT lat, lon FROM gi WHERE lat BETWEEN {lat0} AND {lat1} AND lon BETWEEN {lon0} AND {lon1})",
                         str(districts_path))
+    con.sql("""
+        CREATE OR REPLACE VIEW r AS
+        SELECT g.*, p.dist_lgd IS NOT NULL
+                    -- the word India: not Indiana, Indian Head or the Indian subregion
+                    OR (g.lat IS NULL AND regexp_matches(coalesce(g.locality, ''), '(?i)\\bindia\\b')) AS india
+        FROM gi g LEFT JOIN point_district p ON p.lat = g.lat AND p.lon = g.lon""")
+    # Both sides of each interaction: what a species does (outgoing), and what is done to it.
+    con.sql("""CREATE OR REPLACE VIEW e AS
+               SELECT s AS name, t AS partner, type, india, ns, true AS outgoing, tk AS pkingdom, tc AS pclass
+               FROM r WHERE s IS NOT NULL
+               UNION ALL SELECT t, s, type, india, ns, false, sk, sc FROM r WHERE t IS NOT NULL""")
     con.sql(f"""
         COPY (
-            WITH r AS (
-                SELECT g.*, p.dist_lgd IS NOT NULL
-                            -- the word India: not Indiana, Indian Head or the Indian subregion
-                            OR (g.lat IS NULL AND regexp_matches(coalesce(g.locality, ''), '(?i)\\bindia\\b')) AS india
-                FROM gi g LEFT JOIN point_district p ON p.lat = g.lat AND p.lon = g.lon),
-            e AS (SELECT s AS name, t AS partner, type, india, ns FROM r WHERE s IS NOT NULL
-                  UNION ALL SELECT t, s, type, india, ns FROM r WHERE t IS NOT NULL)
             SELECT name, count(*) AS records, count(DISTINCT partner) AS partners,
                    list(DISTINCT type ORDER BY type) AS types, count(*) FILTER (WHERE india) AS records_india,
                    count(DISTINCT ns) AS datasets
             FROM e GROUP BY name ORDER BY name)
         TO '{out}' (FORMAT parquet, COMPRESSION zstd)""")
+    if edges:
+        con.sql(f"""
+            COPY (SELECT name, partner, type, outgoing, any_value(pkingdom) AS pkingdom, any_value(pclass) AS pclass,
+                         count(*) AS records, count(*) FILTER (WHERE india) AS records_india
+                  FROM e WHERE partner IS NOT NULL AND partner <> name GROUP BY ALL ORDER BY name, partner, type)
+            TO '{edges}' (FORMAT parquet, COMPRESSION zstd)""")
     return out
 
 
@@ -114,13 +130,15 @@ def refresh(http, s3, cache: Path, districts_path, deadline=None, log=print):
     head = http.head(URL, timeout=60, allow_redirects=True)
     head.raise_for_status()
     etag = head.headers.get("ETag")
-    if (r2.get_json(s3, R2_PREFIX + "meta.json") or {}).get("etag") == etag and r2.exists(s3, R2_PREFIX + "species.parquet"):
+    if ((r2.get_json(s3, R2_PREFIX + "meta.json") or {}).get("etag") == etag
+            and all(r2.exists(s3, R2_PREFIX + n) for n in ("species.parquet", "edges.parquet"))):
         return "unchanged"
-    tsv, out = cache / "interactions.tsv.gz", cache / "species.parquet"
+    tsv, out, edges = cache / "interactions.tsv.gz", cache / "species.parquet", cache / "edges.parquet"
     if download(http, tsv, deadline=deadline, log=log) is None:
         return "stopped"
-    species_table(duckdb.connect(), tsv, districts_path, out)
-    r2.sync_file(s3, out, R2_PREFIX + out.name, immutable=False)
+    species_table(duckdb.connect(), tsv, districts_path, out, edges)
+    for p in (out, edges):
+        r2.sync_file(s3, p, R2_PREFIX + p.name, immutable=False)
     r2.put_json(s3, {"etag": etag, "url": URL}, R2_PREFIX + "meta.json")   # last: it marks the table as current
     return "published"
 

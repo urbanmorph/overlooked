@@ -5,6 +5,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
+import { KINDS, VERBS, gapStates, layout, webSVG, whereFill } from './web.js?v=dd8b6274fa';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -83,14 +84,15 @@ try {
   if (!key) throw new Error('no species key in the address');
   const latest = await getJSON('layers/master/latest.json');
   const snap = await snapshot();
-  const [S, part, snapSummary, boundaries, gbif] = await Promise.all([
+  const [S, part, snapSummary, boundaries, gbif, web] = await Promise.all([
     getJSON(latest.base + 'summary.json'), getJSON(`${latest.base}sp/${shardOf(key)}.json`),
-    snap.summary(), snap.boundaries(), getJSON(snap.file(`species/${shardOf(key)}.json`)).then(p => p[key]).catch(() => null)]);
+    snap.summary(), snap.boundaries(), getJSON(snap.file(`species/${shardOf(key)}.json`)).then(p => p[key]).catch(() => null),
+    getJSON(`${latest.base}web/${shardOf(key)}.json`).then(p => p[key] || null).catch(() => undefined)]);   // undefined: a list with no web yet
   showDevBanner(snapSummary);
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
   const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia, cells, types, photos, barcode, localPairs] = row;
+    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -133,19 +135,71 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}
   };
   showNext(null);
 
-  // Map: each state shaded by what is known there.
+  // The web: partners around the seven gaps; a partner picked shows its details beside it.
+  const latestYear = gbif?.districts?.length ? Math.max(...gbif.districts.map(d => d[2] ?? 0)) || null : null;
+  const gaps = gapStates({ year, latest: latestYear, trend, dna: codes.has('dna'), barcode, traits, precise, partners,
+    interactionsIndia }, S);
+  const L = layout(web || { n: {}, p: {} });
+  $('#web').innerHTML = webSVG(L, gaps, name);
+  const kindOf = Object.fromEntries(KINDS.map(k => [k.k, k]));
+  $('#weblegend').innerHTML = KINDS.filter(k => web?.n?.[k.k]).map(k => `<span class="lbl"><i class="sw" style="background:${k.color};border:0"></i>${k.label}</span>`).join('')
+    + (web ? '<span class="lbl"><i class="sw" style="background:#fff;border:2px solid var(--muted)"></i>No record from India</span>' : '');
+  $('#webnote').innerHTML = web
+    ? `Partner species from GloBI (Global Biotic Interactions), by kind of link; a dot is filled when a record of the link is from India, and larger with more records. <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">All links on GloBI</a>.`
+    : web === undefined ? 'The partner species show here from the next weekly list. The ring shows the seven gaps for this species.'
+      : 'No interaction recorded in GloBI. The ring shows the seven gaps for this species.';
+  const gapList = () => {
+    $('#pick').innerHTML = `<div class="muted crumb">The seven gaps for this species</div>
+      <ul class="gaplist">${gaps.map(g => `<li><i class="pip ${g.state}"></i><div><b>${esc(g.term)}</b> · ${esc(g.plain)}<small>${esc(g.text)}</small></div></li>`).join('')}</ul>
+      <div class="legend" style="margin-top:12px"><span class="lbl"><i class="pip known"></i>Known</span><span class="lbl"><i class="pip part"></i>Part known</span>
+      <span class="lbl"><i class="pip gap"></i>Open gap</span><span class="lbl"><i class="pip na"></i>Not measured</span></div>`;
+  };
+  let on = null;
+  const pickNode = i => {
+    const n = L.nodes[i], k = kindOf[n.kind];
+    on?.classList.remove('on'); on = $(`#web .wn[data-i="${i}"]`); on?.classList.add('on');
+    $('#pick').innerHTML = `<div class="crumb" style="color:${k.color}">${esc(k.label)}</div>
+      <p class="sp-big" style="font-style:italic">${n.key ? `<a href="/species?key=${encodeURIComponent(n.key)}">${esc(n.name)}</a>` : esc(n.name)}</p>
+      <p class="note" style="margin:4px 0 10px">${esc(n.types.map(t => VERBS[t] || t).join(', '))}</p>
+      <dl class="stats"><dt>Records of the link</dt><dd>${fmt(n.n)}</dd><dt>From India</dt><dd>${n.india ? 'yes' : 'none'}</dd>
+        <dt>On the India list</dt><dd>${n.key ? 'yes' : '<span class="muted">no</span>'}</dd></dl>
+      <p style="margin:12px 0 0"><button type="button" class="linkish" id="gapsback">Show the seven gaps</button></p>`;
+    $('#gapsback').addEventListener('click', () => { on?.classList.remove('on'); on = null; gapList(); });
+  };
+  for (const g of document.querySelectorAll('#web .wn')) {
+    const i = +g.dataset.i;
+    g.addEventListener('click', () => pickNode(i));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickNode(i); } });
+  }
+  gapList();
+  if (web) {
+    $('#partners').innerHTML = L.sectors.flatMap(sec => web.p[sec.kind].map(([pn, pk, n, india]) =>
+      `<tr><td><i>${pk ? `<a href="/species?key=${encodeURIComponent(pk)}">${esc(pn)}</a>` : esc(pn)}</i></td><td>${esc(kindOf[sec.kind].label)}</td>
+        <td class="n mono">${fmt(n)}</td><td class="n mono">${india ? fmt(india) : '–'}</td></tr>`)).join('');
+    $('#web-table').hidden = false;
+  }
+
+  // Map: each district by its latest GBIF record; else its state by an open record. Waiting observations in the tip.
   const byState = new Map(states.map(s => [Number(s.code), s]));
   const map = drawMap($('#map'), boundaries, {
-    label: `Map of India: where ${name} has an open record`, pickLabel: 'Explore this state',
+    label: `Map of India: where ${name} has a record`, pickLabel: 'Explore this state',
     onPick: d => { location.href = `/?state=${d.state_lgd}`; },
   });
-  map.fill(new Map(boundaries.districts.map(d => [d.id, byState.get(d.state_lgd)])),
-    s => (s?.obs ? '--q3' : s?.wait ? '--q1' : '--none'),
-    (id, s) => (s ? `${s.obs ? 'Open record' : 'No open record'} in the state${s.wait ? `; ${fmt(s.wait)} wait for a name` : ''}` : 'No data'));
-  const names = list => list.map(s => esc(s.name)).join(', ');
+  const since = S.recent_from;
+  map.fill(whereFill(boundaries.districts, gbif?.districts, byState, since),
+    v => ({ recent: '--q3', old: '--q1', state: '--q0', none: '--none' }[v.cls]),
+    (id, v) => [v.cls === 'recent' || v.cls === 'old' ? `${fmt(v.n)} GBIF record${v.n === 1 ? '' : 's'}, ${v.first ?? '?'} to ${v.latest ?? '?'}`
+      : v.cls === 'state' ? 'An open record in the state; none placed in this district' : 'No open record in the state',
+    v.wait ? `${fmt(v.wait)} observations in the state wait for a name` : ''].filter(Boolean).join('<br>'));
+  $('#legend').innerHTML = `<span class="lbl"><i class="sw" style="background:var(--q3);border:0"></i>Record since ${since}</span>
+    <span class="lbl"><i class="sw" style="background:var(--q1);border:0"></i>Older record</span>
+    <span class="lbl"><i class="sw" style="background:var(--q0);border:0"></i>Open record in the state, district not known</span>
+    <span class="lbl"><i class="sw" style="background:var(--zero);border:0"></i>No open record</span>`;
+  const nDist = gbif?.districts?.length || 0;
+  $('#where').textContent = nObs ? `Open records in ${fmt(nObs)} state${nObs === 1 ? '' : 's'}${nDist ? ` and ${fmt(nDist)} district${nDist === 1 ? '' : 's'}` : ''}${latestYear ? `; latest ${latestYear}` : ''}.`
+    : 'No open record with a state yet.';
   const waitList = states.filter(s => s.wait).sort((a, b) => b.wait - a.wait).slice(0, 8);
-  $('#where').innerHTML = (nObs ? `Open record in ${names(states.filter(s => s.obs))}.` : 'No open record with a state yet.')
-    + (waitList.length && taxon ? `<br><span class="note">Waiting for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}</span>` : '');
+  $('#waiting').innerHTML = waitList.length && taxon ? `Observations that wait for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}. Help name them on iNaturalist.` : '';
 
   // GBIF records, when the snapshot has the species.
   if (gbif) {
