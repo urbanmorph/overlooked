@@ -432,18 +432,18 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None, None, None, 0, None, False, False, None, None, None, None]
+                          None, False, None, None, None, 0, None, False, False, None, None, None, None, "Muscicapidae"]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-15:-10] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
-    assert aus[-10:-6] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
-    assert aus[-6:-3] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
-    assert aus[-1] == "Stable"                           # the trend in IUCN's assessment
+    assert aus[-16:-11] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-11:-7] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
+    assert aus[-7:-4] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
+    assert aus[-2:] == ["Stable", "Muscicapidae"]        # the trend in IUCN's assessment; the family
     eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
-    assert eus[-10:-6] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
+    assert eus[-11:-7] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
-                        None, None, 0, None, None, False, None, None, None, None]
+                        None, None, 0, None, None, False, None, None, None, None, "Muscicapidae"]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -1015,7 +1015,7 @@ def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
     assert all(v is None for gi, v in enumerate(s["papers"]) if gi != birds)
     assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
     aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-3:-1] == [5, 2020]
+    assert aus[-4:-2] == [5, 2020]
 
 
 def test_name_overrides_beat_the_gbif_match_and_move_gbif_records_by_key(inputs, tmp_path, monkeypatch):
@@ -1038,3 +1038,33 @@ def test_name_overrides_beat_the_gbif_match_and_move_gbif_records_by_key(inputs,
     assert s["interactions_india"][birds] == 1                              # Aus bus through 'Old ius'
     assert "Old ius" not in http.asked                                      # an overridden name is not asked
     assert any("2 name overrides" in n for n in s["notes"])
+
+
+def test_per_group_the_species_where_each_gap_is_known(built):
+    """For the pyramid's group bars: per group, the species on the list where each of the seven gaps is known, by the
+    species page's own rule (null: the list does not measure that gap for the group)."""
+    s = built["summary"]
+    k = s["gaps_known"]
+    birds, beetles = GROUPS.index("Birds"), GROUPS.index("Insects: beetles")
+    assert len(k) == len(GROUPS) and all(len(g) == 7 for g in k)
+    for gi in (birds, beetles):
+        assert k[gi][1] == s["india"][gi][5]                       # Wallacean: a placed record since recent_from
+        assert k[gi][2] == s["trend_known"][gi]                    # Prestonian
+        assert k[gi][4] == s["traits"][gi] and k[gi][5] == s["niche"][gi] and k[gi][6] == s["interactions_india"][gi]
+    assert k[birds][0] == 5                                        # Linnean: all five birds of the fixture have a year
+    assert k[beetles][3] == 1                                      # Darwinian: Eus fus, a barcode from India (BOLD)
+
+
+def test_family_files_list_the_relatives_with_what_their_gaps_need(built):
+    """fam/<shard of the family>.json: per family, each species with a page and the fields the species page turns into
+    its seven gaps (web.js gapStates), so relatives can show their glyphs."""
+    from pipeline import site_data
+    fam = json.loads((built["out"] / "fam" / f"{site_data.shard_of('Muscicapidae')}.json").read_text())["Muscicapidae"]
+    rows = {r[1]: r for r in fam}
+    assert {"Aus bus", "Hus ius"} <= set(rows)
+    aus = rows["Aus bus"]
+    # [key, name, year, latest record, states with an open record, trend known, DNA, barcode, traits, exact places,
+    #  partners, interaction in India]
+    assert aus[0] == "K1" and aus[2] == 1758 and aus[5] is True and aus[10] == 3 and aus[11] is True
+    assert len(aus) == 12
+    assert all(r[0] for r in fam)                                   # only species with a page

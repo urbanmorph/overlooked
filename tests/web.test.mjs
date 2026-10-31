@@ -1,7 +1,7 @@
 // The species web (site/assets/web.js): the seven gaps for one species, and the layout of its partners.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KINDS, gapStates, tree, ringSVG } from '../site/assets/web.js';
+import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives } from '../site/assets/web.js';
 
 const S = { recent_from: 2016, traits: [0], niche: [0], types: [0], trend_known: [null] };
 
@@ -39,12 +39,45 @@ test('the tree: a branch per kind of link in a fixed order, the partners with mo
   assert.deepEqual(KINDS.map(k => k.k), ['eats', 'eaten', 'flowers', 'lives', 'hosts', 'other']);
 });
 
-test('the ring: one segment per gap, its state as a class, the name at the centre', () => {
-  const svg = ringSVG([{ term: 'Linnean', state: 'known', text: 'x' }, { term: 'Wallacean', state: 'gap', text: 'y' }], 'Aus bus');
-  assert.equal((svg.match(/<path/g) || []).length, 2);
-  assert.match(svg, /class="g-known"/);
-  assert.match(svg, /class="g-gap"/);
-  assert.match(svg, />Aus</);
+test('the group share per gap: known species of the group over its documented species, null when not measured', () => {
+  const S = { india: [[200], [0]], gaps_known: [[196, 86, null, 72, 0, null, 32], [0, 0, 0, 0, 0, 0, 0]] };
+  assert.deepEqual(groupShares(S, 0), [98, 43, null, 36, 0, null, 16]);
+  assert.deepEqual(groupShares(S, 1), Array(7).fill(null));                   // no documented species
+  assert.deepEqual(groupShares({ india: [[5]] }, 0), Array(7).fill(null));    // an older summary
+});
+
+test('the pyramid: three layers on the Linnean base, each block in its state with the group bar inside', () => {
+  const gaps = ['Linnean', 'Wallacean', 'Prestonian', 'Darwinian', 'Raunkiæran', 'Hutchinsonian', 'Eltonian']
+    .map((term, i) => ({ term, plain: `p${i}`, state: ['known', 'part', 'gap', 'na'][i % 4], text: 't' }));
+  const html = pyramidHTML(gaps, [98, 43, null, 36, 0, null, 16], 'bats');
+  assert.deepEqual(LAYERS, [[2, 4, 5, 6], [1, 3], [0]]);
+  const order = [...html.matchAll(/data-i="(\d)"/g)].map(m => +m[1]);
+  assert.deepEqual(order, [2, 4, 5, 6, 1, 3, 0]);
+  assert.match(html, /class="blk known"[^>]*data-i="0"/);
+  assert.match(html, /width:98%/);
+  assert.match(html, /bats: not measured/);                                   // Prestonian, null share
+  assert.equal((html.match(/<button/g) || []).length, 7);
+});
+
+test('the glyph: the same seven cells, small, in their states', () => {
+  const svg = glyphSVG(['known', 'part', 'gap', 'na', 'known', 'known', 'gap']);
+  assert.equal((svg.match(/<rect/g) || []).length, 7);
+  assert.match(svg, /class="g-part"/);
+  assert.match(svg, /class="g-na"/);
+});
+
+test('relatives: the same genus first, then the latest recorded; this species always in; capped', () => {
+  // [key, name, year, latest, states, trend, dna, barcode, traits, precise, partners, interaction in India]
+  const r = (key, name, year, last) => [key, name, year, last, 1, null, false, 0, false, 0, null, false];
+  const rows = [r('A', 'Bus alpha', 1800, 1990), r('B', 'Cus beta', 1850, 2024), r('C', 'Aus gamma', 1900, 2020),
+    r('D', 'Aus delta', 1820, null), r('E', 'Cus eps', 1700, 2025)];
+  const R = relatives(rows, 'C', 'Aus gamma', { recent_from: 2016 }, 3);
+  assert.deepEqual(R.rows.map(x => x.key), ['C', 'D', 'E']);                  // Aus first (latest first), then the latest other
+  assert.equal(R.total, 5);
+  assert.equal(R.rows[0].gaps.length, 7);
+  assert.equal(R.rows[0].gaps[1], 'known');                                   // Wallacean: latest 2020 >= 2016
+  assert.deepEqual(relatives(rows, 'A', 'Bus alpha', { recent_from: 2016 }, 2).rows.map(x => x.key), ['A', 'E']);
+  assert.deepEqual(relatives(rows, 'Z', 'Aus zeta', { recent_from: 2016 }, 2).rows.map(x => x.key), ['C', 'D']);   // waits: genus still first
 });
 
 test('the map: a district by its latest GBIF record, else its state by an open record', async () => {

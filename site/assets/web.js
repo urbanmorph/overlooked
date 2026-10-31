@@ -1,6 +1,6 @@
-// The species web: the species ringed by its seven gaps, with its partners (GloBI) as a tree, a branch per kind of
-// link. Pure functions: the gaps for one species, the tree, the ring; species.js draws and wires them. A radial layout
-// was tried first: with 30 partners per kind the names collided.
+// The species page's pure parts: the seven gaps for one species, as a pyramid with the group's share in each block and
+// as a small glyph; the partners (GloBI) as a tree, a branch per kind of link; the relatives in its family; the map
+// fill. species.js draws and wires them. A radial layout was tried first: with 30 partners per kind the names collided.
 
 import { esc, fmt } from './common.js?v=9455fd8cc8';
 
@@ -62,24 +62,51 @@ export function tree(web, { top = 8 } = {}) {
   });
 }
 
-const pol = (r, a) => [r * Math.sin(a), -r * Math.cos(a)];
-const arc = (r1, r2, b0, b1) => {
-  const [x0, y0] = pol(r2, b0), [x1, y1] = pol(r2, b1), [x2, y2] = pol(r1, b1), [x3, y3] = pol(r1, b0);
-  return `M${x0.toFixed(1)},${y0.toFixed(1)}A${r2},${r2} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}A${r1},${r1} 0 0 0 ${x3.toFixed(1)},${y3.toFixed(1)}Z`;
-};
+// The pyramid of the seven gaps (in gapStates order): Linnean at the base, then Wallacean and Darwinian, then the four
+// that need a name and a map first. The glyph draws the same layers in seven small cells.
+export const LAYERS = [[2, 4, 5, 6], [1, 3], [0]];
 
-/** The species ringed by its seven gaps: a segment per gap (class g-<state>, with its text as a title), the
- * first four letters of each gap beside it, and the name at the centre. */
-export function ringSVG(gaps, name) {
-  const n = gaps.length;
-  const ring = gaps.map((g, i) => {
-    const b0 = i * 2 * Math.PI / n + 0.05, b1 = (i + 1) * 2 * Math.PI / n - 0.05, [tx, ty] = pol(122, (b0 + b1) / 2);
-    return `<path class="g-${g.state}" d="${arc(80, 104, b0, b1)}"><title>${esc(g.term)}: ${esc(g.text)}</title></path>`
-      + `<text x="${tx.toFixed(1)}" y="${(ty + 5).toFixed(1)}" text-anchor="middle" class="wg">${esc(g.term.slice(0, 4))}</text>`;
-  }).join('');
-  const [genus, ...rest] = name.split(' ');
-  return `<svg viewBox="-150 -150 300 300" role="img" aria-label="${esc(name)} and the seven gaps">${ring}`
-    + `<text y="-4" text-anchor="middle" class="wc">${esc(genus)}</text><text y="20" text-anchor="middle" class="wc">${esc(rest.join(' '))}</text></svg>`;
+/** Per gap, the share (whole per cent) of the group's documented species where it is known; null when the list does
+ * not measure it, or the summary has no counts. */
+export function groupShares(S, gi) {
+  const known = S.gaps_known?.[gi], of = S.india?.[gi]?.[0];
+  return Array.from({ length: 7 }, (_, i) => (known && of && known[i] != null ? Math.round(100 * known[i] / of) : null));
+}
+
+/** The pyramid as HTML: a button per gap (class blk <state>, data-i its index), its plain words first and the term
+ * small, with a bar for the share of the group (`group`, a plural such as "bats") where the gap is known. */
+export function pyramidHTML(gaps, shares, group) {
+  return LAYERS.map(layer => `<div class="lvl l${layer.length}">${layer.map(i => {
+    const g = gaps[i], pct = shares[i];
+    const bar = pct == null ? `<span class="grp">${esc(group)}: not measured</span>`
+      : `<span class="grp"><span>${esc(group)}</span><span class="bar"><i style="width:${pct}%"></i></span><span>${pct}%</span></span>`;
+    return `<button type="button" class="blk ${g.state}" data-i="${i}" aria-pressed="false"><span class="t">${esc(g.plain)}</span>`
+      + `<span class="p">${esc(g.term)}</span>${bar}</button>`;
+  }).join('')}</div>`).join('');
+}
+
+/** The seven gaps as a small glyph (the pyramid's layers in seven cells), for lists. */
+export function glyphSVG(states, size = 26) {
+  const cell = (x, y, w, i) => `<rect x="${x}" y="${y}" width="${w}" height="8.5" rx="1.5" class="g-${states[i]}"/>`;
+  return `<svg class="glyph" width="${size}" height="${(size * 0.8).toFixed(1)}" viewBox="0 0 40 32" aria-hidden="true">`
+    + LAYERS[0].map((i, j) => cell(1 + j * 9.75, 1, 8.25, i)).join('')
+    + LAYERS[1].map((i, j) => cell(6 + j * 14.25, 12, 13, i)).join('') + cell(12, 23, 16, 0) + '</svg>';
+}
+
+/** Relatives from the family file (pipeline/master.py family_files): the genus of `name` first, then the rest, each
+ * by its latest record; `top` at most, this species always among them when the file has it (a name that waits is
+ * not in it). {rows: [{key, name, year, last, states, gaps: [state x 7]}], total}. */
+export function relatives(rows, key, name, S, top = 40) {
+  const genus = name.split(' ')[0];
+  const all = rows.map(([k, name, year, last, states, trend, dna, barcode, traits, precise, partners, interactionsIndia]) => ({
+    key: k, name, year, last, states,
+    gaps: gapStates({ year, latest: last, trend, dna, barcode, traits, precise, partners, interactionsIndia }, S).map(g => g.state) }));
+  all.sort((a, b) => (b.name.split(' ')[0] === genus) - (a.name.split(' ')[0] === genus) || (b.last ?? 0) - (a.last ?? 0)
+    || a.name.localeCompare(b.name));
+  const shown = all.slice(0, top);
+  const me = all.find(r => r.key === key);
+  if (me && !shown.includes(me)) shown[shown.length - 1] = me;
+  return { rows: shown, total: all.length };
 }
 
 /** The species map: per district {cls, first, latest, n, obs, wait}. cls: recent (a GBIF record there since `since`),

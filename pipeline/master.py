@@ -755,12 +755,13 @@ def resolve(con):
                       FROM n JOIN family_ref f ON f.family = n.hf AND (n.hk IS NULL OR n.hk = f.kingdom)
             UNION ALL SELECT id, 5, NULL, hk, hp, hc, ho, hf FROM n)
         SELECT id, arg_min(coalesce(grp, {GROUP_SQL}), t) AS grp,
-               arg_min(kingdom, t) FILTER (WHERE kingdom IS NOT NULL) AS kingdom
+               arg_min(kingdom, t) FILTER (WHERE kingdom IS NOT NULL) AS kingdom,
+               arg_min(family, t) FILTER (WHERE family IS NOT NULL) AS family
         FROM c GROUP BY id
     """)
     con.sql("""
         CREATE OR REPLACE TABLE ids0 AS
-        SELECT a.id, d.name, coalesce(c.grp, 'Other') AS grp, c.kingdom,
+        SELECT a.id, d.name, coalesce(c.grp, 'Other') AS grp, c.kingdom, c.family,
                a.id IN (SELECT id FROM names_in_r WHERE source = 'GBIF') AS in_gbif
         FROM all_ids a JOIN display d USING (id) LEFT JOIN cls c USING (id)
     """)
@@ -884,7 +885,7 @@ def flags(con):
     """)
     con.sql(f"""
         CREATE OR REPLACE TABLE master AS
-        SELECT i.id, CASE WHEN NOT starts_with(i.id, 'n:') THEN i.id END AS key, i.name, i.grp AS "group",
+        SELECT i.id, CASE WHEN NOT starts_with(i.id, 'n:') THEN i.id END AS key, i.name, i.grp AS "group", i.family,
                list_position({GROUPS!r}, i.grp) - 1 AS gi,
                s.sources, s.sources_mask, f.observed,
                -- 0: on the list, no open record yet; 1: an open record; 2: not on the list, a name that waits.
@@ -1031,25 +1032,25 @@ def species_files(con, out: Path):
     [[language code, name]], a known population trend (State of India's Birds; null: not covered), a record placed in
     India with a trait, places with an exact record (null: not counted), papers in the Bibliography of South Asian
     Ornithology and the year of the latest (birds; null: none), the population trend in IUCN's assessment (Increasing,
-    Stable, Decreasing, Unknown; null: not assessed)]}.
+    Stable, Decreasing, Unknown; null: not assessed), the family (its relatives are in fam/<shard of the family>.json)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
-            types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend in con.sql("""
+            types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
-                   s.papers, s.papers_latest, s.iucn_trend
+                   s.papers, s.papers_latest, s.iucn_trend, s.family
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
-                                                    trend, traits, precise, papers, papers_latest, iucn_trend]
+                                                    trend, traits, precise, papers, papers_latest, iucn_trend, family]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -1061,6 +1062,23 @@ WEB_FLOWERS = ("pollinates", "visitsFlowersOf", "visits", "dispersesSeedsOf", "h
 WEB_LIVES = ("hasHost", "parasiteOf", "pathogenOf", "ectoparasiteOf", "endoparasiteOf", "parasitoidOf",
              "endoparasitoidOf", "kleptoparasiteOf", "hyperparasiteOf", "epiphyteOf", "laysEggsOn", "livesOn",
              "livesInsideOf", "hasVector", "hasReservoirHost")
+
+
+def family_files(con, out: Path):
+    """fam/<shard of the family>.json for the species page's relatives: {family: [[key, name, year described, latest
+    record placed in a state, states with an open record, a known population trend, DNA from India (a GBIF sequence or
+    sample), barcode (2, 1, 0 as in the species files), a trait record, places with an exact record, GloBI partners, an
+    interaction in India]]}: the fields web.js gapStates turns into the seven gaps. Species with a page only."""
+    from pipeline.site_data import shard_of
+    shutil.rmtree(out / "fam", ignore_errors=True)
+    parts = {}
+    for family, *row in con.sql("""
+            SELECT family, key, name, year, last_year, len(states_observed), trend_known, list_contains(labels, 'dna'),
+                   barcode, traits, places_precise, partners, interactions_india
+            FROM master WHERE status < 2 AND key IS NOT NULL AND family IS NOT NULL ORDER BY family, name""").fetchall():
+        parts.setdefault(shard_of(family), {}).setdefault(family, []).append(row)
+    for i, part in parts.items():
+        dump(part, out / "fam" / f"{i}.json")
 
 
 def web_files(con, edges, out: Path):
@@ -1188,7 +1206,10 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     # (Darwinian), a name in an Indian language.
     evidence = {k: [0] * n for k in EVIDENCE}
     papers = [None] * n   # birds with a paper in the Bibliography of South Asian Ornithology (it covers birds only)
-    for gi, u, d, s, ia, ii, tr, tk, ni, pa, *rest in con.sql(f"""
+    # The pyramid's group bars: species where the Linnean gap is known (a year described) and the Darwinian (DNA from
+    # India: a sequence or sample on GBIF, or a BOLD barcode); the other five come from the counts above.
+    year_known, dna_known = [0] * n, [0] * n
+    for gi, u, d, s, ia, ii, tr, tk, ni, pa, yk, dk, *rest in con.sql(f"""
             SELECT gi, count(*) FILTER (WHERE status = 2), count(*) FILTER (WHERE status < 2 AND year >= {since}),
                    count(*) FILTER (WHERE status < 2 AND list_contains(labels, 'dna')),
                    count(*) FILTER (WHERE status < 2 AND partners IS NOT NULL),
@@ -1197,6 +1218,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    CASE WHEN bool_or(trend_known IS NOT NULL) THEN count(*) FILTER (WHERE status < 2 AND trend_known) END,
                    count(*) FILTER (WHERE status < 2 AND places_precise >= {NICHE_PLACES}),
                    count(*) FILTER (WHERE status < 2 AND papers > 0),
+                   count(*) FILTER (WHERE status < 2 AND year IS NOT NULL),
+                   count(*) FILTER (WHERE status < 2 AND (list_contains(labels, 'dna') OR barcode = 2)),
                    count(*) FILTER (WHERE status < 2 AND types > 0), count(*) FILTER (WHERE status < 2 AND photos > 0),
                    count(*) FILTER (WHERE status < 2 AND barcode > 0), count(*) FILTER (WHERE status < 2 AND barcode = 2),
                    count(*) FILTER (WHERE status < 2 AND len(local_names) > 0),
@@ -1208,7 +1231,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                    count(*) FILTER (WHERE status < 2 AND iucn = 'NE' AND list_contains(labels, 'end'))
             FROM master GROUP BY gi""").fetchall():
         unlisted[gi], described_recent[gi], dna[gi], interactions[gi], interactions_india[gi], traits[gi] = u, d, s, ia, ii, tr
-        trend_known[gi], niche[gi] = tk, ni
+        trend_known[gi], niche[gi], year_known[gi], dna_known[gi] = tk, ni, yk, dk
         if GROUPS[gi] == "Birds":
             papers[gi] = pa
         for k, v in zip(EVIDENCE, rest):
@@ -1231,6 +1254,11 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     evidence_measured = value(con, "SELECT count(*) > 0 FROM evid")   # no evidence table: not measured, not 0
     if evidence_measured:
         totals.update({k: sum(v) for k, v in evidence.items()})
+    niche_measured = value(con, "SELECT count(places_precise) > 0 FROM gbif_places")
+    # Per group, the seven gaps in the species page's order (web.js gapStates): the species where each is known.
+    gaps_known = [[year_known[gi], india[gi][5], trend_known[gi], dna_known[gi],
+                   traits[gi] if traits_measured else None, niche[gi] if niche_measured else None,
+                   interactions_india[gi] if measured else None] for gi in range(n)]
     summary = {**meta, "sources": SOURCES,
                "labels": [{"code": c, "name": nm, "kind": k} for c, nm, k in LABELS],
                "iucn": IUCN_CATS, "groups": GROUPS, "states": states, "india": india, "by_state": by_state,
@@ -1239,7 +1267,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "interactions_india": interactions_india if measured else None,
                "traits": traits if traits_measured else None,
                "trend_known": trend_known if any(v is not None for v in trend_known) else None,
-               "niche": niche if value(con, "SELECT count(places_precise) > 0 FROM gbif_places") else None,
+               "niche": niche if niche_measured else None, "gaps_known": gaps_known,
                **{k: v if evidence_measured else None for k, v in evidence.items()},
                "papers": papers if papers_measured else None,
                "recent_from": since,
@@ -1247,6 +1275,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
+    family_files(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
         f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}

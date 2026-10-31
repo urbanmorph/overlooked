@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=53dc9a036c">
+<link rel="stylesheet" href="/assets/style.css?v=0d135fb053">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/species.js?v=b2dfb64abc"></script>
+<script type="module" src="/assets/species.js?v=59fbca403b"></script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -41,44 +41,68 @@
 <!-- /part:header -->
 
 <main id="main" class="wrap">
-  <nav aria-label="Breadcrumb" class="note" id="crumbs" style="margin-top:32px"><a href="/">Explore</a> <span id="crumb"></span></nav>
-  <section style="margin-top:14px">
-    <h1 class="page" id="name" style="font-style:italic">Loading…</h1>
-    <p class="lede" id="classif" style="margin-top:8px"></p>
-  </section>
-
-  <section class="sp-top">
-    <div class="card pad sp-webcard">
-      <div class="muted crumb">How it connects</div>
-      <div id="web" class="webbox"></div>
-      <div class="legend" id="weblegend"></div>
-      <p class="note" id="webnote"></p>
+  <div class="sp-head">
+    <div>
+      <nav aria-label="Breadcrumb" class="note" id="crumbs" style="margin-top:32px"><a href="/">Explore</a> <span id="crumb"></span></nav>
+      <h1 class="page" id="name" style="font-style:italic;margin-top:6px">Loading…</h1>
+      <p class="lede" id="common" style="margin-top:6px"></p>
+      <div class="sp-pills" id="pills"></div>
     </div>
-    <div class="sp-side">
-      <div class="card pad" id="pick" aria-live="polite"></div>
-      <div class="card pad sp-status" id="status" aria-live="polite"></div>
+    <figure class="sp-photo" id="photo"></figure>
+  </div>
+
+  <section style="margin-top:28px" aria-labelledby="know-h">
+    <h2 id="know-h">How much do we know?</h2>
+    <p class="note" style="margin:4px 0 12px">Seven things we can know about a species. Each layer rests on the one below: a species needs a name before a map, and a map before its numbers, traits, needs and partners can be studied.</p>
+    <div class="card pad">
+      <div class="pyr" id="pyr"></div>
+      <div class="legend" id="pyrkey"></div>
+      <div class="sp-gapnote" id="gapnote" aria-live="polite"></div>
     </div>
   </section>
 
-  <section class="card ex-map sp-map">
-    <div class="ex-sel"><div class="grow"><div class="muted crumb">Where in India</div>
-      <p class="headline" id="where"></p></div></div>
-    <div id="map" class="mapbox" aria-label="Map"></div>
-    <div class="legend" id="legend"></div>
-    <p class="note" id="waiting"></p>
-  </section>
-
-  <section class="card pad" id="gbif-hist" hidden>
-    <div class="row" style="justify-content:space-between;align-items:baseline;margin:0">
-      <h2>GBIF records by decade</h2>
-      <div class="legend" id="hlegend" style="margin:0"></div>
+  <section class="sp-two">
+    <div class="card ex-map sp-map">
+      <div class="ex-sel"><div class="grow"><h2>Where in India</h2>
+        <p class="note" id="where" style="margin:4px 0 0"></p></div></div>
+      <div id="map" class="mapbox" aria-label="Map"></div>
+      <div class="legend" id="legend"></div>
+      <p class="note" id="waiting"></p>
     </div>
-    <div class="hist" id="hist" role="img" aria-label="GBIF records of this species in India by decade and kind of record"></div>
-    <p class="note" id="histnote"></p>
+    <div class="card pad sp-when">
+      <h2>Records over time</h2>
+      <p class="note" style="margin:4px 0 8px">GBIF records from India by decade and kind of record.</p>
+      <div id="gbif-hist" hidden>
+        <div class="hist" id="hist" role="img" aria-label="GBIF records of this species in India by decade and kind of record"></div>
+        <div class="legend" id="hlegend"></div>
+        <p class="note" id="histnote"></p>
+      </div>
+      <p class="note" id="nohist" hidden>No GBIF record from India in the latest snapshot.</p>
+      <div class="sp-tiles" id="tiles" aria-label="In numbers"></div>
+    </div>
   </section>
 
-  <section class="row">
+  <section class="card pad" style="margin-top:20px" aria-labelledby="web-h">
+    <h2 id="web-h">Who it interacts with</h2>
+    <p class="note" id="webnote" style="margin:4px 0 10px"></p>
+    <div id="kindsbar" role="group" aria-label="Kinds of link: pick to show or hide"></div>
+    <div class="sp-controls" id="webcontrols">
+      <input class="sp-search" id="q" type="search" placeholder="Find a partner species" aria-label="Find a partner species">
+      <label class="sp-toggle"><input type="checkbox" id="indiaonly"> Only links recorded in India</label>
+    </div>
+    <div class="sp-tree" id="web"></div>
+    <div class="legend" id="weblegend"></div>
+  </section>
+
+  <section class="card pad" style="margin-top:20px" id="relcard" hidden aria-labelledby="rel-h">
+    <h2 id="rel-h">Its relatives in India</h2>
+    <p class="note" id="relnote" style="margin:4px 0 10px"></p>
+    <div class="tablebox"><svg id="rel" role="img" aria-label="Relatives: the year each was described and its latest record"></svg></div>
+  </section>
+
+  <section class="row" style="margin-top:20px">
     <div class="grow" style="display:flex;flex-direction:column;gap:20px;min-width:0">
+      <div class="card pad sp-status" id="status" aria-live="polite"></div>
       <details class="card" id="gbif-districts" hidden>
         <summary class="pad"><b id="dh">Districts with GBIF records</b> <span class="note">as a table</span></summary>
         <div class="tablebox"><table style="min-width:560px">
