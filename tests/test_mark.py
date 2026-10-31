@@ -15,7 +15,7 @@ def fills(svg):
 
 
 def test_the_header_mark_is_the_seven_gap_glyph():
-    svg = re.search(r'<a class="brand".*?(<svg.*?</svg>)', (ROOT / "site-parts" / "header.html").read_text(), re.S)[1]
+    svg = re.search(r'<a class="brand".*?(<svg.*?</svg>)', (ROOT / "site-parts" / "header.html").read_text(), re.DOTALL)[1]
     assert fills(svg) == [ORANGE, PART, PART, PART, ACCENT, ACCENT, ACCENT]
     for page in ["index.html", "species.html", "method.html"]:      # pages.py puts the header on every page
         assert svg in (ROOT / "site" / page).read_text(), page
