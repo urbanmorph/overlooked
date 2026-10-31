@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=0d135fb053">
+<link rel="stylesheet" href="/assets/style.css?v=e2741ce37a">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/explore.js?v=1e536e6621"></script>
+<script type="module" src="/assets/explore.js?v=d56b26e6a1"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -46,16 +46,16 @@
 
   <section class="card gaps-card" aria-labelledby="gaps-h">
     <div class="bar-head"><h2 id="gaps-h" style="font-size:20px">Seven gaps in what we know about species</h2><span class="muted" id="gaps-sub">All groups · India</span></div>
-    <p class="pad note" style="margin:0;padding-top:0">Biologists name seven gaps in what we know about species (Hortal and others, 2015). Overlooked measures each gap for India where open data lets it, and adds the others as their data becomes open. <a href="/method#gaps">How we measure them</a>.</p>
-    <ol class="gaps" id="gaps">
-      <li data-gap="Linnean"><span class="g-name"><b>Which species exist</b><span class="g-term">Linnean gap</span></span><span class="g-q">Is every species described and named?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Wallacean"><span class="g-name"><b>Where species live</b><span class="g-term">Wallacean gap</span></span><span class="g-q">Do we know where each species lives?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Prestonian"><span class="g-name"><b>How many there are</b><span class="g-term">Prestonian gap</span></span><span class="g-q">Do we know how many of each species there are, and if that changes?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Darwinian"><span class="g-name"><b>How species are related</b><span class="g-term">Darwinian gap</span></span><span class="g-q">Do we know each species’ place in the tree of life?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Raunkiæran"><span class="g-name"><b>What species are like</b><span class="g-term">Raunkiæran gap</span></span><span class="g-q">Do we know each species’ traits: size, life cycle, when it flowers or breeds?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Hutchinsonian"><span class="g-name"><b>What conditions species need</b><span class="g-term">Hutchinsonian gap</span></span><span class="g-q">Do we know the climate and habitat each species can live in?</span><span class="g-v"><b class="mono">–</b></span></li>
-      <li data-gap="Eltonian"><span class="g-name"><b>How species interact</b><span class="g-term">Eltonian gap</span></span><span class="g-q">Do we know what each species eats, pollinates or lives on?</span><span class="g-v"><b class="mono">–</b></span></li>
-    </ol>
+    <p class="pad note" style="margin:0;padding-top:0">Biologists name seven gaps in what we know about species (Hortal and others, 2015). Each layer rests on the one below: a species needs a name before a map, and a map before its numbers, traits, needs and partners can be studied. Each species page shows the same seven for that species. <a href="/method#gaps">How we measure them</a>.</p>
+    <div class="pad gaps-pyr">
+      <div class="pyr" id="gaps">
+      <div class="lvl l4"><button type="button" class="blk list" data-i="2" aria-pressed="false"><span class="t">How many there are</span><span class="p">Prestonian</span><span class="grp">–</span></button><button type="button" class="blk list" data-i="4" aria-pressed="false"><span class="t">What species are like</span><span class="p">Raunkiæran</span><span class="grp">–</span></button><button type="button" class="blk list" data-i="5" aria-pressed="false"><span class="t">What conditions species need</span><span class="p">Hutchinsonian</span><span class="grp">–</span></button><button type="button" class="blk list" data-i="6" aria-pressed="false"><span class="t">How species interact</span><span class="p">Eltonian</span><span class="grp">–</span></button></div>
+      <div class="lvl l2"><button type="button" class="blk list" data-i="1" aria-pressed="false"><span class="t">Where species live</span><span class="p">Wallacean</span><span class="grp">–</span></button><button type="button" class="blk list" data-i="3" aria-pressed="false"><span class="t">How species are related</span><span class="p">Darwinian</span><span class="grp">–</span></button></div>
+      <div class="lvl l1"><button type="button" class="blk list" data-i="0" aria-pressed="false"><span class="t">Which species exist</span><span class="p">Linnean</span><span class="grp">–</span></button></div>
+      </div>
+      <p class="note" id="gapskey" style="margin:10px 0 0">Bar: the share of documented species where it is known. Hatched: not measured yet.</p>
+      <div class="sp-gapnote" id="gapnote" aria-live="polite">Pick a block for what we count.</div>
+    </div>
   </section>
 
   <section class="card funnel-card" id="wallacean" aria-labelledby="funnel-h">

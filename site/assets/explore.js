@@ -5,12 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError } from './common.js?v=9455fd8cc8';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups } from './common.js?v=9455fd8cc8';
 import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
 import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps, gapAbsent } from './gaps.js?v=86c7e23cdd';
+import { gaps, gapAbsent } from './gaps.js?v=c86a0ec630';
+import { groupShares, pyramidHTML } from './web.js?v=1bdf6cb7e4';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -246,22 +247,28 @@ try {
     }
   }
   addEventListener('resize', fitLabels);
-  // The seven gaps in what we know, for the chosen groups, for India. Counts the group files cannot give with filters
-  // on (species described lately, DNA) say so; a gap with no open data yet says where its data would come from.
+  // The seven gaps in what we know, for the chosen groups, for India: the species page's pyramid, with the share of the
+  // groups' documented species where each gap is known. The counts are per group, so filters do not change them.
+  let gapPick = null;
   function paintGaps() {
-    $('#gaps-sub').textContent = `${groupName()} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;
-    // Counts the group files cannot give: unfiltered only.
-    const D = { ...S, india: A.india, ...Object.fromEntries(['described_recent', 'dna', 'interactions', 'interactions_india', 'traits', 'trend_known', 'niche']
-      .map(k => [k, filtered() ? null : S[k]])) };
-    for (const g of gaps(D, gisNow())) {
-      const share = g.of ? g.value / g.of : null;
-      $(`#gaps li[data-gap="${g.term}"] .g-v`).innerHTML = g.value != null
-        ? `<b class="mono">${fmt(g.value)}</b>${share != null ? ` <span class="g-share">${pct(g.value, g.of)}</span>` : ''}
-           <span class="g-note">${esc(g.note)}${g.term === 'Wallacean' ? '. <a href="#wallacean">See the gaps below</a>' : ''}</span>
-           ${share != null ? `<span class="meter" aria-hidden="true"><i style="width:${(100 * share).toFixed(1)}%"></i></span>` : ''}`
-        : `<span class="g-not">${esc(gapAbsent(g, filtered()))}</span>`;
-    }
+    $('#gaps-sub').textContent = `${groupName()} · India${st.state || filtered() ? ' (these counts are for all of India, without filters)' : ''}`;
+    const G = gaps(S, gisNow());
+    $('#gaps').innerHTML = pyramidHTML(G.map(g => ({ ...g, state: g.value == null ? 'na' : 'list' })), groupShares(S, gisNow()), '');
+    const of = sumGroups(S.india, gisNow(), 0);
+    $('#gapskey').textContent = `Bar: the share of the ${fmt(of)} documented species${st.cat ? ` of ${groupName().toLowerCase()}` : ''} where it is known. Hatched: not measured yet.`;
+    const g = G[gapPick];
+    for (const b of document.querySelectorAll('#gaps .blk')) b.setAttribute('aria-pressed', String(+b.dataset.i === gapPick));
+    $('#gapnote').innerHTML = !g ? 'Pick a block for what we count.'
+      : `<b>${esc(g.plain)} (${esc(g.term)} gap).</b> ${esc(g.question)} `
+        + (g.value == null ? esc(gapAbsent(g)) : `<b class="mono">${fmt(g.value)}</b> (${pct(g.value, g.of)}) ${esc(g.note)}.`)
+        + (g.term === 'Wallacean' ? ' <a href="#wallacean">See the gaps below</a>.' : '');
   }
+  $('#gaps').addEventListener('click', e => {
+    const b = e.target.closest('.blk');
+    if (!b) return;
+    gapPick = gapPick === +b.dataset.i ? null : +b.dataset.i;
+    paintGaps();
+  });
   // Red List assessments for the chosen groups, for India: IUCN categories and assessment years with our records.
   function paintRedlist() {
     $('#rl-sub').textContent = `${groupName()} · India${st.state ? ' (these counts are for all of India)' : ''}${filterText()}`;

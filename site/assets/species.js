@@ -6,7 +6,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
-import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, relatives, tree, whereFill } from './web.js?v=b46931bff3';
+import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, relatives, tree, whereFill } from './web.js?v=1bdf6cb7e4';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {

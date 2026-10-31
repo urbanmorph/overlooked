@@ -3,6 +3,7 @@
 // fill. species.js draws and wires them. A radial layout was tried first: with 30 partners per kind the names collided.
 
 import { esc, fmt } from './common.js?v=9455fd8cc8';
+import { known } from './gaps.js?v=c86a0ec630';
 
 // Kinds of link from the species' own side (pipeline/master.py web_files). Hues in this order validated for CVD and normal vision on
 // white; two are under 3:1, so every sector has a text label and the page has a table view.
@@ -66,20 +67,23 @@ export function tree(web, { top = 8 } = {}) {
 // that need a name and a map first. The glyph draws the same layers in seven small cells.
 export const LAYERS = [[2, 4, 5, 6], [1, 3], [0]];
 
-/** Per gap, the share (whole per cent) of the group's documented species where it is known; null when the list does
- * not measure it, or the summary has no counts. */
-export function groupShares(S, gi) {
-  const known = S.gaps_known?.[gi], of = S.india?.[gi]?.[0];
-  return Array.from({ length: 7 }, (_, i) => (known && of && known[i] != null ? Math.round(100 * known[i] / of) : null));
+/** Per gap, the share (whole per cent) of the documented species of a group (or several) where it is known; null when
+ * the list does not measure it, or the summary has no counts. The home page counts the same (gaps.js known). */
+export function groupShares(S, gis) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const k = known(S, [].concat(gis), i);
+    return k && k.of ? Math.round(100 * k.value / k.of) : null;
+  });
 }
 
 /** The pyramid as HTML: a button per gap (class blk <state>, data-i its index), its plain words first and the term
- * small, with a bar for the share of the group (`group`, a plural such as "bats") where the gap is known. */
+ * small, with a bar for the share of the group (`group`, a plural such as "bats"; '' on the home page) where the gap is
+ * known. State: known | part | gap | na for one species; list for the home page (no species). */
 export function pyramidHTML(gaps, shares, group) {
   return LAYERS.map(layer => `<div class="lvl l${layer.length}">${layer.map(i => {
     const g = gaps[i], pct = shares[i];
-    const bar = pct == null ? `<span class="grp">${esc(group)}: not measured</span>`
-      : `<span class="grp"><span>${esc(group)}</span><span class="bar"><i style="width:${pct}%"></i></span><span>${pct}%</span></span>`;
+    const bar = pct == null ? `<span class="grp">${group ? `${esc(group)}: ` : ''}not measured</span>`
+      : `<span class="grp">${group ? `<span>${esc(group)}</span>` : ''}<span class="bar"><i style="width:${pct}%"></i></span><span>${pct}%</span></span>`;
     return `<button type="button" class="blk ${g.state}" data-i="${i}" aria-pressed="false"><span class="t">${esc(g.plain)}</span>`
       + `<span class="p">${esc(g.term)}</span>${bar}</button>`;
   }).join('')}</div>`).join('');

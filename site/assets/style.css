@@ -304,6 +304,8 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .blk .t { font-weight: 600; font-size: 15px; line-height: 1.2; overflow-wrap: anywhere } .blk .p { font-size: 12.5px; opacity: .85 }
 .blk.known { background: var(--accent); color: #fff } .blk.part { background: #9FC8BA }
 .blk.gap { background: var(--surface); border-color: var(--quiet) }
+.blk.list { background: var(--surface); border-color: var(--line); color: var(--ink) } .blk.list .bar i { background: var(--accent) }
+.gaps-pyr { padding-top: 8px }
 .blk.na { background: repeating-linear-gradient(45deg, var(--line-2) 0 6px, var(--surface) 6px 12px); border-color: var(--line); color: var(--muted) }
 .blk[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink) }
 .legend .sw.blk.na { border: 1px solid var(--field) }

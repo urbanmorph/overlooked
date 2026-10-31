@@ -44,6 +44,8 @@ test('the group share per gap: known species of the group over its documented sp
   assert.deepEqual(groupShares(S, 0), [98, 43, null, 36, 0, null, 16]);
   assert.deepEqual(groupShares(S, 1), Array(7).fill(null));                   // no documented species
   assert.deepEqual(groupShares({ india: [[5]] }, 0), Array(7).fill(null));    // an older summary
+  const two = { india: [[200], [100]], gaps_known: [[196, 86, null, 72, 0, null, 32], [100, 14, 30, 0, 0, null, 1]] };
+  assert.deepEqual(groupShares(two, [0, 1]), [99, 33, 30, 24, 0, null, 11]);   // several groups: the ones that measure it
 });
 
 test('the pyramid: three layers on the Linnean base, each block in its state with the group bar inside', () => {
@@ -57,6 +59,10 @@ test('the pyramid: three layers on the Linnean base, each block in its state wit
   assert.match(html, /width:98%/);
   assert.match(html, /bats: not measured/);                                   // Prestonian, null share
   assert.equal((html.match(/<button/g) || []).length, 7);
+  const all = pyramidHTML(gaps.map(g => ({ ...g, state: 'list' })), [98, 43, null, 36, 0, null, 16], '');
+  assert.match(all, /class="blk list"/);
+  assert.match(all, />not measured</);                                         // no group word on the home page
+  assert.doesNotMatch(all, /<span><\/span>/);
 });
 
 test('the glyph: the same seven cells, small, in their states', () => {
