@@ -5,7 +5,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
-import { KINDS, VERBS, gapStates, ringSVG, tree, whereFill } from './web.js?v=df9ffadc20';
+import { KINDS, VERBS, gapStates, ringSVG, tree, whereFill } from './web.js?v=1d98c26940';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -92,7 +92,7 @@ try {
   const row = part[key];
   if (!row) throw new Error('species not on the master list');
   const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise, papers, papersLatest] = row;
+    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise, papers, papersLatest, iucnTrend] = row;
   const group = S.groups[gi] || '';
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   document.title = `${name} · Overlooked`;
@@ -138,7 +138,7 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != 
 
   // The web: partners around the seven gaps; a partner picked shows its details beside it.
   const latestYear = gbif?.districts?.length ? Math.max(...gbif.districts.map(d => d[2] ?? 0)) || null : null;
-  const gaps = gapStates({ year, latest: latestYear, trend, dna: codes.has('dna'), barcode, traits, precise, partners,
+  const gaps = gapStates({ year, latest: latestYear, trend, iucnTrend, dna: codes.has('dna'), barcode, traits, precise, partners,
     interactionsIndia }, S);
   const T = tree(web || { n: {}, p: {} });
   const kindOf = Object.fromEntries(KINDS.map(k => [k.k, k]));

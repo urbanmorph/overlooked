@@ -23,6 +23,8 @@ export const VERBS = { eats: 'eats', preysOn: 'preys on', kills: 'kills', pollin
 
 const NICHE_PLACES = 10;
 
+const KNOWN_TRENDS = new Set(['Increasing', 'Stable', 'Decreasing']);   // IUCN's trends; "Unknown" is not known
+
 /** The seven gaps for one species: [{term, plain, state: known | part | gap | na, text}]. f: what the species file
  * gives (undefined: this list does not measure it); S: the list's summary. */
 export function gapStates(f, S) {
@@ -32,8 +34,10 @@ export function gapStates(f, S) {
     g('Linnean', 'Which species exist', f.year ? 'known' : 'gap', f.year ? `Described in ${f.year}.` : 'The year it was described is not known.'),
     g('Wallacean', 'Where it lives', f.latest >= since ? 'known' : f.latest ? 'part' : 'gap',
       f.latest >= since ? `A placed record since ${since} (latest ${f.latest}).` : f.latest ? `Placed records, the latest in ${f.latest}.` : 'No record placed in a district.'),
-    f.trend == null ? g('Prestonian', 'How many there are', 'na', 'Not measured for this group (only birds have open trends).')
-      : g('Prestonian', 'How many there are', f.trend ? 'known' : 'gap', f.trend ? 'A known population trend (State of India’s Birds).' : 'No known population trend.'),
+    f.trend == null ? g('Prestonian', 'How many there are', 'na', 'Not assessed by IUCN, and not in State of India’s Birds.')
+      : g('Prestonian', 'How many there are', f.trend ? 'known' : 'gap', f.trend
+        ? (KNOWN_TRENDS.has(f.iucnTrend) ? `Population ${f.iucnTrend.toLowerCase()} (IUCN Red List).` : 'A known population trend (State of India’s Birds).')
+        : f.iucnTrend ? 'Assessed by IUCN, but the population trend is not known.' : 'No known population trend.'),
     f.barcode === undefined && !f.dna ? g('Darwinian', 'How it is related', 'na', 'Not measured in this list.')
       : g('Darwinian', 'How it is related', f.dna || f.barcode === 2 ? 'known' : f.barcode === 1 ? 'part' : 'gap',
         f.dna ? 'A DNA sequence or sample from India.' : f.barcode === 2 ? 'A DNA barcode from India (BOLD).' : f.barcode === 1 ? 'A DNA barcode, but not from India.' : 'No DNA barcode.'),

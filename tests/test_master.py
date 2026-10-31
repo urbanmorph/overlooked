@@ -101,6 +101,8 @@ def inputs(tmp_path):
     lichens = tmp_path / "lichens.csv"
     lichens.write_text("no,name,authority,synonyms,growth_form,substratum,states,regions,endemic,page\n"
                        "1,Lus mus,Nyl.,Lus oldus Nyl.,CR,CO,Kerala,WG,True,8\n")
+    iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing'), ('Eus fus', 'Unknown'), ('Aus bus', 'Stable'))
+        t(name, trend)""", tmp_path / "iucn_detail.parquet")
     soib = tmp_path / "soib.csv"
     soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
                     "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
@@ -109,7 +111,7 @@ def inputs(tmp_path):
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "globi_edges": edges,
                        "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
-                       "bryophytes": bryo, "zotero": lit,
+                       "bryophytes": bryo, "zotero": lit, "iucn_detail": iucn_trend,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -233,12 +235,14 @@ def test_a_ledger_without_the_trait_count_leaves_the_gap_unmeasured(inputs, tmp_
     assert s["traits"] is None and "traits" not in s["totals"]
 
 
-def test_population_trends_from_soib_the_prestonian_gap_for_birds(built):
-    """State of India's Birds: birds with a known trend; a group SoIB does not cover is not measured (null)."""
+def test_population_trends_from_soib_and_iucn_the_prestonian_gap(built):
+    """A known trend from State of India's Birds or from IUCN (increasing, stable, decreasing; not unknown); a group
+    neither covers is not measured (null)."""
     s = built["summary"]
-    birds = GROUPS.index("Birds")
+    birds, orchids, beetles = GROUPS.index("Birds"), GROUPS.index("Plants: orchids"), GROUPS.index("Insects: beetles")
     assert s["trend_known"][birds] == 1                                    # Aus bus; Hus ius assessed, not known
-    assert all(v is None for gi, v in enumerate(s["trend_known"]) if gi != birds)
+    assert (s["trend_known"][orchids], s["trend_known"][beetles]) == (1, 0)   # Cus dus decreasing; Eus fus unknown
+    assert all(v is None for gi, v in enumerate(s["trend_known"]) if gi not in (birds, orchids, beetles))
 
 
 def test_a_list_without_soib_leaves_the_prestonian_gap_unmeasured(inputs, tmp_path, monkeypatch):
@@ -246,7 +250,8 @@ def test_a_list_without_soib_leaves_the_prestonian_gap_unmeasured(inputs, tmp_pa
     con = duckdb.connect()
     iucn_table(con)
     s = master.build(con, inputs["paths"], tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
-                     inputs["districts"], {**inputs["inputs"], "soib": None}, cache={}, http=FakeGbif())
+                     inputs["districts"], {**inputs["inputs"], "soib": None, "iucn_detail": None},
+                     cache={}, http=FakeGbif())
     assert s["trend_known"] is None
 
 
@@ -427,17 +432,18 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None, None, None, 0, None, False, False, None, None, None]
+                          None, False, None, None, None, 0, None, False, False, None, None, None, None]
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-14:-9] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
-    assert aus[-9:-5] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
-    assert aus[-5:-2] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
+    assert aus[-15:-10] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
+    assert aus[-10:-6] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
+    assert aus[-6:-3] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
+    assert aus[-1] == "Stable"                           # the trend in IUCN's assessment
     eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
-    assert eus[-9:-5] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
+    assert eus[-10:-6] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
-                        None, None, 0, None, None, False, None, None, None]
+                        None, None, 0, None, None, False, None, None, None, None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -1009,7 +1015,7 @@ def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
     assert all(v is None for gi, v in enumerate(s["papers"]) if gi != birds)
     assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
     aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus[-2:] == [5, 2020]
+    assert aus[-3:-1] == [5, 2020]
 
 
 def test_name_overrides_beat_the_gbif_match_and_move_gbif_records_by_key(inputs, tmp_path, monkeypatch):

@@ -104,6 +104,7 @@ CODES = [c for c, _, _ in LABELS]
 # NE = not assessed. EW and EX come last so the first seven indices stay fixed.
 IUCN_CATS = ["CR", "EN", "VU", "NT", "LC", "DD", "NE", "EW", "EX"]
 THREATENED = ("CR", "EN", "VU")
+IUCN_TRENDS = ("Increasing", "Stable", "Decreasing")   # a known trend; IUCN's "Unknown" is not
 BASIS_LABEL = {"HUMAN_OBSERVATION": "ho", "OBSERVATION": "ho", "PRESERVED_SPECIMEN": "sp", "MATERIAL_CITATION": "pap",
                "MATERIAL_SAMPLE": "dna", "MACHINE_OBSERVATION": "mo", "OCCURRENCE": "oc"}
 
@@ -242,6 +243,14 @@ def zotero_input(s3):
     from pipeline import zotero
     local = zotero.CACHE / zotero.TABLE
     return r2_file(s3, zotero.R2_DIR + zotero.TABLE, CACHE / zotero.TABLE) if s3 else (local if local.exists() else None)
+
+
+def iucn_detail_input(s3):
+    """Population trends from IUCN's assessments (pipeline/iucn_api.py, run by hand with IUCN_TOKEN): R2's copy, else
+    the local one."""
+    from pipeline import iucn_api
+    local = iucn_api.CACHE / "iucn_detail.parquet"
+    return (r2_file(s3, iucn_api.R2_PREFIX + local.name, CACHE / local.name) if s3 else None) or (local if local.exists() else None)
 
 
 def bryophytes_input(s3):
@@ -808,9 +817,16 @@ def flags(con):
     con.sql("""
         CREATE OR REPLACE TABLE id_bold AS SELECT DISTINCT n.id FROM id_names n JOIN bold b USING (name)
     """)
-    con.sql("""
+    con.sql(f"""
         CREATE OR REPLACE TABLE id_soib AS
-        SELECT n.id, bool_or(s.known) AS trend_known FROM id_names n JOIN soib s USING (name) GROUP BY n.id
+        WITH t AS (SELECT name, known FROM soib
+                   UNION ALL SELECT name, coalesce(trend IN {IUCN_TRENDS}, false) FROM iutrend)
+        SELECT n.id, bool_or(t.known) AS trend_known FROM id_names n JOIN t USING (name) GROUP BY n.id
+    """)
+    con.sql(f"""
+        CREATE OR REPLACE TABLE id_iutrend AS
+        SELECT n.id, arg_min(t.trend, CASE WHEN t.trend IN {IUCN_TRENDS} THEN 0 ELSE 1 END) AS iucn_trend
+        FROM id_names n JOIN iutrend t USING (name) GROUP BY n.id
     """)
     con.sql("""
         CREATE OR REPLACE TABLE id_flags AS
@@ -875,7 +891,7 @@ def flags(con):
                CASE WHEN NOT f.listed THEN 2 WHEN f.observed THEN 1 ELSE 0 END AS status,
                coalesce(c.iucn, 'NE') AS iucn, CASE coalesce(c.iucn, 'NE') {cat_idx} END AS iucn_i, c.iucn_year, c.iucn_doi,
                gl.partners, coalesce(gl.interactions_india, false) AS interactions_india,
-               i.id IN (SELECT key FROM ledger_trait) AS traits, so.trend_known, gp.places_precise, gp.cells_2km,
+               i.id IN (SELECT key FROM ledger_trait) AS traits, so.trend_known, it.iucn_trend, gp.places_precise, gp.cells_2km,
                ev.types, ev.photos,
                -- 2: a barcode from India (BOLD); 1: a barcode anywhere (iBOL on GBIF); 0: none.
                CASE WHEN i.id IN (SELECT id FROM id_bold) THEN 2 WHEN ev.barcodes > 0 THEN 1 ELSE 0 END AS barcode,
@@ -885,7 +901,7 @@ def flags(con):
                y.year, y.authority, y.paper
         FROM ids i JOIN id_flags f USING (id) JOIN id_sources s USING (id) JOIN id_labels l USING (id)
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
-        LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id) LEFT JOIN gbif_places gp ON gp.key = i.id
+        LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id) LEFT JOIN id_iutrend it USING (id) LEFT JOIN gbif_places gp ON gp.key = i.id
         LEFT JOIN evid ev ON ev.key = i.id LEFT JOIN id_lit li ON li.id = i.id
         ORDER BY gi, i.name
     """)
@@ -1014,25 +1030,26 @@ def species_files(con, out: Path):
     photo, DNA barcode (2: from India, BOLD; 1: anywhere, iBOL on GBIF; 0: none), names in Indian languages
     [[language code, name]], a known population trend (State of India's Birds; null: not covered), a record placed in
     India with a trait, places with an exact record (null: not counted), papers in the Bibliography of South Asian
-    Ornithology and the year of the latest (birds; null: none)]}.
+    Ornithology and the year of the latest (birds; null: none), the population trend in IUCN's assessment (Increasing,
+    Stable, Decreasing, Unknown; null: not assessed)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
-            types, photos, barcode, names, trend, traits, precise, papers, papers_latest in con.sql("""
+            types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend in con.sql("""
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
                    any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                    list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
-                   s.papers, s.papers_latest
+                   s.papers, s.papers_latest, s.iucn_trend
             FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
             WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
-                                                    trend, traits, precise, papers, papers_latest]
+                                                    trend, traits, precise, papers, papers_latest, iucn_trend]
     for i, part in parts.items():
         dump(part, out / "sp" / f"{i}.json")
 
@@ -1163,7 +1180,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     redlist = {k: [0] * n for k in REDLIST}
     interactions, interactions_india = [0] * n, [0] * n   # the Eltonian gap (GloBI)
     traits = [0] * n   # the Raunkiæran gap: a record placed in India with a life stage, a sex, or flowers or fruits
-    # The Prestonian gap: species with a known population trend (State of India's Birds), null for a group it does not cover.
+    # The Prestonian gap: species with a known population trend (State of India's Birds, or IUCN's assessment), null for
+    # a group neither covers.
     trend_known = [None] * n
     niche = [0] * n   # the Hutchinsonian gap: records placed to 1 km or better at NICHE_PLACES places or more
     # Evidence per species: a type specimen and a photo from India (Linnean), a DNA barcode anywhere and from India
@@ -1487,7 +1505,13 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         con.sql(f"CREATE OR REPLACE TABLE soib AS {soib.trends_sql(inputs['soib'])}")
     else:
         con.sql("CREATE OR REPLACE TABLE soib (name VARCHAR, assessed BOOLEAN, known BOOLEAN)")
-        notes.append("State of India's Birds was not found: the Prestonian gap (population trends) is not measured.")
+        notes.append("State of India's Birds was not found: bird population trends come from IUCN only.")
+    # Population trends in IUCN's assessments (pipeline/iucn_api.py), published with the owner's go-ahead (31 October 2026).
+    if inputs.get("iucn_detail"):
+        con.sql(f"CREATE OR REPLACE TABLE iutrend AS SELECT name, trend FROM '{inputs['iucn_detail']}'")
+    else:
+        con.sql("CREATE OR REPLACE TABLE iutrend (name VARCHAR, trend VARCHAR)")
+        notes.append("IUCN's assessments were not found: population trends come from State of India's Birds only.")
     # Evidence per species (pipeline/evidence.py): type specimens and photos from India and barcodes anywhere
     # (GBIF), barcodes from India (BOLD, by name), names in Indian languages (Wikidata).
     if inputs.get("evidence"):
@@ -1548,7 +1572,7 @@ def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold")), *(inputs.get("described") or {}).values()]:
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1630,6 +1654,7 @@ def run(a):
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
               "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
+              "iucn_detail": iucn_detail_input(s3),
               "bsi_monographs": bsi_monographs_input(s3),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}

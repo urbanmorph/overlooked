@@ -17,6 +17,10 @@ test('each gap for one species: known, part known, open or not measured', () => 
     precise: undefined, partners: null, interactionsIndia: false }, { recent_from: 2016 });
   assert.deepEqual(none.map(x => x.state), ['known', 'gap', 'na', 'known', 'na', 'na', 'gap']);
   assert.ok(g.every(x => x.text.length > 0));
+  const iu = t => gapStates({ trend: t === 'Unknown' ? false : true, iucnTrend: t }, S)[2];
+  assert.deepEqual([iu('Decreasing').state, iu('Decreasing').text], ['known', 'Population decreasing (IUCN Red List).']);
+  assert.deepEqual([iu('Unknown').state, iu('Unknown').text], ['gap', 'Assessed by IUCN, but the population trend is not known.']);
+  assert.match(gapStates({ trend: true, iucnTrend: null }, S)[2].text, /State of India/);
 });
 
 test('the tree: a branch per kind of link in a fixed order, the partners with most records first, the rest counted', () => {
