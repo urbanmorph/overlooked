@@ -1010,3 +1010,25 @@ def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
     assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
     aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
     assert aus[-2:] == [5, 2020]
+
+
+def test_name_overrides_beat_the_gbif_match_and_move_gbif_records_by_key(inputs, tmp_path, monkeypatch):
+    """pipeline/ref/name_overrides.csv: a name row sends a name to a species whatever GBIF's match says (here 'Old
+    ius', which GBIF matches to G1, goes to K1); a key row moves GBIF's India records from one species to another
+    (K3's records go to K1, and K3, listed by no other source, leaves the list)."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    over = tmp_path / "overrides.csv"
+    over.write_text("kind,from,to_key,to_name,reason\nname,Old ius,K1,Aus bus,test\nkey,K3,K1,Aus bus,test\n")
+    globi = write(duckdb.connect(), """SELECT * FROM (VALUES ('Old ius', 4, 2, ['eats'], 3, 1))
+        t(name, records, partners, types, records_india, datasets)""", tmp_path / "globi_over.parquet")
+    con = duckdb.connect()
+    iucn_table(con)
+    out, http = tmp_path / "o", FakeGbif()
+    s = master.build(con, inputs["paths"], out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "globi": globi, "overrides": over}, cache={}, http=http)
+    rows = {r[0]: r for r in duckdb.sql(f"SELECT key, name, labels FROM '{out / 'master.parquet'}'").fetchall()}
+    assert "K3" not in rows and "dna" in rows["K1"][2]                       # K3's DNA sample is now K1's
+    birds = GROUPS.index("Birds")
+    assert s["interactions_india"][birds] == 1                              # Aus bus through 'Old ius'
+    assert "Old ius" not in http.asked                                      # an overridden name is not asked
+    assert any("2 name overrides" in n for n in s["notes"])

@@ -663,6 +663,32 @@ def add_matches(con, cache):
     con.sql("INSERT INTO alias SELECT name, key, display, 3 FROM matched")
 
 
+OVERRIDES = ROOT / "pipeline" / "ref" / "name_overrides.csv"
+
+
+def apply_overrides(con, path=OVERRIDES):
+    """Reviewed corrections to the Catalogue of Life's placement of a name (pipeline/ref/name_overrides.csv, each with
+    its reason). kind name: the name means to_key, whatever GBIF's match says (it beats every other alias). kind key:
+    GBIF's records from India keyed to `from` are to_key's (for a species that no Indian checklist lists, whose India
+    records are another species under an old name); `from` keeps only what other sources give it. Returns the rows
+    applied."""
+    if not path or not Path(path).exists():
+        return 0
+    con.sql(f"CREATE OR REPLACE TABLE overrides AS SELECT * FROM read_csv('{path}', header = true, all_varchar = true)")
+    con.sql("""INSERT INTO alias SELECT "from", to_key, to_name, -1 FROM overrides WHERE kind = 'name'""")
+    con.sql("""UPDATE names_in SET key = o.to_key FROM overrides o WHERE o.kind = 'name' AND names_in.name = o."from" """)
+    con.sql("""UPDATE evidence SET key = o.to_key FROM overrides o WHERE o.kind = 'name' AND evidence.name = o."from" """)
+    # GBIF's species row for `from` goes (its name stays an alias of `from`); its records move to to_key.
+    con.sql("""DELETE FROM names_in WHERE source = 'GBIF' AND key IN (SELECT "from" FROM overrides WHERE kind = 'key')""")
+    con.sql("""UPDATE evidence SET key = o.to_key FROM overrides o
+               WHERE o.kind = 'key' AND evidence.source = 'GBIF' AND evidence.key = o."from" """)
+    for t in ("ledger_dna_only", "ledger_trait", "gbif_places", "evid"):
+        con.sql(f"""DELETE FROM {t} WHERE key IN (SELECT "from" FROM overrides WHERE kind = 'key')
+                    AND key IN (SELECT o."from" FROM overrides o WHERE o.kind = 'key' AND o.to_key IN (SELECT key FROM {t}))""")
+        con.sql(f"""UPDATE {t} SET key = o.to_key FROM overrides o WHERE o.kind = 'key' AND {t}.key = o."from" """)
+    return value(con, "SELECT count(*) FROM overrides")
+
+
 def resolve(con):
     """Give every row an id: its key, else the key its name has (alias), else 'n:<name>' (name not matched).
     Then fold ids that share a name and kingdom into one (GBIF's key first), as names.merge_duplicates does
@@ -1478,6 +1504,11 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         notes.append("ZSI checklists not found.")
     if not inputs.get("wcvp"):
         notes.append("Kew WCVP not found.")
+    # Before matching: an overridden name is never asked of GBIF.
+    n_over = apply_overrides(con, inputs.get("overrides", OVERRIDES))
+    if n_over:
+        notes.append(f"{n_over} name overrides applied (pipeline/ref/name_overrides.csv): reviewed corrections to where the "
+                     "Catalogue of Life places a name.")
     cache = {} if cache is None else cache
     add_matches(con, cache)
     pending = to_match(con, cache)
