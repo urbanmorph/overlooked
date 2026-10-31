@@ -15,6 +15,7 @@ with the same Red List version and names asks the API only for its version.
 
 Output: iucn_detail.parquet, one row per species name of the list with an assessment.
 
+Monthly on GitHub Actions (.github/workflows/iucn.yml); by hand:
 Usage: .venv/bin/python -m pipeline.iucn_api [--master data/layers/master/<period>/master.parquet] [--minutes 120] [--local]
 """
 
@@ -196,24 +197,42 @@ def rows(store):
     return out
 
 
+def master_path(s3, layers=ROOT / "data" / "layers" / "master", cache=CACHE):
+    """The newest local master.parquet, else the published one that R2's layers/master/latest.json names (on Actions
+    there is no local build). None when there is neither."""
+    from pipeline import r2
+    local = sorted(layers.glob("*/master.parquet"))
+    if local:
+        return local[-1]
+    latest = r2.get_json(s3, "layers/master/latest.json") if s3 else None
+    if not latest or not latest.get("base"):
+        return None
+    cache.mkdir(parents=True, exist_ok=True)
+    dest = cache / f"master_{latest['base'].strip('/').replace('/', '_')}.parquet"   # one file per build: never stale
+    r2.restore(s3, latest["base"] + "master.parquet", dest)
+    return dest
+
+
 def main():
     import duckdb
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env", override=True)
     p = argparse.ArgumentParser()
-    p.add_argument("--master", help="master.parquet of the list (default: the newest local build)")
+    p.add_argument("--master", help="master.parquet of the list (default: the newest local build, else R2's)")
     p.add_argument("--minutes", type=float, help="stop after this many minutes; the next run continues")
     p.add_argument("--local", action="store_true", help="keep the store on this machine only (no copy to R2)")
     a = p.parse_args()
-    master = Path(a.master) if a.master else max((ROOT / "data" / "layers" / "master").glob("*/master.parquet"))
-    names = sorted({n for (n,) in duckdb.sql(f"SELECT name FROM '{master}' WHERE iucn <> 'NE'").fetchall()})
-    print(f"{len(names)} assessed species on the list ({master})", flush=True)
     s3 = upload = None
     if os.environ.get("R2_ENDPOINT") and not a.local:
         from pipeline import r2
         s3 = r2.client()
         r2.restore(s3, R2_PREFIX + "store.json", CACHE / "store.json")
         upload = lambda path: r2.sync_file(s3, path, R2_PREFIX + path.name, immutable=False)
+    master = Path(a.master) if a.master else master_path(s3)
+    if master is None:
+        raise SystemExit("no master list: build one, or give --master")
+    names = sorted({n for (n,) in duckdb.sql(f"SELECT name FROM '{master}' WHERE iucn <> 'NE'").fetchall()})
+    print(f"{len(names)} assessed species on the list ({master})", flush=True)
     store = Store(CACHE / "store.json", upload)
     deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
     api = Api(os.environ["IUCN_TOKEN"])

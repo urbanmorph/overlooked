@@ -1,0 +1,48 @@
+name: IUCN Red List
+
+# IUCN Red List API (pipeline/iucn_api.py): the population trend of every assessed species of the master list, for
+# the Prestonian gap. Monthly; IUCN publishes a new Red List version about twice a year, and a run with the same
+# version asks the API only for its version. The store and iucn_detail.parquet stay in R2 cache/iucn_api/ (never
+# served); the master list reads the table on its next run. A stopped run continues on the next one. Needs the
+# secret IUCN_TOKEN. Scheduled runs need the repository variable PIPELINE_ENABLED = true.
+
+on:
+  schedule:
+    - cron: "29 3 3 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: iucn
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  iucn:
+    if: github.event_name == 'workflow_dispatch' || vars.PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Read the Red List
+        env:
+          IUCN_TOKEN: ${{ secrets.IUCN_TOKEN }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python -u -m pipeline.iucn_api --minutes 150
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "IUCN Red List failed ($(date -u +%Y-%m-%d))" \
+            --body "The IUCN workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

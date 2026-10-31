@@ -246,7 +246,7 @@ def zotero_input(s3):
 
 
 def iucn_detail_input(s3):
-    """Population trends from IUCN's assessments (pipeline/iucn_api.py, run by hand with IUCN_TOKEN): R2's copy, else
+    """Population trends from IUCN's assessments (pipeline/iucn_api.py, monthly on Actions): R2's copy, else
     the local one."""
     from pipeline import iucn_api
     local = iucn_api.CACHE / "iucn_detail.parquet"

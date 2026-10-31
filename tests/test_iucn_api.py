@@ -1,6 +1,7 @@
 """IUCN Red List API: the latest global assessment of every assessed species of the India list, with population
 trend, threats and habitats. A fake API stands in for api.iucnredlist.org."""
 
+import json
 import time
 
 import pytest
@@ -145,3 +146,19 @@ def test_only_the_population_trend_reaches_the_public_files():
     master = (iucn_api.ROOT / "pipeline" / "master.py").read_text()
     assert "SELECT name, trend FROM '{inputs['iucn_detail']}'" in master
     assert not any(f in master for f in ("threats", "habitats", "possibly_extinct", "criteria", "assessors"))
+
+
+def test_the_list_is_the_newest_local_build_else_the_published_one_in_r2(tmp_path, monkeypatch):
+    """On Actions there is no local build: the names come from the master.parquet that R2's latest.json names."""
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    s3 = FakeS3()
+    s3.store["layers/master/latest.json"] = json.dumps({"base": "layers/master/2026-10-26/B2/"}).encode()
+    s3.store["layers/master/2026-10-26/B2/master.parquet"] = b"published"
+    got = iucn_api.master_path(s3, tmp_path / "layers", tmp_path / "cache")
+    assert got.read_bytes() == b"published"
+    local = tmp_path / "layers" / "2026-10-26" / "master.parquet"
+    local.parent.mkdir(parents=True)
+    local.write_bytes(b"local")
+    assert iucn_api.master_path(s3, tmp_path / "layers", tmp_path / "cache") == local
+    assert iucn_api.master_path(None, tmp_path / "none", tmp_path / "cache") is None
