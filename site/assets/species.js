@@ -6,7 +6,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
-import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, relatives, tree, whereFill } from './web.js?v=323725a916';
+import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, relatives, tree, whereFill } from './web.js?v=b46931bff3';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -89,19 +89,20 @@ function evidenceRows(S, name, types, photos, barcode, names) {
 // confirm the name before it shows here); undefined (a list with no pictures yet), nothing.
 function picture(pic, name) {
   if (pic === undefined) return '';
-  if (!pic) {
+  if (!/^https:\/\//.test(pic?.[0] || '')) {
     return `<div class="ph none"><b>No open photo yet</b><span>Seen it in India? Add your photo to iNaturalist. Once others there confirm the name, it shows here.</span>
       <a href="https://www.inaturalist.org/observations/upload" target="_blank" rel="noopener">Add a photo on iNaturalist</a></div>`;
   }
   const [url, page, by, licence, source] = pic;
+  const from = /^https:\/\//.test(page || '') ? `<a href="${esc(page)}" target="_blank" rel="noopener">${esc(source)}</a>` : esc(source);
   return `<div class="ph"><img src="${esc(url)}" alt="${esc(name)}" decoding="async"></div>
-    <figcaption>Photo: ${by ? `${esc(by)}, ` : ''}${esc(licence)} · <a href="${esc(page)}" target="_blank" rel="noopener">${esc(source)}</a></figcaption>`;
+    <figcaption>Photo: ${by ? `${esc(by)}, ` : ''}${esc(licence)} · ${from}</figcaption>`;
 }
 
 // Relatives on a time axis: a line from the year described to the latest record placed in a state, with each
-// species' glyph; this species in colour. A row links to that species' page.
+// species' glyph and picture (a dashed circle when it has none); this species in colour. A row links to its page.
 function relativesSVG(R, key, since) {
-  const rowH = 32, top = 26, left = 300, W = 1000, right = 20, H = top + R.length * rowH + 8;
+  const rowH = 36, top = 26, left = 320, W = 1000, right = 20, H = top + R.length * rowH + 8, th = 30, tx = 34;
   const years = R.map(r => r.year).filter(Boolean);
   const y0 = Math.floor((Math.min(...years, 1900) - 10) / 25) * 25, y1 = 2030;
   const x = y => left + (W - left - right) * (y - y0) / (y1 - y0);
@@ -113,7 +114,9 @@ function relativesSVG(R, key, since) {
     s += `<a href="/species?key=${encodeURIComponent(r.key)}" class="${me ? 'me' : ''}"><title>${esc(tip)}</title>`
       + `<rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`
       + glyphSVG(r.gaps, 26).replace('<svg ', `<svg x="0" y="${y - 10}" `)
-      + `<text x="36" y="${y + 4}" font-style="italic">${esc(r.name)}</text>`
+      + (/^https:\/\//.test(r.pic || '') ? `<clipPath id="rc${i}"><circle cx="${tx + th / 2}" cy="${y}" r="${th / 2}"/></clipPath><image href="${esc(r.pic)}" x="${tx}" y="${y - th / 2}" width="${th}" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#rc${i})"/>`
+        : `<circle cx="${tx + th / 2}" cy="${y}" r="${th / 2 - 1}" fill="var(--line-2)" stroke="var(--field)" stroke-dasharray="3 2"/>`)
+      + `<text x="${tx + th + 10}" y="${y + 4}" font-style="italic">${esc(r.name)}</text>`
       + (r.year && r.last ? `<line x1="${x(r.year)}" x2="${x(r.last)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${me ? 4 : 2.5}" stroke-linecap="round"/>` : '')
       + (r.year ? `<circle cx="${x(r.year)}" cy="${y}" r="4.5" fill="var(--surface)" stroke="${c}" stroke-width="2"/>` : '')
       + (r.last ? `<circle cx="${x(r.last)}" cy="${y}" r="5" fill="${c}"/>` : '') + '</a>';

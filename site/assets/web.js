@@ -93,13 +93,18 @@ export function glyphSVG(states, size = 26) {
     + LAYERS[1].map((i, j) => cell(6 + j * 14.25, 12, 13, i)).join('') + cell(12, 23, 16, 0) + '</svg>';
 }
 
+/** A small version of a photo for a thumbnail: iNaturalist's square (75 px), Commons at 120 px; others as they are. */
+export function thumb(url) {
+  return url ? url.replace(/\/medium\.(jpe?g|png)$/i, '/square.$1').replace(/\/\d+px-([^/]+)$/, '/120px-$1') : url;
+}
+
 /** Relatives from the family file (pipeline/master.py family_files): the genus of `name` first, then the rest, each
  * by its latest record; `top` at most, this species always among them when the file has it (a name that waits is
- * not in it). {rows: [{key, name, year, last, states, gaps: [state x 7]}], total}. */
+ * not in it). {rows: [{key, name, year, last, states, gaps: [state x 7], pic}], total}. */
 export function relatives(rows, key, name, S, top = 40) {
   const genus = name.split(' ')[0];
-  const all = rows.map(([k, name, year, last, states, trend, dna, barcode, traits, precise, partners, interactionsIndia]) => ({
-    key: k, name, year, last, states,
+  const all = rows.map(([k, name, year, last, states, trend, dna, barcode, traits, precise, partners, interactionsIndia, pic]) => ({
+    key: k, name, year, last, states, pic: thumb(pic) || null,
     gaps: gapStates({ year, latest: last, trend, dna, barcode, traits, precise, partners, interactionsIndia }, S).map(g => g.state) }));
   all.sort((a, b) => (b.name.split(' ')[0] === genus) - (a.name.split(' ')[0] === genus) || (b.last ?? 0) - (a.last ?? 0)
     || a.name.localeCompare(b.name));

@@ -103,6 +103,9 @@ def inputs(tmp_path):
                        "1,Lus mus,Nyl.,Lus oldus Nyl.,CR,CO,Kerala,WG,True,8\n")
     iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing'), ('Eus fus', 'Unknown'), ('Aus bus', 'Stable'))
         t(name, trend)""", tmp_path / "iucn_detail.parquet")
+    pics = write(con, """SELECT * FROM (VALUES ('K1', 'https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC', 'iNaturalist', 'Common aus'),
+        ('ZZ', 'https://p/2.jpg', 'https://inat/2', 'Bo', 'CC BY', 'iNaturalist', NULL))
+        t(key, url, page, "by", licence, source, common)""", tmp_path / "pictures.parquet")
     soib = tmp_path / "soib.csv"
     soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
                     "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
@@ -111,7 +114,7 @@ def inputs(tmp_path):
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "globi_edges": edges,
                        "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
-                       "bryophytes": bryo, "zotero": lit, "iucn_detail": iucn_trend,
+                       "bryophytes": bryo, "zotero": lit, "iucn_detail": iucn_trend, "pictures": pics,
                        "described": {"col": col, "wcvp": wcvp_y},
                        "inat_genus": {"lists": {"32": [[50, "Hus", "Aves", 3]],
                                                 "india": [[50, "Hus", "Aves", 5], [60, "Nus", "Insecta", 2],
@@ -1064,7 +1067,18 @@ def test_family_files_list_the_relatives_with_what_their_gaps_need(built):
     assert {"Aus bus", "Hus ius"} <= set(rows)
     aus = rows["Aus bus"]
     # [key, name, year, latest record, states with an open record, trend known, DNA, barcode, traits, exact places,
-    #  partners, interaction in India]
+    #  partners, interaction in India, its picture]
     assert aus[0] == "K1" and aus[2] == 1758 and aus[5] is True and aus[10] == 3 and aus[11] is True
-    assert len(aus) == 12
+    assert aus[12] == "https://p/1.jpg" and rows["Hus ius"][12] is None
+    assert len(aus) == 13
     assert all(r[0] for r in fam)                                   # only species with a page
+
+
+def test_picture_files_give_the_photo_credit_and_common_name_of_species_on_the_list(built):
+    """pic/<shard>.json: {key: [url, page, by, licence, source, common name]} for species with a page; others left out."""
+    from pipeline import site_data
+    out = built["out"]
+    part = json.loads((out / "pic" / f"{site_data.shard_of('K1')}.json").read_text())
+    assert part["K1"] == ["https://p/1.jpg", "https://inat/1", "Ann", "CC BY-NC", "iNaturalist", "Common aus"]
+    every = {k for f in (out / "pic").glob("*.json") for k in json.loads(f.read_text())}
+    assert every == {"K1"}                                       # ZZ is not on the list

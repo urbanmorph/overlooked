@@ -97,7 +97,8 @@ def ask(http, query, tries=TRIES):
                           timeout=120)
             r.raise_for_status()
             return r.json()["results"]["bindings"]
-        except (requests.exceptions.HTTPError, requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        except (requests.exceptions.HTTPError, requests.exceptions.Timeout, requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError) as e:
             if i == tries - 1:
                 raise
             log(f"wikidata: {e}; asking again")

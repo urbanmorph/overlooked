@@ -286,6 +286,25 @@ def evidence_input(http, s3, paths, prev):
                 r2_file(s3, evidence.R2_DIR + "bold_india.csv", CACHE / "bold_india.csv"))
 
 
+PICTURES_MINUTES = 30   # picture requests at most this long per run; the next run continues
+
+
+def pictures_input(http, s3, prev):
+    """pipeline/pictures.py's table for the species of the previous list: refreshed, else R2's last copy."""
+    from pipeline import pictures
+    try:
+        if not prev:
+            raise RuntimeError("no previous list to take the names from")
+        corpus = pictures.CACHE / pictures.CORPUS
+        if not corpus.exists():
+            r2_file(s3, pictures.R2_DIR + pictures.CORPUS, corpus)
+        rows = duckdb.sql(f"SELECT key, name FROM '{prev['parquet']}' WHERE key IS NOT NULL ORDER BY key").fetchall()
+        return pictures.refresh(http, s3, rows, corpus, deadline=time.monotonic() + PICTURES_MINUTES * 60)
+    except Exception as e:  # noqa: BLE001 - any failure: last week's table
+        print(f"pictures: not refreshed ({e}); using the copy in R2", flush=True)
+        return r2_file(s3, pictures.R2_DIR + pictures.TABLE, CACHE / "pictures.parquet")
+
+
 def bsi_input(s3):
     return BSI_LOCAL if BSI_LOCAL.exists() else r2_file(s3, "cache/bsi/bsi_checklist.csv", CACHE / "bsi_checklist.csv")
 
@@ -1068,17 +1087,33 @@ def family_files(con, out: Path):
     """fam/<shard of the family>.json for the species page's relatives: {family: [[key, name, year described, latest
     record placed in a state, states with an open record, a known population trend, DNA from India (a GBIF sequence or
     sample), barcode (2, 1, 0 as in the species files), a trait record, places with an exact record, GloBI partners, an
-    interaction in India]]}: the fields web.js gapStates turns into the seven gaps. Species with a page only."""
+    interaction in India, its picture (pipeline/pictures.py; null: none)]]}: the fields web.js gapStates turns into the
+    seven gaps, and a thumbnail. Species with a page only."""
     from pipeline.site_data import shard_of
     shutil.rmtree(out / "fam", ignore_errors=True)
     parts = {}
     for family, *row in con.sql("""
-            SELECT family, key, name, year, last_year, len(states_observed), trend_known, list_contains(labels, 'dna'),
-                   barcode, traits, places_precise, partners, interactions_india
-            FROM master WHERE status < 2 AND key IS NOT NULL AND family IS NOT NULL ORDER BY family, name""").fetchall():
+            SELECT m.family, m.key, m.name, m.year, m.last_year, len(m.states_observed), m.trend_known,
+                   list_contains(m.labels, 'dna'), m.barcode, m.traits, m.places_precise, m.partners, m.interactions_india, p.url
+            FROM master m LEFT JOIN pics p USING (key)
+            WHERE m.status < 2 AND m.key IS NOT NULL AND m.family IS NOT NULL ORDER BY m.family, m.name""").fetchall():
         parts.setdefault(shard_of(family), {}).setdefault(family, []).append(row)
     for i, part in parts.items():
         dump(part, out / "fam" / f"{i}.json")
+
+
+def pic_files(con, pictures, out: Path):
+    """pic/<shard>.json for the species page: {key: [image url, its page, by, licence, source, English common name]}
+    from pipeline/pictures.py, for species with a page. A species with none is not in the file (the page asks for a
+    photo)."""
+    from pipeline.site_data import shard_of
+    shutil.rmtree(out / "pic", ignore_errors=True)
+    parts = {}
+    for key, *row in con.sql(f"""SELECT p.key, p.url, p.page, p."by", p.licence, p.source, p.common FROM '{pictures}' p
+                                 WHERE p.key IN (SELECT key FROM master WHERE key IS NOT NULL)""").fetchall():
+        parts.setdefault(shard_of(key), {})[key] = row
+    for i, part in parts.items():
+        dump(part, out / "pic" / f"{i}.json")
 
 
 def web_files(con, edges, out: Path):
@@ -1577,6 +1612,13 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     described_years(con)
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
+    if inputs.get("pictures"):
+        con.sql(f"CREATE OR REPLACE TABLE pics AS SELECT key, url FROM '{inputs['pictures']}' WHERE url IS NOT NULL")
+        pic_files(con, inputs["pictures"], out)
+    else:
+        con.sql("CREATE OR REPLACE TABLE pics (key VARCHAR, url VARCHAR)")
+        shutil.rmtree(out / "pic", ignore_errors=True)
+        notes.append("The pictures table was not found: species pages show no photo.")
     if inputs.get("globi_edges"):
         web_files(con, inputs["globi_edges"], out)
     else:
@@ -1601,7 +1643,7 @@ def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail")), *(inputs.get("described") or {}).values()]:
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1695,6 +1737,7 @@ def run(a):
     inputs["described"] = described.sync(http, s3)
     prev = previous_layer(s3, week)
     inputs["evidence"], inputs["bold"] = evidence_input(http, s3, paths, prev)
+    inputs["pictures"] = pictures_input(http, s3, prev)
     extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
     fp_before = fingerprint(paths, inputs, cache, extra)
     from pipeline import r2

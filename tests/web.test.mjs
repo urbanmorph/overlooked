@@ -1,7 +1,7 @@
 // The species web (site/assets/web.js): the seven gaps for one species, and the layout of its partners.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives } from '../site/assets/web.js';
+import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives, thumb } from '../site/assets/web.js';
 
 const S = { recent_from: 2016, traits: [0], niche: [0], types: [0], trend_known: [null] };
 
@@ -67,14 +67,15 @@ test('the glyph: the same seven cells, small, in their states', () => {
 });
 
 test('relatives: the same genus first, then the latest recorded; this species always in; capped', () => {
-  // [key, name, year, latest, states, trend, dna, barcode, traits, precise, partners, interaction in India]
-  const r = (key, name, year, last) => [key, name, year, last, 1, null, false, 0, false, 0, null, false];
+  // [key, name, year, latest, states, trend, dna, barcode, traits, precise, partners, interaction in India, picture]
+  const r = (key, name, year, last) => [key, name, year, last, 1, null, false, 0, false, 0, null, false, key === 'C' ? 'https://p/c.jpg' : null];
   const rows = [r('A', 'Bus alpha', 1800, 1990), r('B', 'Cus beta', 1850, 2024), r('C', 'Aus gamma', 1900, 2020),
     r('D', 'Aus delta', 1820, null), r('E', 'Cus eps', 1700, 2025)];
   const R = relatives(rows, 'C', 'Aus gamma', { recent_from: 2016 }, 3);
   assert.deepEqual(R.rows.map(x => x.key), ['C', 'D', 'E']);                  // Aus first (latest first), then the latest other
   assert.equal(R.total, 5);
   assert.equal(R.rows[0].gaps.length, 7);
+  assert.equal(R.rows[0].pic, 'https://p/c.jpg');
   assert.equal(R.rows[0].gaps[1], 'known');                                   // Wallacean: latest 2020 >= 2016
   assert.deepEqual(relatives(rows, 'A', 'Bus alpha', { recent_from: 2016 }, 2).rows.map(x => x.key), ['A', 'E']);
   assert.deepEqual(relatives(rows, 'Z', 'Aus zeta', { recent_from: 2016 }, 2).rows.map(x => x.key), ['C', 'D']);   // waits: genus still first
@@ -88,4 +89,16 @@ test('the map: a district by its latest GBIF record, else its state by an open r
   assert.deepEqual([1, 2, 3, 4].map(id => v.get(id).cls), ['recent', 'old', 'state', 'none']);
   assert.deepEqual(v.get(1), { cls: 'recent', first: 2012, latest: 2026, n: 28, obs: true, wait: 6 });
   assert.equal(v.get(4).wait, 2);
+});
+
+test('thumbnails ask iNaturalist and Commons for a small picture', () => {
+  assert.equal(thumb('https://inaturalist-open-data.s3.amazonaws.com/photos/12/medium.jpeg'),
+    'https://inaturalist-open-data.s3.amazonaws.com/photos/12/square.jpeg');
+  assert.equal(thumb('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/A_b.jpg/960px-A_b.jpg'),
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/A_b.jpg/120px-A_b.jpg');
+  assert.equal(thumb('https://example.org/x.jpg'), 'https://example.org/x.jpg');
+  assert.equal(thumb(null), null);
+  const S = { groups: [{ gaps_known: [1, 1, 1, 1, 1, 1, 1], n: 1 }] };
+  const { rows } = relatives([['K', 'Aus bus', 1900, 2020, 1, 0, 0, 0, 0, 0, 0, 0, 'https://x/photos/1/medium.jpg']], 'K', 'Aus bus', S);
+  assert.equal(rows[0].pic, 'https://x/photos/1/square.jpg');
 });

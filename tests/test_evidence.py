@@ -157,3 +157,19 @@ def test_wikidata_asks_again_after_a_server_error_and_stops_cleanly_when_it_stay
     cache = {}
     assert not evidence.wikidata_names(w, ["K1", "K2"], cache, "2026-10-30", batch=1)
     assert list(cache) == ["K1"]                          # kept; K2 is asked by the next run
+
+
+def test_a_response_cut_off_midway_is_asked_again(monkeypatch):
+    """The query service sometimes ends a response early (requests raises ChunkedEncodingError): ask again."""
+    import requests
+    monkeypatch.setattr(evidence.time, "sleep", lambda s: None)
+    answers = [requests.exceptions.ChunkedEncodingError("Response ended prematurely"), {"results": {"bindings": [1]}}]
+
+    class Http:
+        def post(self, *a, **k):
+            x = answers.pop(0)
+            if isinstance(x, Exception):
+                raise x
+            return type("R", (), {"raise_for_status": lambda s: None, "json": lambda s: x})()
+
+    assert evidence.ask(Http(), "q") == [1]
