@@ -357,6 +357,7 @@ def test_site_files(built):
     assert s["india"][birds][:2] == [5, 3]                   # Aus, Gus, Hus, Qus, Wus xus; Aus, Hus, Wus xus
     assert s["india"][birds][2][s["iucn"].index("EN")] == 1 and s["india"][birds][3] == 1
     assert [st["code"] for st in s["states"]] == ["29", "32"]
+    assert json.loads((out / "review" / "names.json").read_text())["n"] >= 0   # names to check (pipeline/name_review.py)
     assert {"licence", "attribution", "disclaimer"} <= set(s)
     assert s["india"][birds][4:] == [2, 1]                   # in a state: Aus, Hus; recorded since 2016: Aus
     assert s["by_state"]["29"][birds] == [0, 0, 0]           # Zus zus: needs ID only

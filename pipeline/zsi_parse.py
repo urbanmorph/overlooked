@@ -1,7 +1,8 @@
 """Extract species names from the ZSI Fauna of India Checklist PDFs (first pass: names only).
 
 Moved from fnf (scripts/17_zsi_checklist_parse.py) on 1 Nov 2026, with two fixes that bring back names the parser
-lost: an authority's year may be in square brackets ("(Cramer, [1780])", most of the Lepidoptera checklist), and
+lost: an authority's year may be in square or round brackets ("(Cramer, [1780])", "Walker, (1859)", most of the
+Lepidoptera checklist), an authority may start with a particle ("(de Nicéville, 1887)"), and
 the dictionary pass reads past letters OCR confuses (fold: "grayll" is grayii, "Lxobrychus" is Ixobrychus) when
 exactly one Catalogue of Life name fits.
 
@@ -64,7 +65,7 @@ LO = "a-zß-öø-ÿāăąćčďđēęěğīıłńňōőœřśşšţťūůűźż�
 YEAR = r"(?:1[789]\d\d|20[0-2]\d)"
 NAME = (rf"(?P<name>[{UP}][{LO}]+(?: \([{UP}][{LO}]+\))? (?!(?:et|in|and|from|of|ex|van|von|de|da|du|del|der|den|di|la|le|sensu|sp|spp|are|as)\b)[{LO}][{LO}\-]+"
         rf"(?: (?!(?:et|in|and|from|of|ex|van|von|de|da|du|del|der|den|di|la|le|sensu|sp|spp|are|as)\b)[{LO}][{LO}\-]{{2,}})?)")
-AUTH = rf"(?P<auth>\(?(?:(?:de|da|du|van|von|der|den|di|la|le)\s)*[{UP}][^\d()\[\]\n]{{0,90}}?,? ?\[?{YEAR}\]?[a-z]?\)?)"   # [1780]: a year not printed on the work
+AUTH = rf"(?P<auth>\(?(?:(?:de|da|du|van|von|der|den|di|la|le)\s)*[{UP}][^\d()\[\]\n]{{0,90}}?,? ?(?:\[{YEAR}\]|\({YEAR}\)|{YEAR})[a-z]?\)?)"   # [1780]: not printed on the work; Walker, (1859)
 ENTRY = re.compile(rf"(?<![{LO}{UP}]){NAME} {AUTH}(?P<mark>\s?[*#†$@]+)?")
 FAMILY = re.compile(rf"\b([{UP}][{LO}]+idae)\b")
 REFS = re.compile(r"^\s*(References|REFERENCES|Literature cited|LITERATURE CITED|Bibliography)\b", re.MULTILINE)

@@ -28,7 +28,7 @@ def main():
     found = candidates(rows, cache, iucn)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as f:
-        w = csv.DictWriter(f, ["key", "name", "sources", "states", "iucn_india", "synonyms", "congeners_on_checklists"])
+        w = csv.DictWriter(f, ["key", "name", "group", "strong", "sources", "states", "iucn_india", "synonyms", "congeners_on_checklists"])
         w.writeheader()
         w.writerows(found)
     print(f"{len(found)} candidates, {sum(r['iucn_india'] is False for r in found)} of them outside India by IUCN -> {out}")

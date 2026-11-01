@@ -20,6 +20,11 @@ def test_a_year_in_square_brackets_is_an_authority():
     assert names(text) == ["Euploea core", "Euploea klugii", "Euploea crameri"]
 
 
+def test_a_year_in_round_brackets_after_the_author():
+    text = "Hypena laceratalis Walker, (1859) Creatonotos nigergangis N. Singh & Kirti (2016) Aus bus (Smith, 1900)"
+    assert names(text) == ["Hypena laceratalis", "Creatonotos nigergangis", "Aus bus"]
+
+
 def test_an_authority_may_start_with_a_lowercase_particle():
     text = "Tarucus ananda (de Nicéville, [1884]) Celatoxia marginata (de Nicéville, [1884]) Aus bus van der Poll, 1890"
     assert names(text) == ["Tarucus ananda", "Celatoxia marginata", "Aus bus"]

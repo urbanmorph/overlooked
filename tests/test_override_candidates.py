@@ -12,5 +12,5 @@ def test_a_species_no_checklist_lists_reached_by_a_synonym_with_a_congener_on_a_
              "Lonely oldus": {"key": "X1", "synonym": True},
              "Pteropus medius": {"key": "7WP9Q", "synonym": False}}
     got = oc.candidates(rows, cache, {"Pteropus vampyrus": False})
-    assert got == [{"key": "4Q34B", "name": "Pteropus vampyrus", "group": None, "sources": "GBIF; IUCN", "states": 2, "iucn_india": False,
+    assert got == [{"key": "4Q34B", "name": "Pteropus vampyrus", "group": None, "strong": False, "sources": "GBIF; IUCN", "states": 2, "iucn_india": False,
                     "synonyms": "Pteropus giganteus", "congeners_on_checklists": "Pteropus listed; Pteropus medius"}]

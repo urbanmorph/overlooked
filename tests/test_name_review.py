@@ -3,8 +3,9 @@ older name the Catalogue of Life places under them, with a related species on a 
 species' records. The public file has no IUCN range data (IUCN terms): its order is by states with a record.
 Not candidates: a species another India list has (State of India's Birds), a species whose older name is the name a
 checklist uses (the same species, the genus moved), a subspecies of a listed species, and a species split from a
-listed one (an older name is a subspecies of it). The public file has animals
-only: most plants and fungi in the rule are cultivated or have no Indian checklist yet."""
+listed one (an older name is a subspecies of it). The public file has animals,
+and plants and fungi only with the strong sign: an older name that a checklist uses for another species (a different
+epithet). Without it they are mostly cultivated (the tomato) or have no Indian checklist."""
 
 from pipeline import name_review as nr
 
@@ -20,6 +21,8 @@ ROWS = [("4Q34B", "Pteropus vampyrus", ["GBIF", "IUCN"], ["9", "32"], "Mammals: 
         ("S1", "Pteropus medius minor", ["GBIF"], ["9"], "Mammals: bats"),     # a subspecies of a listed species
         ("K1", "Corvus culminatus", ["GBIF"], ["9"], "Birds"),                 # split from a listed species
         ("K2", "Corvus macrorhynchos", ["ZSI"], ["9"], "Birds"),
+        ("P3", "Setaria parviflora", ["GBIF"], ["9", "4"], "Plants: grasses & sedges"),  # a checklist's other species
+        ("P4", "Setaria viridis", ["BSI"], ["9"], "Plants: grasses & sedges"),
         ("P1", "Solanum lycopersicum", ["GBIF"], ["9"], "Plants: other flowering plants & conifers"),
         ("P2", "Solanum nigrum", ["BSI"], ["9"], "Plants: other flowering plants & conifers")]
 CACHE = {"Pteropus giganteus": {"key": "4Q34B", "synonym": True}, "Lonely oldus": {"key": "X1", "synonym": True},
@@ -27,18 +30,21 @@ CACHE = {"Pteropus giganteus": {"key": "4Q34B", "synonym": True}, "Lonely oldus"
          "Pteropus oldb": {"key": "X3", "synonym": True}, "Ardea grayii": {"key": "B1", "synonym": True},
          "Tarucus ananda": {"key": "C1", "synonym": True}, "Pteropus minor": {"key": "S1", "synonym": True},
          "Lycopersicon esculentum": {"key": "P1", "synonym": True},
-         "Corvus macrorhynchos culminatus": {"key": "K1", "synonym": True}}
+         "Corvus macrorhynchos culminatus": {"key": "K1", "synonym": True},
+         "Cenchrus polystachios": {"key": "P3", "synonym": True}}
 CHECKLIST_NAMES = {"Pteropus medius", "Pteropus listed", "Ardeola bacchus", "Tarucus ananda", "Castalius rosimon",
-                   "Solanum nigrum", "Corvus macrorhynchos"}
+                   "Solanum nigrum", "Corvus macrorhynchos", "Cenchrus polystachios"}
 
 
 def test_candidates_leave_out_names_another_list_or_a_checklist_already_has():
     got = nr.candidates(ROWS, CACHE, checklist_names=CHECKLIST_NAMES, on_lists={"B1"})
-    assert [r["name"] for r in got] == ["Pteropus alter", "Pteropus vampyrus", "Solanum lycopersicum"]
+    assert [r["name"] for r in got] == ["Setaria parviflora", "Pteropus alter", "Pteropus vampyrus", "Solanum lycopersicum"]
+    assert [r["name"] for r in got if r["strong"]] == ["Setaria parviflora"]   # an older name is a checklist's other species
 
 
-def test_the_public_rows_are_animals_with_old_names_and_relatives_most_states_first():
+def test_the_public_rows_are_animals_and_strong_plants_with_old_names_and_relatives_most_states_first():
     assert nr.public_rows(ROWS, CACHE, CHECKLIST_NAMES, {"B1"}) == [
+        ["P3", "Setaria parviflora", 2, ["Cenchrus polystachios"], ["Setaria viridis"]],
         ["X3", "Pteropus alter", 3, ["Pteropus olda", "Pteropus oldb"], ["Pteropus listed", "Pteropus medius"]],
         ["4Q34B", "Pteropus vampyrus", 2, ["Pteropus giganteus"], ["Pteropus listed", "Pteropus medius"]]]
 
@@ -47,4 +53,4 @@ def test_the_review_file_is_written_with_its_count(tmp_path):
     import json
     nr.review_file(ROWS, CACHE, tmp_path, CHECKLIST_NAMES, {"B1"})
     doc = json.loads((tmp_path / "review" / "names.json").read_text())
-    assert doc["n"] == 2 and doc["rows"][1][1] == "Pteropus vampyrus"
+    assert doc["n"] == 3 and doc["rows"][2][1] == "Pteropus vampyrus"

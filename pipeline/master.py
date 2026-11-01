@@ -32,6 +32,7 @@ changed after), then layers/master/<period>/current.json and layers/master/lates
                         labels[], states_observed[] (states with an open record), year (described), authority
   master_state.parquet  one row per species x state with an observation
   summary.json          totals by group and by state x group
+  review/names.json     names to check, for people who know a group (pipeline/name_review.py)
   g/<gi>.json           all species of a group
   search/<p>.json       search index, one file per two-letter name prefix; search/places.json
 
@@ -54,7 +55,7 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import described, gbif, health, iucn, unlocated
+from pipeline import described, ebird_india, gbif, health, iucn, name_review, unlocated
 from pipeline.gbif import NEW_SPECIES_FROM
 from pipeline.boundaries import title
 from pipeline.groups import GROUP_SQL, GROUPS
@@ -1197,6 +1198,16 @@ def group_totals(con, species_sql, n, since=None):
     return india
 
 
+def review_names(con, cache, out: Path, ebird=frozenset()):
+    """review/names.json, names to check for people who know a group (pipeline/name_review.py). Not candidates: the
+    species State of India's Birds or eBird's records from India (ebird: COL IDs) have."""
+    names = {n for (n,) in con.sql(f"SELECT DISTINCT name FROM names_in WHERE source IN {tuple(name_review.CHECKLISTS)}").fetchall()}
+    soib = {k for (k,) in con.sql("""SELECT DISTINCT m.key FROM master m JOIN id_names n ON n.id = m.id
+                                       JOIN soib s ON s.name = n.name WHERE m.key IS NOT NULL""").fetchall()}
+    rows = con.sql('SELECT key, name, sources, states_observed, "group" FROM listed WHERE key IS NOT NULL').fetchall()
+    return name_review.review_file(rows, cache, out, names, soib | set(ebird))
+
+
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
     """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
     states = states_list(districts_path)
@@ -1627,6 +1638,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                             year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
             f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
+    review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
@@ -1642,7 +1654,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
 def fingerprint(paths, inputs, cache, extra=None):
     """What a layer is built from: the same fingerprint gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
-    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "lichens",
+    for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
                                                      "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures")), *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
@@ -1721,9 +1733,10 @@ def run(a):
     coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
     http = requests.Session()
     http.headers["User-Agent"] = health.ua()
-    from pipeline import soib
+    from pipeline import ebird_india, soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
-              "soib": soib.refresh(http, s3, CACHE / "soib"), "lichens": lichens_input(s3),
+              "soib": soib.refresh(http, s3, CACHE / "soib"), "ebird_india": ebird_india.refresh(http, s3, CACHE / "ebird"),
+              "lichens": lichens_input(s3),
               "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
               "iucn_detail": iucn_detail_input(s3),
               "bsi_monographs": bsi_monographs_input(s3),
