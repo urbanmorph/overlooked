@@ -1,7 +1,7 @@
 // The species web (site/assets/web.js): the seven gaps for one species, and the layout of its partners.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives, thumb, shareState } from '../site/assets/web.js';
+import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives, thumb, shareState, pyramidKey } from '../site/assets/web.js';
 
 const S = { recent_from: 2016, traits: [0], niche: [0], types: [0], trend_known: [null] };
 
@@ -67,6 +67,14 @@ test('the pyramid: three layers on the Linnean base, each block in its state wit
 
 test('on the home page a block takes the shade of its share: two thirds or more, a third or more, less, not measured', () => {
   assert.deepEqual([98, 67, 66, 33, 32, 0, null].map(shareState), ['known', 'known', 'part', 'part', 'gap', 'gap', 'na']);
+});
+
+test('one key for both pyramids: a swatch per shade in the same order, then the bar', () => {
+  const k = pyramidKey(['Known', 'Part', 'Open', 'Not measured'], 'Bar: <share>');
+  assert.deepEqual([...k.matchAll(/class="sw blk (\w+)"/g)].map(m => m[1]), ['known', 'part', 'gap', 'na']);
+  assert.match(k, /Open<\/span>/);
+  assert.match(k, /Bar: &lt;share&gt;<\/span>$/);
+  assert.doesNotMatch(pyramidKey(['a', 'b', 'c', 'd'], ''), /Bar/);
 });
 
 test('the glyph: the same seven cells, small, in their states', () => {

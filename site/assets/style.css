@@ -6,6 +6,7 @@
   --ground: #F5F6F3; --surface: #FFFFFF; --ink: #16201C; --ink-2: #3E4A44; --muted: #4F5B55;
   --line: #DADFDB; --line-2: #E6EAE6; --field: #C5CCC7; --chip: #E6EAE6;
   --accent: #0B5D4B; --accent-dark: #063F33; --quiet: #B4480E; --blue: #2F5DA8;
+  --gap-known: var(--accent); --gap-part: #9FC8BA; --gap-open: var(--quiet); --gap-na: var(--field);
   --q0: #F6E7D8; --q1: #EBC29C; --q2: #D9935A; --q3: #B4480E; --q4: #6E2A06; --none: #FFFFFF; --zero: #E9ECE8;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -302,13 +303,13 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .blk { font: inherit; text-align: center; border-radius: 8px; padding: 10px; min-height: 92px; cursor: pointer; display: flex; flex-direction: column;
   justify-content: center; gap: 2px; border: 2px solid transparent; color: var(--ink) }
 .blk .t { font-weight: 600; font-size: 15px; line-height: 1.2; overflow-wrap: anywhere } .blk .p { font-size: 12.5px; opacity: .85 }
-.blk.known { background: var(--accent); color: #fff } .blk.part { background: #9FC8BA }
-.blk.gap { background: var(--surface); border-color: var(--quiet) }
+.blk.known { background: var(--gap-known); color: #fff } .blk.part { background: var(--gap-part) }
+.blk.gap { background: var(--surface); border-color: var(--gap-open) }
 .blk.list { background: var(--surface); border-color: var(--line); color: var(--ink) } .blk.list .bar i { background: var(--accent) }
 .gaps-pyr { padding-top: 8px }
 .blk.na { background: repeating-linear-gradient(45deg, var(--line-2) 0 6px, var(--surface) 6px 12px); border-color: var(--line); color: var(--muted) }
 .blk[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink) }
-.legend .sw.blk.na { border: 1px solid var(--field) }
+.legend .sw.blk { min-height: 0; padding: 0 } .legend .sw.blk.na { border: 1px solid var(--gap-na) }
 /* The group's share inside each block: a bar in the block's own ink, so it reads on every fill. */
 .blk .grp { display: flex; align-items: center; gap: 6px; margin-top: 6px; font: 500 11.5px var(--mono) }
 .blk .bar { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, currentColor 22%, transparent); overflow: hidden }
@@ -349,8 +350,9 @@ a.wp:hover { background: var(--line-2); color: var(--ink) } .wp:focus-visible { 
 #rel text { font: 13px var(--sans); fill: var(--ink-2) } #rel .ax { font: 12px var(--mono); fill: var(--muted) }
 #rel .me text { fill: var(--ink); font-weight: 600 } #rel a:hover text { fill: var(--accent) }
 .glyph { display: inline-block; vertical-align: middle } .glyph rect { stroke-width: 1.4 }
-.g-known { fill: var(--accent) } .g-part { fill: #9FC8BA } .g-gap { fill: #fff; stroke: var(--quiet); stroke-width: 2 }
-.g-na { fill: #fff; stroke: var(--field); stroke-width: 2; stroke-dasharray: 4 3 }
+.g-known, .m-known { fill: var(--gap-known) } .g-part, .m-part { fill: var(--gap-part) } .m-open { fill: var(--gap-open) }
+.g-gap { fill: #fff; stroke: var(--gap-open); stroke-width: 2 }
+.g-na { fill: #fff; stroke: var(--gap-na); stroke-width: 2; stroke-dasharray: 4 3 }
 .sp-map { margin-top: 20px; --none: var(--zero) }
 details.card > summary { cursor: pointer; list-style-position: inside } details.card[open] > summary { border-bottom: 1px solid var(--line) }
 button.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer }

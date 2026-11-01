@@ -6,7 +6,7 @@ import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, s
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
 import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
-import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, relatives, tree, whereFill } from './web.js?v=9e12b2b032';
+import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=8d987f8291';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -173,9 +173,8 @@ try {
   // The seven gaps: the pyramid, each block this species' state with the group's share as a bar.
   const shares = groupShares(S, gi), documented = S.india?.[gi]?.[0];
   $('#pyr').innerHTML = pyramidHTML(gaps, shares, word);
-  $('#pyrkey').innerHTML = [['known', 'Known'], ['part', 'Part known'], ['gap', 'Open gap'], ['na', 'Not measured']]
-    .map(([c, l]) => `<span class="lbl"><i class="sw blk ${c}" style="min-height:0;padding:0"></i>${l} for this species</span>`).join('')
-    + (shares.some(v => v != null) ? `<span class="lbl">Bar: the share of the ${fmt(documented)} ${esc(word)} on the India list where it is known</span>` : '');
+  $('#pyrkey').innerHTML = pyramidKey(['Known', 'Part known', 'Open gap', 'Not measured'].map(l => `${l} for this species`),
+    shares.some(v => v != null) ? `Bar: the share of the ${fmt(documented)} ${word} on the India list where it is known` : '');
   const intro = `${nKnown} of 7 known for this species${nNa ? `, ${nNa} not measured yet` : ''}. Pick a block for what we measured.`;
   $('#gapnote').textContent = intro;
   $('#pyr').addEventListener('click', e => {

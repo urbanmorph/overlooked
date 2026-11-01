@@ -11,7 +11,7 @@ import { signed } from './trend.js?v=e7af3381b1';
 import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
 import { redlist } from './redlist.js?v=5c50848c5d';
 import { gaps, gapAbsent } from './gaps.js?v=c86a0ec630';
-import { groupShares, pyramidHTML, shareState } from './web.js?v=9e12b2b032';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=8d987f8291';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -256,9 +256,8 @@ try {
     const shares = groupShares(S, gisNow());
     $('#gaps').innerHTML = pyramidHTML(G.map((g, i) => ({ ...g, state: shareState(shares[i]) })), shares, '');
     const of = sumGroups(S.india, gisNow(), 0);
-    $('#gapskey').innerHTML = [['known', 'Known for two thirds or more'], ['part', 'For a third or more'], ['gap', 'For less than a third'], ['na', 'Not measured yet']]
-      .map(([c, l]) => `<span class="lbl"><i class="sw blk ${c}" style="min-height:0;padding:0"></i>${l}</span>`).join('')
-      + `<span class="lbl">Bar: the share of the ${fmt(of)} documented species${st.cat ? ` of ${esc(groupName().toLowerCase())}` : ''} where it is known</span>`;
+    $('#gapskey').innerHTML = pyramidKey(['Known for two thirds or more', 'For a third or more', 'For less than a third', 'Not measured yet'],
+      `Bar: the share of the ${fmt(of)} documented species${st.cat ? ` of ${groupName().toLowerCase()}` : ''} where it is known`);
     const g = G[gapPick];
     for (const b of document.querySelectorAll('#gaps .blk')) b.setAttribute('aria-pressed', String(+b.dataset.i === gapPick));
     $('#gapnote').innerHTML = !g ? 'Pick a block for what we count.'

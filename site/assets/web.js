@@ -80,6 +80,13 @@ export function groupShares(S, gis) {
  * for a third or more, gap for less, na when not measured. The same classes as one species' states. */
 export const shareState = pct => pct == null ? 'na' : pct >= 67 ? 'known' : pct >= 33 ? 'part' : 'gap';
 
+/** The pyramid's key: a swatch per shade (known, part, gap, na) with its label, then `bar` (what the bars count; '' for
+ * none). Both pyramids use it, so the shades are named the same way. */
+export function pyramidKey(labels, bar) {
+  return ['known', 'part', 'gap', 'na'].map((c, i) => `<span class="lbl"><i class="sw blk ${c}"></i>${esc(labels[i])}</span>`).join('')
+    + (bar ? `<span class="lbl">${esc(bar)}</span>` : '');
+}
+
 /** The pyramid as HTML: a button per gap (class blk <state>, data-i its index), its plain words first and the term
  * small, with a bar for the share of the group (`group`, a plural such as "bats"; '' on the home page) where the gap is
  * known. State: known | part | gap | na (for one species, or shareState on the home page). */
