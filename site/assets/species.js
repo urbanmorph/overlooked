@@ -5,7 +5,7 @@
 import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=9455fd8cc8';
 import { drawMap } from './map.js?v=b39659b5ac';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames } from './evidence.js?v=2fcbd9aeae';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=3b2190eca9';
 import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=8d987f8291';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
@@ -210,6 +210,17 @@ try {
     : 'No open record with a state yet.';
   const waitList = states.filter(s => s.wait).sort((a, b) => b.wait - a.wait).slice(0, 8);
   $('#waiting').innerHTML = waitList.length && taxon ? `Observations that wait for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}. Help name them on iNaturalist.` : '';
+
+  // The experimental shortlist (/shortlist): observations that wait for a name where a model suggests this species.
+  getJSON('layers/shortlist/latest.json')
+    .then(l => (l.names != null ? getJSON(`layers/shortlist/${encodeURIComponent(l.run)}/names.json`) : null))
+    .then(index => {
+      const sl = shortlistLink(index, name);
+      if (!sl) return;
+      $('#shortlisted').innerHTML = `A model suggests this species for ${fmt(sl.n)} observation${sl.n === 1 ? '' : 's'} that wait for a name. `
+        + `A suggestion is not a record: <a href="${esc(sl.href)}">check ${sl.n === 1 ? 'it' : 'them'} on the shortlist</a>.`;
+      $('#shortlisted').hidden = false;
+    }).catch(() => {});
 
   // When: GBIF records by decade, then the numbers under it.
   $('#nohist').hidden = history(gbif);

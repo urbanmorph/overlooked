@@ -534,3 +534,15 @@ def test_done_ids_are_named_casual_or_gone():
 
 def test_page_name_numbers_every_page_after_the_first():
     assert [page_name("true-bugs", n) for n in (1, 2, 3)] == ["true-bugs.json", "true-bugs.2.json", "true-bugs.3.json"]
+
+
+def test_name_index_counts_the_observations_each_species_is_shortlisted_on():
+    """For the species page: per species name, its group's key and the published quick rows that list it (any rank);
+    genus rows name no species."""
+    from logic import name_index
+
+    rows = {"true-bugs": [{"band": "quick", "names": ["Aus bus", "Aus cus"]}, {"band": "quick", "names": ["Aus bus"]},
+                          {"band": "genus", "names": [], "genera": ["Aus"]}],
+            "moths": [{"band": "quick", "names": ["Dus eus"]}]}
+    assert name_index(rows) == {"Aus bus": ["true-bugs", 2], "Aus cus": ["true-bugs", 1], "Dus eus": ["moths", 1]}
+    assert list(name_index(rows)) == ["Aus bus", "Aus cus", "Dus eus"]   # sorted: the same rows give the same bytes

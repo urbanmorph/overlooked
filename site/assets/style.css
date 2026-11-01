@@ -125,6 +125,7 @@ footer .grow { flex: 999 1 480px }
 dl.defs { margin: 12px 0 0; display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.55 }
 dl.defs dt { font-weight: 600 } dl.defs dd { margin: 0; color: var(--ink-2) }
 ul.plain { margin: 12px 0 0; padding-left: 20px; font-size: 15px; line-height: 1.7; color: var(--ink-2) }
+.review { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; font-size: 15px; line-height: 1.6 } .review li { padding-bottom: 10px; border-bottom: 1px solid var(--line) }
 .ok { color: var(--accent); font-weight: 600 } .bad { color: #9B1C1C; font-weight: 600 }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px }
 .chip { font: inherit; font-size: 14px; padding: 10px 16px; min-height: 44px; border-radius: 999px; cursor: pointer; background: #fff; color: var(--ink); border: 1px solid var(--field) }

@@ -25,6 +25,10 @@ The contract between the shortlist job (made on this machine: the model and corp
              "t1": {"n": 121, "top1": 90.1, "cov90": 94.0}}]}
 ```
 
+`layers/shortlist/<run>/names.json`: for the species page, per species name (sorted) its group key and the number
+of published Quick to confirm rows that list it, at any rank: `{"Halyomorpha halys": ["true-bugs", 12]}`.
+latest.json gives `"names": <species in the file>`; a run without it has no names.json.
+
 `layers/shortlist/<run>/g/<group key>.json`: the rows of one group, sorted by priority (most useful first).
 
 ```json

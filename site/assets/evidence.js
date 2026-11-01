@@ -30,3 +30,10 @@ export function localNames(pairs) {
   return [...by].sort((a, b) => (ORDER.get(a[0]) ?? 99) - (ORDER.get(b[0]) ?? 99))
     .map(([code, names]) => ({ lang: NAME.get(code) || code, names }));
 }
+
+/** The shortlist observations a species is on (shortlist names.json: {name: [group key, n]}): {n, href to them}, or
+ * null when it is on none. */
+export function shortlistLink(index, name) {
+  const e = index?.[name];
+  return e ? { n: e[1], href: `/shortlist?${new URLSearchParams({ group: e[0], name })}` } : null;
+}

@@ -1,8 +1,6 @@
-"""Candidates for pipeline/ref/name_overrides.csv, for a reviewer: species on the India list that no Indian checklist
-lists, with a congener that one does, and an older name that GBIF's match places under them (as Pteropus giganteus,
-the Indian flying fox's old name, is placed under the Southeast Asian Pteropus vampyrus). Such a species may hold
-another species' records under its old name. Strongest when IUCN has assessed it and its range does not include India
-(iucn_india false, from the internal IUCN extract): those come first. Nothing is changed: the reviewer adds the rows
+"""Candidates for pipeline/ref/name_overrides.csv, for a reviewer (pipeline/name_review.py): the public list with
+IUCN's range added. Strongest when IUCN has assessed the species and its range does not include India (iucn_india
+false, from the internal IUCN extract): those come first. Nothing is changed: the reviewer adds the rows
 that are right. Internal: the IUCN column comes from IUCN's API, which may not be published.
 
 Usage: .venv/bin/python -m scripts.override_candidates [master.parquet] [out.csv]
@@ -14,30 +12,9 @@ import json
 import sys
 from pathlib import Path
 
+from pipeline.name_review import candidates
+
 ROOT = Path(__file__).resolve().parent.parent
-CHECKLISTS = {"ZSI", "BSI", "WCVP", "Lichens", "Bryophytes"}
-
-
-def candidates(rows, cache, iucn_india=None):
-    """rows: (key, name, sources, states_observed); cache: the GBIF name match ({name: {key, synonym, ...}});
-    iucn_india: {name: whether IUCN's range includes India} for the species IUCN assessed."""
-    iucn_india = iucn_india or {}
-    listed_genus = {}
-    for key, name, sources, _ in rows:
-        if CHECKLISTS & set(sources):
-            listed_genus.setdefault(name.split()[0], []).append(name)
-    syn = {}
-    for name, m in cache.items():
-        if m and m.get("synonym") and m.get("key"):
-            syn.setdefault(m["key"], []).append(name)
-    out = []
-    for key, name, sources, states in rows:
-        genus = name.split()[0]
-        if key in syn and not CHECKLISTS & set(sources) and listed_genus.get(genus):
-            out.append({"key": key, "name": name, "sources": "; ".join(sources), "states": len(states or []),
-                        "iucn_india": iucn_india.get(name), "synonyms": "; ".join(sorted(syn[key])),
-                        "congeners_on_checklists": "; ".join(sorted(listed_genus[genus]))})
-    return sorted(out, key=lambda r: (r["iucn_india"] is not False, -r["states"], r["name"]))
 
 
 def main():

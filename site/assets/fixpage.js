@@ -1,8 +1,9 @@
 // The Records to fix page: GBIF records from India that the site cannot use in full, for a state and a group family
 // chosen on the page. The address keeps the choice, so a view can be shared with a data publisher.
 
-import { getJSON, snapshot, esc, $, showLoadError } from './common.js?v=9455fd8cc8';
+import { getJSON, snapshot, esc, fmt, $, showLoadError } from './common.js?v=9455fd8cc8';
 import { fixSection } from './fix.js?v=bce8f819ff';
+import { reviewRowHTML } from './review.js?v=656556014c';
 import { CATS } from './cats.js?v=7d886060d4';
 
 try {
@@ -24,6 +25,23 @@ try {
   $('#fstate').addEventListener('change', paint);
   $('#fgroup').addEventListener('change', paint);
   paint();
+  names(latest).catch(() => {});
 } catch (err) {
   showLoadError(err);
+}
+
+// Names to check (review.js), from the master list's review/names.json; a list without the file shows nothing.
+async function names(latest) {
+  const doc = await getJSON(latest.base + 'review/names.json');
+  if (!doc.rows.length) return;
+  let shown = 0;
+  const more = () => {
+    $('#names-list').insertAdjacentHTML('beforeend', doc.rows.slice(shown, shown + 25).map(reviewRowHTML).join(''));
+    shown += 25;
+    $('#names-more').hidden = shown >= doc.rows.length;
+  };
+  $('#names-sub').textContent = `${fmt(doc.rows.length)} names, those with open records in the most states first. Tell us what you know: each name has a link that opens a note on GitHub.`;
+  $('#names-more').addEventListener('click', more);
+  more();
+  $('#names').hidden = false;
 }

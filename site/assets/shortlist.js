@@ -29,9 +29,11 @@ export function shortlistOf(r) {
   return names.length ? { band: r.band, label: b.label, rank: b.rank, names } : null;
 }
 
-/** The rows the page shows, in the file's order (priority), for a state code and a band (null: all). */
-export const filterRows = (rows, { state = null, band = null } = {}) =>
-  rows.filter(r => shortlistOf(r) && (state == null || r.state === state) && (band == null || r.band === band));
+/** The rows the page shows, in the file's order (priority), for a state code, a band and a species on the list (the
+ * species page links here; null: all). */
+export const filterRows = (rows, { state = null, band = null, name = null } = {}) =>
+  rows.filter(r => shortlistOf(r) && (state == null || r.state === state) && (band == null || r.band === band)
+    && (name == null || (r.band === 'quick' && r.names.includes(name))));
 
 /** Shown rows per band. */
 export function bandCounts(rows) {
@@ -104,11 +106,12 @@ async function main() {
       group: pick('group', k => groups.some(g => g.key === k)) || groups[0]?.key,
       state: pick('state', k => stName.has(k || '')),
       band: pick('band', k => k in BANDS),
+      name: pick('name', k => /^[A-Z][a-z-]+( [a-z-]+){1,3}$/.test(k || '')),   // a species, from its species page
       shown: PAGE,
     };
     const saveURL = () => {
       const u = new URL(location.href);
-      for (const [k, v] of [['group', st.group === groups[0]?.key ? null : st.group], ['state', st.state], ['band', st.band]]) {
+      for (const [k, v] of [['group', st.group === groups[0]?.key ? null : st.group], ['state', st.state], ['band', st.band], ['name', st.name]]) {
         if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
       }
       history.replaceState(null, '', u);
@@ -145,12 +148,14 @@ async function main() {
       const g = groups.find(x => x.key === st.group);
       const t = g?.t1;
       $('#ginfo').innerHTML = g ? `<b>${esc(g.verdict)}.</b> ${esc(VERDICT[g.verdict] || '')}${t ? ` In our test on ${fmt(t.n)} photos with a confirmed name, the first name was right for ${esc(t.top1)}%, and the list had the right ${g.verdict === 'Genus first' ? 'genus' : 'species'} for ${esc(t.cov90)}%.` : ''}` : '';
-      const c = bandCounts(filterRows(rows, { state: st.state }));
+      $('#namefilter').hidden = !st.name;
+      $('#namefilter').innerHTML = st.name ? `Only the observations with <i>${esc(st.name)}</i> on their list. <button class="b" type="button" id="allnames">Show all</button>` : '';
+      const c = bandCounts(filterRows(rows, { state: st.state, name: st.name }));
       $('#bands').innerHTML = [[null, 'All', c.quick + c.genus], ...Object.entries(BANDS).map(([k, b]) => [k, b.label, c[k]])]
         .map(([k, l, n]) => `<button type="button" class="chip" aria-pressed="${st.band === k}" data-b="${k || ''}">${l} <span class="mono">${fmt(n)}</span></button>`).join('');
       const v = view();
       $('#list').innerHTML = v.slice(0, st.shown).map(card).join('')
-        || `<li class="card pad empty muted">No observation here${st.state || st.band ? ' with these choices. Choose another state or band.' : ' in this run.'}</li>`;
+        || `<li class="card pad empty muted">No observation here${st.state || st.band || st.name ? ' with these choices. Choose another state or band.' : ' in this run.'}</li>`;
       pager(v);
     }
     async function load() {
@@ -164,7 +169,10 @@ async function main() {
       render();
     }
 
-    $('#sl-group').addEventListener('change', e => { st.group = e.target.value; st.shown = PAGE; saveURL(); load().catch(showLoadError); });
+    $('#namefilter').addEventListener('click', e => {
+      if (e.target.id === 'allnames') { st.name = null; st.shown = PAGE; saveURL(); render(); }
+    });
+    $('#sl-group').addEventListener('change', e => { st.group = e.target.value; st.name = null; st.shown = PAGE; saveURL(); load().catch(showLoadError); });
     $('#state').addEventListener('change', e => { st.state = e.target.value || null; st.shown = PAGE; saveURL(); render(); });
     $('#bands').addEventListener('click', e => {
       const b = e.target.closest('button');

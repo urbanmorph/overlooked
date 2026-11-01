@@ -1,7 +1,7 @@
 """Copy one live shortlist run to R2 (docs/shortlist_data.md). Run only when the owner has agreed.
 
-Uploads the JSON files of data/shortlist/<run>/ only: g/*.json to layers/shortlist/<run>/g/ (immutable: a run never
-changes), then latest.json to layers/shortlist/latest.json (short cache) last, so the page never points at a run
+Uploads the JSON files of data/shortlist/<run>/ only: g/*.json to layers/shortlist/<run>/g/ and names.json to
+layers/shortlist/<run>/ (immutable: a run never changes), then latest.json to layers/shortlist/latest.json (short cache) last, so the page never points at a run
 whose group files are not all there. Never shown.parquet or shown.sha256 (they stay on this machine).
 pipeline.r2.sync_file skips a file R2 already holds with the same SHA-256, so a rerun uploads nothing and a stopped
 upload continues. R2 credentials come from .env through pipeline.r2.client() and are never printed.
@@ -32,6 +32,8 @@ def files(run):
             if not p.exists():
                 raise SystemExit(f"missing {p}")
             out.append((p, f"{PREFIX}/{run}/g/{name}"))
+    if latest.get("names") is not None:
+        out.append((d / "names.json", f"{PREFIX}/{run}/names.json"))
     out.append((d / "latest.json", f"{PREFIX}/latest.json"))
     return out
 

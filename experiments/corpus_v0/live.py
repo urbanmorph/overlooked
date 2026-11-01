@@ -12,8 +12,8 @@
                   expert rows are not published); LGD state from the coordinates (pipeline.places, the pipeline's
                   district file), null when obscured or absent; order by pipeline.shortlist priority (the gaps a
                   confirmation fills if the first name is right: logic.live_order, from the master list), then oldest
-                  first. Writes data/shortlist/<run>/latest.json and g/<key>.json (pages g/<key>.<n>.json when a
-                  group passes MAX_BYTES), compact and deterministic, and shown.parquet (local only: every
+                  first. Writes data/shortlist/<run>/latest.json, names.json and g/<key>.json (pages g/<key>.<n>.json
+                  when a group passes MAX_BYTES), compact and deterministic, and shown.parquet (local only: every
                   published id with its full shortlist, for recheck.py --shown).
   live.py rank <run> <new run>   a built run ordered again from the current master list, as a new run (a
                   published run never changes: its files are immutable in R2). prune ranks too.
@@ -42,6 +42,7 @@ from logic import (
     compact,
     done_ids,
     live_order,
+    name_index,
     no_nan,
     page_name,
     paginate,
@@ -175,6 +176,13 @@ def ranked_rows(src, latest, drop=()):
     return rows, base
 
 
+def write_names(out_dir, latest, rows):
+    """names.json, the species page's count of shortlisted observations per species; latest.json gives its size."""
+    index = name_index(rows)
+    (out_dir / "names.json").write_text(compact(index))
+    latest["names"] = len(index)
+
+
 def write_run(out_dir, latest, rows, base):
     """A run's group pages and latest.json (counts from rows, master: the list build it was ranked against). Files
     published to R2 are immutable, so a changed run always gets a new name."""
@@ -184,6 +192,7 @@ def write_run(out_dir, latest, rows, base):
     for g in latest["groups"]:
         g.update(rows=len(rows[g["key"]]), pages=write_pages(out_dir, g["key"], rows[g["key"]]))
     latest.update(rows=sum(g["rows"] for g in latest["groups"]), master=base)
+    write_names(out_dir, latest, rows)
     (out_dir / "latest.json").write_text(compact(latest))
     why = Counter(f for rs in rows.values() for r in rs for f in r["why"])
     log(f"run {latest['run']}: {latest['rows']:,} rows, ranked against {base}; " + ", ".join(f"{k} {v:,}" for k, v in why.items()))
@@ -227,7 +236,7 @@ def do_build():
     df["state"] = states(df)
     out_dir = OUT / run
     (out_dir / "g").mkdir(parents=True, exist_ok=True)
-    groups, shown, total = [], [], 0
+    groups, shown, total, published = [], [], 0, {}
     for group in sorted(df.group.unique()):
         z = np.load(SCORES / f"{sl.slug(group)}.npz")
         names, probs = list(z["names"]), z["l_probs"].astype(np.float64)
@@ -259,6 +268,7 @@ def do_build():
             )  # fmt: skip
         rows = live_order(rows, facts)
         key = sl.slug(group)
+        published[key] = rows
         t1 = gates.loc[group]
         groups.append(
             {
@@ -272,6 +282,7 @@ def do_build():
         "run": run, "built": built, "model": MODEL_NAME, "corpus": "v0", "calibration": CALIBRATION,
         "rows": total, "master": master, "groups": groups,
     }  # fmt: skip
+    write_names(out_dir, latest, published)
     (out_dir / "latest.json").write_text(compact(latest))
     sh = pd.DataFrame(shown).sort_values(["group", "obs_id"]).reset_index(drop=True)
     atomic_parquet(sh, out_dir / "shown.parquet")

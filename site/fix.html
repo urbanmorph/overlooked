@@ -10,11 +10,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=aadd203cd4">
+<link rel="stylesheet" href="/assets/style.css?v=798c6275a6">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
-<script type="module" src="/assets/fixpage.js?v=26c45d50e3"></script>
+<script type="module" src="/assets/fixpage.js?v=0f76412fe0"></script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -58,6 +58,14 @@
     <div id="fix-holders"></div>
     <div id="fix-only"></div>
     <p class="pad muted note" id="fix-source" style="padding-top:0"></p>
+  </section>
+
+  <section class="card pad" id="names" aria-labelledby="names-h" style="margin-top:24px" hidden>
+    <h2 id="names-h" style="font-size:20px">Names to check</h2>
+    <p style="margin:4px 0 8px">For people who know a group. No Indian checklist lists these species. They are on our India list only because GBIF matched records from India under an older name, and the Catalogue of Life puts that name under them. A related species is on an Indian checklist, so the records may be that species. For example, records of the Indian flying fox under its old name <i>Pteropus giganteus</i> went to <i>Pteropus vampyrus</i> of Southeast Asia; we now correct that.</p>
+    <p class="note" id="names-sub" style="margin:0 0 12px"></p>
+    <ol class="review" id="names-list"></ol>
+    <button class="b" type="button" id="names-more" hidden>Show more</button>
   </section>
 </main>
 

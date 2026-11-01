@@ -418,3 +418,15 @@ def done_ids(answers, shown):
 def page_name(key, n):
     """File name of page n of a group (docs/shortlist_data.md): the first page has no number."""
     return f"{key}.json" if n == 1 else f"{key}.{n}.json"
+
+
+def name_index(rows_by_group):
+    """{species name: [group key, published quick rows that list it]}, sorted by name, for the species page
+    (docs/shortlist_data.md names.json). Genus rows name no species."""
+    out = {}
+    for key, rows in rows_by_group.items():
+        for r in rows:
+            if r["band"] == "quick":
+                for n in r["names"]:
+                    out.setdefault(n, [key, 0])[1] += 1
+    return dict(sorted(out.items()))

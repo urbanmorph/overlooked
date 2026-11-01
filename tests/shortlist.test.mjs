@@ -33,6 +33,9 @@ test('filterRows: drops rows that are not shown, keeps the file order, filters b
   assert.ok(filterRows(bugs, { state: '33' }).every(r => r.state === '33'));
   assert.ok(filterRows(bugs, { band: 'genus' }).every(r => r.band === 'genus'));
   assert.deepEqual(filterRows(bugs, { state: '99' }), []);
+  const name = bugs.find(r => r.band === 'quick').names[0];
+  const one = filterRows(bugs, { name });
+  assert.ok(one.length > 0 && one.every(r => r.band === 'quick' && r.names.includes(name)));   // one species' observations
 });
 
 test('bandCounts: shown rows per band, for the bands the page offers', () => {
