@@ -135,16 +135,17 @@ def test_the_client_waits_on_a_rate_limit_retries_a_server_error_and_returns_non
         iucn_api.Api("tok", session=type("S", (), {"headers": {}, "get": lambda *a, **k: Resp(503)})(), tries=2).get("x")
 
 
-def test_only_the_population_trend_reaches_the_public_files():
+def test_only_the_population_trend_and_the_range_reach_the_public_files():
     """The extractor writes only to cache/, locally and in R2, and the site never serves cache/. The master list takes
-    the population trend alone (published with the owner's go-ahead, 31 October 2026); threats, habitats and the rest
-    stay internal."""
+    the population trend (published with the owner's go-ahead, 31 October 2026) and whether the range includes India
+    (names to check, 1 November 2026); threats, habitats and the rest stay internal."""
     assert iucn_api.CACHE.relative_to(iucn_api.ROOT).parts[:2] == ("data", "cache")
     assert iucn_api.R2_PREFIX.startswith("cache/")
     data_function = (iucn_api.ROOT / "functions" / "data" / "[[path]].js").read_text()
     assert "key.startsWith('cache/')" in data_function
     master = (iucn_api.ROOT / "pipeline" / "master.py").read_text()
     assert "SELECT name, trend FROM '{inputs['iucn_detail']}'" in master
+    assert "SELECT name, in_india_list FROM '{iucn_detail}'" in master
     assert not any(f in master for f in ("threats", "habitats", "possibly_extinct", "criteria", "assessors"))
 
 

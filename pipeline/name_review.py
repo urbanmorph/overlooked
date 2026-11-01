@@ -14,10 +14,10 @@ Newer bird splits (India's population named apart from a species the 2023 checkl
 from Bubulcus ibis) are on eBird's list (pipeline/ebird_india.py), so they leave the list too.
 
 The strong sign: an older name that a checklist uses for another species (a different epithet), as Cenchrus
-polystachios, which the Catalogue of Life places under the American Setaria parviflora. The public file (review_file,
-review/names.json) has no IUCN range data (IUCN's terms); it has animals, and plants and fungi only with the strong
-sign: without it most plants in the rule are cultivated (the tomato), and fungi and algae have no Indian checklist. The internal report
-(scripts/override_candidates.py) adds IUCN's range, which puts the strongest first.
+polystachios, which the Catalogue of Life places under the American Setaria parviflora. Next come the species whose
+IUCN range map leaves out India (published with the owner's go-ahead, 1 November 2026, as the population trends are).
+The public file (review_file, review/names.json) has animals, and plants and fungi only with the strong sign: without
+it most plants in the rule are cultivated (the tomato), and fungi and algae have no Indian checklist.
 """
 
 import re
@@ -64,16 +64,17 @@ def candidates(rows, cache, iucn_india=None, checklist_names=(), on_lists=()):
     return sorted(out, key=lambda r: (not r["strong"], r["iucn_india"] is not False, -r["states"], r["name"]))
 
 
-def public_rows(rows, cache, checklist_names=(), on_lists=()):
+def public_rows(rows, cache, checklist_names=(), on_lists=(), iucn_india=None):
     """Animals, and plants and fungi with the strong sign: [key, name, states with an open record, [older names],
-    [congeners on a checklist]]; the strong sign first, then most states."""
-    return [[r["key"], r["name"], r["states"], r["synonyms"].split("; "), r["congeners_on_checklists"].split("; ")]
-            for r in candidates(rows, cache, checklist_names=checklist_names, on_lists=on_lists)
+    [congeners on a checklist], whether IUCN's range leaves out India]; in the order of candidates."""
+    return [[r["key"], r["name"], r["states"], r["synonyms"].split("; "), r["congeners_on_checklists"].split("; "),
+             r["iucn_india"] is False]
+            for r in candidates(rows, cache, iucn_india, checklist_names, on_lists)
             if r["strong"] or not (r["group"] or "").startswith(NOT_PUBLIC)]
 
 
-def review_file(rows, cache, out, checklist_names=(), on_lists=()):
+def review_file(rows, cache, out, checklist_names=(), on_lists=(), iucn_india=None):
     """review/names.json: {"n": rows, "rows": public_rows}."""
-    found = public_rows(rows, cache, checklist_names, on_lists)
+    found = public_rows(rows, cache, checklist_names, on_lists, iucn_india)
     dump({"n": len(found), "rows": found}, out / "review" / "names.json")
     return len(found)

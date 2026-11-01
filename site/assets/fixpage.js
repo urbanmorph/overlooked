@@ -3,7 +3,7 @@
 
 import { getJSON, snapshot, esc, fmt, $, showLoadError } from './common.js?v=9455fd8cc8';
 import { fixSection } from './fix.js?v=bce8f819ff';
-import { reviewRowHTML } from './review.js?v=656556014c';
+import { reviewRowHTML } from './review.js?v=dd539d4530';
 import { CATS } from './cats.js?v=7d886060d4';
 
 try {

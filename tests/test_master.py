@@ -101,8 +101,8 @@ def inputs(tmp_path):
     lichens = tmp_path / "lichens.csv"
     lichens.write_text("no,name,authority,synonyms,growth_form,substratum,states,regions,endemic,page\n"
                        "1,Lus mus,Nyl.,Lus oldus Nyl.,CR,CO,Kerala,WG,True,8\n")
-    iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing'), ('Eus fus', 'Unknown'), ('Aus bus', 'Stable'))
-        t(name, trend)""", tmp_path / "iucn_detail.parquet")
+    iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing', true), ('Eus fus', 'Unknown', true),
+        ('Aus bus', 'Stable', true)) t(name, trend, in_india_list)""", tmp_path / "iucn_detail.parquet")
     pics = write(con, """SELECT * FROM (VALUES ('K1', 'https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC', 'iNaturalist', 'Common aus'),
         ('ZZ', 'https://p/2.jpg', 'https://inat/2', 'Bo', 'CC BY', 'iNaturalist', NULL))
         t(key, url, page, "by", licence, source, common)""", tmp_path / "pictures.parquet")
