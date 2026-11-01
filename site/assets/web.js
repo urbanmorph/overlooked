@@ -76,9 +76,13 @@ export function groupShares(S, gis) {
   });
 }
 
+/** The home page's shade for a block from its share (groupShares): known for two thirds or more of the species, part
+ * for a third or more, gap for less, na when not measured. The same classes as one species' states. */
+export const shareState = pct => pct == null ? 'na' : pct >= 67 ? 'known' : pct >= 33 ? 'part' : 'gap';
+
 /** The pyramid as HTML: a button per gap (class blk <state>, data-i its index), its plain words first and the term
  * small, with a bar for the share of the group (`group`, a plural such as "bats"; '' on the home page) where the gap is
- * known. State: known | part | gap | na for one species; list for the home page (no species). */
+ * known. State: known | part | gap | na (for one species, or shareState on the home page). */
 export function pyramidHTML(gaps, shares, group) {
   return LAYERS.map(layer => `<div class="lvl l${layer.length}">${layer.map(i => {
     const g = gaps[i], pct = shares[i];

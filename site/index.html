@@ -15,7 +15,7 @@
 <script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=9455fd8cc8">
 <link rel="modulepreload" href="/assets/map.js?v=b39659b5ac">
-<script type="module" src="/assets/explore.js?v=d56b26e6a1"></script>
+<script type="module" src="/assets/explore.js?v=a37830430e"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -53,7 +53,7 @@
       <div class="lvl l2"><button type="button" class="blk list" data-i="1" aria-pressed="false"><span class="t">Where species live</span><span class="p">Wallacean</span><span class="grp">–</span></button><button type="button" class="blk list" data-i="3" aria-pressed="false"><span class="t">How species are related</span><span class="p">Darwinian</span><span class="grp">–</span></button></div>
       <div class="lvl l1"><button type="button" class="blk list" data-i="0" aria-pressed="false"><span class="t">Which species exist</span><span class="p">Linnean</span><span class="grp">–</span></button></div>
       </div>
-      <p class="note" id="gapskey" style="margin:10px 0 0">Bar: the share of documented species where it is known. Hatched: not measured yet.</p>
+      <div class="legend" id="gapskey">Bar: the share of documented species where it is known.</div>
       <div class="sp-gapnote" id="gapnote" aria-live="polite">Pick a block for what we count.</div>
     </div>
   </section>

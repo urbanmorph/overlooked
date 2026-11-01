@@ -1,7 +1,7 @@
 // The species web (site/assets/web.js): the seven gaps for one species, and the layout of its partners.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives, thumb } from '../site/assets/web.js';
+import { KINDS, gapStates, tree, LAYERS, groupShares, pyramidHTML, glyphSVG, relatives, thumb, shareState } from '../site/assets/web.js';
 
 const S = { recent_from: 2016, traits: [0], niche: [0], types: [0], trend_known: [null] };
 
@@ -63,6 +63,10 @@ test('the pyramid: three layers on the Linnean base, each block in its state wit
   assert.match(all, /class="blk list"/);
   assert.match(all, />not measured</);                                         // no group word on the home page
   assert.doesNotMatch(all, /<span><\/span>/);
+});
+
+test('on the home page a block takes the shade of its share: two thirds or more, a third or more, less, not measured', () => {
+  assert.deepEqual([98, 67, 66, 33, 32, 0, null].map(shareState), ['known', 'known', 'part', 'part', 'gap', 'gap', 'na']);
 });
 
 test('the glyph: the same seven cells, small, in their states', () => {
