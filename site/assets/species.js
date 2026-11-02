@@ -2,11 +2,11 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=9455fd8cc8';
-import { drawMap } from './map.js?v=b39659b5ac';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=4d14881075';
+import { drawMap } from './map.js?v=f2f326cacb';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=3b2190eca9';
-import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=8d987f8291';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=5584a50f2e';
+import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=4ba390ee6e';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {

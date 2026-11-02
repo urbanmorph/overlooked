@@ -5,13 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups } from './common.js?v=9455fd8cc8';
-import { drawMap, legendHTML } from './map.js?v=b39659b5ac';
-import { signed } from './trend.js?v=e7af3381b1';
-import { knowledge, segmentChanges } from './funnel.js?v=9e1c444fb6';
-import { redlist } from './redlist.js?v=5c50848c5d';
-import { gaps, gapAbsent } from './gaps.js?v=c86a0ec630';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=8d987f8291';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches } from './common.js?v=4d14881075';
+import { drawMap, legendHTML } from './map.js?v=f2f326cacb';
+import { signed } from './trend.js?v=d7fa549f39';
+import { knowledge, segmentChanges } from './funnel.js?v=e59674b8d4';
+import { redlist } from './redlist.js?v=61f6e0e999';
+import { gaps, gapAbsent } from './gaps.js?v=7d621e0b4e';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=4ba390ee6e';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -537,7 +537,8 @@ try {
     const p = $('#filters'); p.hidden = !p.hidden; $('#fbtn').setAttribute('aria-expanded', String(!p.hidden));
   });
 
-  // Search: groups and places from memory, species from a small file per first two letters.
+  // Search: groups and places from memory, species from a small file per first two letters (of a Latin name, or of a
+  // word of a common name).
   const prefix = s => { const p = s.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '_').slice(0, 2); return p.length === 2 ? p : null; };
   const places = getJSON(base + 'search/places.json').catch(() => ({ rows: [] }));
   let seq = 0;
@@ -553,10 +554,13 @@ try {
       if (hits.length > 6) break;
       if (r[0].toLowerCase().startsWith(q)) hits.push({ html: esc(r[0]), kind: r[1] === 'state' ? 'State' : `District, ${esc(stName.get(String(r[3])) || '')}`, go: () => (r[1] === 'state' ? setState(String(r[2])) : setState(String(r[3]), r[2])) });
     }
+    const seen = new Set();          // a species found by its Latin and its common name is one hit
     for (const r of sp.rows) {
       if (hits.length > 12) break;
-      if (r[0].toLowerCase().startsWith(q) && passes([r[1], r[0], r[5], r[3], r[4], r[6], 0, r[7]])) {
-        hits.push({ html: `<i>${esc(r[0])}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(r[0], r[2], r[3])) });
+      const latin = r[8] ?? r[0];
+      if (nameMatches(r, q) && !seen.has(latin) && passes([r[1], latin, r[5], r[3], r[4], r[6], 0, r[7]])) {
+        seen.add(latin);
+        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(latin, r[2], r[3])) });
       }
     }
     box.innerHTML = hits.map((h, i) => `<button type="button" role="option" data-i="${i}"><span>${h.html}</span><span class="muted">${h.kind}</span></button>`).join('')

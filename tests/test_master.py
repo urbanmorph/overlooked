@@ -380,7 +380,10 @@ def test_site_files(built):
     assert "Zus zus" not in {x[1] for x in g}
     assert aus[5] & (1 << labels.index("end")) and aus[2] == 0b1011001  # ZSI, GBIF, iNaturalist, IUCN
     search = json.loads((out / "search" / "au.json").read_text())["rows"]
-    assert search == [["Aus bus", "K1", birds, 1, 1, aus[2], aus[5], 1758]]
+    latin = ["Aus bus", "K1", birds, 1, 1, aus[2], aus[5], 1758]
+    common = ["Common aus", *latin[1:], "Aus bus"]          # an English common name: the Latin name last
+    assert search == [latin, common]                     # under each word of the common name: "aus" and "common"
+    assert json.loads((out / "search" / "co.json").read_text())["rows"] == [common]
     zus = json.loads((out / "search" / "zu.json").read_text())["rows"]
     assert [z[:4] for z in zus] == [["Zus zus", "", birds, 2]]     # status 2: waits for a name, not on the list
     assert json.loads((out / "search" / "xu.json").read_text())["rows"][0][1] == ""

@@ -30,6 +30,16 @@ const nf = new Intl.NumberFormat('en-IN');
 export const fmt = n => (n == null ? '–' : nf.format(n));
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
+/** A name as people type it: lower case, hyphens and runs of spaces as one space, no apostrophes. */
+export const plainName = s => s.toLowerCase().replace(/['\u2019]/g, '').replace(/[-\s]+/g, ' ').trim();
+
+/** Whether a search row (pipeline/master.py site_files) answers the words typed: a Latin name from its start; an
+ *  English common name (rows with the Latin name as a ninth field) from the start of any of its words. */
+export function nameMatches(row, q) {
+  const name = plainName(row[0]), words = plainName(q);
+  return name.startsWith(words) || (row.length > 8 && name.includes(' ' + words));
+}
+
 export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 // One label chip per bit set in mask.
 export const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');

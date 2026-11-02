@@ -1213,8 +1213,10 @@ def review_names(con, cache, out: Path, ebird=frozenset(), iucn_detail=None, pic
     return name_review.review_file(rows, cache, out, names, soib | set(ebird), iucn, common)
 
 
-def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
-    """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site)."""
+def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None, pictures=None):
+    """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site).
+    pictures (pipeline/pictures.py) gives English common names: a species is also in the search file of each word of
+    its common name (Madras Treeshrew: ma and tr), with its Latin name last."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
     con.execute("CREATE OR REPLACE TABLE state_bit AS SELECT unnest($1) AS state_lgd, unnest($2) AS b",
@@ -1330,11 +1332,16 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
         f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
     buckets = {}
-    for r in con.sql("""SELECT name, coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year
-                        FROM site ORDER BY lower(name), name""").fetchall():
+    cols = "coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year"
+    for r in con.sql(f"SELECT name, {cols} FROM site").fetchall():
         buckets.setdefault(prefix(r[0]), []).append(list(r))
+    if pictures:
+        for r in con.sql(f"""SELECT p.common, {cols}, s.name FROM site s JOIN (SELECT key, any_value(common) AS common
+                             FROM '{pictures}' WHERE common <> '' GROUP BY key) p USING (key)""").fetchall():
+            for p in {prefix(w) for w in re.findall(r"[^\W\d_]{2,}", r[0])}:
+                buckets.setdefault(p, []).append(list(r))
     for p, rows in buckets.items():
-        dump({"rows": rows}, out / "search" / f"{p}.json")
+        dump({"rows": sorted(rows, key=lambda r: (r[0].lower(), r[0]))}, out / "search" / f"{p}.json")
     places = [[title(nm), "state", int(code), int(code)] for code, nm in
               duckdb.sql(f"SELECT DISTINCT state_lgd, stname FROM '{districts_path}' WHERE state_lgd > 0").fetchall()]
     places += [[title(nm), "district", int(d), int(s)] for d, s, nm in
@@ -1646,7 +1653,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"),
                  inputs.get("pictures"))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
-                         inputs.get("inat_coarse"))
+                         inputs.get("inat_coarse"), inputs.get("pictures"))
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}

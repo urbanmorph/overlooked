@@ -2,7 +2,7 @@
 // of Life places under them, with a relative on an Indian checklist (pipeline/name_review.py, review/names.json). A
 // person who knows the group says whether the records are another species'; the answer comes as a GitHub issue.
 
-import { fmt, esc } from './common.js?v=9455fd8cc8';
+import { fmt, esc, plainName } from './common.js?v=4d14881075';
 
 const NEAR = 5;
 const REPO = 'https://github.com/urbanmorph/overlooked';
@@ -19,12 +19,10 @@ export function issueHref([key, name, , old, near, outside]) {
   return `${REPO}/issues/new?${new URLSearchParams({ title: `Name to check: ${name}`, body })}`;
 }
 
-const plain = s => s.toLowerCase().replace(/['\u2019]/g, '').replace(/[-\s]+/g, ' ').trim();
-
 /** Whether a row has the words typed, in any of its Latin or common names (hyphens as spaces, no apostrophes). */
 export function matchesRow([, name, , old, near, , common, nearCommon = []], q) {
-  const words = plain(q);
-  return !words || [name, common, ...old, ...near, ...nearCommon].some(n => n && plain(n).includes(words));
+  const words = plainName(q);
+  return !words || [name, common, ...old, ...near, ...nearCommon].some(n => n && plainName(n).includes(words));
 }
 
 /** One name to check as a list item. row: [key, name, states with an open record, [older names], [relatives],

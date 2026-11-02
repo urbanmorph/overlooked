@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { bit, tags, periodName, getJSON } from '../site/assets/common.js';
+import { bit, tags, periodName, getJSON, nameMatches, plainName } from '../site/assets/common.js';
 
 test('bit reads masks wider than 32 bits', () => {
   assert.equal(bit(2 ** 40, 40), true);
@@ -40,4 +40,19 @@ test('pages start their first data request in the head, not with a preload link 
   assert.equal(early('index.html'), "'layers/master/latest.json'");
   assert.equal(early('fix.html'), "'latest.json'");
   assert.equal(early('shortlist.html'), "'layers/shortlist/latest.json', 'layers/master/latest.json'");
+});
+
+test('a search row matches from the start of its Latin name, or of any word of its common name', () => {
+  const latin = ['Anathana ellioti', 'DHXJ', 3, 1, 1, 0, 0, 1850];
+  const common = ['Madras Treeshrew', ...latin.slice(1), 'Anathana ellioti'];
+  assert.ok(nameMatches(latin, 'anathana e'));
+  assert.ok(!nameMatches(latin, 'ellioti'));                      // a Latin name from its start only
+  for (const q of ['madras', 'treeshrew', 'madras tree', 'Madras-Treeshrew']) assert.ok(nameMatches(common, q), q);
+  assert.ok(!nameMatches(common, 'shrew') && !nameMatches(common, 'adras'));
+  assert.ok(nameMatches(['Pallas’s Leaf Warbler', ...latin.slice(1), 'X y'], 'pallass leaf'));
+});
+
+test('plainName: lower case, hyphens and runs of spaces as one space, no apostrophes', () => {
+  assert.equal(plainName("  Sri Lanka Green-Pigeon "), 'sri lanka green pigeon');
+  assert.equal(plainName("Pallas's"), 'pallass');
 });
