@@ -1198,16 +1198,19 @@ def group_totals(con, species_sql, n, since=None):
     return india
 
 
-def review_names(con, cache, out: Path, ebird=frozenset(), iucn_detail=None):
+def review_names(con, cache, out: Path, ebird=frozenset(), iucn_detail=None, pictures=None):
     """review/names.json, names to check for people who know a group (pipeline/name_review.py). Not candidates: the
     species State of India's Birds or eBird's records from India (ebird: COL IDs) have. iucn_detail (pipeline/iucn_api.py)
-    gives whether IUCN's range includes India, which puts a species whose range leaves it out first."""
+    gives whether IUCN's range includes India, which puts a species whose range leaves it out first; pictures
+    (pipeline/pictures.py) the English common names, so a visitor finds a species by the name they know."""
     names = {n for (n,) in con.sql(f"SELECT DISTINCT name FROM names_in WHERE source IN {tuple(name_review.CHECKLISTS)}").fetchall()}
     soib = {k for (k,) in con.sql("""SELECT DISTINCT m.key FROM master m JOIN id_names n ON n.id = m.id
                                        JOIN soib s ON s.name = n.name WHERE m.key IS NOT NULL""").fetchall()}
     rows = con.sql('SELECT key, name, sources, states_observed, "group" FROM listed WHERE key IS NOT NULL').fetchall()
     iucn = dict(con.sql(f"SELECT name, in_india_list FROM '{iucn_detail}'").fetchall()) if iucn_detail else None
-    return name_review.review_file(rows, cache, out, names, soib | set(ebird), iucn)
+    common = dict(con.sql(f"""SELECT l.name, any_value(p.common) FROM listed l JOIN '{pictures}' p ON p.key = l.key
+                                WHERE p.common <> '' GROUP BY l.name""").fetchall()) if pictures else None
+    return name_review.review_file(rows, cache, out, names, soib | set(ebird), iucn, common)
 
 
 def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
@@ -1640,7 +1643,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                             year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
             f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-    review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"))
+    review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"),
+                 inputs.get("pictures"))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])

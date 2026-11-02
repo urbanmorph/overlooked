@@ -64,17 +64,22 @@ def candidates(rows, cache, iucn_india=None, checklist_names=(), on_lists=()):
     return sorted(out, key=lambda r: (not r["strong"], r["iucn_india"] is not False, -r["states"], r["name"]))
 
 
-def public_rows(rows, cache, checklist_names=(), on_lists=(), iucn_india=None):
+def public_rows(rows, cache, checklist_names=(), on_lists=(), iucn_india=None, common=None):
     """Animals, and plants and fungi with the strong sign: [key, name, states with an open record, [older names],
-    [congeners on a checklist], whether IUCN's range leaves out India]; in the order of candidates."""
-    return [[r["key"], r["name"], r["states"], r["synonyms"].split("; "), r["congeners_on_checklists"].split("; "),
-             r["iucn_india"] is False]
-            for r in candidates(rows, cache, iucn_india, checklist_names, on_lists)
-            if r["strong"] or not (r["group"] or "").startswith(NOT_PUBLIC)]
+    [congeners on a checklist], whether IUCN's range leaves out India, common name, [the congeners' common names]];
+    in the order of candidates. common: {name: English common name}; null where there is none."""
+    common = common or {}
+    out = []
+    for r in candidates(rows, cache, iucn_india, checklist_names, on_lists):
+        if r["strong"] or not (r["group"] or "").startswith(NOT_PUBLIC):
+            near = r["congeners_on_checklists"].split("; ")
+            out.append([r["key"], r["name"], r["states"], r["synonyms"].split("; "), near, r["iucn_india"] is False,
+                        common.get(r["name"]), [common.get(n) for n in near]])
+    return out
 
 
-def review_file(rows, cache, out, checklist_names=(), on_lists=(), iucn_india=None):
+def review_file(rows, cache, out, checklist_names=(), on_lists=(), iucn_india=None, common=None):
     """review/names.json: {"n": rows, "rows": public_rows}."""
-    found = public_rows(rows, cache, checklist_names, on_lists, iucn_india)
+    found = public_rows(rows, cache, checklist_names, on_lists, iucn_india, common)
     dump({"n": len(found), "rows": found}, out / "review" / "names.json")
     return len(found)

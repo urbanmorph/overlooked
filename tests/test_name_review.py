@@ -45,9 +45,17 @@ def test_candidates_leave_out_names_another_list_or_a_checklist_already_has():
 
 def test_the_public_rows_are_animals_and_strong_plants_with_old_names_and_relatives_most_states_first():
     assert nr.public_rows(ROWS, CACHE, CHECKLIST_NAMES, {"B1"}) == [
-        ["P3", "Setaria parviflora", 2, ["Cenchrus polystachios"], ["Setaria viridis"], False],
-        ["X3", "Pteropus alter", 3, ["Pteropus olda", "Pteropus oldb"], ["Pteropus listed", "Pteropus medius"], False],
-        ["4Q34B", "Pteropus vampyrus", 2, ["Pteropus giganteus"], ["Pteropus listed", "Pteropus medius"], False]]
+        ["P3", "Setaria parviflora", 2, ["Cenchrus polystachios"], ["Setaria viridis"], False, None, [None]],
+        ["X3", "Pteropus alter", 3, ["Pteropus olda", "Pteropus oldb"], ["Pteropus listed", "Pteropus medius"], False,
+         None, [None, None]],
+        ["4Q34B", "Pteropus vampyrus", 2, ["Pteropus giganteus"], ["Pteropus listed", "Pteropus medius"], False, None,
+         [None, None]]]
+
+
+def test_a_row_has_the_common_names_of_the_species_and_its_relatives_where_known():
+    common = {"Pteropus vampyrus": "Large Flying Fox", "Pteropus medius": "Indian Flying Fox"}
+    row = nr.public_rows(ROWS, CACHE, CHECKLIST_NAMES, {"B1"}, common=common)[2]
+    assert row[1] == "Pteropus vampyrus" and row[6:] == ["Large Flying Fox", [None, "Indian Flying Fox"]]
 
 
 def test_a_species_whose_iucn_range_leaves_out_india_comes_before_more_states_and_is_marked():
@@ -58,6 +66,6 @@ def test_a_species_whose_iucn_range_leaves_out_india_comes_before_more_states_an
 
 def test_the_review_file_is_written_with_its_count(tmp_path):
     import json
-    nr.review_file(ROWS, CACHE, tmp_path, CHECKLIST_NAMES, {"B1"}, {"Pteropus vampyrus": False})
+    nr.review_file(ROWS, CACHE, tmp_path, CHECKLIST_NAMES, {"B1"}, {"Pteropus vampyrus": False}, {"Pteropus vampyrus": "Large"})
     doc = json.loads((tmp_path / "review" / "names.json").read_text())
-    assert doc["n"] == 3 and doc["rows"][1][1] == "Pteropus vampyrus" and doc["rows"][1][5] is True
+    assert doc["n"] == 3 and doc["rows"][1][1] == "Pteropus vampyrus" and doc["rows"][1][5] is True and doc["rows"][1][6] == "Large"

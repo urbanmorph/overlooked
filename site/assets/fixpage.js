@@ -3,7 +3,7 @@
 
 import { getJSON, snapshot, esc, fmt, $, showLoadError } from './common.js?v=9455fd8cc8';
 import { fixSection } from './fix.js?v=bce8f819ff';
-import { reviewRowHTML } from './review.js?v=dd539d4530';
+import { reviewRowHTML, matchesRow } from './review.js?v=a965adaf48';
 import { CATS } from './cats.js?v=7d886060d4';
 
 try {
@@ -30,18 +30,27 @@ try {
   showLoadError(err);
 }
 
-// Names to check (review.js), from the master list's review/names.json; a list without the file shows nothing.
+// Names to check (review.js), from the master list's review/names.json; a list without the file shows nothing. The box
+// keeps the rows whose Latin or common names have the words typed.
 async function names(latest) {
   const doc = await getJSON(latest.base + 'review/names.json');
   if (!doc.rows.length) return;
-  let shown = 0;
+  let rows = doc.rows, shown = 0;
   const more = () => {
-    $('#names-list').insertAdjacentHTML('beforeend', doc.rows.slice(shown, shown + 25).map(reviewRowHTML).join(''));
+    $('#names-list').insertAdjacentHTML('beforeend', rows.slice(shown, shown + 25).map(reviewRowHTML).join(''));
     shown += 25;
-    $('#names-more').hidden = shown >= doc.rows.length;
+    $('#names-more').hidden = shown >= rows.length;
   };
-  $('#names-sub').textContent = `${fmt(doc.rows.length)} names, those with open records in the most states first. Tell us what you know: each name has a link that opens a note on GitHub.`;
+  $('#names-sub').textContent = `${fmt(doc.rows.length)} names. The strongest come first. Tell us what you know: each name has a link that opens a note on GitHub.`;
   $('#names-more').addEventListener('click', more);
-  more();
+  const filter = () => {             // also on load: words typed before the list came keep their effect
+    rows = doc.rows.filter(r => matchesRow(r, $('#names-q').value));
+    shown = 0;
+    $('#names-list').replaceChildren();
+    $('#names-none').hidden = rows.length > 0;
+    more();
+  };
+  $('#names-q').addEventListener('input', filter);
+  filter();
   $('#names').hidden = false;
 }
