@@ -25,13 +25,12 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import bsi, gbif, health, zsi_discoveries
-from pipeline.util import first, now, period
+from pipeline import bsi, gbif, health, util, zsi_discoveries
+from pipeline.util import dump, first, now, period
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "newspecies"
 FIRST_YEAR = gbif.NEW_SPECIES_FROM
-COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"   # Catalogue of Life eXtended Release, as a GBIF checklist
 SP_NOV = re.compile(r"^\s*(sp\.?\s*nov\.?|nov\.?\s*sp\.?)\s*$", re.I)
 QUERIES = ["recent_history", "verbatim_names"]
 # BSI report sections, for names not matched to a species in the snapshot.
@@ -71,9 +70,9 @@ def plazi_names(http, done=None, save=None):
     return [r for y in sorted(done) for r in done[y]]
 
 
-def bsi_names(http, s3):
+def bsi_names(http, s3, minutes=None):
     out = []
-    for year, entries in bsi.sync(http, s3).items():
+    for year, entries in bsi.sync(http, s3, minutes).items():
         for e in entries:
             name = binomial(e["name"])
             if name and e["kind"] == "new_to_science" and e["rank"] == "species" and e["name_check"] != "needs_review":
@@ -113,10 +112,12 @@ def gbif_match(http, name, cache, need_classification=False):
     hit = cache.get(name, "missing")
     if hit != "missing" and not (need_classification and hit and "classification" not in hit):
         return hit
-    r = http.get("https://api.gbif.org/v2/species/match", params={"scientificName": name, "checklistKey": COL_XR}, timeout=60)
+    r = http.get("https://api.gbif.org/v2/species/match", params={"scientificName": name, "checklistKey": gbif.COL_XR}, timeout=60)
     time.sleep(1.1)
     if not r.ok:
-        return None
+        if r.status_code == 429 or r.status_code >= 500:
+            r.raise_for_status()   # GBIF busy or down: not an answer; the caller tries again or stops
+        return None                # a name GBIF cannot read: no match, asked again next run
     d = r.json()
     usage, accepted = d.get("usage") or {}, d.get("acceptedUsage") or {}
     exact = (d.get("diagnostics") or {}).get("matchType") == "EXACT"
@@ -161,7 +162,17 @@ def verbatim_rows(con, name, year):
 
 
 def match_all(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline, save_cache):
-    """Status of each name. Returns None if the time limit is reached first."""
+    """Status of each name. Returns None if the time limit is reached first, or GBIF fails (the cache is saved, so
+    the next run continues)."""
+    try:
+        return match_each(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline, save_cache)
+    except requests.RequestException as e:
+        print(f"GBIF match failed ({e}); the next run continues", flush=True)
+        save_cache()
+        return None
+
+
+def match_each(con, http, state, species_by_name, in_snapshot, group_of, mcache, deadline, save_cache):
     out = []
     next_save = time.monotonic() + 600
     for i, n in enumerate(state["names"]):
@@ -299,8 +310,10 @@ def run(publish, force=False, minutes=None):
     plain.headers["User-Agent"] = health.ua()
     s3 = r2.client() if publish else None
     state_key = f"cache/newspecies/state_{week}.json"
-    state = (r2.get_json(s3, state_key) if s3 else None) or {"period": week, "downloads": {q: {"status": "WAITING"} for q in QUERIES}}
-    save = lambda: (r2.put_json(s3, state, state_key) if s3 else (CACHE / f"state_{week}.json").write_text(json.dumps(state)))
+    local_state = CACHE / f"state_{week}.json"   # without R2 (a local run): the local copy, so it continues too
+    state = ((r2.get_json(s3, state_key) if s3 else json.loads(local_state.read_text()) if local_state.exists() else None)
+             or {"period": week, "downloads": {q: {"status": "WAITING"} for q in QUERIES}})
+    save = lambda: r2.put_json(s3, state, state_key) if s3 else dump(state, local_state)
     if check_window(state):
         print(f"new-species window is now {FIRST_YEAR} onwards; names and GBIF downloads start again")
         save()
@@ -315,8 +328,9 @@ def run(publish, force=False, minutes=None):
 
     # 1. Names (once a week).
     if "names" not in state:
-        names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3)
-                      + zsi_discoveries.names(plain, s3, FIRST_YEAR))
+        left = lambda: None if deadline is None else max(0, (deadline - time.monotonic()) / 60)
+        names = merge(plazi_names(plain, state.setdefault("plazi", {}), save) + bsi_names(plain, s3, left())
+                      + zsi_discoveries.names(plain, s3, FIRST_YEAR, left()))
         state["names"] = names
         state["names_at"] = now()
         state.pop("plazi", None)
@@ -384,7 +398,7 @@ def run(publish, force=False, minutes=None):
         if s3:  # keep the matches done, also when the run stops or fails
             r2.put_json(s3, mcache, match_cache_key)
     if out is None:
-        print(f"time limit reached; {len(mcache)} names matched so far; the next run continues")
+        print(f"stopped (time limit or GBIF); {len(mcache)} names matched so far; the next run continues")
         return
 
     result = {"period": week, "built": now(), "snapshot": snapshot_run, "first_year": FIRST_YEAR,
@@ -408,6 +422,7 @@ def run(publish, force=False, minutes=None):
 
 
 def main():
+    util.on_sigterm()
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
     p.add_argument("--force", action="store_true", help="recompute this week from the downloads already made")

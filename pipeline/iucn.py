@@ -13,7 +13,6 @@ A later IUCN API route (env IUCN_TOKEN) only has to produce the same table; see 
 """
 
 import json
-import os
 import zipfile
 from pathlib import Path
 
@@ -120,8 +119,6 @@ def from_gbif(con, http, s3=None, cache=CACHE):
 
 
 def table(con, http, s3=None):
-    """Create table iucn. With IUCN_TOKEN set, an API route can be added here returning the same table;
-    until then the GBIF-hosted copy is used either way."""
-    if os.environ.get("IUCN_TOKEN"):
-        print("IUCN_TOKEN is set, but the API route is not built yet; using the Red List copy on GBIF")
+    """Create table iucn: categories and years from the Red List copy on GBIF (trends and ranges come from
+    pipeline/iucn_api.py)."""
     return from_gbif(con, http, s3)

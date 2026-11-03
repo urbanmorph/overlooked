@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 import pymupdf
+import requests
 
 from pipeline import util
 from pipeline.util import log
@@ -525,6 +526,18 @@ def fetch_edition(http, year, urls, s3=None):
     return best
 
 
+def cached_years(s3, r2_dir, folder: Path, stem):
+    """{year: []} for the editions already parsed, locally or in R2 (r2_dir/<stem><year>.json): the editions to
+    use when the source site cannot be reached."""
+    from pipeline import r2
+    names = [Path(k).name for k in r2.list_keys(s3, f"{r2_dir}/{stem}")] if s3 is not None else []
+    names += [p.name for p in folder.glob(f"{stem}*.json")]
+    return {int(m.group(1)): [] for n in names if (m := re.fullmatch(rf"{stem}(\d{{4}})\.json", n))}
+
+
+SITE_DOWN = (requests.RequestException, RuntimeError)   # a site not reached, or one that sent a page that is not a list
+
+
 def pdf_links(http, links):
     """{year: URL of the PDF a reader opens}: the larger file when a year has two, checked with HEAD
     (BSI answers a missing file with its home page). Kept in pdf_links.json; a year is checked again
@@ -555,11 +568,17 @@ def sync(http, s3=None, minutes=None):
     from pipeline import r2
     SRC.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + minutes * 60 if minutes is not None else None
-    links = listing(http)
     r2.restore(s3, "cache/bsi/pdf_links.json", SRC / "pdf_links.json")
-    pdfs = pdf_links(http, links)
-    if s3 is not None:
-        r2.sync_file(s3, SRC / "pdf_links.json", "cache/bsi/pdf_links.json", immutable=False)
+    try:
+        links = listing(http)
+        pdfs = pdf_links(http, links)
+        if s3 is not None:
+            r2.sync_file(s3, SRC / "pdf_links.json", "cache/bsi/pdf_links.json", immutable=False)
+    except SITE_DOWN as e:
+        log(f"BSI's site not reached ({e}); using the editions already parsed")
+        links = cached_years(s3, "cache/bsi", SRC, "plant_discoveries_")
+        f = SRC / "pdf_links.json"
+        pdfs = {int(y): u for y, u in json.loads(f.read_text()).items()} if f.exists() else {}
     out = {}
     for year in sorted(y for y in links if y >= FIRST_YEAR):
         f = cache_file(year)
@@ -568,7 +587,11 @@ def sync(http, s3=None, minutes=None):
             if obj is not None:
                 f.write_text(json.dumps(obj, ensure_ascii=False))
         if not f.exists():
-            pdf = fetch_edition(http, year, links[year], s3)
+            try:
+                pdf = fetch_edition(http, year, links[year], s3)
+            except SITE_DOWN as e:
+                log(f"{year}: PDF not downloaded ({e}); kept for the next run")
+                continue
             if pdf is None:
                 log(f"{year}: no PDF could be downloaded; kept for the next run")
                 continue

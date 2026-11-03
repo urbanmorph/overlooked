@@ -29,6 +29,7 @@ EXCLUDED = ROOT / "pipeline" / "ref" / "excluded_datasets.csv"
 EXCLUDED_UNLOCATED = ROOT / "pipeline" / "ref" / "excluded_unlocated.csv"
 # DNA sequences: kept, but query A also keeps the latest year without them.
 DNA_DATASET = "d8cd16ba-bb74-4420-821e-083f2bac17c2"
+COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"   # Catalogue of Life eXtended Release, as a GBIF checklist
 RAW = ROOT / "data" / "raw"
 API = "https://api.gbif.org/v1/occurrence/download"
 

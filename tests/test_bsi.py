@@ -429,3 +429,20 @@ def test_sync_links_each_entry_to_its_editions_pdf(tmp_path, monkeypatch):
     assert got[2023][0]["link"] == "p23"
     assert got[2024][0]["link"] == bsi.LISTING                       # no PDF: BSI's listing page
     assert "link" not in json.loads(bsi.cache_file(2023).read_text())[0]   # the parsed cache stays as it was
+
+
+def test_sync_uses_the_editions_already_parsed_when_bsi_is_down(tmp_path, monkeypatch):
+    """BSI's site down for a week: the editions parsed before (in R2) still give the names; no failure."""
+    import json
+
+    import requests
+
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(bsi, "SRC", tmp_path)
+    s3 = FakeS3()
+    s3.store["cache/bsi/plant_discoveries_2022.json"] = json.dumps([{"name": "Aus bus", "year": "2022"}]).encode()
+    s3.store["cache/bsi/pdf_links.json"] = b'{"2022": "https://bsi.gov.in/a.pdf"}'
+    down = type("Down", (), {"get": lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("down")),
+                             "head": lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("down"))})()
+    assert bsi.sync(down, s3) == {2022: [{"name": "Aus bus", "year": "2022", "link": "https://bsi.gov.in/a.pdf"}]}

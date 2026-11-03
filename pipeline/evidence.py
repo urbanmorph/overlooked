@@ -27,13 +27,13 @@ import time
 from datetime import date
 from pathlib import Path
 
+from pipeline.gbif import COL_XR
+from pipeline.gbif import DNA_DATASET as IBOL  # International Barcode of Life (iBOL)
 from pipeline.util import log, period
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "evidence"
 R2_DIR = "cache/evidence/"
-COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"        # Catalogue of Life eXtended Release, as a GBIF checklist
-IBOL = "d8cd16ba-bb74-4420-821e-083f2bac17c2"          # International Barcode of Life project (iBOL) on GBIF
 SEARCH = "https://api.gbif.org/v1/occurrence/search"
 BOLD = "https://portal.boldsystems.org/api/summary"
 SPARQL = "https://query.wikidata.org/sparql"

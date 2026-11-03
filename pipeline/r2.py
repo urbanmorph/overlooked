@@ -37,13 +37,7 @@ def bucket():
 
 
 def exists(s3, key):
-    try:
-        s3.head_object(Bucket=bucket(), Key=key)
-        return True
-    except ClientError as e:
-        if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
-            return False
-        raise
+    return head(s3, key) is not None
 
 
 def get_json(s3, key):
@@ -55,13 +49,29 @@ def get_json(s3, key):
         raise
 
 
+def download(s3, key, dest: Path):
+    """Download key to dest through a .part file, renamed when complete: a cut download is never used."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_name(dest.name + ".part")
+    s3.download_file(bucket(), key, str(part))
+    part.replace(dest)
+
+
 def restore(s3, key, dest: Path):
     """Download key to dest when dest is absent and R2 holds it. True when it downloaded."""
     if dest.exists() or s3 is None or not exists(s3, key):
         return False
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    s3.download_file(bucket(), key, str(dest))
+    download(s3, key, dest)
     return True
+
+
+def fetch(s3, key, dest: Path):
+    """An input file R2 holds, kept in step: downloaded when dest is missing or R2's sha256 differs. Returns dest,
+    the local copy when R2 has none (or without s3), or None when neither has it."""
+    meta = head(s3, key) if s3 else None
+    if meta is not None and (not dest.exists() or (meta.get("sha256") and meta["sha256"] != sha256(dest))):
+        download(s3, key, dest)
+    return dest if dest.exists() else None
 
 
 def put_json(s3, obj, key):
@@ -77,13 +87,18 @@ def sha256(path: Path):
     return h.hexdigest()
 
 
-def remote_sha256(s3, key):
+def head(s3, key):
+    """An object's metadata ({} when it has none), or None when R2 does not hold it."""
     try:
-        return s3.head_object(Bucket=bucket(), Key=key).get("Metadata", {}).get("sha256")
+        return s3.head_object(Bucket=bucket(), Key=key).get("Metadata", {})
     except ClientError as e:
         if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
             return None
         raise
+
+
+def remote_sha256(s3, key):
+    return (head(s3, key) or {}).get("sha256")
 
 
 def sync_file(s3, path: Path, key, immutable=True):

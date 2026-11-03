@@ -128,15 +128,6 @@ def check_all(r2_client=None):
     return report
 
 
-def changed(report, previous, name):
-    """True if a source's fingerprint differs from the previous check (or there was none)."""
-    if not previous or name not in previous.get("sources", {}):
-        return True
-    a = report["sources"].get(name, {}).get("fingerprint") or {}
-    b = previous["sources"][name].get("fingerprint") or {}
-    return not a or a != b
-
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out")

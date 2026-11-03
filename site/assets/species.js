@@ -2,11 +2,11 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError } from './common.js?v=4d14881075';
-import { drawMap } from './map.js?v=f2f326cacb';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref } from './common.js?v=1c94e7a9ed';
+import { drawMap } from './map.js?v=997e706ef7';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=5584a50f2e';
-import { KINDS, VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=4ba390ee6e';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=0e46bd3169';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=f8e49b67a9';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -127,8 +127,7 @@ function relativesSVG(R, key, since) {
 try {
   const key = new URLSearchParams(location.search).get('key');
   if (!key) throw new Error('no species key in the address');
-  const latest = await getJSON('layers/master/latest.json');
-  const snap = await snapshot();
+  const [latest, snap] = await Promise.all([getJSON('layers/master/latest.json'), snapshot()]);
   const shard = shardOf(key);
   const [S, part, snapSummary, boundaries, gbif, web, pics] = await Promise.all([
     getJSON(latest.base + 'summary.json'), getJSON(`${latest.base}sp/${shard}.json`),
@@ -209,7 +208,7 @@ try {
   $('#where').textContent = nObs ? `Open records in ${fmt(nObs)} state${nObs === 1 ? '' : 's'}${nDist ? `; GBIF records placed in ${fmt(nDist)} district${nDist === 1 ? '' : 's'}` : ''}.`
     : 'No open record with a state yet.';
   const waitList = states.filter(s => s.wait).sort((a, b) => b.wait - a.wait).slice(0, 8);
-  $('#waiting').innerHTML = waitList.length && taxon ? `Observations that wait for a name: ${waitList.map(s => `<a href="${identify(S.waiting.places[s.code] ?? S.waiting.places.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}. Help name them on iNaturalist.` : '';
+  $('#waiting').innerHTML = waitList.length && taxon ? `Observations that wait for a name: ${waitList.map(s => `<a href="${identify(S.waiting?.places?.[s.code] ?? S.waiting?.places?.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}. Help name them on iNaturalist.` : '';
 
   // The experimental shortlist (/shortlist): observations that wait for a name where a model suggests this species.
   getJSON('layers/shortlist/latest.json')
@@ -304,16 +303,16 @@ try {
 ${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != null ? `
       <dt>Papers</dt><dd>${papers ? `${fmt(papers)} in the Bibliography of South Asian Ornithology${papersLatest ? `, latest ${papersLatest}` : ''}` : '<span class="muted">None in the Bibliography of South Asian Ornithology</span>'} <span class="muted">· <a href="https://southasiaornith.in">A. Pittie</a></span></dd>` : ''}
       <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>${iucnTrend ? ` <span class="muted">· population ${esc(iucnTrend.toLowerCase())}</span>` : ''}${iucnYear
-        ? ` <span class="muted">· assessed in ${iucnYear}${iucnDoi ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
+        ? ` <span class="muted">· assessed in ${esc(iucnYear)}${safeHref(iucnDoi) ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
     </dl>
-    ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${paper[5]}`}: <a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>${paper[1] ? ` (${esc(paper[1])})` : ''}.
-      ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${paper[4]})` : ''}.` : ''}</p>` : ''}
+    ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${esc(paper[5])}`}: ${safeHref(paper[2]) ? `<a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>` : esc(paper[0].join(', '))}${paper[1] ? ` (${esc(paper[1])})` : ''}.
+      ${AFTER[paper[3]] ? `${esc(AFTER[paper[3]](paper[5]))}${paper[3] === 'recorded' && paper[4] ? ` (latest ${esc(paper[4])})` : ''}.` : ''}</p>` : ''}
     <div class="note" style="margin:12px 0 4px">Sources</div><div>${chips(sources, S.sources)}</div>
     <div class="note" style="margin:12px 0 4px">Labels</div><div>${chips(labels, S.labels.map(l => l.name))}</div>
     <div class="sp-wait" id="next"></div>`;
   // Next step: what a person can do for this species, and where. GBIF links fill in when GBIF gives its key.
   const showNext = gbifKey => {
-    const steps = nextSteps({ status, iucn: cat, codes, wait: waitIndia, identify: taxon ? identify(S.waiting.places.india) : null,
+    const steps = nextSteps({ status, iucn: cat, codes, wait: waitIndia, identify: taxon ? identify(S.waiting?.places?.india) : null,
       gbifKey, name, paper: paper?.[2] });
     $('#next').hidden = !steps.length;
     $('#next').innerHTML = `<div class="note" style="margin:0 0 4px">Next step</div><ol class="next-steps">${steps.map(s => `<li>${esc(s.text)}${s.links.length ? `<br>${s.links.map(l =>

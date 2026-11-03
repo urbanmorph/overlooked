@@ -141,3 +141,35 @@ def test_a_built_run_records_its_summary_without_the_dropped_quiet_count(tmp_pat
     run.finish(None, state, tmp_path, manifest, summary, "b", tmp_path / "b", publish=False)
     saved = json.loads((tmp_path / "2026-10-26.json").read_text())
     assert saved["status"] == "built" and saved["summary"] == {"species": 9, "records": 20, "districts": 3, "ledger_rows": 12}
+
+
+def test_dump_replaces_a_file_whole(tmp_path):
+    """util.dump writes through a .part file, so a run stopped mid-write leaves the old file, never half a file."""
+    from pipeline.util import dump
+    p = tmp_path / "a" / "b.json"
+    dump({"x": 1}, p)
+    dump({"x": [2, "é"]}, p)
+    assert p.read_text() == '{"x":[2,"é"]}' and not list(p.parent.glob("*.part"))
+
+
+def test_a_stop_signal_runs_the_finally_blocks_that_save_the_caches():
+    """GitHub cancels a job with SIGTERM, which skips finally blocks unless it becomes an exit."""
+    import os
+    import signal
+
+    import pytest
+
+    from pipeline.util import on_sigterm
+    saved, before = [], signal.getsignal(signal.SIGTERM)
+    try:
+        on_sigterm()
+        with pytest.raises(SystemExit) as stop:
+            try:
+                os.kill(os.getpid(), signal.SIGTERM)
+                import time
+                time.sleep(1)
+            finally:
+                saved.append("cache")
+        assert stop.value.code == 143 and saved == ["cache"]
+    finally:
+        signal.signal(signal.SIGTERM, before)

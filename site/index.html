@@ -10,12 +10,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=798c6275a6">
+<link rel="stylesheet" href="/assets/style.css?v=9283d5d826">
 <!-- /part:head -->
-<script>window.early = Object.fromEntries(['layers/master/latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
-<link rel="modulepreload" href="/assets/common.js?v=4d14881075">
-<link rel="modulepreload" href="/assets/map.js?v=f2f326cacb">
-<script type="module" src="/assets/explore.js?v=f6c3ecab34"></script>
+<script>window.early = Object.fromEntries(['layers/master/latest.json', 'latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
+<link rel="modulepreload" href="/assets/common.js?v=1c94e7a9ed">
+<link rel="modulepreload" href="/assets/map.js?v=997e706ef7">
+<script type="module" src="/assets/explore.js?v=657698e209"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -127,7 +127,7 @@
     <div class="bar-head">
       <h2 id="list-h" style="font-size:20px">Species</h2>
       <span class="muted" id="list-sub"></span>
-      <div class="seg" id="list-mode" role="group" aria-label="What to list" hidden>
+      <div class="segbtns" id="list-mode" role="group" aria-label="What to list" hidden>
         <span class="muted seg-label">Wait for a name:</span>
         <button type="button" class="b" data-list="wait" aria-pressed="true">Named to species</button>
         <button type="button" class="b" data-list="genus" aria-pressed="false">Named to genus only</button>

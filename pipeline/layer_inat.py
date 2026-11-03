@@ -17,7 +17,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline import inat
+from pipeline import inat, util
 from pipeline.util import period
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +52,7 @@ def sync_cache(s3, direction):
 
 
 def main():
+    util.on_sigterm()
     p = argparse.ArgumentParser()
     p.add_argument("--publish", action="store_true")
     p.add_argument("--budget", type=int, default=9000)
@@ -61,6 +62,7 @@ def main():
     s3 = None
     if a.publish:
         from dotenv import load_dotenv
+
         from pipeline import r2
         load_dotenv(ROOT / ".env", override=True)  # local runs; in Actions the secrets are set directly
         s3 = r2.client()

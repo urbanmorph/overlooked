@@ -439,7 +439,11 @@ def sync(http, s3=None, reparse=False, minutes=None):
     With `minutes`, no new edition is started after that time; the rest wait for the next run."""
     from pipeline import r2
     SRC.mkdir(parents=True, exist_ok=True)
-    links = listing(http)
+    try:
+        links = listing(http)
+    except bsi.SITE_DOWN as e:
+        log(f"ZSI's site not reached ({e}); using the editions already parsed")
+        links = bsi.cached_years(s3, R2_DIR, SRC, "animal_discoveries_")
     deadline = time.monotonic() + minutes * 60 if minutes is not None else None
     out = {}
     for year in sorted(y for y in links if y >= FIRST_YEAR):
@@ -453,7 +457,11 @@ def sync(http, s3=None, reparse=False, minutes=None):
             if deadline is not None and time.monotonic() > deadline:
                 log(f"{year}: time limit reached; kept for the next run")
                 continue
-            pdf = fetch_pdf(http, links[year], year, s3)
+            try:
+                pdf = fetch_pdf(http, links[year], year, s3) if links[year] else None
+            except bsi.SITE_DOWN as e:
+                log(f"{year}: PDF not downloaded ({e}); kept for the next run")
+                continue
             if pdf is None:
                 log(f"{year}: ZSI did not send a PDF; kept for the next run")
                 continue
@@ -468,10 +476,10 @@ def sync(http, s3=None, reparse=False, minutes=None):
     return out
 
 
-def names(http, s3, first_year):
+def names(http, s3, first_year, minutes=None):
     """Rows for the new-species layer: species new to science (not subspecies), from first_year."""
     out = []
-    for year, entries in sync(http, s3).items():
+    for year, entries in sync(http, s3, minutes=minutes).items():
         if year < first_year:
             continue
         for e in entries:

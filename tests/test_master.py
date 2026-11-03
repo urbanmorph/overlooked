@@ -1086,3 +1086,33 @@ def test_picture_files_give_the_photo_credit_and_common_name_of_species_on_the_l
     assert part["K1"] == ["https://p/1.jpg", "https://inat/1", "Ann", "CC BY-NC", "iNaturalist", "Common aus"]
     every = {k for f in (out / "pic").glob("*.json") for k in json.loads(f.read_text())}
     assert every == {"K1"}                                       # ZZ is not on the list
+
+
+def test_the_fingerprint_changes_with_the_code_of_any_module_the_build_uses(tmp_path):
+    """A change to name_review.py (or any pipeline module), not only to master.py, means a new build."""
+    code = tmp_path / "mod.py"
+    code.write_text("A = 1")
+    before = master.fingerprint({}, {}, {}, code=[code])
+    assert master.fingerprint({}, {}, {}, code=[code]) == before
+    code.write_text("A = 2")
+    assert master.fingerprint({}, {}, {}, code=[code]) != before
+    assert set(master.CODE) >= {master.ROOT / "pipeline" / "master.py", master.ROOT / "pipeline" / "name_review.py"}
+
+
+def test_a_layer_input_is_the_newer_of_the_local_copy_and_r2s(tmp_path, monkeypatch):
+    """An old local layers/inat/<week>/ must not hide the newer one R2 publishes; a local one not yet published wins."""
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(master, "LAYERS", tmp_path)
+    s3 = FakeS3()
+    s3.store["layers/inat/latest.json"] = json.dumps({"period": "2026-10-26", "counts": "layers/inat/2026-10-26/c.json"}).encode()
+    s3.store["layers/inat/2026-10-26/c.json"] = b'{"from": "r2"}'
+    old = tmp_path / "inat" / "2026-10-19" / "c.json"
+    old.parent.mkdir(parents=True)
+    old.write_text('{"from": "local"}')
+    assert master.layer_input(s3, "inat", "counts", "c.json") == ({"from": "r2"}, "2026-10-26")
+    assert master.layer_input(None, "inat", "counts", "c.json") == ({"from": "local"}, "2026-10-19")
+    new = tmp_path / "inat" / "2026-11-02" / "c.json"
+    new.parent.mkdir(parents=True)
+    new.write_text('{"from": "new"}')
+    assert master.layer_input(s3, "inat", "counts", "c.json") == ({"from": "new"}, "2026-11-02")

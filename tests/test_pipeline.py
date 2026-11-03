@@ -91,13 +91,6 @@ def test_inputs_fingerprint_is_stable_and_sensitive():
     assert inputs_fingerprint(state, bnd) != inputs_fingerprint(state, {"sha256": "y" * 64})
 
 
-def test_health_changed():
-    from pipeline.health import changed
-    now = {"sources": {"kew": {"fingerprint": {"ETag": "1"}}}}
-    assert changed(now, None, "kew")
-    assert not changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "1"}}}}, "kew")
-    assert changed(now, {"sources": {"kew": {"fingerprint": {"ETag": "0"}}}}, "kew")
-
 
 def test_unresolved_records_placed_by_group_and_rank(districts, tmp_path):
     from pipeline import unresolved

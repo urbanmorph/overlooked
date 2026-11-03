@@ -30,7 +30,7 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import places
+from pipeline import places, util
 from pipeline.util import first
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -144,6 +144,7 @@ def refresh(http, s3, cache: Path, districts_path, deadline=None, log=print):
 
 
 def main():
+    util.on_sigterm()
     from pipeline import districts, health
     p = argparse.ArgumentParser()
     p.add_argument("--minutes", type=float, help="stop the download after this many minutes; the next run continues")

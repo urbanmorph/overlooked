@@ -60,7 +60,6 @@ h2 { margin: 0; font-size: 22px; font-weight: 600 }
 .kpi { display: block; text-decoration: none; color: var(--ink); padding: 20px }
 .kpi b { display: block; font: 500 clamp(26px, 2.6vw, 36px)/1.1 var(--mono); overflow-wrap: anywhere } .kpi span { display: block; margin-top: 8px; font-size: 15px; line-height: 1.45 }
 .kpi small { font-size: 18px; color: var(--muted) }
-.snap { font-size: 14px; line-height: 1.7 } .snap b { display: block; margin-bottom: 4px }
 section { margin-top: 32px }
 
 /* Map */
@@ -76,7 +75,6 @@ section { margin-top: 32px }
 .legend .ramp { display: flex } .legend .ramp i { width: 40px; height: 12px } .legend .ramp i + i { margin-left: 1px }
 .legend .lbl { display: flex; gap: 6px; align-items: center } .legend .sw { width: 12px; height: 12px; border: 1px solid #9AA49E }
 .loading { color: var(--muted); padding: 40px 0; text-align: center }
-.pick { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-2) } .pick button.b { justify-content: center }
 
 /* Forms */
 label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); min-width: 0; max-width: 100% }
@@ -86,26 +84,21 @@ select, input[type=search] { font: inherit; font-size: 15px; color: var(--ink); 
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; align-items: end }
 button.b, a.b { font: inherit; font-size: 14px; padding: 10px 14px; min-height: 44px; border: 1px solid var(--field); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center }
 button.b:hover { background: var(--ground) } button.b:disabled { opacity: .45; cursor: default }
-.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 44px }
 
 /* Tables */
 .tablebox { overflow-x: auto }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
 th { font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--field); white-space: nowrap }
-th button { font: inherit; color: inherit; background: none; border: 0; padding: 12px 0; margin: -12px 0; cursor: pointer }
-th[aria-sort=ascending] button::after { content: " ↑" } th[aria-sort=descending] button::after { content: " ↓" }
 td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); font-size: 15px; vertical-align: top }
 td.n, th.n { text-align: right }
-td.sp a { font-style: italic }
 .muted { color: var(--muted) }
 .bar { height: 10px; background: #EEF0ED; border-radius: 2px } .bar i { display: block; height: 10px; border-radius: 2px; background: var(--q2) }
 dl.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 15px }
-dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) } dl.stats dd.q { color: var(--quiet); font-weight: 500 }
+dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) }
 .bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 18px 6px }
 .pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; font-size: 14px; color: var(--muted) }
 
 /* Modules, act, footer */
-.mod.later { border-style: dashed; background: transparent }
 .act { background: var(--ink); color: #F5F6F3; border-radius: 12px; padding: 28px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between }
 .act p { margin: 8px 0 0; color: #C9D1CC } .act .links { display: flex; flex-wrap: wrap; gap: 10px }
 .act a { color: #F5F6F3; text-decoration: none; padding: 12px 16px; border: 1px solid #6C7A72; border-radius: 8px; font-size: 15px }
@@ -133,17 +126,16 @@ ul.plain { margin: 12px 0 0; padding-left: 20px; font-size: 15px; line-height: 1
 ul.feed { list-style: none; margin: 0; padding: 0 }
 ul.feed li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--line-2) }
 ul.feed .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px } ul.feed .kind { font-size: 13px; font-weight: 600 }
-ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
-@media (max-width: 600px) { ul.feed li { grid-template-columns: 12px minmax(0, 1fr) } ul.feed .why { grid-column: 2; text-align: left; white-space: normal } }
+@media (max-width: 600px) { ul.feed li { grid-template-columns: 12px minmax(0, 1fr) } }
 .hist { margin-top: 18px; height: 200px; display: flex; gap: 4px; align-items: stretch }
 .hist .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px }
 .hist .stack { flex: 1; display: flex; flex-direction: column-reverse; border-bottom: 1px solid #9AA49E }
-.hist .stack i { display: block; width: 100% } .hist .col.old .stack { background: #FBF3EC }
+.hist .stack i { display: block; width: 100% }
 .hist .col span { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; align-self: center }
 /* Space kept for content that arrives with the data, so the page does not move (CLS). */
-#snap { min-height: 160px } #group { width: 15em } #runline { min-height: 1.5em } #sbars { min-height: 480px } #ybars { min-height: 300px }
-#classif { min-height: 1.55em } #tags { min-height: 32px } #latest { min-height: 248px } #hlegend { min-height: 20px } #histnote { min-height: 1.5em }
-@media (max-width: 600px) { #runline, #crumbs { min-height: 3em } #histnote { min-height: 4.5em } #classif { min-height: 3.1em } #hlegend { min-height: 47px } }
+#runline { min-height: 1.5em }
+#hlegend { min-height: 20px } #histnote { min-height: 1.5em }
+@media (max-width: 600px) { #runline, #crumbs { min-height: 3em } #histnote { min-height: 4.5em } #hlegend { min-height: 47px } }
 .badge { display: inline-block; font-size: 13px; font-weight: 500; padding: 3px 8px; border-radius: 4px; white-space: nowrap }
 .st-ok { background: #DCEEE8; color: #063F33 } .st-paper { background: #EEF0ED; color: #2D3833 } .st-none { background: #FBEBDD; color: #7A3208 }
 
@@ -168,7 +160,7 @@ ul.feed .why { text-align: right; white-space: nowrap; margin: 0 }
 h2 .g-term { vertical-align: 3px; margin-left: 6px }
 .g-q { font-size: 15px; color: var(--ink-2) }
 .g-v b { font: 500 18px var(--mono) } .g-share { font-size: 14px; color: var(--ink-2) }
-.g-note { display: block; font-size: 13px; color: var(--muted) } .g-not { font-size: 14px; color: var(--muted) }
+.g-not { font-size: 14px; color: var(--muted) }
 .meter { display: block; height: 6px; margin-top: 6px; background: var(--zero); border-radius: 3px; overflow: hidden }
 .meter i { display: block; height: 100%; background: var(--k4) }
 @media (max-width: 760px) { .gaps { padding-inline: 16px } .gaps li { grid-template-columns: 1fr } }
@@ -205,13 +197,13 @@ h2 .g-term { vertical-align: 3px; margin-left: 6px }
 .hits button:hover, .hits button:focus { background: var(--ground) } .hits .muted { font-size: 12px } .hits .none { padding: 12px 14px; font-size: 14px }
 .filters-panel fieldset { border: 0; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
 .filters-panel legend { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; width: 100% }
-.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--field); border-radius: 18px; font-size: 13px; cursor: pointer; background: var(--surface) }
+.fchip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--field); border-radius: 18px; font-size: 13px; cursor: pointer; background: var(--surface) }
 .yr { display: inline-flex; align-items: center; gap: 6px; font-size: 14px }
 .yr input { font: inherit; width: 6.5em; min-height: 36px; padding: 0 8px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); color: var(--ink) }
 #list tr.picked td { background: var(--chip) }
 #fyears .note { flex: 1 1 100%; margin: 2px 0 0 }
 .yr-quick { display: flex; flex-wrap: wrap; gap: 6px }
-.chip input { width: 16px; height: 16px; margin: 0 } .chip:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink) }
+.fchip input { width: 16px; height: 16px; margin: 0 } .fchip:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink) }
 .ex-main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start }
 .cards { flex: 1 1 290px; min-width: 0; display: flex; flex-direction: column; gap: 8px }
 .cards-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 13px }
@@ -234,8 +226,8 @@ h2 .g-term { vertical-align: 3px; margin-left: 6px }
 .i-NT { background: #DCEEE8; color: #063F33 } .i-LC { background: #E9ECE8; color: #3E4A44 } .i-DD { background: #E3ECF7; color: #173A75 }
 
 /* Wait for a name: list mode, help text, priority tags and the link to iNaturalist */
-.seg { display: flex; gap: 4px; margin-left: auto }
-.seg .b[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+.segbtns { display: flex; gap: 4px; margin-left: auto }
+.segbtns .b[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
 .pwait { margin: 6px 0 0; font-size: 14px; color: var(--muted) } .pwait b { color: var(--ink) }
 .wait-help { padding-top: 0; margin: 0; font-size: 14px }
 .why { display: inline-block; margin: 0 4px 2px 0; padding: 1px 6px; border-radius: 4px; font-size: 12px; background: var(--q0); color: var(--q4) }
@@ -248,7 +240,7 @@ a.idlink { font-weight: 500; overflow-wrap: anywhere }
   .waitlist .wm { display: block; margin-top: 6px; font-size: 14px; line-height: 1.8 }
 }
 @media (max-width: 600px) { .tiles3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px } .tiles3 .kpi { padding: 12px } .tiles3 .kpi span { font-size: 13px } }
-.seg { flex-wrap: wrap; align-items: center } .seg-label { font-size: 13px; margin-right: 2px }
+.segbtns { flex-wrap: wrap; align-items: center } .seg-label { font-size: 13px; margin-right: 2px }
 .sp-status { flex: 1 1 300px; min-width: 0; align-self: stretch }
 .sp-wait { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line-2) } .sp-wait .idlink { display: inline-block; margin-top: 4px }
 /* Records to fix */
@@ -274,7 +266,6 @@ a.idlink { font-weight: 500; overflow-wrap: anywhere }
 @media (max-width: 600px) { #ginfo { min-height: 6em } }
 
 /* Weekly trend (changes.html): tiles that pick the measure, and the chart */
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 button.kpi { text-align: left; font: inherit; cursor: pointer; width: 100% } button.kpi:hover { border-color: var(--field) }
 button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent) }
 .kpi .delta { margin-top: 4px; font-size: 14px; color: var(--muted) } .kpi .spark { display: block; margin-top: 10px; width: 100%; height: 28px }

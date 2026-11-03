@@ -79,6 +79,7 @@ test('page view: no referrer row for direct visits or internal navigation', () =
 test('front page URL parameters record view, group and state selections', () => {
   const p = observe(req('/?view=iucn&group=birds&state=29'), html());
   assert.ok(has(p, 'view', 'iucn'));
+  for (const v of ['observed', 'recent', 'waiting', 'identified']) assert.ok(has(observe(req(`/?view=${v}`), html()), 'view', v), v);
   assert.ok(has(p, 'group', 'birds'));
   assert.ok(has(p, 'state', '29'));
 });

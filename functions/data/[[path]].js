@@ -33,7 +33,10 @@ export async function onRequest({ request, env, params }) {
     return new Response(null, { status: 200, headers });
   }
   if (obj.range && request.headers.has('Range')) {
-    const { offset = 0, length = obj.size - offset } = obj.range;
+    // R2 gives {offset, length} or {suffix} (the last N bytes, as "bytes=-N" asks).
+    const r = obj.range;
+    const offset = 'suffix' in r ? obj.size - r.suffix : (r.offset ?? 0);
+    const length = 'suffix' in r ? r.suffix : (r.length ?? obj.size - offset);
     headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${obj.size}`);
     headers.set('Content-Length', String(length));
     return new Response(obj.body, { status: 206, headers });

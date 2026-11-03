@@ -5,13 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches } from './common.js?v=4d14881075';
-import { drawMap, legendHTML } from './map.js?v=f2f326cacb';
-import { signed } from './trend.js?v=d7fa549f39';
-import { knowledge, segmentChanges } from './funnel.js?v=e59674b8d4';
-import { redlist } from './redlist.js?v=61f6e0e999';
-import { gaps, gapAbsent } from './gaps.js?v=7d621e0b4e';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=4ba390ee6e';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches } from './common.js?v=1c94e7a9ed';
+import { drawMap, legendHTML } from './map.js?v=997e706ef7';
+import { signed } from './trend.js?v=8e1b375041';
+import { knowledge, segmentChanges } from './funnel.js?v=10986e8305';
+import { redlist } from './redlist.js?v=61d95560b3';
+import { gaps, gapAbsent } from './gaps.js?v=2f4b990372';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=f8e49b67a9';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -39,11 +39,10 @@ function parseYears(v) {
 }
 
 try {
-  const latest = await getJSON('layers/master/latest.json');
+  const [latest, snap] = await Promise.all([getJSON('layers/master/latest.json'), snapshot()]);
   const base = latest.base;
   let H = null;   // history.json: the change of each part of the knowledge bar since the last list
   const history_ = getJSON(base + 'history.json').then(h => { H = h; }).catch(() => {});
-  const snap = await snapshot();
   const [S, boundaries] = await Promise.all([getJSON(base + 'summary.json'), snap.boundaries()]);
   const stIndex = new Map(S.states.map((s, i) => [String(s.code), i]));
   const stName = new Map(S.states.map(s => [String(s.code), s.name]));
@@ -413,8 +412,8 @@ try {
     $('#list-h').textContent = mode === 'genus' ? 'Genera' : mode === 'coarse' ? 'Groups' : 'Species';
     $('#list-head').innerHTML = { wait: HEAD_WAIT, genus: HEAD_GENUS, coarse: HEAD_COARSE }[mode] || HEAD_ALL;
     $('#list').closest('table').classList.toggle('waitlist', wait);
-    if (!c) { $('#list').innerHTML = '<tr><td colspan="8" class="muted">Choose a group to list its species.</td></tr>'; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
-    $('#list').innerHTML = '<tr><td colspan="8" class="muted">Loading…</td></tr>';
+    if (!c) { $('#list').innerHTML = `<tr><td colspan="${cols()}" class="muted">Choose a group to list its species.</td></tr>`; $('#list-sub').textContent = ''; $('#more').hidden = true; return; }
+    $('#list').innerHTML = `<tr><td colspan="${cols()}" class="muted">Loading…</td></tr>`;
     if (mode === 'wait') return paintWait(c, my);
     if (mode === 'genus') return paintGenus(c, my);
     if (mode === 'coarse') return paintCoarse(c);
@@ -437,12 +436,19 @@ try {
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
         <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
         <td>${iucnBadge(r[4])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
-      || '<tr><td colspan="8" class="muted">No species match.</td></tr>';
+      || `<tr><td colspan="${cols()}" class="muted">No species match.</td></tr>`;
     $('#more').hidden = rows.length <= shown;
   }
 
+  const cols = () => $('#list-head').querySelectorAll('th').length;   // a message row spans the list's columns
+  // A group file that cannot load says so in the list, and the next choice asks for it again (getJSON).
+  const paint = () => draw().catch(err => {
+    console.error(err);
+    $('#psub').textContent = '';
+    $('#list').innerHTML = `<tr><td colspan="${cols()}" class="muted">Some data could not load. Check the connection and choose again.</td></tr>`;
+  });
   let paintSeq = 0;
-  async function paint() {
+  async function draw() {
     saveURL();
     const my = ++paintSeq;
     if (filtered()) {
@@ -505,7 +511,7 @@ try {
     <span class="yr-quick">${[[2007, null, 'Since 2007'], [2000, null, 'Since 2000'], [null, 1900, 'Before 1900']].map(([f, t, l]) =>
       `<button type="button" class="b" data-from="${f ?? ''}" data-to="${t ?? ''}">${l}</button>`).join('')}</span></fieldset>`
     + fdefs.map(([k, title, opts]) => `<fieldset><legend>${esc(title)}</legend>${opts.map(([i, n]) =>
-    `<label class="chip"><input type="checkbox" data-f="${k}" value="${i}"><span>${esc(n)}</span></label>`).join('')}</fieldset>`).join('');
+    `<label class="fchip"><input type="checkbox" data-f="${k}" value="${i}"><span>${esc(n)}</span></label>`).join('')}</fieldset>`).join('');
   $('#fgroups').addEventListener('change', e => {
     const x = e.target; if (!x.dataset.f) return;
     const set = st.filters[x.dataset.f]; x.checked ? set.add(+x.value) : set.delete(+x.value);

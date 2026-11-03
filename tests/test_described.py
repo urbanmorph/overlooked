@@ -9,15 +9,19 @@ import duckdb
 from pipeline import described
 
 
-def test_year_of_takes_the_first_year_in_the_authorship():
-    assert described.year_of("Swinhoe, 1890") == 1890
-    assert described.year_of("(Fabricius, 1775)") == 1775          # original description, in a new genus
-    assert described.year_of("(Reitter, 1889) Smith, 1950") == 1889
-    assert described.year_of("Walker, [1866]") == 1866
-    assert described.year_of("L.") is None                          # botanical authorships rarely give a year
-    assert described.year_of("Kirby 1700") is None                  # before Linnaeus: not a description year
-    assert described.year_of(None) is None
-    assert described.year_of("Breme 2099") is None                  # a typo: a year still to come
+def year(text):
+    return duckdb.sql(f"SELECT {described.year_sql('$t')}", params={"t": text}).fetchall()[0][0]
+
+
+def test_the_year_is_the_first_year_in_the_authorship():
+    assert year("Swinhoe, 1890") == 1890
+    assert year("(Fabricius, 1775)") == 1775          # original description, in a new genus
+    assert year("(Reitter, 1889) Smith, 1950") == 1889
+    assert year("Walker, [1866]") == 1866
+    assert year("L.") is None                          # botanical authorships rarely give a year
+    assert year("Kirby 1700") is None                  # before Linnaeus: not a description year
+    assert year(None) is None
+    assert year("Breme 2099") is None                  # a typo: a year still to come
 
 
 def coldp(tmp_path):

@@ -27,6 +27,8 @@ from pathlib import Path
 
 import requests
 
+from pipeline import util
+
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://api.iucnredlist.org/api/v4/"
 CACHE = ROOT / "data" / "cache" / "iucn_api"
@@ -214,6 +216,7 @@ def master_path(s3, layers=ROOT / "data" / "layers" / "master", cache=CACHE):
 
 
 def main():
+    util.on_sigterm()
     import duckdb
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env", override=True)

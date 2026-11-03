@@ -14,6 +14,7 @@ from pathlib import Path
 import requests
 
 from pipeline import health
+from pipeline.util import dump
 
 ROOT = Path(__file__).resolve().parent.parent
 API = "https://api.inaturalist.org/v1"
@@ -78,14 +79,13 @@ def cached(name):
 
 
 def store(name, obj):
-    p = CACHE / name
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(obj, ensure_ascii=False))
+    dump(obj, CACHE / name)   # through a .part file: a stop mid-write keeps the last whole copy
 
 
 def state_names():
     """State and union territory names from the LGD boundary file."""
     import duckdb
+
     from pipeline import districts
     from pipeline.boundaries import title
     rows = duckdb.sql(f"SELECT DISTINCT stname, state_lgd FROM '{districts.PATH}' ORDER BY 1").fetchall()

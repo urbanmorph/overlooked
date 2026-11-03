@@ -266,7 +266,7 @@ def test_names_rows_for_the_new_species_layer(monkeypatch):
     link = "https://zsi.gov.in/x/2024.pdf"
     entry = dict(year=2024, kind="new_to_science", rank="species", name_check="ok", group="Diptera", family="",
                  states="GOA", link=link)
-    monkeypatch.setattr(zd, "sync", lambda http, s3=None: {2023: [dict(entry, name="Old one", year=2023)], 2024: [
+    monkeypatch.setattr(zd, "sync", lambda http, s3=None, minutes=None: {2023: [dict(entry, name="Old one", year=2023)], 2024: [
         dict(entry, name="Lasioptera sharma"),
         dict(entry, name="Acropora branchi", kind="new_record"),
         dict(entry, name="Batrachostomus moniliger roonwali", rank="infraspecific"),
@@ -274,3 +274,18 @@ def test_names_rows_for_the_new_species_layer(monkeypatch):
     ]})
     assert zd.names(None, None, 2024) == [{"name": "Lasioptera sharma", "year": 2024, "source": "ZSI Animal Discoveries",
                                            "journal": "", "state": "", "zsi_group": "Diptera", "link": link}]
+
+
+def test_sync_uses_the_editions_already_parsed_when_zsi_is_down(tmp_path, monkeypatch):
+    """ZSI's site down: the editions parsed before (in R2) still give the names; no failure."""
+    import json
+
+    import requests
+
+    from tests.r2_fake import FakeS3
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(zd, "SRC", tmp_path)
+    s3 = FakeS3()
+    s3.store["cache/zsi/discoveries/animal_discoveries_2015.json"] = json.dumps([{"name": "Aus bus"}]).encode()
+    down = type("Down", (), {"get": lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("down"))})()
+    assert zd.sync(down, s3) == {2015: [{"name": "Aus bus"}]}

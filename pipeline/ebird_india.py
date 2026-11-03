@@ -11,11 +11,11 @@ copy. One request a run, so no progress log.
 import json
 from pathlib import Path
 
+from pipeline.gbif import COL_XR
 from pipeline.util import log
 
 URL = "https://api.gbif.org/v1/occurrence/search"
 EBIRD = "4fa7b334-ce0d-4e88-aaae-2e0c138d049e"
-COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"
 FACET_LIMIT = 5000
 MIN_RECORDS = 10      # fewer: a vagrant, an escape or an error
 R2_KEY = "cache/ebird/india_species.json"
@@ -38,10 +38,7 @@ def refresh(http, s3, cache: Path):
         dest.write_text(json.dumps(dict(sorted(counts.items())), separators=(",", ":")))
     except Exception as e:  # noqa: BLE001 - any failure: use the copy in R2
         log(f"eBird India: GBIF not used ({e}); using the copy in R2")
-        if not s3 or not r2.exists(s3, R2_KEY):
-            return None
-        s3.download_file(r2.bucket(), R2_KEY, str(dest))
-        return dest
+        return r2.fetch(s3, R2_KEY, dest)
     log(f"eBird India: {len(counts):,} species")
     if s3:
         r2.sync_file(s3, dest, R2_KEY, immutable=False)

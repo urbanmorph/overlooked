@@ -5,7 +5,7 @@
 // Writes are best-effort: a metrics failure must never change or delay a response.
 
 const OWN_HOST = /(^|\.)overlooked-india\.pages\.dev$|^localhost$|^127\.0\.0\.1$/;
-const VIEWS = new Set(['observed', 'identified', 'iucn']);
+const VIEWS = new Set(['observed', 'recent', 'waiting', 'iucn', 'identified']);   // identified: old links (now waiting)
 const GROUP = /^[a-z]{1,16}$/;        // front page group keys: birds, insects, plants, ...
 const STATE = /^\d{1,3}$/;            // LGD state code
 const SPECIES = /^[A-Za-z0-9]{1,20}$/; // GBIF usage key or Catalogue of Life ID

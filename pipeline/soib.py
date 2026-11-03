@@ -38,7 +38,7 @@ def trends_sql(path):
 
 def refresh(http, s3, cache: Path):
     """The table, fetched from GitHub and kept in R2 (uploaded only when it changed). When GitHub cannot be reached:
-    R2's copy. None when there is neither."""
+    R2's copy, else the last local one. None when there is neither."""
     from pipeline import r2
     cache.mkdir(parents=True, exist_ok=True)
     dest = cache / Path(R2_KEY).name
@@ -48,10 +48,7 @@ def refresh(http, s3, cache: Path):
         dest.write_bytes(r.content)
     except Exception as e:  # noqa: BLE001 - any failure: use the copy in R2
         log(f"SoIB: {URL} not reached ({e}); using the copy in R2")
-        if not s3 or not r2.exists(s3, R2_KEY):
-            return None
-        s3.download_file(r2.bucket(), R2_KEY, str(dest))
-        return dest
+        return r2.fetch(s3, R2_KEY, dest)
     if s3:
         r2.sync_file(s3, dest, R2_KEY, immutable=False)
     return dest

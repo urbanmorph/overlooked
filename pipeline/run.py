@@ -33,6 +33,7 @@ from pipeline import (
     site_data,
     unlocated,
     unresolved,
+    util,
 )
 from pipeline.util import now, period
 
@@ -347,6 +348,7 @@ def finish(args, state, out, manifest, summary, bpath, bfile, publish):
 
 
 def main():
+    util.on_sigterm()
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("request")

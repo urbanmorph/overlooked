@@ -42,3 +42,42 @@ def test_a_new_query_text_downloads_again():
     assert all(d == {"status": "WAITING"} for d in state["downloads"].values())
     assert state["names"] == [1] and "done" not in state       # names stay; the match runs again
     assert ns.check_queries(state) is False
+
+
+class Status:
+    def __init__(self, code):
+        self.status_code, self.ok = code, code < 400
+
+    def raise_for_status(self):
+        import requests
+        if not self.ok:
+            raise requests.HTTPError(f"{self.status_code}", response=self)
+
+
+def test_a_gbif_error_is_not_read_as_no_match(monkeypatch):
+    """429 and 5xx raise (master.match_names tries again, then stops; the layer waits for the next run); a 400 for
+    a name GBIF cannot read is no match, not cached, asked again next run."""
+    import pytest
+    import requests
+    monkeypatch.setattr(ns.time, "sleep", lambda s: None)
+    for code in (429, 503):
+        http, cache = type("H", (), {"get": lambda self, *a, c=code, **k: Status(c)})(), {}
+        with pytest.raises(requests.HTTPError):
+            ns.gbif_match(http, "Aus bus", cache)
+        assert cache == {}
+    http, cache = type("H", (), {"get": lambda self, *a, **k: Status(400)})(), {}
+    assert ns.gbif_match(http, "Aus bus", cache) is None and cache == {}
+
+
+def test_match_all_stops_for_the_next_run_when_gbif_fails(monkeypatch):
+    import requests
+    con = duckdb.connect()
+    con.sql("CREATE TABLE y (specieskey VARCHAR, year INT, basisofrecord VARCHAR, n_records INT, sequence_only BOOL)")
+    con.sql("CREATE TABLE v (v_scientificname VARCHAR, year INT, basisofrecord VARCHAR, n_records INT, sequence_only BOOL)")
+    saved = []
+
+    def down(*a, **k):
+        raise requests.HTTPError("503")
+    monkeypatch.setattr(ns, "gbif_match", down)
+    state = {"names": [{"name": "Aus bus", "year": 2020, "sources": [], "journal": "", "state": "", "link": ""}]}
+    assert ns.match_all(con, None, state, {}, set(), {}, {}, None, lambda: saved.append(1)) is None and saved == [1]

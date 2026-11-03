@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { bit, tags, periodName, getJSON, nameMatches, plainName } from '../site/assets/common.js';
+import { bit, tags, periodName, getJSON, nameMatches, plainName, safeHref } from '../site/assets/common.js';
 
 test('bit reads masks wider than 32 bits', () => {
   assert.equal(bit(2 ** 40, 40), true);
@@ -31,14 +31,24 @@ test('getJSON uses a request the page started in its head (window.early), once, 
   assert.deepEqual(asked, ['/data/b.json']);
 });
 
+test('a failed request is not kept: the next getJSON asks again', async () => {
+  let n = 0;
+  globalThis.fetch = async () => (++n === 1 ? { ok: false, status: 503 } : { ok: true, json: async () => ({ n }) });
+  globalThis.early = {};
+  await assert.rejects(getJSON('c.json'), /503/);
+  assert.deepEqual(await getJSON('c.json'), { n: 2 });
+});
+
 test('pages start their first data request in the head, not with a preload link (WebKit fetches those twice)', () => {
   const dir = new URL('../site/', import.meta.url);
   for (const name of readdirSync(dir).filter(n => n.endsWith('.html'))) {
     assert.ok(!/rel="preload" href="\/data\//.test(readFileSync(new URL(name, dir), 'utf8')), name);
   }
   const early = name => readFileSync(new URL(name, dir), 'utf8').match(/window\.early = .*?\[(.*?)\]/)?.[1];
-  assert.equal(early('index.html'), "'layers/master/latest.json'");
-  assert.equal(early('fix.html'), "'latest.json'");
+  // Both pointers a page waits on start at once (the list's and the snapshot's), not one after the other.
+  assert.equal(early('index.html'), "'layers/master/latest.json', 'latest.json'");
+  assert.equal(early('species.html'), "'layers/master/latest.json', 'latest.json'");
+  assert.equal(early('fix.html'), "'latest.json', 'layers/master/latest.json'");
   assert.equal(early('shortlist.html'), "'layers/shortlist/latest.json', 'layers/master/latest.json'");
 });
 
@@ -55,4 +65,10 @@ test('a search row matches from the start of its Latin name, or of any word of i
 test('plainName: lower case, hyphens and runs of spaces as one space, no apostrophes', () => {
   assert.equal(plainName("  Sri Lanka Green-Pigeon "), 'sri lanka green pigeon');
   assert.equal(plainName("Pallas's"), 'pallass');
+});
+
+test('safeHref: a web address from a source, or nothing (a javascript: link never reaches an href)', () => {
+  assert.equal(safeHref('https://doi.org/10.1/x'), 'https://doi.org/10.1/x');
+  assert.equal(safeHref('http://a.org/'), 'http://a.org/');
+  for (const u of ['javascript:alert(1)', ' JAVASCRIPT:x', 'data:text/html,x', '', null, undefined]) assert.equal(safeHref(u), null);
 });

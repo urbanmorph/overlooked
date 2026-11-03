@@ -52,3 +52,23 @@ def test_list_and_delete_keys_under_a_prefix(files):
     assert r2.delete_keys(s3, keys[:3]) == 3
     assert r2.list_keys(s3, "k/") == keys[3:] and "other/x.json" in s3.store
     assert r2.delete_keys(s3, []) == 0
+
+
+def test_fetch_keeps_a_copy_in_step_with_r2_through_a_part_file(tmp_path, monkeypatch):
+    """r2.fetch (an input file R2 holds): downloaded when absent or when R2's sha256 differs, never left half
+    written (a .part file, renamed when complete); the local copy when R2 has none; None when neither has it."""
+    monkeypatch.setenv("R2_BUCKET", "b")
+    s3, dest = FakeS3(), tmp_path / "in" / "x.json"
+    assert r2.fetch(s3, "cache/x.json", dest) is None and r2.fetch(None, "cache/x.json", dest) is None
+    import hashlib
+    sha = lambda b: {"sha256": hashlib.sha256(b).hexdigest()}
+    s3.store["cache/x.json"], s3.meta["cache/x.json"] = b"v1", sha(b"v1")
+    assert r2.fetch(s3, "cache/x.json", dest) == dest and dest.read_bytes() == b"v1"
+    downloads = []
+    s3.download_file = lambda b, k, p, f=s3.download_file: (downloads.append(k), f(b, k, p))
+    assert r2.fetch(s3, "cache/x.json", dest) == dest and not downloads    # the same content: not downloaded
+    s3.store["cache/x.json"], s3.meta["cache/x.json"] = b"v2", sha(b"v2")  # R2 changed: downloaded again
+    assert r2.fetch(s3, "cache/x.json", dest).read_bytes() == b"v2"
+    assert not list(dest.parent.glob("*.part"))
+    del s3.store["cache/x.json"]
+    assert r2.fetch(s3, "cache/x.json", dest) == dest                  # R2 has none: the local copy

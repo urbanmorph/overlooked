@@ -10,7 +10,7 @@ export function getJSON(path) {
     cache.set(path, (globalThis.early?.[path] || fetch(DATA + path)).then(r => {
       if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
       return r.json();
-    }));
+    }).catch(err => { cache.delete(path); throw err; }));   // a failed request is asked again next time
   }
   return cache.get(path);
 }
@@ -30,6 +30,9 @@ const nf = new Intl.NumberFormat('en-IN');
 export const fmt = n => (n == null ? '–' : nf.format(n));
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
+/** A web address from a source (a paper, an assessment) for an href, or null: never a javascript: or data: link. */
+export const safeHref = u => (/^https?:\/\//i.test(u || '') ? u : null);
+
 /** A name as people type it: lower case, hyphens and runs of spaces as one space, no apostrophes. */
 export const plainName = s => s.toLowerCase().replace(/['\u2019]/g, '').replace(/[-\s]+/g, ' ').trim();
 

@@ -55,13 +55,24 @@ from pathlib import Path
 import duckdb
 import requests
 
-from pipeline import described, ebird_india, gbif, health, iucn, name_review, unlocated
-from pipeline.gbif import NEW_SPECIES_FROM
+from pipeline import (
+    described,
+    ebird_india,
+    gbif,
+    health,
+    iucn,
+    name_review,
+    r2,
+    soib,
+    unlocated,
+    util,
+)
 from pipeline.boundaries import title
+from pipeline.gbif import NEW_SPECIES_FROM
 from pipeline.groups import GROUP_SQL, GROUPS
 from pipeline.layer_newspecies import expand, gbif_match
-from pipeline.site_data import RIGHTS, shard_of
 from pipeline.r2 import sha256
+from pipeline.site_data import RIGHTS, shard_of
 from pipeline.util import dump, first, now, period, value
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -169,18 +180,6 @@ def hint_row(hints, text):
 
 # ---------------------------------------------------------------- inputs
 
-def r2_file(s3, key, dest: Path):
-    """Download an R2 object to dest if it is missing or differs. Returns dest, or None if R2 has no such object."""
-    from pipeline import r2
-    if not s3 or not r2.exists(s3, key):
-        return dest if dest.exists() else None
-    remote = r2.remote_sha256(s3, key)
-    if not dest.exists() or (remote and remote != sha256(dest)):
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        s3.download_file(r2.bucket(), key, str(dest))
-    return dest
-
-
 def zsi_derived(src: Path, dest: Path):
     """The columns of the ZSI checklist the master list needs, from fnf's matched file."""
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -197,33 +196,32 @@ def zsi_input(s3):
     dest = CACHE / "zsi_checklist.csv"
     if ZSI_LOCAL.exists():
         return zsi_derived(ZSI_LOCAL, dest)
-    return r2_file(s3, "cache/master/zsi_checklist.csv", dest)
+    return r2.fetch(s3, "cache/master/zsi_checklist.csv", dest)
 
 
 def wcvp_input(s3):
-    return WCVP_LOCAL if WCVP_LOCAL.exists() else r2_file(s3, "cache/master/wcvp_india.parquet", CACHE / "wcvp_india.parquet")
+    return WCVP_LOCAL if WCVP_LOCAL.exists() else r2.fetch(s3, "cache/master/wcvp_india.parquet", CACHE / "wcvp_india.parquet")
 
+
+# Tables that their own jobs build and keep in R2: R2's copy (a local one can be out of date), in the module's own
+# cache folder; the local copy when R2 has none or there is no R2.
 
 def globi_input(s3):
-    """GloBI's species table (pipeline/globi.py). With R2, always R2's copy (a local one can be out of date)."""
+    """GloBI's species table (pipeline/globi.py)."""
     from pipeline import globi
-    return r2_file(s3, globi.R2_PREFIX + "species.parquet", CACHE / "globi_species.parquet") if s3 else (
-        globi.CACHE / "species.parquet" if (globi.CACHE / "species.parquet").exists() else None)
+    return r2.fetch(s3, globi.R2_PREFIX + "species.parquet", globi.CACHE / "species.parquet")
 
 
 def globi_edges_input(s3):
-    """GloBI's partner table (pipeline/globi.py edges.parquet). With R2, always R2's copy."""
+    """GloBI's partner table (pipeline/globi.py edges.parquet)."""
     from pipeline import globi
-    local = globi.CACHE / "edges.parquet"
-    return r2_file(s3, globi.R2_PREFIX + "edges.parquet", CACHE / "globi_edges.parquet") if s3 else (
-        local if local.exists() else None)
+    return r2.fetch(s3, globi.R2_PREFIX + "edges.parquet", globi.CACHE / "edges.parquet")
 
 
 def lichens_input(s3):
-    """The lichen checklist table (pipeline/lichens.py): R2's copy, else the local one."""
+    """The lichen checklist table (pipeline/lichens.py)."""
     from pipeline import lichens
-    local = lichens.CACHE / lichens.TABLE
-    return r2_file(s3, lichens.R2_DIR + lichens.TABLE, CACHE / lichens.TABLE) if s3 else (local if local.exists() else None)
+    return r2.fetch(s3, lichens.R2_DIR + lichens.TABLE, lichens.CACHE / lichens.TABLE)
 
 
 ZOTERO_MINUTES = 20   # the bird bibliography's pass at most this long per run; the next run continues
@@ -240,32 +238,27 @@ def zotero_input_refreshed(http, s3):
 
 
 def zotero_input(s3):
-    """The bird bibliography's table (pipeline/zotero.py): R2's copy, else the local one."""
+    """The bird bibliography's table (pipeline/zotero.py)."""
     from pipeline import zotero
-    local = zotero.CACHE / zotero.TABLE
-    return r2_file(s3, zotero.R2_DIR + zotero.TABLE, CACHE / zotero.TABLE) if s3 else (local if local.exists() else None)
+    return r2.fetch(s3, zotero.R2_DIR + zotero.TABLE, zotero.CACHE / zotero.TABLE)
 
 
 def iucn_detail_input(s3):
-    """Population trends from IUCN's assessments (pipeline/iucn_api.py, monthly on Actions): R2's copy, else
-    the local one."""
+    """Population trends and ranges from IUCN's assessments (pipeline/iucn_api.py, monthly on Actions)."""
     from pipeline import iucn_api
-    local = iucn_api.CACHE / "iucn_detail.parquet"
-    return (r2_file(s3, iucn_api.R2_PREFIX + local.name, CACHE / local.name) if s3 else None) or (local if local.exists() else None)
+    return r2.fetch(s3, iucn_api.R2_PREFIX + "iucn_detail.parquet", iucn_api.CACHE / "iucn_detail.parquet")
 
 
 def bryophytes_input(s3):
-    """The bryophyte checklist table (pipeline/bryophytes.py): R2's copy, else the local one."""
+    """The bryophyte checklist table (pipeline/bryophytes.py)."""
     from pipeline import bryophytes
-    local = bryophytes.CACHE / bryophytes.TABLE
-    return (r2_file(s3, bryophytes.R2_DIR + bryophytes.TABLE, CACHE / bryophytes.TABLE) if s3
-            else (local if local.exists() else None))
+    return r2.fetch(s3, bryophytes.R2_DIR + bryophytes.TABLE, bryophytes.CACHE / bryophytes.TABLE)
 
 
 def bsi_monographs_input(s3):
     """BSI's regional and family books (pipeline/bsi_monographs.py): the local table, else R2's."""
     local = BSI_LOCAL.with_name("bsi_monographs.csv")
-    return local if local.exists() else r2_file(s3, "cache/bsi/bsi_monographs.csv", CACHE / "bsi_monographs.csv")
+    return local if local.exists() else r2.fetch(s3, "cache/bsi/bsi_monographs.csv", CACHE / "bsi_monographs.csv")
 
 
 EVIDENCE_MINUTES = 40   # Wikidata requests at most this long per run; the next run continues
@@ -283,8 +276,8 @@ def evidence_input(http, s3, paths, prev):
                                 deadline=time.monotonic() + EVIDENCE_MINUTES * 60)
     except Exception as e:  # noqa: BLE001 - any failure: last week's tables
         print(f"evidence: not refreshed ({e}); using the copies in R2", flush=True)
-        return (r2_file(s3, evidence.R2_DIR + "species.parquet", CACHE / "evidence.parquet"),
-                r2_file(s3, evidence.R2_DIR + "bold_india.csv", CACHE / "bold_india.csv"))
+        return (r2.fetch(s3, evidence.R2_DIR + "species.parquet", CACHE / "evidence.parquet"),
+                r2.fetch(s3, evidence.R2_DIR + "bold_india.csv", CACHE / "bold_india.csv"))
 
 
 PICTURES_MINUTES = 30   # picture requests at most this long per run; the next run continues
@@ -295,24 +288,23 @@ def pictures_input(http, s3, prev):
     from pipeline import pictures
     try:
         if not prev:
-            raise RuntimeError("no previous list to take the names from")
+            print("pictures: no previous list to take the names from; using the copy in R2", flush=True)
+            return r2.fetch(s3, pictures.R2_DIR + pictures.TABLE, CACHE / "pictures.parquet")
         corpus = pictures.CACHE / pictures.CORPUS
-        if not corpus.exists():
-            r2_file(s3, pictures.R2_DIR + pictures.CORPUS, corpus)
+        r2.fetch(s3, pictures.R2_DIR + pictures.CORPUS, corpus)
         rows = duckdb.sql(f"SELECT key, name FROM '{prev['parquet']}' WHERE key IS NOT NULL ORDER BY key").fetchall()
         return pictures.refresh(http, s3, rows, corpus, deadline=time.monotonic() + PICTURES_MINUTES * 60)
     except Exception as e:  # noqa: BLE001 - any failure: last week's table
         print(f"pictures: not refreshed ({e}); using the copy in R2", flush=True)
-        return r2_file(s3, pictures.R2_DIR + pictures.TABLE, CACHE / "pictures.parquet")
+        return r2.fetch(s3, pictures.R2_DIR + pictures.TABLE, CACHE / "pictures.parquet")
 
 
 def bsi_input(s3):
-    return BSI_LOCAL if BSI_LOCAL.exists() else r2_file(s3, "cache/bsi/bsi_checklist.csv", CACHE / "bsi_checklist.csv")
+    return BSI_LOCAL if BSI_LOCAL.exists() else r2.fetch(s3, "cache/bsi/bsi_checklist.csv", CACHE / "bsi_checklist.csv")
 
 
 def seed(s3):
     """Local machine only: copy the ZSI and WCVP inputs (not in git, not on Actions) to R2 cache/master/."""
-    from pipeline import r2
     sent = r2.sync_file(s3, zsi_derived(ZSI_LOCAL, CACHE / "zsi_checklist.csv"), "cache/master/zsi_checklist.csv",
                         immutable=False)
     sent += r2.sync_file(s3, WCVP_LOCAL, "cache/master/wcvp_india.parquet", immutable=False)
@@ -326,7 +318,7 @@ def snapshot_input(s3, run_id):
     for name in ("species", "ledger", "species_decade", "unlocated", "species_places"):
         p = folder / f"{name}.parquet"
         if not p.exists() and s3:
-            r2_file(s3, f"snapshots/{run_id}/{name}.parquet", p)
+            r2.fetch(s3, f"snapshots/{run_id}/{name}.parquet", p)
         paths[name] = p if p.exists() else None
     missing = [n for n in ("species", "ledger", "species_decade") if not paths[n]]
     if missing:
@@ -338,14 +330,15 @@ def snapshot_input(s3, run_id):
 
 
 def layer_input(s3, layer, field, filename):
-    """The newest local layers/<layer>/<period>/<filename>, else the one R2 layers/<layer>/latest.json names."""
-    from pipeline import r2
+    """The newer of the newest local layers/<layer>/<period>/<filename> (one not yet published) and the one R2
+    layers/<layer>/latest.json names; an old local copy never hides a newer published one."""
     local = sorted((LAYERS / layer).glob(f"*/{filename}"))
-    if local:
-        return json.loads(local[-1].read_text()), local[-1].parent.name
     latest = r2.get_json(s3, f"layers/{layer}/latest.json") if s3 else None
+    period = latest and (latest.get("period") or latest.get("month"))
+    if local and (not latest or not latest.get(field) or local[-1].parent.name >= period):
+        return json.loads(local[-1].read_text()), local[-1].parent.name
     if latest and latest.get(field):
-        return r2.get_json(s3, latest[field]), latest.get("period") or latest.get("month")
+        return r2.get_json(s3, latest[field]), period
     return None, None
 
 
@@ -578,7 +571,6 @@ def described_years(con):
 
 def match_cache(s3):
     """GBIF name matches: earlier matches (new species layer), then ours on top."""
-    from pipeline import r2
     cache = {}
     for key in (SEED_MATCH_KEYS + [MATCH_KEY]) if s3 else []:
         cache.update(r2.get_json(s3, key) or {})
@@ -590,10 +582,8 @@ def match_cache(s3):
 
 def save_match_cache(cache, s3):
     local = CACHE / "gbif_match.json"
-    local.parent.mkdir(parents=True, exist_ok=True)
-    local.write_text(json.dumps(cache, ensure_ascii=False))
+    dump(cache, local)
     if s3:
-        from pipeline import r2
         r2.sync_file(s3, local, MATCH_KEY, immutable=False)
 
 
@@ -1090,7 +1080,6 @@ def family_files(con, out: Path):
     sample), barcode (2, 1, 0 as in the species files), a trait record, places with an exact record, GloBI partners, an
     interaction in India, its picture (pipeline/pictures.py; null: none)]]}: the fields web.js gapStates turns into the
     seven gaps, and a thumbnail. Species with a page only."""
-    from pipeline.site_data import shard_of
     shutil.rmtree(out / "fam", ignore_errors=True)
     parts = {}
     for family, *row in con.sql("""
@@ -1107,7 +1096,6 @@ def pic_files(con, pictures, out: Path):
     """pic/<shard>.json for the species page: {key: [image url, its page, by, licence, source, English common name]}
     from pipeline/pictures.py, for species with a page. A species with none is not in the file (the page asks for a
     photo)."""
-    from pipeline.site_data import shard_of
     shutil.rmtree(out / "pic", ignore_errors=True)
     parts = {}
     for key, *row in con.sql(f"""SELECT p.key, p.url, p.page, p."by", p.licence, p.source, p.common FROM '{pictures}' p
@@ -1122,7 +1110,6 @@ def web_files(con, edges, out: Path):
     list or null, records, records in India, [GloBI types]]]}}}, the WEB_TOP partners with most records per kind.
     Kinds: eats, eaten (by), flowers (pollinates, visits, disperses seeds, from either side), lives (on or in a host),
     hosts, other. A partner is a species on the list when one of its names is (synonyms count), else GloBI's name."""
-    from pipeline.site_data import shard_of
     shutil.rmtree(out / "web", ignore_errors=True)
     q = lambda xs: "(" + ", ".join(f"'{x}'" for x in xs) + ")"
     con.sql("CREATE OR REPLACE TABLE name_id AS SELECT name, arg_min(id, p) AS id FROM id_names GROUP BY name")
@@ -1500,7 +1487,6 @@ KEEP_BUILDS = 2   # per week: the current build and the one before (a page open 
 def period_base(s3, period):
     """R2 prefix of a week's current build, from layers/master/<period>/current.json. Lists from before builds had
     their files in layers/master/<period>/ itself."""
-    from pipeline import r2
     ptr = r2.get_json(s3, f"layers/master/{period}/current.json")
     return ptr["base"] if ptr else f"layers/master/{period}/"
 
@@ -1508,13 +1494,12 @@ def period_base(s3, period):
 def previous_layer(s3, period):
     """The previous master list: {"parquet", "period", "summary", "history"}, or None. With R2, the build its pointer
     names (never a local copy, which can be out of date); without, the newest local folder before this period."""
-    from pipeline import r2
     if s3:
         pm = previous_period(r2.get_json(s3, "layers/master/latest.json"), period)
         if not pm:
             return None
         base = period_base(s3, pm)
-        parquet = r2_file(s3, base + "master.parquet", CACHE / f"master_{pm}.parquet")
+        parquet = r2.fetch(s3, base + "master.parquet", CACHE / f"master_{pm}.parquet")
         if not parquet:
             return None
         return {"parquet": parquet, "period": pm, "summary": r2.get_json(s3, base + "summary.json"),
@@ -1664,8 +1649,12 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     return summary
 
 
-def fingerprint(paths, inputs, cache, extra=None):
-    """What a layer is built from: the same fingerprint gives the same files."""
+CODE = sorted((ROOT / "pipeline").glob("*.py")) + sorted((ROOT / "pipeline" / "ref").glob("*.csv"))
+
+
+def fingerprint(paths, inputs, cache, extra=None, code=None):
+    """What a layer is built from (its inputs and the pipeline's code and reference tables): the same fingerprint
+    gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
                                                      "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures")), *(inputs.get("described") or {}).values()]:
@@ -1673,7 +1662,8 @@ def fingerprint(paths, inputs, cache, extra=None):
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
     h.update(json.dumps(cache, sort_keys=True).encode())
-    h.update(sha256(Path(__file__)).encode())
+    for p in CODE if code is None else code:
+        h.update(sha256(p).encode())
     return h.hexdigest()[:16]
 
 
@@ -1681,7 +1671,6 @@ def publish(s3, out: Path, period, build, info):
     """Upload a build to its own folder, then point to it: every file (sync_files raises if one fails, and then no
     pointer moves), the manifest, the week's current.json, latest.json. The site reads one build or the other, never a
     mix. Then older builds and copies go (prune). A rerun skips what R2 holds."""
-    from pipeline import r2
     base = f"layers/master/{period}/{build}/"
     files = [p for p in sorted(out.rglob("*")) if p.is_file() and p.name != "manifest.json"]
     sent = r2.sync_files(s3, ((p, base + p.relative_to(out).as_posix()) for p in files))
@@ -1698,7 +1687,6 @@ def prune(s3, period, current):
     only the build its current.json names (its last build). In a week with a pointer, the files from before builds
     go too; a week with no pointer keeps them (its only copy). The build latest.json names is never deleted, nor
     anything outside layers/master/<week>/. Returns the files deleted."""
-    from pipeline import r2
     live = (r2.get_json(s3, "layers/master/latest.json") or {}).get("base")
     by_week = {}
     for k in r2.list_keys(s3, "layers/master/"):
@@ -1723,17 +1711,16 @@ def prune(s3, period, current):
 
 
 def run(a):
+    start = time.monotonic()   # --minutes counts from here: the input refreshes take part of the job's time too
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env", override=True)
     s3 = None
     if os.environ.get("R2_ENDPOINT"):
-        from pipeline import r2
         s3 = r2.client()
     if a.cmd == "seed":
         return seed(s3)
     snapshot = a.snapshot
     if not snapshot:
-        from pipeline import r2
         snapshot = (r2.get_json(s3, "latest.json") or {}).get("run_id") if s3 else None
         if not snapshot:
             raise SystemExit("no --snapshot given and no published snapshot found")
@@ -1746,7 +1733,6 @@ def run(a):
     coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
     http = requests.Session()
     http.headers["User-Agent"] = health.ua()
-    from pipeline import ebird_india, soib
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "ebird_india": ebird_india.refresh(http, s3, CACHE / "ebird"),
               "lichens": lichens_input(s3),
@@ -1766,7 +1752,6 @@ def run(a):
     inputs["pictures"] = pictures_input(http, s3, prev)
     extra = [iucn_meta.get("etag"), prev and sha256(prev["parquet"])]
     fp_before = fingerprint(paths, inputs, cache, extra)
-    from pipeline import r2
     remote = r2.get_json(s3, period_base(s3, week) + "manifest.json") if s3 else None
     local = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else None
     old = local or remote
@@ -1775,7 +1760,7 @@ def run(a):
         if not local:
             return  # built and published by an earlier run
     else:
-        deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
+        deadline = start + a.minutes * 60 if a.minutes else None
         meta = {"period": week, "snapshot": snapshot, "built": now()}
         summary = build(con, paths, out, meta, districts.PATH, inputs, cache, s3, deadline, http, match=not a.no_match,
                         prev=prev)
@@ -1800,10 +1785,11 @@ def run(a):
 
 
 def main():
+    util.on_sigterm()
     p = argparse.ArgumentParser()
     p.add_argument("cmd", nargs="?", default="build", choices=["build", "seed"])
     p.add_argument("--snapshot", help="published snapshot run id, e.g. 2026-10 (default: the latest)")
-    p.add_argument("--minutes", type=int, help="stop GBIF name matching after this many minutes; the next run continues")
+    p.add_argument("--minutes", type=int, help="stop GBIF name matching this many minutes after the run started; the next run continues")
     p.add_argument("--no-match", action="store_true", help="do not ask GBIF for new names (use the cache only)")
     p.add_argument("--force", action="store_true", help="rebuild even if the inputs are unchanged")
     p.add_argument("--publish", action="store_true")

@@ -36,9 +36,11 @@ def value(con, sql, params=None):
 
 
 def dump(obj, path: Path):
-    """Compact JSON for the site (folders made as needed)."""
+    """Compact JSON (folders made as needed), written through a .part file: a stop mid-write keeps the old file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
+    part = path.with_name(path.name + ".part")
+    part.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
+    part.replace(path)
 
 
 def stream(http, url, dest: Path, kind=None, progress_mb=None):
@@ -65,3 +67,10 @@ def stream(http, url, dest: Path, kind=None, progress_mb=None):
             raise IOError(f"{dest.name}: got {got:,} of {int(size):,} bytes")
     part.replace(dest)
     return True
+
+
+def on_sigterm():
+    """Turn SIGTERM (a cancelled or timed-out GitHub job) into an exit, so finally blocks still save the caches."""
+    import signal
+    import sys
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))

@@ -18,10 +18,8 @@ Usage: python -m pipeline.described [--force]
 import argparse
 import json
 import os
-import re
 import shutil
 import zipfile
-from datetime import date
 from pathlib import Path
 
 import duckdb
@@ -41,13 +39,8 @@ META = "described.json"
 YEAR = r"\b(17[5-9][0-9]|18[0-9][0-9]|19[0-9][0-9]|20[0-3][0-9])\b"
 
 
-def year_of(text):
-    """The first year in an authorship or a citation, or None. A year still to come is a typo."""
-    m = re.search(YEAR, text or "")
-    return int(m.group(1)) if m and int(m.group(1)) <= date.today().year else None
-
-
 def year_sql(col):
+    """The first year in an authorship or a citation, or NULL. A year still to come is a typo."""
     y = f"TRY_CAST(nullif(regexp_extract({col}, '{YEAR}', 1), '') AS INTEGER)"
     return f"CASE WHEN {y} <= year(current_date) THEN {y} END"
 
