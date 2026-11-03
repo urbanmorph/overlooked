@@ -77,19 +77,42 @@ def validate(http, sql):
     return r.status_code, r.text
 
 
+def busy(r):
+    """GBIF too busy (429) or down for a while (5xx): ask again later."""
+    return r.status_code == 429 or r.status_code >= 500
+
+
 def submit(http, sql):
-    """Submit a download. Returns its key, or None if GBIF says too many downloads are running (429)."""
+    """Submit a download. Returns its key, or None when GBIF is busy or down for a while (429, 5xx: the next check
+    asks again). Any other error is ours (a bad request) and stops the run."""
     r = http.post(f"{API}/request", json=request_body(sql), timeout=60)
-    if r.status_code == 429:
+    if busy(r):
+        print(f"GBIF answered {r.status_code} to the download request; asking again at the next check", flush=True)
         return None
     if not r.ok:
         sys.exit(f"HTTP {r.status_code}: {r.text[:500]}")
     return r.text.strip()
 
 
+def status(http, key):
+    """A download's metadata, or None when GBIF cannot answer just now (the next check asks again)."""
+    try:
+        r = http.get(f"{API}/{key}", timeout=60)
+        if r.ok:
+            return r.json()
+    except (requests.RequestException, ValueError) as e:   # no answer, or an error page instead of JSON
+        print(f"GBIF status of {key}: {e}; asking again at the next check", flush=True)
+        return None
+    print(f"GBIF status of {key}: HTTP {r.status_code}; asking again at the next check", flush=True)
+    return None
+
+
 def wait(http, key, every=60):
     while True:
-        meta = http.get(f"{API}/{key}", timeout=60).json()
+        meta = status(http, key)
+        if meta is None:
+            time.sleep(every)
+            continue
         print(f"{time.strftime('%H:%M:%S')} {meta['status']} rows={meta.get('totalRecords')}", flush=True)
         if meta["status"] == "SUCCEEDED":
             return meta

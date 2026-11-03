@@ -248,3 +248,26 @@ def test_ensure_fetches_a_download_once(tmp_path, monkeypatch):
 def test_no_unused_placeholders_in_queries():
     for q in (gbif.QUERIES).glob("*.sql"):
         assert "{excluded_unlocated}" not in q.read_text()
+
+
+class Answer:
+    def __init__(self, code, body=None):
+        self.status_code, self.ok, self.text, self.body = code, code < 400, "<html>Broken at the moment</html>", body
+
+    def json(self):
+        if self.body is None:
+            raise ValueError("not JSON")
+        return self.body
+
+
+def test_a_gbif_outage_is_a_wait_not_a_failed_build():
+    """2 Nov 2026: GBIF answered 500 ("Broken at the moment") to a download request and the weekly build failed.
+    A 429 or 5xx means: ask again at the next check (every 6 hours). A status read that fails says the same."""
+    for code in (429, 500, 503):
+        http = type("H", (), {"post": lambda self, *a, c=code, **k: Answer(c)})()
+        assert gbif.submit(http, "SELECT 1") is None
+    with pytest.raises(SystemExit):
+        gbif.submit(type("H", (), {"post": lambda self, *a, **k: Answer(400)})(), "SELECT 1")   # our request is wrong
+    assert gbif.status(type("H", (), {"get": lambda self, *a, **k: Answer(500)})(), "K") is None
+    ok = type("H", (), {"get": lambda self, *a, **k: Answer(200, {"status": "RUNNING"})})()
+    assert gbif.status(ok, "K") == {"status": "RUNNING"}

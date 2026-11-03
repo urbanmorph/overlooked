@@ -186,10 +186,16 @@ def build(args):
     for name, d in state["downloads"].items():
         if not d.get("key"):
             continue
-        meta = http.get(f"{gbif.API}/{d['key']}", timeout=60).json()
+        meta = gbif.status(http, d["key"])
+        time.sleep(1.0)
+        if meta is None:            # GBIF down for a while: the status is kept and asked again at the next check
+            continue
         d["status"] = meta["status"]
         metas[name] = meta
-        time.sleep(1.0)
+    if any(d.get("key") and name not in metas for name, d in state["downloads"].items()):
+        save(state)
+        print(f"run {run_id}: GBIF did not give every download's status; waiting for the next check")
+        return
     if not any(d["status"] in FAILED for d in state["downloads"].values()) and submit_next(http, state):
         save(state)
         print(f"run {run_id}: submitted the next download; waiting for GBIF")
