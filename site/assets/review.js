@@ -2,7 +2,7 @@
 // of Life places under them, with a relative on an Indian checklist (pipeline/name_review.py, review/names.json). A
 // person who knows the group says whether the records are another species'; the answer comes as a GitHub issue.
 
-import { fmt, esc, plainName } from './common.js?v=1c94e7a9ed';
+import { fmt, esc, plainName, speciesLink } from './common.js?v=17b9916484';
 
 const NEAR = 5;
 const REPO = 'https://github.com/urbanmorph/overlooked';
@@ -30,7 +30,7 @@ export function matchesRow([, name, , old, near, , common, nearCommon = []], q) 
 export function reviewRowHTML(row) {
   const [key, name, states, old, near, outside, common, nearCommon = []] = row;
   const more = near.length - NEAR;
-  return `<li><a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>${common ? ` ${esc(common)}` : ''}`
+  return `<li>${speciesLink(key, name)}${common ? ` ${esc(common)}` : ''}`
     + ` <span class="muted">open records in ${fmt(states)} state${states === 1 ? '' : 's'}</span><br>`
     + (outside ? `<b>${OUTSIDE}.</b> <span class="muted" title="${esc(IUCN_CITE)}">(IUCN 2026-1)</span> ` : '')
     + `Reached by ${names(old)}. Relatives on Indian checklists: ${names(near.slice(0, NEAR), nearCommon)}${more > 0 ? ` and ${fmt(more)} more` : ''}.`

@@ -2,11 +2,11 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref } from './common.js?v=1c94e7a9ed';
-import { drawMap } from './map.js?v=997e706ef7';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge } from './common.js?v=17b9916484';
+import { drawMap } from './map.js?v=4adb8f969b';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=0e46bd3169';
-import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=f8e49b67a9';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=c23931f1ff';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=62584af730';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -302,7 +302,7 @@ try {
         : `${fmt(4 * cells)} km² <span class="muted">· ${fmt(cells)} ${cells === 1 ? 'cell' : 'cells'} of 2 × 2 km with an open record placed in India</span>`}</dd>
 ${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != null ? `
       <dt>Papers</dt><dd>${papers ? `${fmt(papers)} in the Bibliography of South Asian Ornithology${papersLatest ? `, latest ${papersLatest}` : ''}` : '<span class="muted">None in the Bibliography of South Asian Ornithology</span>'} <span class="muted">· <a href="https://southasiaornith.in">A. Pittie</a></span></dd>` : ''}
-      <dt>IUCN Red List</dt><dd><span class="iucn i-${esc(cat)}">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>${iucnTrend ? ` <span class="muted">· population ${esc(iucnTrend.toLowerCase())}</span>` : ''}${iucnYear
+      <dt>IUCN Red List</dt><dd>${iucnBadge(cat)}${iucnTrend ? ` <span class="muted">· population ${esc(iucnTrend.toLowerCase())}</span>` : ''}${iucnYear
         ? ` <span class="muted">· assessed in ${esc(iucnYear)}${safeHref(iucnDoi) ? ` (<a href="${esc(iucnDoi)}">the assessment</a>)` : ''}</span>` : ''}</dd>
     </dl>
     ${paper ? `<p class="note" style="margin:12px 0 0">${paper[5] === year ? 'Description' : `Listed in ${esc(paper[5])}`}: ${safeHref(paper[2]) ? `<a href="${esc(paper[2])}">${esc(paper[0].join(', '))}</a>` : esc(paper[0].join(', '))}${paper[1] ? ` (${esc(paper[1])})` : ''}.

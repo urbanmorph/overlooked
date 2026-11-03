@@ -1,7 +1,7 @@
 // Evidence per species on the species page (pipeline/evidence.py): type specimens and photos from India, a DNA
 // barcode, and names in Indian languages. undefined: not measured in this list; null: measured, none.
 
-import { fmt } from './common.js?v=1c94e7a9ed';
+import { fmt } from './common.js?v=17b9916484';
 
 const LANGS = [['hi', 'Hindi'], ['bn', 'Bengali'], ['te', 'Telugu'], ['mr', 'Marathi'], ['ta', 'Tamil'], ['ur', 'Urdu'],
   ['gu', 'Gujarati'], ['kn', 'Kannada'], ['ml', 'Malayalam'], ['or', 'Odia'], ['pa', 'Punjabi'], ['as', 'Assamese'],

@@ -939,6 +939,15 @@ def per_area(rows, n, width):
     return india, by_state
 
 
+def shard_files(out: Path, folder, parts):
+    """Write <folder>/<shard>.json for each {shard: content} (site_data.shard_of), replacing the folder. Returns the
+    number of files."""
+    shutil.rmtree(out / folder, ignore_errors=True)
+    for i, part in parts.items():
+        dump(part, out / folder / f"{i}.json")
+    return len(parts)
+
+
 def group_files(out: Path, folder, rows, every=()):
     """Write <folder>/<gi>.json ({"rows": [...]}) from (group index, row) pairs, replacing the folder.
     every: group indices that get a file even with no rows."""
@@ -1044,25 +1053,26 @@ def species_files(con, out: Path):
     Ornithology and the year of the latest (birds; null: none), the population trend in IUCN's assessment (Increasing,
     Stable, Decreasing, Unknown; null: not assessed), the family (its relatives are in fam/<shard of the family>.json)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
-    shutil.rmtree(out / "sp", ignore_errors=True)
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
             types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family in con.sql("""
+            WITH w AS (   -- the observations that wait, per species: in India and per state
+                SELECT w.id, any_value(w.taxon) AS taxon, coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0) AS n_india,
+                       list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL) AS states
+                FROM wait w LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd GROUP BY w.id)
             SELECT s.key, s.name, s.gi, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask,
-                   any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
-                   list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL), s.year, s.authority, s.paper,
+                   w.taxon, coalesce(w.n_india, 0), w.states, s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
                    s.papers, s.papers_latest, s.iucn_trend, s.family
-            FROM site s LEFT JOIN wait w USING (id) LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd
-            WHERE s.key IS NOT NULL GROUP BY ALL""").fetchall():
+            FROM site s LEFT JOIN w USING (id)
+            WHERE s.key IS NOT NULL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
                                                     trend, traits, precise, papers, papers_latest, iucn_trend, family]
-    for i, part in parts.items():
-        dump(part, out / "sp" / f"{i}.json")
+    shard_files(out, "sp", parts)
 
 
 # Kinds of link, from the species' own side: a GloBI type and whether the species is its subject (outgoing).
@@ -1080,7 +1090,6 @@ def family_files(con, out: Path):
     sample), barcode (2, 1, 0 as in the species files), a trait record, places with an exact record, GloBI partners, an
     interaction in India, its picture (pipeline/pictures.py; null: none)]]}: the fields web.js gapStates turns into the
     seven gaps, and a thumbnail. Species with a page only."""
-    shutil.rmtree(out / "fam", ignore_errors=True)
     parts = {}
     for family, *row in con.sql("""
             SELECT m.family, m.key, m.name, m.year, m.last_year, len(m.states_observed), m.trend_known,
@@ -1088,21 +1097,18 @@ def family_files(con, out: Path):
             FROM master m LEFT JOIN pics p USING (key)
             WHERE m.status < 2 AND m.key IS NOT NULL AND m.family IS NOT NULL ORDER BY m.family, m.name""").fetchall():
         parts.setdefault(shard_of(family), {}).setdefault(family, []).append(row)
-    for i, part in parts.items():
-        dump(part, out / "fam" / f"{i}.json")
+    shard_files(out, "fam", parts)
 
 
-def pic_files(con, pictures, out: Path):
+def pic_files(con, out: Path):
     """pic/<shard>.json for the species page: {key: [image url, its page, by, licence, source, English common name]}
     from pipeline/pictures.py, for species with a page. A species with none is not in the file (the page asks for a
     photo)."""
-    shutil.rmtree(out / "pic", ignore_errors=True)
     parts = {}
-    for key, *row in con.sql(f"""SELECT p.key, p.url, p.page, p."by", p.licence, p.source, p.common FROM '{pictures}' p
-                                 WHERE p.key IN (SELECT key FROM master WHERE key IS NOT NULL)""").fetchall():
+    for key, *row in con.sql("""SELECT p.key, p.url, p.page, p."by", p.licence, p.source, p.common FROM pics p
+                                WHERE p.key IN (SELECT key FROM master WHERE key IS NOT NULL)""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = row
-    for i, part in parts.items():
-        dump(part, out / "pic" / f"{i}.json")
+    shard_files(out, "pic", parts)
 
 
 def web_files(con, edges, out: Path):
@@ -1110,7 +1116,6 @@ def web_files(con, edges, out: Path):
     list or null, records, records in India, [GloBI types]]]}}}, the WEB_TOP partners with most records per kind.
     Kinds: eats, eaten (by), flowers (pollinates, visits, disperses seeds, from either side), lives (on or in a host),
     hosts, other. A partner is a species on the list when one of its names is (synonyms count), else GloBI's name."""
-    shutil.rmtree(out / "web", ignore_errors=True)
     q = lambda xs: "(" + ", ".join(f"'{x}'" for x in xs) + ")"
     con.sql("CREATE OR REPLACE TABLE name_id AS SELECT name, arg_min(id, p) AS id FROM id_names GROUP BY name")
     con.sql(f"""
@@ -1141,9 +1146,7 @@ def web_files(con, edges, out: Path):
         sp = parts.setdefault(shard_of(key), {}).setdefault(key, {"n": {}, "p": {}})
         sp["n"][kind] = total
         sp["p"][kind] = [[r["n"], r["k"], int(r["r"]), int(r["i"]), r["t"]] for r in rows]
-    for i, part in parts.items():
-        dump(part, out / "web" / f"{i}.json")
-    return len(parts)
+    return shard_files(out, "web", parts)
 
 
 def described_summary(con):
@@ -1185,24 +1188,24 @@ def group_totals(con, species_sql, n, since=None):
     return india
 
 
-def review_names(con, cache, out: Path, ebird=frozenset(), iucn_detail=None, pictures=None):
+def review_names(con, cache, out: Path, ebird=frozenset(), iucn_detail=None):
     """review/names.json, names to check for people who know a group (pipeline/name_review.py). Not candidates: the
     species State of India's Birds or eBird's records from India (ebird: COL IDs) have. iucn_detail (pipeline/iucn_api.py)
-    gives whether IUCN's range includes India, which puts a species whose range leaves it out first; pictures
-    (pipeline/pictures.py) the English common names, so a visitor finds a species by the name they know."""
+    gives whether IUCN's range includes India, which puts a species whose range leaves it out first. The English
+    common names (table pics, pipeline/pictures.py) let a visitor find a species by the name they know."""
     names = {n for (n,) in con.sql(f"SELECT DISTINCT name FROM names_in WHERE source IN {tuple(name_review.CHECKLISTS)}").fetchall()}
     soib = {k for (k,) in con.sql("""SELECT DISTINCT m.key FROM master m JOIN id_names n ON n.id = m.id
                                        JOIN soib s ON s.name = n.name WHERE m.key IS NOT NULL""").fetchall()}
     rows = con.sql('SELECT key, name, sources, states_observed, "group" FROM listed WHERE key IS NOT NULL').fetchall()
     iucn = dict(con.sql(f"SELECT name, in_india_list FROM '{iucn_detail}'").fetchall()) if iucn_detail else None
-    common = dict(con.sql(f"""SELECT l.name, any_value(p.common) FROM listed l JOIN '{pictures}' p ON p.key = l.key
-                                WHERE p.common <> '' GROUP BY l.name""").fetchall()) if pictures else None
+    common = dict(con.sql("""SELECT l.name, any_value(p.common) FROM listed l JOIN pics p ON p.key = l.key
+                               WHERE p.common IS NOT NULL GROUP BY l.name""").fetchall())
     return name_review.review_file(rows, cache, out, names, soib | set(ebird), iucn, common)
 
 
-def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None, pictures=None):
+def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=None):
     """summary.json, g/<gi>.json, w/<gi>.json, search/<p>.json and search/places.json (format agreed with the site).
-    pictures (pipeline/pictures.py) gives English common names: a species is also in the search file of each word of
+    The English common names (table pics, pipeline/pictures.py): a species is also in the search file of each word of
     its common name (Madras Treeshrew: ma and tr), with its Latin name last."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
@@ -1322,11 +1325,10 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     cols = "coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year"
     for r in con.sql(f"SELECT name, {cols} FROM site").fetchall():
         buckets.setdefault(prefix(r[0]), []).append(list(r))
-    if pictures:
-        for r in con.sql(f"""SELECT p.common, {cols}, s.name FROM site s JOIN (SELECT key, any_value(common) AS common
-                             FROM '{pictures}' WHERE common <> '' GROUP BY key) p USING (key)""").fetchall():
-            for p in {prefix(w) for w in re.findall(r"[^\W\d_]{2,}", r[0])}:
-                buckets.setdefault(p, []).append(list(r))
+    for r in con.sql(f"""SELECT p.common, {cols}, s.name FROM site s JOIN (SELECT key, any_value(common) AS common
+                         FROM pics WHERE common IS NOT NULL GROUP BY key) p USING (key)""").fetchall():
+        for p in {prefix(w) for w in re.findall(r"[^\W\d_]{2,}", r[0])}:
+            buckets.setdefault(p, []).append(list(r))
     for p, rows in buckets.items():
         dump({"rows": sorted(rows, key=lambda r: (r[0].lower(), r[0]))}, out / "search" / f"{p}.json")
     places = [[title(nm), "state", int(code), int(code)] for code, nm in
@@ -1621,10 +1623,12 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
     if inputs.get("pictures"):
-        con.sql(f"CREATE OR REPLACE TABLE pics AS SELECT key, url FROM '{inputs['pictures']}' WHERE url IS NOT NULL")
-        pic_files(con, inputs["pictures"], out)
+        con.sql(f"""CREATE OR REPLACE TABLE pics AS SELECT key, url, page, "by", licence, source, nullif(common, '') AS common
+                     FROM '{inputs['pictures']}'""")   # read once: the photos and the English common names
+        pic_files(con, out)
     else:
-        con.sql("CREATE OR REPLACE TABLE pics (key VARCHAR, url VARCHAR)")
+        con.sql("""CREATE OR REPLACE TABLE pics (key VARCHAR, url VARCHAR, page VARCHAR, "by" VARCHAR, licence VARCHAR,
+                   source VARCHAR, common VARCHAR)""")
         shutil.rmtree(out / "pic", ignore_errors=True)
         notes.append("The pictures table was not found: species pages show no photo.")
     if inputs.get("globi_edges"):
@@ -1635,10 +1639,9 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                             year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
             f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
-    review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"),
-                 inputs.get("pictures"))
+    review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
-                         inputs.get("inat_coarse"), inputs.get("pictures"))
+                         inputs.get("inat_coarse"))
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}

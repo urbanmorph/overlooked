@@ -30,6 +30,23 @@ const nf = new Intl.NumberFormat('en-IN');
 export const fmt = n => (n == null ? '–' : nf.format(n));
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
+/** A species name in italics, linked to its page when it has one (key). */
+export const speciesLink = (key, name) =>
+  (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
+
+/** The IUCN Red List category as a badge (style.css .iucn .i-<cat>). */
+export const iucnBadge = cat => `<span class="iucn i-${esc(cat)}" title="IUCN Red List">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>`;
+
+/** One <option> per state of the list (summary.json states). */
+export const stateOptions = S => S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
+
+/** The page's choices into its address, so a view can be shared: [[name, value]]; an empty value is taken out. */
+export function setParams(pairs) {
+  const u = new URL(location.href);
+  for (const [k, v] of pairs) (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
+  history.replaceState(null, '', u);
+}
+
 /** A web address from a source (a paper, an assessment) for an href, or null: never a javascript: or data: link. */
 export const safeHref = u => (/^https?:\/\//i.test(u || '') ? u : null);
 

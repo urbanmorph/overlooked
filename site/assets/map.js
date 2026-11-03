@@ -1,6 +1,6 @@
 // District map: pre-simplified SVG paths coloured by a value per district. No map library.
 
-import { esc, fmt } from './common.js?v=1c94e7a9ed';
+import { esc, fmt } from './common.js?v=17b9916484';
 
 const RAMP = ['--q0', '--q1', '--q2', '--q3', '--q4'];
 

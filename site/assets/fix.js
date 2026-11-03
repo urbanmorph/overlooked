@@ -2,7 +2,7 @@
 // unlocated.json (records that cannot go in a district) and unresolved.json (records not named to species) are in the GBIF
 // snapshot. The section follows the chosen state and group.
 
-import { getJSON, fmt, esc, $ } from './common.js?v=1c94e7a9ed';
+import { getJSON, fmt, esc, $, speciesLink } from './common.js?v=17b9916484';
 
 const HOLDERS = 10, ONLY = 20;
 const PROBLEM = { none: 'have no coordinates', coarse: 'have coordinates uncertain by more than 25 km', issue: 'have coordinates that GBIF marks as possibly wrong' };
@@ -51,7 +51,7 @@ export async function fixSection(snap) {
     $('#fix-only').innerHTML = only.length ? `<h3 class="pad fix-h">Species known from India only in records that cannot go on the map</h3>
       <div class="tablebox"><table class="sp-table"><thead><tr><th>Species</th><th>Group</th><th>Records</th><th>Years</th><th>States named</th></tr></thead><tbody>
       ${only.slice(0, ONLY).map(([k, name, gi, n, first, last, states]) => `<tr>
-        <td><a href="/species?key=${encodeURIComponent(k)}"><i>${esc(name)}</i></a></td><td>${esc(u.groups[gi])}</td>
+        <td>${speciesLink(k, name)}</td><td>${esc(u.groups[gi])}</td>
         <td class="mono">${fmt(n)}</td><td class="mono">${first == null ? '–' : first === last ? first : `${first}–${last}`}</td><td class="mono">${fmt(states)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="pad muted note" style="padding-top:8px">Most records first. Exact coordinates on these records put the species on the map. Some of these records can give the wrong country: correct that too.${onlyN > ONLY ? ` The first ${ONLY} of ${fmt(onlyN)}.` : ''}</p>` : '';

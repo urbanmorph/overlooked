@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { bit, tags, periodName, getJSON, nameMatches, plainName, safeHref } from '../site/assets/common.js';
+import { bit, tags, periodName, getJSON, nameMatches, plainName, safeHref, speciesLink, iucnBadge, stateOptions, setParams } from '../site/assets/common.js';
 
 test('bit reads masks wider than 32 bits', () => {
   assert.equal(bit(2 ** 40, 40), true);
@@ -71,4 +71,27 @@ test('safeHref: a web address from a source, or nothing (a javascript: link neve
   assert.equal(safeHref('https://doi.org/10.1/x'), 'https://doi.org/10.1/x');
   assert.equal(safeHref('http://a.org/'), 'http://a.org/');
   for (const u of ['javascript:alert(1)', ' JAVASCRIPT:x', 'data:text/html,x', '', null, undefined]) assert.equal(safeHref(u), null);
+});
+
+test('speciesLink: the species page when it has one, else the name; the name in italics and escaped', () => {
+  assert.equal(speciesLink('4Q 7', 'Aus bus'), '<a href="/species?key=4Q%207"><i>Aus bus</i></a>');
+  assert.equal(speciesLink('', 'Aus <b>'), '<i>Aus &lt;b&gt;</i>');
+});
+
+test('iucnBadge: the category, "Not assessed" for NE', () => {
+  assert.equal(iucnBadge('EN'), '<span class="iucn i-EN" title="IUCN Red List">EN</span>');
+  assert.match(iucnBadge('NE'), />Not assessed</);
+});
+
+test('stateOptions: one option per state of the list', () => {
+  assert.equal(stateOptions({ states: [{ code: 29, name: 'Karnataka' }, { code: 32, name: 'Kerala & <x>' }] }),
+    '<option value="29">Karnataka</option><option value="32">Kerala &amp; &lt;x&gt;</option>');
+});
+
+test('setParams: each choice into the address, an empty one taken out', () => {
+  const calls = [];
+  globalThis.location = { href: 'https://x/fix?state=29&group=birds&keep=1' };
+  globalThis.history = { replaceState: (a, b, u) => calls.push(String(u)) };
+  setParams([['state', '32'], ['group', null], ['band', '']]);
+  assert.deepEqual(calls, ['https://x/fix?state=32&keep=1']);
 });

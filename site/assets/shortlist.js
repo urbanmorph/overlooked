@@ -2,7 +2,7 @@
 // check (layers/shortlist/, contract in docs/shortlist_data.md). Bands and an order of names only, never scores.
 // Each card links out through /go/inat/<id>, a redirect that counts links followed per group (docs/metrics.md).
 
-import { getJSON, fmt, esc, $, monthName, showLoadError } from './common.js?v=1c94e7a9ed';
+import { getJSON, fmt, esc, $, monthName, showLoadError, stateOptions, setParams } from './common.js?v=17b9916484';
 
 // The bands the page shows; rows in any other band (expert) are not shown.
 const BANDS = {
@@ -109,16 +109,11 @@ async function main() {
       name: pick('name', k => /^[A-Z][a-z-]+( [a-z-]+){1,3}$/.test(k || '')),   // a species, from its species page
       shown: PAGE,
     };
-    const saveURL = () => {
-      const u = new URL(location.href);
-      for (const [k, v] of [['group', st.group === groups[0]?.key ? null : st.group], ['state', st.state], ['band', st.band], ['name', st.name]]) {
-        if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
-      }
-      history.replaceState(null, '', u);
-    };
+    const saveURL = () => setParams([['group', st.group === groups[0]?.key ? null : st.group], ['state', st.state],
+      ['band', st.band], ['name', st.name]]);
 
     $('#sl-group').innerHTML = groups.map(g => `<option value="${esc(g.key)}">${esc(g.name)} · ${esc(g.verdict)}</option>`).join('');
-    $('#state').insertAdjacentHTML('beforeend', S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join(''));
+    $('#state').insertAdjacentHTML('beforeend', stateOptions(S));
     $('#sl-group').value = st.group || '';
     $('#state').value = st.state || '';
 

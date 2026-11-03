@@ -5,13 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches } from './common.js?v=1c94e7a9ed';
-import { drawMap, legendHTML } from './map.js?v=997e706ef7';
-import { signed } from './trend.js?v=8e1b375041';
-import { knowledge, segmentChanges } from './funnel.js?v=10986e8305';
-import { redlist } from './redlist.js?v=61d95560b3';
-import { gaps, gapAbsent } from './gaps.js?v=2f4b990372';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=f8e49b67a9';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=17b9916484';
+import { drawMap, legendHTML } from './map.js?v=4adb8f969b';
+import { signed } from './trend.js?v=e885eb6423';
+import { knowledge, segmentChanges } from './funnel.js?v=d9abf837fe';
+import { redlist } from './redlist.js?v=dd527bf5f3';
+import { gaps, gapAbsent } from './gaps.js?v=e09f5ccec1';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=62584af730';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -65,12 +65,9 @@ try {
     pick: null,       // a name chosen in search that has no species page: listed first in its group
   };
   const saveURL = () => {
-    const u = new URL(location.href);
     const described = st.years.from || st.years.to ? `${st.years.from ?? ''}-${st.years.to ?? ''}` : null;
-    for (const [k, v] of [['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'waiting' && st.list !== 'wait' ? st.list : null], ['group', st.cat], ['state', st.state], ['described', described]]) {
-      if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
-    }
-    history.replaceState(null, '', u);
+    setParams([['view', st.view === 'observed' ? null : st.view], ['list', st.view === 'waiting' && st.list !== 'wait' ? st.list : null],
+      ['group', st.cat], ['state', st.state], ['described', described]]);
   };
 
   // Figures for a set of groups at India level or in one state, from A (summary.json, or counted for the filters).
@@ -321,8 +318,6 @@ try {
     if (f.labels.size && ![...f.labels].every(i => bit(labels, i))) return false;
     return true;
   }
-  const iucnBadge = i => `<span class="iucn i-${esc(S.iucn[i])}" title="IUCN Red List">${esc(S.iucn[i] === 'NE' ? 'Not assessed' : S.iucn[i])}</span>`;
-  const speciesLink = (key, name) => (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`);
   const HEAD_ALL = '<tr><th>Species</th><th>Group</th><th>Described</th><th>Latest record</th><th>Status</th><th>IUCN</th><th>Sources</th><th>Labels</th></tr>';
   const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
@@ -355,9 +350,9 @@ try {
         : first ? `<span class="why first">First open record in ${esc(place)}</span>` : '',
         threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
       const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(taxon)}`));
-      return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(r[4])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
+      return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(S.iucn[r[4]])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
         <td>${esc(S.groups[r[G]])}</td><td>${why || '<span class="muted">–</span>'}</td>
-        <td>${iucnBadge(r[4])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
+        <td>${iucnBadge(S.iucn[r[4]])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
     }).join('') || '<tr><td colspan="6" class="muted">No species wait for a name here.</td></tr>';
     $('#more').hidden = rows.length <= shown;
   }
@@ -435,7 +430,7 @@ try {
     if (picked) rows.splice(0, rows.length, picked, ...rows.filter(r => r !== picked));
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
         <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
-        <td>${iucnBadge(r[4])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
+        <td>${iucnBadge(S.iucn[r[4]])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
       || `<tr><td colspan="${cols()}" class="muted">No species match.</td></tr>`;
     $('#more').hidden = rows.length <= shown;
   }
@@ -566,7 +561,7 @@ try {
       const latin = r[8] ?? r[0];
       if (nameMatches(r, q) && !seen.has(latin) && passes([r[1], latin, r[5], r[3], r[4], r[6], 0, r[7]])) {
         seen.add(latin);
-        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(r[4])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(latin, r[2], r[3])) });
+        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(S.iucn[r[4]])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(latin, r[2], r[3])) });
       }
     }
     box.innerHTML = hits.map((h, i) => `<button type="button" role="option" data-i="${i}"><span>${h.html}</span><span class="muted">${h.kind}</span></button>`).join('')

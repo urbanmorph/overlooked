@@ -1,7 +1,7 @@
 // Weekly totals of the master list (layers/master/<period>/history.json): the numbers, their change since the list
 // before, the geometry of a line chart, and the tile that shows one measure. changes.js and explore.js draw them.
 
-import { fmt, esc } from './common.js?v=1c94e7a9ed';
+import { fmt, esc } from './common.js?v=17b9916484';
 
 export const MEASURES = [
   { key: 'documented', label: 'Species documented in India' },

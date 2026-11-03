@@ -1,7 +1,7 @@
 // What changed since the previous weekly list, from the master list (layers/master/<period>/changes.json).
 
-import { getJSON, fmt, esc, $, showLoadError, periodName } from './common.js?v=1c94e7a9ed';
-import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=8e1b375041';
+import { getJSON, fmt, esc, $, showLoadError, periodName, stateOptions, speciesLink } from './common.js?v=17b9916484';
+import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=e885eb6423';
 
 const KINDS = [
   ['observed', 'First open record', 'First open record in India', 'var(--accent)'],
@@ -100,7 +100,7 @@ try {
     $('#waitline').innerHTML = w && w.before != null
       ? `Observations on iNaturalist named to species, not yet confirmed: ${fmt(w.before)} in the list of ${esc(periodName(ch.from))}, ${fmt(w.now)} now. <a href="/?view=waiting">See the species that wait</a>.`
       : '';
-    $('#state').insertAdjacentHTML('beforeend', S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join(''));
+    $('#state').insertAdjacentHTML('beforeend', stateOptions(S));
 
     let kind = 'observed', state = null, page = 0;
     const names = list => list.map(s => stName.get(s) || s).join(', ');
@@ -112,7 +112,7 @@ try {
       if (r.kind === 'iucn') return r.extra?.[0] ? `IUCN Red List category was ${r.extra[0]}, now ${r.extra[1]}.` : `First IUCN Red List category: ${r.extra?.[1]}.`;
       return 'No longer on the list. The name changed, a source merged it with another species, or its records are not from India.';
     };
-    const link = r => (r.key ? `<a href="/species?key=${encodeURIComponent(r.key)}"><i>${esc(r.name)}</i></a>` : `<i>${esc(r.name)}</i>`);
+    const link = r => speciesLink(r.key, r.name);
     function render() {
       const inState = r => state == null || r.states.includes(state);
       const count = k => rows.filter(r => r.kind === k && inState(r)).length;
