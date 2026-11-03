@@ -28,7 +28,6 @@ import time
 from pathlib import Path
 
 import duckdb
-import requests
 
 from pipeline import places, util
 from pipeline.util import first
@@ -150,8 +149,7 @@ def main():
     p.add_argument("--minutes", type=float, help="stop the download after this many minutes; the next run continues")
     p.add_argument("--publish", action="store_true", help="keep the species table in R2 (cache/globi/)")
     a = p.parse_args()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
     if a.publish:
         from dotenv import load_dotenv

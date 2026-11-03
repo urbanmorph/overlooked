@@ -34,6 +34,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from pipeline import util
+from pipeline.store import Store
 from pipeline.util import log
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +42,6 @@ CACHE = ROOT / "data" / "cache" / "bsi" / "checklists"
 OUT = ROOT / "data" / "bsi"
 R2_DIR = "cache/bsi"
 REF = ROOT / "pipeline" / "ref"
-SAVE_EVERY = 600  # seconds
 # Kew WCVP binomials (accepted and synonyms) for the spelling check; built by fnf 03_wcvp_india.py.
 WCVP_NAMES = ROOT / "data" / "fnf" / "wcvp" / "wcvp_name_lookup.parquet"
 FIELDS = ["source", "checklist", "group", "family", "name", "rank", "authority", "status", "states", "page",
@@ -136,42 +136,20 @@ def ocr(spec, s3=None, minutes=None, ocr_page=ocr_page):
     """OCR every page of the book not yet in the cache. Returns {page number (str): page} when the
     book is complete, None when the time limit stopped it (progress is kept for the next run)."""
     import pymupdf
-    from pipeline import r2
     f = ocr_file(spec)
-    key = f"{R2_DIR}/checklists/{f.name}"
-    done = json.loads(f.read_text()) if f.exists() else None
-    if done is None:
-        done = (r2.get_json(s3, key) if s3 is not None else None) or {}
-    doc = pymupdf.open(pdf_path(spec))
-    todo = [n for n in range(1, len(doc) + 1) if str(n) not in done]
-    deadline = time.monotonic() + minutes * 60 if minutes is not None else None
-    next_save, dirty = time.monotonic() + SAVE_EVERY, not f.exists()
-
-    def save():
-        f.parent.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix(".tmp")
-        tmp.write_text(json.dumps(done, ensure_ascii=False))
-        tmp.replace(f)
-        if s3 is not None:
-            r2.sync_file(s3, f, key, immutable=False)
-
-    try:
+    with Store(f, s3, f"{R2_DIR}/checklists/{f.name}", merge=True) as st:
+        done = st.data
+        doc = pymupdf.open(pdf_path(spec))
+        todo = [n for n in range(1, len(doc) + 1) if str(n) not in done]
+        deadline = time.monotonic() + minutes * 60 if minutes is not None else None
         for i, n in enumerate(todo):
             if deadline is not None and time.monotonic() > deadline:
                 log(f"{spec['key']}: time limit, {len(todo) - i} pages left for the next run")
                 return None
             done[str(n)] = ocr_page(doc[n - 1])
-            dirty = True
             if (i + 1) % 25 == 0:
                 log(f"{spec['key']}: OCR {i + 1}/{len(todo)} pages")
-            if time.monotonic() > next_save:
-                save()
-                next_save, dirty = time.monotonic() + SAVE_EVERY, False
-    finally:
-        if dirty:
-            save()
-        elif s3 is not None:
-            r2.sync_file(s3, f, key, immutable=False)   # skipped when R2 already holds this file
+            st.maybe_save()
     return done
 
 
@@ -642,15 +620,13 @@ def write_csv(rows, path, fields=FIELDS):
 
 
 def run(publish=False, minutes=None, only=None, env=ROOT / ".env", names=WCVP_NAMES):
-    import requests
     from pipeline import health, r2
     s3 = None
     if publish:
         from dotenv import load_dotenv
         load_dotenv(env, override=True)
         s3 = r2.client()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     deadline = time.monotonic() + minutes * 60 if minutes is not None else None
     known = known_genera()
     rows, specs = [], [s for s in CHECKLISTS if not only or s["key"] in only]

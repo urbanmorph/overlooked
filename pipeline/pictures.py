@@ -33,6 +33,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from pipeline.evidence import ask
+from pipeline.store import SAVE_EVERY, Store
 from pipeline.util import log
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,7 +48,6 @@ TRIES = 4
 PAUSE = 1.0          # seconds between requests to one service
 MAX_AGE_DAYS = 90
 VERSION = 3          # of the Wikidata query; a store from another version asks Wikidata again
-SAVE_EVERY = 600     # seconds
 THUMB = 640          # pixels wide, the Commons thumbnail
 CC = {"cc0": "CC0", "cc-by": "CC BY", "cc-by-sa": "CC BY-SA", "cc-by-nc": "CC BY-NC", "cc-by-nc-sa": "CC BY-NC-SA",
       "cc-by-nd": "CC BY-ND", "cc-by-nc-nd": "CC BY-NC-ND"}
@@ -260,12 +260,10 @@ def refresh(http, s3, rows, corpus_csv: Path | None, cache: Path = CACHE, deadli
     from pipeline import r2
     cache.mkdir(parents=True, exist_ok=True)
     today = today or date.today().isoformat()
-    local = cache / STORE
-    store = (json.loads(local.read_text()) if local.exists() else (r2.get_json(s3, R2_DIR + STORE) if s3 else None)) \
-        or {}
-    old = store.get("version") != VERSION
-    store = {"version": VERSION, **{s: {} if old and s in ("wikidata", "byname") else store.get(s, {})
-                                    for s in ("wikidata", "byname", "inat", "commons")}}
+    st = Store(cache / STORE, s3, R2_DIR + STORE, merge=True)   # answers: a local and R2's copy both count
+    old = st.data.get("version") != VERSION
+    st.data = store = {"version": VERSION, **{s: {} if old and s in ("wikidata", "byname") else st.data.get(s, {})
+                                              for s in ("wikidata", "byname", "inat", "commons")}}
     corpus = {}
     if corpus_csv and corpus_csv.exists():
         with corpus_csv.open() as f:
@@ -276,17 +274,8 @@ def refresh(http, s3, rows, corpus_csv: Path | None, cache: Path = CACHE, deadli
         t = wikidata_of(store, k)[2]
         return names[k] not in corpus and not (store["inat"].get(t) or [None, None])[1]
 
-    def save():
-        tmp = local.with_suffix(".tmp")
-        tmp.write_text(json.dumps(store, ensure_ascii=False, separators=(",", ":")))
-        tmp.replace(local)
-        if s3:
-            r2.sync_file(s3, local, R2_DIR + STORE, immutable=False)
-
-    try:
-        done = harvest(http, store, names, need_commons, today, deadline, save)
-    finally:
-        save()
+    with st:
+        done = harvest(http, store, names, need_commons, today, deadline, st.save)
     table = write_table(rows, store, corpus, cache / TABLE)
     log(f"pictures: {'complete' if done else 'stopped at the time limit; the next run continues'}")
     if s3:
@@ -298,7 +287,6 @@ def main():
     import argparse
 
     import duckdb
-    import requests
 
     from pipeline import health, iucn_api
     a = argparse.ArgumentParser()
@@ -306,8 +294,7 @@ def main():
     a.add_argument("--minutes", type=float, help="stop after this time; the next run continues")
     a.add_argument("--corpus", action="store_true", help="make corpus.csv from data/corpus_v0 (the machine that has it)")
     args = a.parse_args()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     s3 = None
     if args.publish:
         from dotenv import load_dotenv

@@ -617,9 +617,7 @@ def main():
     p.add_argument("--seed")
     p.add_argument("--minutes", type=float, help="stop cleanly after this time; OCR progress is kept")
     a = p.parse_args()
-    import requests
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     if a.cmd == "listing":
         print(json.dumps(listing(http), indent=1))
         return

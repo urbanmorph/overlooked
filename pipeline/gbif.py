@@ -20,7 +20,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from pipeline import util
+from pipeline import health, util
 
 ROOT = Path(__file__).resolve().parent.parent
 QUERIES = ROOT / "pipeline" / "queries"
@@ -36,9 +36,8 @@ API = "https://api.gbif.org/v1/occurrence/download"
 
 def session():
     load_dotenv(ROOT / ".env", override=True)
-    http = requests.Session()
-    # GBIF asks for a User-Agent with a URL or an email address.
-    http.headers["User-Agent"] = f"overlooked-india (+https://github.com/urbanmorph/overlooked; {os.environ['GBIF_EMAIL']})"
+    os.environ["GBIF_EMAIL"]   # GBIF asks for a User-Agent with a URL or an email address (health.ua adds it)
+    http = health.session()
     http.auth = (os.environ["GBIF_USER"], os.environ["GBIF_PASSWORD"])
     return http
 

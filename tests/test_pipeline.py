@@ -107,7 +107,7 @@ def test_unresolved_records_placed_by_group_and_rank(districts, tmp_path):
 
 
 def test_new_species_names():
-    from pipeline.layer_newspecies import binomial, merge, SP_NOV
+    from pipeline.layer_newspecies import SP_NOV, binomial, merge
     assert binomial("Cycas dharmrajii L.J.Singh") == "Cycas dharmrajii"
     assert binomial("CYCAS") is None and binomial("the species") is None
     assert SP_NOV.match("sp. nov.") and SP_NOV.match("nov.sp") and not SP_NOV.match("comb. nov.")
@@ -271,3 +271,38 @@ def test_a_gbif_outage_is_a_wait_not_a_failed_build():
     assert gbif.status(type("H", (), {"get": lambda self, *a, **k: Answer(500)})(), "K") is None
     ok = type("H", (), {"get": lambda self, *a, **k: Answer(200, {"status": "RUNNING"})})()
     assert gbif.status(ok, "K") == {"status": "RUNNING"}
+
+
+def test_a_session_names_us_and_tries_a_busy_server_again(monkeypatch):
+    """health.session: our User-Agent; a GET that meets a 429 or 5xx is asked again (3 times, short pauses);
+    a POST is not (a download request must not be sent twice)."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from pipeline import health
+    seen = []
+
+    class H(BaseHTTPRequestHandler):
+        def answer(self):
+            seen.append((self.command, self.headers["User-Agent"]))
+            code = 503 if len(seen) < 3 else 200
+            self.send_response(code)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
+        do_GET = do_POST = answer
+
+        def log_message(self, *a):
+            pass
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        http = health.session(backoff=0)
+        url = f"http://127.0.0.1:{srv.server_port}/"
+        assert http.get(url, timeout=5).status_code == 200 and len(seen) == 3
+        assert seen[0][1] == health.ua()
+        seen.clear()
+        assert http.post(url, timeout=5).status_code == 503 and len(seen) == 1
+        assert health.session(agent="x").headers["User-Agent"] == "x"
+    finally:
+        srv.shutdown()

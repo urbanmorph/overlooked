@@ -19,11 +19,11 @@ Usage: .venv/bin/python -m pipeline.zotero [--publish] [--minutes N]
 """
 
 import csv
-import json
 import re
 import time
 from pathlib import Path
 
+from pipeline.store import SAVE_EVERY, Store
 from pipeline.util import log
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,7 +33,6 @@ CACHE = ROOT / "data" / "cache" / "zotero"
 R2_DIR = "cache/zotero/"
 TABLE = "zotero_species.csv"
 PAGE = 100
-SAVE_EVERY = 600     # seconds
 TRIES = 4
 SKIP = {"note", "attachment", "annotation"}
 TAG = re.compile(r"[A-Z]+(?:-[A-Z]+)? [A-Z]+(?:-[A-Z]+)?(?: [A-Z]+(?:-[A-Z]+)?)?")
@@ -127,21 +126,9 @@ def refresh(http, s3, cache: Path = CACHE, deadline=None):
     """The table, from the saved state (local, else R2's) brought up to date; with s3, state and table kept in R2.
     Returns the table path (a partial first pass still writes what it has read)."""
     from pipeline import r2
-    cache.mkdir(parents=True, exist_ok=True)
-    local = cache / "state.json"
-    state = json.loads(local.read_text()) if local.exists() else (r2.get_json(s3, R2_DIR + "state.json") if s3 else None) or {}
-
-    def save():
-        tmp = local.with_suffix(".tmp")
-        tmp.write_text(json.dumps(state, separators=(",", ":")))
-        tmp.replace(local)
-        if s3:
-            r2.sync_file(s3, local, R2_DIR + local.name, immutable=False)
-
-    try:
-        complete = sync(http, state, deadline=deadline, save=save)
-    finally:
-        save()
+    with Store(cache / "state.json", s3, R2_DIR + "state.json") as st:   # a sync cursor: R2's copy whole
+        complete = sync(http, st.data, deadline=deadline, save=st.save)
+        state = st.data
     table = write_table(state, cache / TABLE)
     log(f"zotero: {len(state.get('items', {}))} papers{'' if complete else ' so far'}, library version {state.get('version')}")
     if s3:
@@ -152,15 +139,12 @@ def refresh(http, s3, cache: Path = CACHE, deadline=None):
 def main():
     import argparse
 
-    import requests
-
     from pipeline import health
     a = argparse.ArgumentParser()
     a.add_argument("--publish", action="store_true", help="read and keep the state and table in R2 (cache/zotero/)")
     a.add_argument("--minutes", type=float, help="stop after this time; the next run continues")
     args = a.parse_args()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     s3 = None
     if args.publish:
         from dotenv import load_dotenv

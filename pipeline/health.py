@@ -29,6 +29,21 @@ def ua():
     return f"overlooked-india (+https://github.com/urbanmorph/overlooked{'; ' + email if email else ''})"
 
 
+def session(agent=None, retries=3, backoff=2):
+    """A requests session that names us (ua(), or the agent given) and asks again when a GET or HEAD meets a 429 or
+    5xx: retries times, after backoff, 2 x backoff, ... seconds, or what Retry-After asks. A POST is never asked
+    twice. The last answer is returned as it is: the caller checks its status."""
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    http = requests.Session()
+    http.headers["User-Agent"] = agent or ua()
+    retry = Retry(total=retries, backoff_factor=backoff, status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=("GET", "HEAD"), respect_retry_after_header=True, raise_on_status=False)
+    for scheme in ("https://", "http://"):
+        http.mount(scheme, HTTPAdapter(max_retries=retry))
+    return http
+
+
 def _probe(http, method, url, expect=None, **kw):
     t = time.time()
     try:
@@ -56,8 +71,7 @@ def _html_contains(text):
 
 def check_all(r2_client=None):
     load_dotenv(ROOT / ".env", override=True)
-    http = requests.Session()
-    http.headers["User-Agent"] = ua()
+    http = session(retries=0)   # a probe measures the source as it is: no second try
     results = {}
 
     def add(name, critical, used_for, method, url, expect=None, **kw):

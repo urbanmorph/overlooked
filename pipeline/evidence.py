@@ -29,6 +29,7 @@ from pathlib import Path
 
 from pipeline.gbif import COL_XR
 from pipeline.gbif import DNA_DATASET as IBOL  # International Barcode of Life (iBOL)
+from pipeline.store import SAVE_EVERY, Store
 from pipeline.util import log, period
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,7 +50,6 @@ BATCH = 500
 TRIES = 4
 PAUSE = 1.0          # seconds between batches
 MAX_AGE_DAYS = 90
-SAVE_EVERY = 600     # seconds
 PAGE = 100_000
 SPECIES_NAME = re.compile(r"[A-Z][a-z]+ [a-z][a-z-]+( [a-z][a-z-]+)?")
 
@@ -196,35 +196,17 @@ def refresh(http, s3, keys, cache: Path = CACHE, deadline=None, today=None):
     cache.mkdir(parents=True, exist_ok=True)
     today = today or date.today().isoformat()
 
-    def load(name):
-        p = cache / name
-        if p.exists():
-            return json.loads(p.read_text())
-        obj = r2.get_json(s3, R2_DIR + name) if s3 else None
-        if obj is not None:
-            p.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
-        return obj
-
-    def keep(name, obj):
-        p = cache / name
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
-        tmp.replace(p)
-        if s3:
-            r2.sync_file(s3, p, R2_DIR + name, immutable=False)
-
     week = period()
-    counts = load("counts.json")
-    if not counts or counts.get("period") != week:
-        counts = {"period": week, **gbif_counts(http), "bold": bold_india(http)}
-        keep("counts.json", counts)
-        log(f"evidence: {len(counts['types'])} species with a type specimen from India, {len(counts['photos'])} with "
-            f"a photo, {len(counts['barcodes'])} with a barcode anywhere, {len(counts['bold'])} names on BOLD from India")
-    names = load("wikidata.json") or {}
-    try:
-        wikidata_names(http, keys, names, today, save=lambda: keep("wikidata.json", names), deadline=deadline)
-    finally:
-        keep("wikidata.json", names)
+    with Store(cache / "counts.json", s3, R2_DIR + "counts.json") as st:   # a week's counts: R2's copy whole
+        if st.data.get("period") != week:
+            st.data = {"period": week, **gbif_counts(http), "bold": bold_india(http)}
+            log(f"evidence: {len(st.data['types'])} species with a type specimen from India, {len(st.data['photos'])} "
+                f"with a photo, {len(st.data['barcodes'])} with a barcode anywhere, {len(st.data['bold'])} names on BOLD "
+                "from India")
+        counts = st.data
+    with Store(cache / "wikidata.json", s3, R2_DIR + "wikidata.json", merge=True) as st:   # answers: both copies
+        names = st.data
+        wikidata_names(http, keys, names, today, save=st.save, deadline=deadline)
     log(f"evidence: {sum(1 for _, f in names.values() if f)} of {len(names)} species with a name in an Indian language")
     table = write_table(counts, names, cache / "species.parquet")
     bold = write_bold(counts["bold"], cache / "bold_india.csv")
@@ -257,15 +239,12 @@ def master_keys(s3, local=ROOT / "data" / "layers" / "master"):
 def main():
     import argparse
 
-    import requests
-
     from pipeline import health
     a = argparse.ArgumentParser()
     a.add_argument("--publish", action="store_true", help="read and keep the cache in R2 (cache/evidence/)")
     a.add_argument("--minutes", type=float, help="stop the Wikidata requests after this time; the next run continues")
     args = a.parse_args()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     s3 = None
     if args.publish:
         from dotenv import load_dotenv

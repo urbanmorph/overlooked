@@ -306,8 +306,7 @@ def run(publish, force=False, minutes=None):
     week = period()
     CACHE.mkdir(parents=True, exist_ok=True)
     http = gbif.session()
-    plain = requests.Session()
-    plain.headers["User-Agent"] = health.ua()
+    plain = health.session()
     s3 = r2.client() if publish else None
     state_key = f"cache/newspecies/state_{week}.json"
     local_state = CACHE / f"state_{week}.json"   # without R2 (a local run): the local copy, so it continues too

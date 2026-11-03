@@ -139,7 +139,6 @@ def sync(http, s3, force=False):
 
 
 def main():
-    import requests
     from dotenv import load_dotenv
     from pipeline import health
     p = argparse.ArgumentParser()
@@ -150,8 +149,7 @@ def main():
     if os.environ.get("R2_ENDPOINT"):
         from pipeline import r2
         s3 = r2.client()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     print(json.dumps({k: str(v) for k, v in sync(http, s3, a.force).items()}))
 
 

@@ -44,7 +44,6 @@ MONOGRAPHS = [
 def ocr_all(publish=False, minutes=None, only=None):
     """Download and OCR every book (or those in only); returns {key: pages}, without the books the time limit
     stopped."""
-    import requests
 
     from pipeline import bsi_checklist as bc
     from pipeline import health, r2
@@ -54,8 +53,7 @@ def ocr_all(publish=False, minutes=None, only=None):
         from dotenv import load_dotenv
         load_dotenv(bc.ROOT / ".env", override=True)
         s3 = r2.client()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     deadline = time.monotonic() + minutes * 60 if minutes is not None else None
     books = {}
     for spec in [m for m in MONOGRAPHS if not only or m["key"] in only]:

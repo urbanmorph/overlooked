@@ -187,14 +187,12 @@ def run(http, s3=None, cache=CACHE):
 
 
 def main():
-    import requests
 
     from pipeline import health
     a = argparse.ArgumentParser()
     a.add_argument("--publish", action="store_true", help="keep the PDF and the table in R2 (cache/lichens/)")
     args = a.parse_args()
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     s3 = None
     if args.publish:
         from dotenv import load_dotenv

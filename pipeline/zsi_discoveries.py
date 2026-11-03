@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 from pipeline import bsi
+from pipeline.store import Store
 from pipeline.util import log
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +41,6 @@ LISTING = "https://zsi.gov.in/impo-link/7"          # "Animal Discovery" under I
 LANGUAGE = "https://zsi.gov.in/change-language"
 FIRST_YEAR = 2009                                   # earliest edition ZSI posts (the series began in 2007)
 NARRATIVE_FROM = 2017
-SAVE_EVERY = 600                                    # seconds between R2 saves of OCR progress
 SOURCE = "ZSI Animal Discoveries"
 
 # Totals each edition states in its summary or introduction: (new species, new records). For the check
@@ -187,43 +187,22 @@ def ocr_page(page):
 
 def page_texts(pdf, year, s3=None):
     """{page number: text}: the text layer, or OCR where needs_ocr(). OCR pages are kept in
-    ocr_file(year) (and R2), saved every SAVE_EVERY seconds and on exit, also on failure."""
+    ocr_file(year) and R2 (pipeline/store.py: saved every 10 minutes and on exit, also on failure)."""
     import pymupdf
-    from pipeline import r2
     f = ocr_file(year)
-    key = f"{R2_DIR}/{f.name}"
-    done = json.loads(f.read_text()) if f.exists() else None
-    if done is None:
-        done = (r2.get_json(s3, key) if s3 is not None else None) or {}
-    dirty, next_save = False, time.monotonic() + SAVE_EVERY
-
-    def save():
-        tmp = f.with_suffix(".tmp")
-        tmp.write_text(json.dumps(done, ensure_ascii=False))
-        tmp.replace(f)
-        if s3 is not None:
-            r2.sync_file(s3, f, key, immutable=False)
-
     out = {}
-    try:
+    with Store(f, s3, f"{R2_DIR}/{f.name}", merge=True) as st:
+        done = st.data
         for page in pymupdf.open(pdf):
             n = page.number + 1
             text = page.get_text()
             if needs_ocr(text):
                 if str(n) not in done:
                     done[str(n)] = ocr_page(page)
-                    dirty = True
                     log(f"{year}: OCR page {n}")
+                    st.maybe_save()
                 text = done[str(n)]
             out[n] = text
-            if dirty and time.monotonic() > next_save:
-                save()
-                dirty, next_save = False, time.monotonic() + SAVE_EVERY
-    finally:
-        if dirty:
-            save()
-        elif s3 is not None and f.exists():
-            r2.sync_file(s3, f, key, immutable=False)    # skipped when R2 already holds this file
     return out
 
 
@@ -499,11 +478,9 @@ def main():
     p.add_argument("--minutes", type=float, help="start no new edition after this many minutes")
     p.add_argument("--env", default=ROOT / ".env", type=Path, help="file with the R2_* keys and GBIF_EMAIL")
     a = p.parse_args()
-    import requests
     from dotenv import load_dotenv
     load_dotenv(a.env, override=True)        # contact email for the User-Agent; R2 keys for --publish
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     if a.cmd == "listing":
         log(json.dumps(listing(http), indent=1))
         return

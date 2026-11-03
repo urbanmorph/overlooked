@@ -9,7 +9,7 @@ Three stages, each resumable:
   3. Each assessment in full (assessment/{id}). An assessment never changes once published, so a new Red List
      version reads stages 1 and 2 again and keeps every assessment already fetched.
 
-Caching: everything in one JSON store (data/cache/iucn_api/store.json), saved every SAVE_EVERY seconds, at a time
+Caching: everything in one JSON store (data/cache/iucn_api/store.json), saved every 10 minutes (pipeline/store.py), at a time
 limit and on any failure, and copied to R2 cache/iucn_api/ (private: the site never serves cache/). Idempotent: a run
 with the same Red List version and names asks the API only for its version.
 
@@ -20,14 +20,13 @@ Usage: .venv/bin/python -m pipeline.iucn_api [--master data/layers/master/<perio
 """
 
 import argparse
-import json
 import os
 import time
 from pathlib import Path
 
 import requests
 
-from pipeline import util
+from pipeline import store, util
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://api.iucnredlist.org/api/v4/"
@@ -35,7 +34,6 @@ CACHE = ROOT / "data" / "cache" / "iucn_api"
 R2_PREFIX = "cache/iucn_api/"
 PAUSE = 0.25          # seconds between requests: about 4 a second at most
 BACKOFF = 2.0         # first wait after a server error or a dropped connection; doubles each try
-SAVE_EVERY = 600      # seconds between saves of the store
 GLOBAL = "1"          # IUCN scope code of a global assessment
 
 
@@ -78,27 +76,14 @@ class Api:
         raise ApiDown(path)
 
 
-class Store:
-    """The run's state and answers in one JSON file; upload(path) copies it to durable storage."""
+class Store(store.Store):
+    """The run's state and answers in one JSON file (pipeline/store.py), with R2 (s3) its durable copy. R2's copy
+    whole, not merged: a new Red List version starts the answers again."""
 
-    def __init__(self, path: Path, upload=None):
-        self.path, self.upload, self.saved_at = path, upload, time.monotonic()
-        self.data = json.loads(path.read_text()) if path.exists() else {}
+    def __init__(self, path: Path, s3=None):
+        super().__init__(path, s3, R2_PREFIX + path.name if s3 else None)
         for k in ("pages", "names", "assessments"):
             self.data.setdefault(k, {})
-
-    def save(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.data, separators=(",", ":")))
-        tmp.replace(self.path)
-        if self.upload:
-            self.upload(self.path)
-        self.saved_at = time.monotonic()
-
-    def maybe_save(self):
-        if time.monotonic() - self.saved_at > SAVE_EVERY:
-            self.save()
 
 
 def compact(a, country="IN"):
@@ -225,31 +210,28 @@ def main():
     p.add_argument("--minutes", type=float, help="stop after this many minutes; the next run continues")
     p.add_argument("--local", action="store_true", help="keep the store on this machine only (no copy to R2)")
     a = p.parse_args()
-    s3 = upload = None
-    if os.environ.get("R2_ENDPOINT") and not a.local:
-        from pipeline import r2
-        s3 = r2.client()
-        r2.restore(s3, R2_PREFIX + "store.json", CACHE / "store.json")
-        upload = lambda path: r2.sync_file(s3, path, R2_PREFIX + path.name, immutable=False)
+    from pipeline import r2
+    s3 = r2.client() if os.environ.get("R2_ENDPOINT") and not a.local else None
     master = Path(a.master) if a.master else master_path(s3)
     if master is None:
         raise SystemExit("no master list: build one, or give --master")
     names = sorted({n for (n,) in duckdb.sql(f"SELECT name FROM '{master}' WHERE iucn <> 'NE'").fetchall()})
     print(f"{len(names)} assessed species on the list ({master})", flush=True)
-    store = Store(CACHE / "store.json", upload)
     deadline = time.monotonic() + a.minutes * 60 if a.minutes else None
     api = Api(os.environ["IUCN_TOKEN"])
-    done = harvest(api, store, names, deadline, log=lambda m: print(m, flush=True))
-    out = rows(store)
+    with Store(CACHE / "store.json", s3) as st:
+        done = harvest(api, st, names, deadline, log=lambda m: print(m, flush=True))
+    out = rows(st)
     print(f"{'complete' if done else 'stopped at the time limit'}: {len(out)} species with an assessment; "
           f"{api.count} requests this run", flush=True)
-    if out:
+    path = CACHE / "iucn_detail.parquet"
+    if out and (done or not path.exists() and not (s3 and r2.exists(s3, R2_PREFIX + path.name))):
+        # A run stopped at the time limit may hold fewer names (a new Red List version starts again): the last
+        # whole table stays until this one is complete.
         import pyarrow as pa
         import pyarrow.parquet as pq
-        path = CACHE / "iucn_detail.parquet"
         pq.write_table(pa.Table.from_pylist(out), path, compression="zstd")
         if s3:
-            from pipeline import r2
             r2.sync_file(s3, path, R2_PREFIX + path.name, immutable=False)
 
 

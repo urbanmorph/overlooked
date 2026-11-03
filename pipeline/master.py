@@ -612,8 +612,7 @@ def match_names(names, cache, s3, deadline=None, http=None):
     saving the cache every 10 minutes and at the end. A failed request is tried again after a pause; the run
     stops at the deadline, or after RETRIES names in a row fail. The next run continues. Returns how many
     names were answered."""
-    http = http or requests.Session()
-    http.headers.setdefault("User-Agent", health.ua())
+    http = http or health.session()
     todo = iter([n for n in dict.fromkeys(names) if n not in cache])
 
     def ask(name):
@@ -1734,8 +1733,7 @@ def run(a):
     ns_doc, ns_month = layer_input(s3, "newspecies", "file", "new_species.json")
     genus_doc, _ = layer_input(s3, "inat", "genus_counts", "genus_counts.json")
     coarse_doc, _ = layer_input(s3, "inat", "coarse_counts", "coarse_counts.json")
-    http = requests.Session()
-    http.headers["User-Agent"] = health.ua()
+    http = health.session()
     inputs = {"zsi": zsi_input(s3), "wcvp": wcvp_input(s3), "bsi": bsi_input(s3), "globi": globi_input(s3), "globi_edges": globi_edges_input(s3),
               "soib": soib.refresh(http, s3, CACHE / "soib"), "ebird_india": ebird_india.refresh(http, s3, CACHE / "ebird"),
               "lichens": lichens_input(s3),
