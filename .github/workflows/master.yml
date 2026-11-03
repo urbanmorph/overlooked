@@ -49,5 +49,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "Master list layer failed ($(date -u +%Y-%m-%d))" \
-            --body "The master list workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          scripts/report_failure.sh "Master list layer" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

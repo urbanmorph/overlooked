@@ -52,5 +52,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "New species layer failed ($(date -u +%Y-%m-%d))" \
-            --body "The new species workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          scripts/report_failure.sh "New species layer" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

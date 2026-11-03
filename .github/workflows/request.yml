@@ -57,5 +57,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "Download request failed ($(date -u +%Y-%m-%d))" \
-            --body "The request workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          scripts/report_failure.sh "Download request" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
