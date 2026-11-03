@@ -21,6 +21,9 @@ export async function onRequest({ request, env, params }) {
   obj.writeHttpMetadata(headers);
   headers.set('ETag', obj.httpEtag);
   headers.set('Accept-Ranges', 'bytes');
+  // Open data (llms.txt): any site or agent may read it; search engines are asked not to list the raw files.
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('X-Robots-Tag', 'noindex');
   if (!headers.has('Cache-Control')) headers.set('Cache-Control', SHORT);
   if (key === 'latest.json') headers.set('Cache-Control', SHORT);
 

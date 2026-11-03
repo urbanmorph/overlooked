@@ -31,3 +31,10 @@ test('cache/ is never served', async () => {
   const r = await onRequest({ request: new Request('https://x/data/cache/a'), env: bucket(), params: { path: ['cache', 'a'] } });
   assert.equal(r.status, 404);
 });
+
+test('data files are open to agents and crawlers but kept out of search results', async () => {
+  const r = await ask();
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('X-Robots-Tag'), 'noindex');
+  assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
+});
