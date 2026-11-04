@@ -1249,7 +1249,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                     AS states_obs_mask,
                list_position($1, m."order") - 1 AS order_i, list_position($2, m.suborder) - 1 AS suborder_i,
                CASE WHEN m.provinces IS NOT NULL THEN coalesce(list_sum(list_transform(m.provinces,
-                    p -> 1::BIGINT << (list_position($3, p) - 1))), 0) END AS provinces_mask
+                    lambda p: 1::BIGINT << (list_position($3, p) - 1))), 0) END AS provinces_mask
         FROM master m
     """, [orders, SUBORDERS, provinces])
     shutil.rmtree(out / "search", ignore_errors=True)
