@@ -401,6 +401,46 @@ def test_site_files(built):
     assert ["Kerala", "state", 32, 32] in places and ["Mysuru", "district", 201, 29] in places
 
 
+def mcp_rows(out):
+    """Read mcp/rows.bin with the layout mcp/meta.json gives (as functions/lib/mcp.js does)."""
+    import struct
+    meta = json.loads((out / "mcp" / "meta.json").read_text())
+    data, text = (out / "mcp" / "rows.bin").read_bytes(), (out / "mcp" / "text.txt").read_bytes()
+    fmt = {"u8": "<B", "u16": "<H", "u32": "<I"}
+    rows = []
+    for i in range(meta["rows"]):
+        at = i * meta["row_bytes"]
+        r = {f: struct.unpack_from(fmt[t], data, at + off)[0] for f, (off, t, _) in meta["fields"].items()}
+        r = {f: None if v == meta["fields"][f][2] else v for f, v in r.items()}
+        end = text.index(b"\n", r["text"])
+        r["key"], r["name"], r["english"] = text[r["text"]:end].decode().split("\t")
+        rows.append(r)
+    return meta, rows
+
+
+def test_agent_index(built):
+    """mcp/: one fixed-width binary row per species on the list (functions/lib/mcp.js scans it in a millisecond, where
+    the g files take 40 ms to parse), its key, Latin and English names in text.txt, and the layout and families in
+    meta.json."""
+    out, s = built["out"], built["summary"]
+    meta, rows = mcp_rows(out)
+    assert meta["rows"] == s["totals"]["documented"] == len(rows)
+    birds = GROUPS.index("Birds")
+    aus = next(r for r in rows if r["name"] == "Aus bus")
+    g = next(x for x in json.loads((out / "g" / f"{birds}.json").read_text())["rows"] if x[1] == "Aus bus")
+    assert (aus["key"], aus["english"], aus["group"], aus["status"], aus["iucn"], aus["labels"]) == \
+        ("K1", "Common aus", birds, g[3], g[4], g[5])
+    assert aus["states_lo"] + (aus["states_hi"] << 32) == g[6] and aus["provinces"] == g[11]
+    assert (aus["described"], aus["last_year"], aus["order"], aus["suborder"]) == (1758, 2020, g[9], None)
+    from pipeline.site_data import shard_of
+    sp = json.loads((out / "sp" / f"{shard_of('K1')}.json").read_text())["K1"]
+    assert meta["families"][aus["family"]] == sp[-4]
+    hus = next(r for r in rows if r["name"] == "Hus ius")
+    assert hus["english"] == "" and hus["last_year"] == 2000
+    assert "Zus zus" not in {r["name"] for r in rows}            # status 2: not on the list
+    assert [r["group"] for r in rows] == sorted(r["group"] for r in rows)
+
+
 def test_waiting_for_a_name(built):
     """iNaturalist needs-ID species per area: counts per group, and a file per group with the taxon to identify."""
     out, w = built["out"], built["summary"]["waiting"]

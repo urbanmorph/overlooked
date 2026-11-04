@@ -35,6 +35,7 @@ changed after), then layers/master/<period>/current.json and layers/master/lates
   review/names.json     names to check, for people who know a group (pipeline/name_review.py)
   g/<gi>.json           all species of a group
   search/<p>.json       search index, one file per two-letter name prefix; search/places.json
+  mcp/                  rows.bin, text.txt, meta.json: every species on the list for the agent server (/mcp)
 
 Usage:
   python -m pipeline.master seed                                 # local machine: ZSI and WCVP files to R2 cache/master/
@@ -47,6 +48,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
@@ -985,6 +987,45 @@ def group_files(out: Path, folder, rows, every=()):
         dump({"rows": r}, out / folder / f"{gi}.json")
 
 
+# mcp/rows.bin: one row per species on the list, little-endian, for the agent server (functions/lib/mcp.js), which
+# reads the layout from mcp/meta.json. field: (byte offset, type, the value that means null).
+MCP_FIELDS = {"group": (0, "u8", None), "status": (1, "u8", None), "iucn": (2, "u8", None),
+              "suborder": (3, "u8", 0xFF), "labels": (4, "u32", None),
+              "states_lo": (8, "u32", None), "states_hi": (12, "u32", None), "provinces": (16, "u32", 0xFFFFFFFF),
+              "described": (20, "u16", 0), "last_year": (22, "u16", 0), "order": (24, "u16", 0xFFFF),
+              "family": (26, "u16", 0xFFFF), "text": (28, "u32", None)}
+MCP_ROW = struct.Struct("<BBBBIIIIHHHHI")
+
+
+def mcp_files(con, out: Path):
+    """mcp/rows.bin, mcp/text.txt (a line per row: key, Latin name, English name, tab-separated; a row's text field is
+    the byte offset of its line) and mcp/meta.json (layout, families). Same species and order as the g files.
+    The agent server scans every species of India for one answer: binary rows cost no parse time."""
+    families = [f for (f,) in con.sql("SELECT DISTINCT family FROM site WHERE status < 2 AND family IS NOT NULL ORDER BY 1").fetchall()]
+    fam = {f: i for i, f in enumerate(families)}
+    assert len(families) < 0xFFFF
+    rows, text, at = bytearray(), bytearray(), 0
+    null = lambda v, n: n if v is None else v
+    for gi, status, iucn_i, sub, labels, states, prov, year, last, order, family, key, name, common in con.sql("""
+            SELECT s.gi, s.status, s.iucn_i, s.suborder_i, s.labels_mask, s.states_obs_mask, s.provinces_mask, s.year,
+                   s.last_year, s.order_i, s.family, coalesce(s.key, ''), s.name, coalesce(p.common, '')
+            FROM site s LEFT JOIN (SELECT key, any_value(common) AS common FROM pics WHERE common IS NOT NULL
+                                   GROUP BY key) p USING (key)
+            WHERE s.status < 2 ORDER BY s.gi, s.name""").fetchall():
+        rows += MCP_ROW.pack(gi, status, iucn_i, null(sub, 0xFF), labels, states & 0xFFFFFFFF, states >> 32,
+                             null(prov, 0xFFFFFFFF), year or 0, last or 0, null(order, 0xFFFF),
+                             fam.get(family, 0xFFFF), at)
+        line = f"{key}\t{name}\t{common}\n".encode()
+        text += line
+        at += len(line)
+    shutil.rmtree(out / "mcp", ignore_errors=True)
+    (out / "mcp").mkdir(parents=True)
+    (out / "mcp" / "rows.bin").write_bytes(rows)
+    (out / "mcp" / "text.txt").write_bytes(text)
+    dump({"version": 1, "rows": len(rows) // MCP_ROW.size, "row_bytes": MCP_ROW.size,
+          "fields": {f: list(v) for f, v in MCP_FIELDS.items()}, "families": families}, out / "mcp" / "meta.json")
+
+
 def state_pairs(states):
     return [[b, int(c)] for b, c in states or []]
 
@@ -1357,6 +1398,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     family_files(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
         f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
+    mcp_files(con, out)
     buckets = {}
     cols = "coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year"
     for r in con.sql(f"SELECT name, {cols} FROM site").fetchall():

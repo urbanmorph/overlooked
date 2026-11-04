@@ -28,6 +28,7 @@ One table, `daily(day, dim, key, n)`: one counter per UTC day, per dimension, pe
 | `search` | first two letters of a search, for example `pa` | the search file the front page fetches (`layers/master/<m>/search/<p>.json`) |
 | `group_open` | group index | the group file the front page fetches (`layers/master/<m>/g/<gi>.json`) |
 | `inat_out` | shortlist group key, for example `true-bugs` | a link followed from the Shortlists page to iNaturalist (`/go/inat/<id>?g=<group>`, a 302 redirect by `functions/go/inat/[id].js`); the observation id is not stored |
+| `mcp` | tool name, for example `list_species` | a tool call to the MCP server (`/mcp`, `functions/lib/mcp.js`); the arguments are not stored |
 
 Only page views with status 200 and an HTML body count, and the `/go/inat/` redirects with status 302. Prefetches, HEAD requests, errors and other files do not count. Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
 
