@@ -20,7 +20,8 @@ RIGHTS = {
     "attribution": ("Overlooked (https://overlooked-india.pages.dev). Sources: GBIF.org (cite the download DOIs), "
                     "iNaturalist, Botanical Survey of India and Zoological Survey of India (Ministry of Environment, "
                     "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), Plazi, "
-                    "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas."),
+                    "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas, biogeographic zones "
+                    "of India (Wildlife Institute of India, GODL-India) via bharatlas."),
     "disclaimer": ("Overlooked is not an official checklist or conservation assessment. For the status of a species, "
                    "consult BSI, ZSI, the IUCN Red List and the state forest department."),
 }

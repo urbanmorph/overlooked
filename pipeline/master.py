@@ -56,6 +56,7 @@ import duckdb
 import requests
 
 from pipeline import (
+    biogeo,
     described,
     ebird_india,
     gbif,
@@ -315,7 +316,7 @@ def snapshot_input(s3, run_id):
     """Paths of the snapshot files; missing ones are fetched from R2 snapshots/<run>/."""
     folder = SNAPSHOTS / run_id
     paths = {}
-    for name in ("species", "ledger", "species_decade", "unlocated", "species_places"):
+    for name in ("species", "ledger", "species_decade", "unlocated", "species_places", "species_zones"):
         p = folder / f"{name}.parquet"
         if not p.exists() and s3:
             r2.fetch(s3, f"snapshots/{run_id}/{name}.parquet", p)
@@ -403,6 +404,12 @@ def load_gbif(con, paths):
     con.sql(f"CREATE OR REPLACE TABLE gbif_places AS SELECT species_key AS key, places_precise, cells_2km FROM '{paths['species_places']}'"
             if paths.get("species_places") else
             "CREATE OR REPLACE TABLE gbif_places (key VARCHAR, places_precise BIGINT, cells_2km BIGINT)")
+    # WII biogeographic provinces with a placed record (snapshots built after species_zones was added; else not
+    # measured: provinces null).
+    con.sql(f"SET VARIABLE zones_measured = {bool(paths.get('species_zones'))}")
+    con.sql(f"CREATE OR REPLACE TABLE gbif_zones AS SELECT species_key AS key, list(prov ORDER BY prov) AS provinces "
+            f"FROM '{paths['species_zones']}' GROUP BY 1"
+            if paths.get("species_zones") else "CREATE OR REPLACE TABLE gbif_zones (key VARCHAR, provinces VARCHAR[])")
     if paths.get("unlocated"):
         # Excluded datasets and places outside India apply also to snapshots built before they were listed.
         con.execute(f"""CREATE OR REPLACE TABLE unl AS SELECT * FROM '{paths["unlocated"]}' WHERE species_key IS NOT NULL
@@ -765,12 +772,14 @@ def resolve(con):
             UNION ALL SELECT id, 5, NULL, hk, hp, hc, ho, hf FROM n)
         SELECT id, arg_min(coalesce(grp, {GROUP_SQL}), t) AS grp,
                arg_min(kingdom, t) FILTER (WHERE kingdom IS NOT NULL) AS kingdom,
+               arg_min(class, t) FILTER (WHERE class IS NOT NULL) AS class,
+               arg_min("order", t) FILTER (WHERE "order" IS NOT NULL) AS "order",
                arg_min(family, t) FILTER (WHERE family IS NOT NULL) AS family
         FROM c GROUP BY id
     """)
     con.sql("""
         CREATE OR REPLACE TABLE ids0 AS
-        SELECT a.id, d.name, coalesce(c.grp, 'Other') AS grp, c.kingdom, c.family,
+        SELECT a.id, d.name, coalesce(c.grp, 'Other') AS grp, c.kingdom, c.class, c."order", c.family,
                a.id IN (SELECT id FROM names_in_r WHERE source = 'GBIF') AS in_gbif
         FROM all_ids a JOIN display d USING (id) LEFT JOIN cls c USING (id)
     """)
@@ -790,8 +799,22 @@ def resolve(con):
 
 # ---------------------------------------------------------------- flags and labels
 
+SQUAMATA = ROOT / "pipeline" / "ref" / "squamata.csv"
+SUBORDERS = ["Serpentes", "Sauria"]   # snakes, lizards: order Squamata has no suborder in GBIF or Catalogue of Life
+
+
+def squamata_suborders(path=SQUAMATA):
+    """{family: suborder} for the families of order Squamata (pipeline/ref/squamata.csv)."""
+    import csv
+    with path.open() as f:
+        return {r["family"]: r["suborder"] for r in csv.DictReader(f)}
+
+
 def flags(con):
     """Creates tables master (one row per species) and master_state (one row per species x state)."""
+    sub = squamata_suborders()
+    con.execute("CREATE OR REPLACE TABLE squamata AS SELECT unnest($1) AS family, unnest($2) AS suborder",
+                [list(sub), list(sub.values())])
     src_idx = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))
     lab_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(CODES))
     cat_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(IUCN_CATS))
@@ -895,6 +918,8 @@ def flags(con):
     con.sql(f"""
         CREATE OR REPLACE TABLE master AS
         SELECT i.id, CASE WHEN NOT starts_with(i.id, 'n:') THEN i.id END AS key, i.name, i.grp AS "group", i.family,
+               i."order", sq.suborder,
+               CASE WHEN getvariable('zones_measured') THEN coalesce(gz.provinces, []) END AS provinces,
                list_position({GROUPS!r}, i.grp) - 1 AS gi,
                s.sources, s.sources_mask, f.observed,
                -- 0: on the list, no open record yet; 1: an open record; 2: not on the list, a name that waits.
@@ -913,6 +938,8 @@ def flags(con):
         LEFT JOIN id_iucn c USING (id) LEFT JOIN id_states t USING (id) LEFT JOIN id_year y USING (id)
         LEFT JOIN id_globi gl USING (id) LEFT JOIN id_soib so USING (id) LEFT JOIN id_iutrend it USING (id) LEFT JOIN gbif_places gp ON gp.key = i.id
         LEFT JOIN evid ev ON ev.key = i.id LEFT JOIN id_lit li ON li.id = i.id
+        LEFT JOIN gbif_zones gz ON gz.key = i.id
+        LEFT JOIN squamata sq ON i."order" = 'Squamata' AND sq.family = i.family
         ORDER BY gi, i.name
     """)
     con.sql("CREATE OR REPLACE VIEW listed AS SELECT * FROM master WHERE status < 2")
@@ -927,7 +954,7 @@ def states_list(districts_path):
 
 # One species in g/<gi>.json (and at the start of w/<gi>.json rows); the last field is the year described.
 ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
-           "s.year, s.last_year")
+           "s.year, s.last_year, s.order_i, s.suborder_i, s.provinces_mask")
 
 
 def per_area(rows, n, width):
@@ -1054,7 +1081,8 @@ def species_files(con, out: Path):
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
-            types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family in con.sql("""
+            types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family, order, \
+            suborder, provinces in con.sql("""
             WITH w AS (   -- the observations that wait, per species: in India and per state
                 SELECT w.id, any_value(w.taxon) AS taxon, coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0) AS n_india,
                        list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL) AS states
@@ -1063,14 +1091,15 @@ def species_files(con, out: Path):
                    w.taxon, coalesce(w.n_india, 0), w.states, s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
-                   s.papers, s.papers_latest, s.iucn_trend, s.family
+                   s.papers, s.papers_latest, s.iucn_trend, s.family, s."order", s.suborder, s.provinces
             FROM site s LEFT JOIN w USING (id)
             WHERE s.key IS NOT NULL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
-                                                    trend, traits, precise, papers, papers_latest, iucn_trend, family]
+                                                    trend, traits, precise, papers, papers_latest, iucn_trend, family,
+                                                    order, suborder, provinces]
     shard_files(out, "sp", parts)
 
 
@@ -1210,12 +1239,19 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     bit = {int(s["code"]): i for i, s in enumerate(states)}
     con.execute("CREATE OR REPLACE TABLE state_bit AS SELECT unnest($1) AS state_lgd, unnest($2) AS b",
                 [list(bit), list(bit.values())])
-    con.sql("""
+    orders = [o for (o,) in con.sql('SELECT DISTINCT "order" FROM master WHERE "order" IS NOT NULL ORDER BY 1').fetchall()]
+    provinces = [c for c, _, _ in biogeo.PROVINCES]
+    # Order and suborder: indexes into summary orders and suborders (null: not known, or not a snake or lizard).
+    # Provinces: bits in the order of summary provinces (null: the snapshot has no species_zones).
+    con.execute("""
         CREATE OR REPLACE TABLE site AS
         SELECT m.*, coalesce((SELECT sum(1::BIGINT << b) FROM state_bit WHERE list_contains(m.states_observed, state_lgd)), 0)
-                    AS states_obs_mask
+                    AS states_obs_mask,
+               list_position($1, m."order") - 1 AS order_i, list_position($2, m.suborder) - 1 AS suborder_i,
+               CASE WHEN m.provinces IS NOT NULL THEN coalesce(list_sum(list_transform(m.provinces,
+                    p -> 1::BIGINT << (list_position($3, p) - 1))), 0) END AS provinces_mask
         FROM master m
-    """)
+    """, [orders, SUBORDERS, provinces])
     shutil.rmtree(out / "search", ignore_errors=True)
     n = len(GROUPS)
     since = recent_from(meta["period"])
@@ -1313,6 +1349,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                **{k: v if evidence_measured else None for k, v in evidence.items()},
                "papers": papers if papers_measured else None,
                "recent_from": since,
+               "orders": orders, "suborders": SUBORDERS, "provinces": [list(p) for p in biogeo.PROVINCES],
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
     dump(summary, out / "summary.json")
@@ -1635,7 +1672,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     else:
         shutil.rmtree(out / "web", ignore_errors=True)
     con.sql(f"""COPY (SELECT key, name, "group", sources, observed, iucn, labels, states_observed, last_year, iucn_year,
-                            year, authority FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
+                            year, authority, "order", suborder, provinces FROM listed) TO '{out / 'master.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
     con.sql(f"COPY (SELECT * EXCLUDE (id) FROM master_state WHERE id IN (SELECT id FROM listed)) "
             f"TO '{out / 'master_state.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"))

@@ -305,10 +305,12 @@ try {
   // Species list for the chosen group, filtered by state, view and the filter chips.
   let shown = PAGE;
   // A g row: key, name, sources, status, IUCN, labels, states with an open record, year described, latest year of a
-  // record placed in a state; the group index is added at G. A w row: that g row, then iNaturalist taxon,
-  // observations in India, [[state index, n]].
-  const G = 9;
-  const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => [...r, gi]));
+  // record placed in a state, order, suborder, WII biogeographic provinces with an open record; the group index is
+  // added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
+  // Lists built before 4 Nov 2026 (no summary provinces) have 9-field g rows.
+  const G = 12, WIDTH = S.provinces ? G : 9;
+  const withGroup = (r, gi) => { const x = r.slice(0, WIDTH); x[G] = gi; return x; };
+  const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => withGroup(r, gi)));
   function passes(r, f = st.filters, y = st.years) {
     const [, , src, status, iucn, labels, , year] = r;
     if ((y.from || y.to) && (year == null || year < (y.from || 0) || year > (y.to || 9999))) return false;
@@ -323,7 +325,7 @@ try {
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
   const waitRows = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }))
-    .then(d => d.rows.map(x => [[...x.slice(0, G), gi], ...x.slice(G)]));
+    .then(d => d.rows.map(x => [withGroup(x, gi), ...x.slice(WIDTH)]));
   const endBit = S.labels.findIndex(l => l.code === 'end');
 
   // Species with observations that wait for a name, most useful first.

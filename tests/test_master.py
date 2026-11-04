@@ -110,7 +110,10 @@ def inputs(tmp_path):
     soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
                     "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
                     "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
-    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places},
+    zones = write(con, """SELECT * FROM (VALUES ('K1', '5B', 5, 2020), ('K1', '6E', 1, 2010), ('K3', '5B', 2, 2011))
+        t(species_key, prov, n_records, last_year)""", tmp_path / "species_zones.parquet")
+    return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places,
+                      "species_zones": zones},
             "inputs": {"zsi": zsi, "wcvp": wcvp, "bsi": bsi, "inat": inat_doc, "newspecies": ns_doc, "globi": globi,
                        "globi_edges": edges,
                        "soib": soib, "lichens": lichens, "bsi_monographs": mono, "evidence": evid, "bold": bold,
@@ -376,7 +379,14 @@ def test_site_files(built):
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
     assert aus[0] == "K1" and aus[3] == 1 and aus[6] == 1 << 1      # an open record in state index 1 (32)
-    assert aus[7] == 1758 and aus[8] == 2020 and len(aus) == 9      # year described, latest placed record
+    assert aus[7] == 1758 and aus[8] == 2020 and len(aus) == 12     # year described, latest placed record
+    # Order (index into summary orders), suborder (index into summary suborders; snakes and lizards only), and the WII
+    # biogeographic provinces with an open record (bits in the order of summary provinces).
+    assert s["orders"][aus[9]] == "Passeriformes" and aus[10] is None
+    assert s["suborders"] == ["Serpentes", "Sauria"]
+    codes = [p[0] for p in s["provinces"]]
+    assert aus[11] == (1 << codes.index("5B")) | (1 << codes.index("6E"))
+    assert s["provinces"][codes.index("5B")] == ["5B", "Western Ghats: Mountains", "Western Ghats"]
     assert "Zus zus" not in {x[1] for x in g}
     assert aus[5] & (1 << labels.index("end")) and aus[2] == 0b1011001  # ZSI, GBIF, iNaturalist, IUCN
     search = json.loads((out / "search" / "au.json").read_text())["rows"]
@@ -404,9 +414,9 @@ def test_waiting_for_a_name(built):
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     # The species' g row (with the year), then iNaturalist taxon (the species, not a subspecies), observations in India,
     # [[state index, n]]. Zus zus is on no list (status 2), but its observations still wait.
-    assert rows[0][:9] == g["Hus ius"]
+    assert rows[0][:12] == g["Hus ius"]
     assert rows[1][1] == "Zus zus" and rows[1][3] == 2 and rows[1][6] == 0
-    assert [r[9:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
+    assert [r[12:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):
@@ -439,18 +449,23 @@ def test_species_files(built):
     #  iNaturalist taxon, observations waiting in India, [[state index, n]], year described, authority,
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
-                          None, False, None, None, None, 0, None, False, False, None, None, None, None, "Muscicapidae"]
+                          None, False, None, None, None, 0, None, False, False, None, None, None, None, "Muscicapidae",
+                          "Passeriformes", None, []]
+    # Then the order, the suborder (snakes and lizards only) and the WII provinces with an open record.
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    assert aus[-3:] == ["Passeriformes", None, ["5B", "6E"]]
+    aus = aus[:-3]
     assert aus[-16:-11] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
     assert aus[-11:-7] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
     assert aus[-7:-4] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
     assert aus[-2:] == ["Stable", "Muscicapidae"]        # the trend in IUCN's assessment; the family
-    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
+    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"][:-3]
     assert eus[-11:-7] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
-                        None, None, 0, None, None, False, None, None, None, None, "Muscicapidae"]
+                        None, None, 0, None, None, False, None, None, None, None, "Muscicapidae", "Passeriformes",
+                        None, []]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -1021,7 +1036,7 @@ def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
     assert s["papers"][birds] == 1 and s["totals"]["papers"] == 1                  # Aus bus
     assert all(v is None for gi, v in enumerate(s["papers"]) if gi != birds)
     assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
-    aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"][:-3]   # before the order, suborder and provinces
     assert aus[-4:-2] == [5, 2020]
 
 
@@ -1116,3 +1131,30 @@ def test_a_layer_input_is_the_newer_of_the_local_copy_and_r2s(tmp_path, monkeypa
     new.parent.mkdir(parents=True)
     new.write_text('{"from": "new"}')
     assert master.layer_input(s3, "inat", "counts", "c.json") == ({"from": "new"}, "2026-11-02")
+
+
+def test_squamata_families_are_snakes_or_lizards():
+    """Order Squamata has no suborder in GBIF or the Catalogue of Life: pipeline/ref/squamata.csv gives each family's."""
+    sub = master.squamata_suborders()
+    assert sub["Elapidae"] == "Serpentes" and sub["Uropeltidae"] == "Serpentes" and sub["Colubridae"] == "Serpentes"
+    assert sub["Gekkonidae"] == "Sauria" and sub["Agamidae"] == "Sauria"
+    assert set(sub.values()) == {"Serpentes", "Sauria"}
+
+
+def test_master_parquet_has_order_suborder_and_provinces(built):
+    rows = {r[0]: r[1:] for r in duckdb.sql(
+        f"""SELECT name, "order", suborder, provinces FROM '{built["out"] / "master.parquet"}'""").fetchall()}
+    assert rows["Aus bus"] == ("Passeriformes", None, ["5B", "6E"])
+    assert rows["Cus dus"] == ("Asparagales", None, [])
+
+
+def test_a_snapshot_without_zones_leaves_provinces_unmeasured(inputs, tmp_path, monkeypatch):
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    con = duckdb.connect()
+    iucn_table(con)
+    s = master.build(con, {**inputs["paths"], "species_zones": None}, tmp_path / "o",
+                     {"period": "2026-10-26", "snapshot": "s", "built": "x"}, inputs["districts"], inputs["inputs"],
+                     cache={}, http=FakeGbif())
+    birds = GROUPS.index("Birds")
+    aus = next(x for x in json.loads((tmp_path / "o" / "g" / f"{birds}.json").read_text())["rows"] if x[1] == "Aus bus")
+    assert aus[11] is None and s["provinces"] is not None

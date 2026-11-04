@@ -89,6 +89,9 @@ def test_inputs_fingerprint_is_stable_and_sensitive():
     assert inputs_fingerprint(state, bnd) == inputs_fingerprint(same, bnd)
     assert inputs_fingerprint(state, bnd) != inputs_fingerprint(other, bnd)
     assert inputs_fingerprint(state, bnd) != inputs_fingerprint(state, {"sha256": "y" * 64})
+    # The WII zones file counts when given; without it, fingerprints from before it are unchanged.
+    assert inputs_fingerprint(state, bnd, None) == inputs_fingerprint(state, bnd)
+    assert inputs_fingerprint(state, bnd, {"sha256": "z" * 64}) != inputs_fingerprint(state, bnd)
 
 
 
@@ -306,3 +309,25 @@ def test_a_session_names_us_and_tries_a_busy_server_again(monkeypatch):
         assert health.session(agent="x").headers["User-Agent"] == "x"
     finally:
         srv.shutdown()
+
+
+def test_ledger_places_points_in_biogeographic_provinces(districts, tmp_path):
+    """species_zones.parquet: per species and WII province, the records placed in India's districts there."""
+    zones = tmp_path / "zones.parquet"
+    con = duckdb.connect()
+    con.sql("INSTALL spatial; LOAD spatial")
+    con.sql(f"""COPY (SELECT '5B' AS prov_code, ST_MakeEnvelope(76, 10, 77, 11) AS geometry
+                      UNION ALL SELECT '6E', ST_MakeEnvelope(77, 10, 78, 11)) TO '{zones}' (FORMAT parquet)""")
+    con.sql("""
+        CREATE TABLE cube AS SELECT * FROM (VALUES
+          ('S1', 10.5, 76.5, 1900, 1950, 3),
+          ('S1', 10.6, 76.6, 2001, 2020, 2),
+          ('S1', 10.5, 77.5, 2001, 2010, 1),
+          ('S2', 10.5, 74.0, 2000, 2000, 5)     -- offshore: in no district, so in no province
+        ) t(specieskey, lat, lon, first_year, last_year, n_records)
+    """)
+    ledger.build(con, tmp_path / "out", "test", districts, zones)
+    got = duckdb.sql(f"SELECT * FROM '{tmp_path / 'out' / 'species_zones.parquet'}' ORDER BY ALL").fetchall()
+    assert got == [("S1", "5B", 5, 2020), ("S1", "6E", 1, 2010)]
+    ledger.build(con, tmp_path / "out2", "test", districts)      # no zones file: no table
+    assert not (tmp_path / "out2" / "species_zones.parquet").exists()

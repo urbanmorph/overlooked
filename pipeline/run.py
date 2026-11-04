@@ -21,8 +21,8 @@ from pathlib import Path
 
 import duckdb
 
-from pipeline import boundaries as boundary_map
 from pipeline import (
+    biogeo,
     changes,
     checks,
     districts,
@@ -35,6 +35,7 @@ from pipeline import (
     unresolved,
     util,
 )
+from pipeline import boundaries as boundary_map
 from pipeline.util import now, period
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -141,10 +142,13 @@ def request(args):
     save(state)
 
 
-def inputs_fingerprint(state, boundaries):
+def inputs_fingerprint(state, boundaries, zones=None):
     """What a snapshot is built from. Same inputs give the same snapshot, so a rerun is a no-op."""
     keys = {n: d["key"] for n, d in sorted(state["downloads"].items())}
-    blob = json.dumps({"downloads": keys, "boundaries": boundaries["sha256"]}, sort_keys=True)
+    about = {"downloads": keys, "boundaries": boundaries["sha256"]}
+    if zones:
+        about["zones"] = zones["sha256"]
+    blob = json.dumps(about, sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
@@ -216,7 +220,8 @@ def build(args):
     out = SNAPSHOTS / run_id
     ua = http.headers["User-Agent"]
     boundaries = districts.ensure(ua)
-    fingerprint = inputs_fingerprint(state, boundaries)
+    zones = biogeo.ensure(ua)
+    fingerprint = inputs_fingerprint(state, boundaries, zones)
     publish = args.publish and not state["region"]
     built = out / "manifest.json"
     if built.exists() and json.loads(built.read_text()).get("inputs") == fingerprint:
@@ -231,7 +236,8 @@ def build(args):
     names.load_history(con, ledger.unpack(state["downloads"]["species_history"]["key"]))
     print(f"merged duplicate keys for {names.merge_duplicates(con)} names")
     ledger.load_cube(con, ledger.unpack(state["downloads"]["ledger_cube"]["key"]))
-    stats = ledger.build(con, out, f"GBIF download {state['downloads']['ledger_cube']['key']}", districts.PATH)
+    stats = ledger.build(con, out, f"GBIF download {state['downloads']['ledger_cube']['key']}", districts.PATH,
+                         biogeo.PATH)
 
     con.sql(f"COPY species TO '{out / 'species.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY species_decade TO '{out / 'species_decade.parquet'}' (FORMAT parquet, COMPRESSION zstd)")
@@ -294,6 +300,7 @@ def build(args):
         "downloads": downloads,
         "queries": queries,
         "boundaries": boundaries,
+        "zones": zones,
         "placement": "coordinates rounded to 3 decimals; points within 5 km of a district take the nearest one",
         "stats": stats,
         "files": {p.name: p.stat().st_size for p in sorted(out.iterdir()) if p.suffix in (".parquet",)},

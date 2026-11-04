@@ -42,7 +42,7 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: data/ref
-          key: lgd-districts-v1
+          key: ref-districts-zones-v2
       - name: Build
         env:
           GBIF_USER: ${{ secrets.GBIF_USER }}

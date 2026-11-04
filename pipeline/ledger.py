@@ -14,6 +14,7 @@ from pathlib import Path
 
 import duckdb
 
+from pipeline import biogeo
 from pipeline.places import place_points
 from pipeline.util import value
 
@@ -66,11 +67,22 @@ def load_cube(con, tsv):
         con.sql("UPDATE cube SET specieskey = m.canonical FROM key_map m WHERE cube.specieskey = m.species_key")
 
 
-def build(con, out: Path, label: str, districts: Path = DISTRICTS):
-    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records[, last_year_not_dna, n_trait])."""
+def build(con, out: Path, label: str, districts: Path = DISTRICTS, zones: Path | None = None):
+    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records[, last_year_not_dna, n_trait]).
+    With zones (pipeline/biogeo.py), also species_zones.parquet: per species and WII biogeographic province, the
+    records placed in India's districts there and the latest year."""
     out.mkdir(parents=True, exist_ok=True)
     ensure_dna_column(con, "cube")
     place_points(con, "cube", str(districts))
+    if zones:
+        con.sql("CREATE OR REPLACE TABLE _in_india AS SELECT lat, lon FROM point_district WHERE dist_lgd IS NOT NULL")
+        biogeo.place(con, "_in_india", zones)
+        con.sql(f"""
+            COPY (SELECT q.specieskey AS species_key, p.prov, sum(q.n_records) AS n_records, max(q.last_year) AS last_year
+                  FROM cube q JOIN point_province p USING (lat, lon)
+                  WHERE p.prov IS NOT NULL
+                  GROUP BY ALL ORDER BY ALL) TO '{out / 'species_zones.parquet'}' (FORMAT parquet, COMPRESSION zstd)""")
+        con.sql("DROP TABLE _in_india")
     con.sql("""
         CREATE OR REPLACE TABLE ledger AS
         SELECT q.specieskey AS species_key, p.dist_lgd AS district_lgd, p.state_lgd,
