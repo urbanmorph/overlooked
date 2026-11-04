@@ -44,4 +44,5 @@ For the status of a species, people should consult BSI, ZSI, the IUCN Red List a
 - /fix — records to fix, for data publishers: GBIF records from India with no exact location or no species name, by dataset, state and group (`?state={LGD code}&group={family}`)
 - /shortlist: (experimental) observations on iNaturalist that wait for a name, each with a short list of names from a model for a person to check; we post nothing to iNaturalist
 - /method — sources, terms, definitions, downloads
+- /mcp: for people, how to add the MCP server to an AI assistant, with examples; for agents, the MCP server itself
 - Code (MIT): https://github.com/urbanmorph/overlooked

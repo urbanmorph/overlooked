@@ -87,9 +87,45 @@ def test_the_nav_has_the_mcp_page_and_a_menu_button_for_small_screens():
 
 
 def test_the_mcp_page():
-    text = (pages.SITE / "mcp.html").read_text()
-    for s in ("https://overlooked-india.pages.dev/mcp", "claude mcp add --transport http", '"mcpServers"', "Add custom connector",
+    text = (pages.SITE / "mcp.html").read_text().replace("&amp;", "&")
+    for s in ("https://overlooked-india.pages.dev/mcp", "claude mcp add --transport http --scope user", '"mcpServers"', "Add custom connector",
+              "cursor://anysphere.cursor-deeplink/mcp/install?name=overlooked&config=", "https://vscode.dev/redirect/mcp/install?name=overlooked",
+              "codex mcp add overlooked --url", "[mcp_servers.overlooked]", "serverUrl",
               "find_species", "get_species", "count_species", "list_species", "new_species", "overlooked://regions", "curl"):
         assert s in text, s
     assert not re.search(r"missing|lost|extinct|quiet|—", re.sub(r"<[^>]+>", " ", text), re.IGNORECASE)
     assert "/mcp</loc>" in (pages.SITE / "sitemap.xml").read_text()
+
+
+def test_the_one_click_install_links_carry_the_server_address():
+    import base64
+    import json
+    from urllib.parse import parse_qs, unquote, urlparse
+    text = (pages.SITE / "mcp.html").read_text().replace("&amp;", "&")
+    cursor = re.search(r'href="(cursor://[^"]+)"', text).group(1)
+    vscode = re.search(r'href="(https://vscode\.dev/redirect/mcp/install[^"]+)"', text).group(1)
+    url = "https://overlooked-india.pages.dev/mcp"
+    assert json.loads(base64.b64decode(unquote(parse_qs(urlparse(cursor).query)["config"][0]))) == {"url": url}
+    assert json.loads(parse_qs(urlparse(vscode).query)["config"][0]) == {"type": "http", "url": url}
+
+
+def test_every_page_has_canonical_and_share_tags_from_its_own_title_and_description():
+    """Search engines and link previews (LinkedIn, X, WhatsApp): a canonical URL, Open Graph and Twitter tags, filled
+    from the page's own <title> and description. The species page has no canonical (its address carries ?key=); the
+    404 page asks not to be indexed."""
+    for path in pages.PAGES:
+        text = path.read_text()
+        title = re.search(r"<title>(.*?)</title>", text).group(1)
+        desc = re.search(r'<meta name="description" content="([^"]*)"', text).group(1)
+        assert f'<meta property="og:title" content="{title}">' in text, path.name
+        assert f'<meta property="og:description" content="{desc}">' in text, path.name
+        assert '<meta property="og:image" content="https://overlooked-india.pages.dev/og.png">' in text, path.name
+        assert '<meta name="twitter:card" content="summary_large_image">' in text, path.name
+        url = pages.page_url(path.stem)
+        if path.stem in ("species", "404"):
+            assert 'rel="canonical"' not in text, path.name
+        else:
+            assert f'<link rel="canonical" href="{url}">' in text and f'<meta property="og:url" content="{url}">' in text, path.name
+    assert '<meta name="robots" content="noindex">' in (pages.SITE / "404.html").read_text()
+    assert pages.page_url("index") == "https://overlooked-india.pages.dev/" and pages.page_url("mcp").endswith("/mcp")
+    assert (pages.SITE / "og.png").exists()

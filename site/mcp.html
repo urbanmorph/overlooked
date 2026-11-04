@@ -6,12 +6,23 @@
 <title>MCP server for AI assistants · Overlooked</title>
 <meta name="description" content="Ask your AI assistant about the species of India. Add the Overlooked MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
 <!-- part:head -->
+<link rel="canonical" href="https://overlooked-india.pages.dev/mcp">
+<meta property="og:url" content="https://overlooked-india.pages.dev/mcp">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Overlooked">
+<meta property="og:title" content="MCP server for AI assistants · Overlooked">
+<meta property="og:description" content="Ask your AI assistant about the species of India. Add the Overlooked MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
+<meta property="og:image" content="https://overlooked-india.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=12045ad8b9">
+<link rel="stylesheet" href="/assets/style.css?v=1f4d9a074a">
 <!-- /part:head -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebAPI","name":"Overlooked MCP server","description":"A Model Context Protocol server (Streamable HTTP, no key, read only) for AI assistants: find, count and list the species documented from India by group, state, biogeographic region, IUCN category, endemic mark, order or family, and new species described since 2007. Every answer carries the week of the list, the licence, the credits and a disclaimer.","url":"https://overlooked-india.pages.dev/mcp","documentation":"https://overlooked-india.pages.dev/mcp","termsOfService":"https://overlooked-india.pages.dev/method","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"provider":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"about":{"@type":"Dataset","name":"Overlooked: species of India and their open records","url":"https://overlooked-india.pages.dev/method"}}</script>
 </head>
 <body>
 <!-- part:header -->
@@ -61,9 +72,11 @@
   <section class="card pad" style="margin-top:16px">
     <h2>Add it to your assistant</h2>
     <div class="client"><div class="who"><b>Claude</b><br><span class="muted">claude.ai and Claude Desktop</span></div><div>Open Settings, then Connectors, then <b>Add custom connector</b>. Name: Overlooked. URL: the address above. Then turn the connector on in a chat.</div></div>
-    <div class="client"><div class="who"><b>Claude Code</b></div><div>Run this in a terminal:<pre class="code">claude mcp add --transport http overlooked https://overlooked-india.pages.dev/mcp</pre></div></div>
+    <div class="client"><div class="who"><b>Claude Code</b></div><div>Run this in a terminal. <span class="mono">--scope user</span> adds it for all your projects:<pre class="code">claude mcp add --transport http --scope user overlooked https://overlooked-india.pages.dev/mcp</pre></div></div>
     <div class="client"><div class="who"><b>ChatGPT</b></div><div>Turn on developer mode in the settings for apps and connectors. Then create a connector with the address above, and choose no authentication.</div></div>
-    <div class="client"><div class="who"><b>VS Code</b></div><div>Add this to <span class="mono">.vscode/mcp.json</span>:<pre class="code">{
+    <div class="client"><div class="who"><b>Codex</b><br><span class="muted">CLI, IDE extension and the ChatGPT desktop app</span></div><div>Run this in a terminal:<pre class="code">codex mcp add overlooked --url https://overlooked-india.pages.dev/mcp</pre>Or add this to <span class="mono">~/.codex/config.toml</span>:<pre class="code">[mcp_servers.overlooked]
+url = "https://overlooked-india.pages.dev/mcp"</pre></div></div>
+    <div class="client"><div class="who"><b>VS Code</b></div><div><a class="b" href="https://vscode.dev/redirect/mcp/install?name=overlooked&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Foverlooked-india.pages.dev%2Fmcp%22%7D">Install in VS Code</a><br>Or add this to <span class="mono">.vscode/mcp.json</span>:<pre class="code">{
   "servers": {
     "overlooked": {
       "type": "http",
@@ -71,14 +84,16 @@
     }
   }
 }</pre></div></div>
-    <div class="client"><div class="who"><b>Cursor and other clients</b></div><div>Add this to the MCP settings file of the client (for Cursor, <span class="mono">~/.cursor/mcp.json</span>):<pre class="code">{
+    <div class="client"><div class="who"><b>Cursor</b></div><div><a class="b" href="cursor://anysphere.cursor-deeplink/mcp/install?name=overlooked&amp;config=eyJ1cmwiOiJodHRwczovL292ZXJsb29rZWQtaW5kaWEucGFnZXMuZGV2L21jcCJ9">Install in Cursor</a><br>Or add this to <span class="mono">~/.cursor/mcp.json</span>:<pre class="code">{
   "mcpServers": {
     "overlooked": {
-      "type": "http",
       "url": "https://overlooked-india.pages.dev/mcp"
     }
   }
 }</pre></div></div>
+    <div class="client"><div class="who"><b>Other clients</b><br><span class="muted">Windsurf, Zed, JetBrains and more</span></div><div>Open the MCP settings of the client and add a server with these values:
+      <ul style="margin:8px 0 0;padding-left:20px"><li>Transport: HTTP (Streamable HTTP).</li><li>URL: <span class="mono">https://overlooked-india.pages.dev/mcp</span></li><li>Authentication: none. No key, no headers.</li></ul>
+      <p class="note">Use the name of the URL field that your client asks for. Most clients use <span class="mono">url</span>; some (Windsurf, for example) use <span class="mono">serverUrl</span>. A client can ignore a server with a wrong field name and give no error.</p></div></div>
   </section>
 
   <section class="card pad" style="margin-top:16px">

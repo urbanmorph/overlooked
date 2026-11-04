@@ -26,6 +26,29 @@ IMPORT = re.compile(r"""(\b(?:from|import)\s+)(['"])\./([\w-]+\.js)(?:\?v=\w+)?\
 REF = re.compile(r"""(["'])/assets/([\w-]+\.(?:js|css))(?:\?v=\w+)?\1""")              # a reference in a page
 
 
+SITE_URL = "https://overlooked-india.pages.dev"
+NO_CANONICAL = {"species", "404"}   # species: the address carries ?key=; 404: not a page to index
+
+
+def page_url(page):
+    return f"{SITE_URL}/" if page == "index" else f"{SITE_URL}/{page}"
+
+
+def meta(page, text):
+    """Canonical URL, Open Graph and Twitter tags, from the page's own <title> and description."""
+    title = re.search(r"<title>(.*?)</title>", text).group(1)
+    desc = re.search(r'<meta name="description" content="([^"]*)"', text).group(1)
+    tags = [] if page in NO_CANONICAL else [f'<link rel="canonical" href="{page_url(page)}">',
+                                            f'<meta property="og:url" content="{page_url(page)}">']
+    if page == "404":
+        tags.append('<meta name="robots" content="noindex">')
+    tags += ['<meta property="og:type" content="website">', '<meta property="og:site_name" content="Overlooked">',
+             f'<meta property="og:title" content="{title}">', f'<meta property="og:description" content="{desc}">',
+             f'<meta property="og:image" content="{SITE_URL}/og.png">', '<meta property="og:image:width" content="1200">',
+             '<meta property="og:image:height" content="630">', '<meta name="twitter:card" content="summary_large_image">']
+    return "\n".join(tags)
+
+
 def part(name):
     return (PARTS / f"{name}.html").read_text()
 
@@ -67,7 +90,10 @@ def stamp_html(text, ver):
 def render(text, page, ver=None):
     """The page text with every marked part filled; `page` is the file stem (index, species, ...)."""
     def fill(m):
-        return m.group(1) + part(m.group(2)).replace("{{nav}}", nav(page)) + m.group(3)
+        body = part(m.group(2)).replace("{{nav}}", nav(page))
+        if "{{meta}}" in body:
+            body = body.replace("{{meta}}", meta(page, text))
+        return m.group(1) + body + m.group(3)
     return stamp_html(MARK.sub(fill, text).replace("{{nav}}", nav(page)), ver or versions())
 
 

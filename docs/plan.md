@@ -1,5 +1,7 @@
 # Plan: modules 1 to 3
 
+> This plan records the decisions as they were made, with their dates. For how the system works now, see the [README](../README.md), [/llms.txt](https://overlooked-india.pages.dev/llms.txt) and [progress.md](progress.md).
+
 Approved 16 October 2026.
 
 **Goal (stated 20 October 2026).** The larger goal of the site is to track the health of India's species over time:
@@ -478,7 +480,9 @@ compares with the list `layers/master/latest.json` names, so the first weekly li
 |---|---|---|
 | `request.yml` | Mondays, 02:17 UTC, and by hand | Submits the first GBIF download (A); C, U and L follow one at a time from `build.yml`. Writes the keys to `runs/<week>.json` and commits it. |
 | `build.yml` | Every 6 hours, Monday to Thursday, and by hand | If downloads are pending, polls GBIF. When all are ready: builds, checks, uploads to R2, writes `latest.json`, commits `site/data/latest.json`. The commit triggers the Pages build. |
-| `checks.yml` | On pull requests | Tests and a small sample build. |
+| `inat.yml`, `newspecies.yml`, `master.yml` | Daily | iNaturalist layer, new-species layer, master list (added 27 October to 4 November 2026; see the README). |
+| `globi.yml`, `iucn.yml` | Weekly, monthly | GloBI interactions; IUCN population trends. |
+| `checks.yml` | Every push and pull request | Tests. |
 
 - One build at a time (`concurrency` group). Jobs stop at 6 hours; a build resumes from the download keys.
 - **Idempotent and incremental (16 October 2026):** every step can run again safely. Download keys and fetched files are reused; a build is skipped when a snapshot from the same inputs (download keys and boundary checksum) exists; R2 uploads skip files already there with the same SHA-256, so an interrupted upload continues; the manifest and `latest.json` go last. If GBIF reports no India record added, changed or re-processed since the last published run, the week downloads nothing. GBIF itself is re-summarised each run: about 5% of India records are re-processed monthly and GBIF publishes no deletions, so adding only changed records to the totals would drift.
@@ -504,6 +508,7 @@ compares with the list `layers/master/latest.json` names, so the first weekly li
 
 ```
 functions/data/      Pages Function that serves R2 files with Range support
+functions/mcp.js     MCP server for AI assistants (functions/lib/mcp.js), 4 November 2026
 pipeline/            Python package: gbif.py, names.py, districts.py, ledger.py, newspecies.py, changes.py, publish.py, checks.py
 pipeline/queries/    SQL for downloads A to D
 site/                static site

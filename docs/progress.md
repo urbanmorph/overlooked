@@ -2,6 +2,33 @@
 
 Newest first. Updated as work happens.
 
+## 4 November 2026
+
+- Regions: the Wildlife Institute of India's biogeographic zones and provinces (Rodgers, Panwar and Mathur; 10 zones, 26 provinces; GODL-India, via bharatlas). Each GBIF point takes the province it is in, or the nearest within 5 km (`pipeline/biogeo.py`, one placement for districts and provinces in `places.place_in`); outlines simplified to about 100 m (6 times faster, 0.25% of points differ, all on boundaries). The ledger writes `species_zones.parquet`; the master list adds each species' provinces (a bit mask in the g rows), its order, and for Squamata its suborder (Serpentes or Sauria, from `pipeline/ref/squamata.csv`). Western Ghats 15,191 species, Himalaya 15,714, Eastern Highlands (6C, the nearest unit to the Eastern Ghats) 4,056; 491 snakes, 533 lizards.
+- MCP server at `/mcp` (`functions/lib/mcp.js`): Streamable HTTP, stateless, read only, no key. Tools find_species, get_species, count_species, list_species, new_species; resources about, groups, states, regions. Every answer carries the week, licence, attribution and disclaimer. The master build writes `mcp/` (one 32-byte row per species, a text line per species, the layout in meta.json): an all-India scan takes 1 to 3 ms, where the g files take 40 ms to parse, inside the Workers free plan's 10 ms. Tool calls are counted by tool name only (metrics dim `mcp`). A browser at `/mcp` gets a page with setup for Claude, Claude Code, ChatGPT, Codex, VS Code (one-click), Cursor (one-click) and other clients, and examples. The nav has a Menu button under 900 px.
+- Found while testing: no vertebrate group has an endemic mark (the marks come from Kew for plants and ZSI for some invertebrate groups), so "endemic frogs" counts 0. The MCP answer names the groups with no marks. To do: read ZSI's endemic marks for vertebrates.
+- BOLD's portal answered 403 to the evidence summary in both builds today; the builds used the copy in R2.
+- CI: DuckDB 2 rejects arrow lambdas (`x -> ...`); a test keeps them out of the pipeline.
+
+## 3 November 2026
+
+- Open data open to agents: robots.txt no longer disallows `/data/`; `/data/` responses carry `Access-Control-Allow-Origin: *` (llms.txt promised CORS) and `X-Robots-Tag: noindex`.
+- One open issue per failing workflow (`scripts/report_failure.sh`): a failure comments on the open issue instead of opening another.
+- A GBIF outage (429 or 5xx) is a wait for the next check, not a failed weekly build.
+- Code review: one HTTP session with retries (`health.session`) for 14 copies; one checkpointed store (`pipeline/store.py`) for six extractors; shared helpers; bugs and dead code.
+
+## 1 and 2 November 2026
+
+- Names to check: species no Indian checklist lists, with an older name a checklist uses for another species; newer bird splits leave the list (eBird's species with records from India, via GBIF); IUCN range maps that do not include India sort first. The ZSI parser brings back names that OCR and bracketed years ([1780]) had dropped.
+- Search by English common name on the home page (each word of the name has its search file). Names to check show common names.
+- Species pages count the shortlist observations a model suggests for the species and link to them.
+
+## 31 October 2026
+
+- Species photos and common names: a photo from India first (research-grade iNaturalist), else iNaturalist's taxon photo, else the Commons image from Wikidata, each with credit and licence; linked, never copied.
+- The home page shows the seven gaps as the species page's pyramid; the site's mark is the pyramid.
+- IUCN population trends from the Red List API (`iucn.yml`, monthly), published per species and per group (the Prestonian gap).
+
 ## 30 October 2026
 
 - Evidence per species (pipeline/evidence.py, run inside the weekly master build): GBIF facet counts by Catalogue of Life key (checklistKey COL XR, about 10 requests): 29,009 species with a record from India with a type status, 54,322 with a record from India with a photo, 434,635 with a DNA barcode anywhere (the International Barcode of Life dataset, BOLD's public barcodes on GBIF); BOLD's portal summary for India (one request): 11,954 species names with a barcode from India; Wikidata (CC0) labels and common names in 26 languages of India, found by the Catalogue of Life ID (P10585; P846 holds GBIF's older numbers, so it does not match the list's keys), a label that is the scientific name left out. GBIF and BOLD counts are kept per week; Wikidata answers are saved every 10 minutes and asked again after 90 days, with retries when the query service answers 502; a run stops at its time limit (40 minutes in the master build) and the next one continues. Cache: data/cache/evidence/ and R2 cache/evidence/.

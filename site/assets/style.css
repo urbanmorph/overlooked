@@ -103,7 +103,7 @@ td.n, th.n { text-align: right }
 pre.code { margin: 10px 0 0; padding: 12px 14px; background: var(--ground); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font: 13px/1.5 var(--mono); color: var(--ink) }
 pre.code.wrapline { white-space: pre-wrap; overflow-wrap: anywhere }
 .client { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 4px 20px; padding: 14px 0; border-bottom: 1px solid var(--line-2); font-size: 15px }
-.client:last-child { border-bottom: 0 } .client .who { font-size: 15px }
+.client:last-child { border-bottom: 0 } .client .who { font-size: 15px } .client a.b { margin: 2px 0 8px }
 @media (max-width: 600px) { .client { grid-template-columns: minmax(0, 1fr) } }
 .bar { height: 10px; background: #EEF0ED; border-radius: 2px } .bar i { display: block; height: 10px; border-radius: 2px; background: var(--q2) }
 dl.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 15px }
