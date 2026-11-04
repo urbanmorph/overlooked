@@ -20,7 +20,7 @@ PARTS = ROOT / "site-parts"
 ASSETS = SITE / "assets"
 PAGES = sorted(p for p in SITE.glob("*.html") if not p.name.startswith("google"))  # not the search-console token
 NAV = [("/", "Explore", "index"), ("/changes", "Changes", "changes"), ("/shortlist", "Shortlists", "shortlist"),
-       ("/fix", "Records to fix", "fix"), ("/method", "Sources and method", "method")]
+       ("/fix", "Records to fix", "fix"), ("/method", "Sources and method", "method"), ("/mcp", "MCP for AI", "mcp")]
 MARK = re.compile(r"(<!-- part:(\w+) -->\n).*?(<!-- /part:\2 -->)", re.S)
 IMPORT = re.compile(r"""(\b(?:from|import)\s+)(['"])\./([\w-]+\.js)(?:\?v=\w+)?\2""")   # an import between scripts
 REF = re.compile(r"""(["'])/assets/([\w-]+\.(?:js|css))(?:\?v=\w+)?\1""")              # a reference in a page

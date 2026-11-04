@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP server for AI assistants · Overlooked</title>
+<meta name="description" content="Ask your AI assistant about the species of India. Add the Overlooked MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
+<!-- part:head -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css?v=12045ad8b9">
+<!-- /part:head -->
+</head>
+<body>
+<!-- part:header -->
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="5" width="8.25" height="9" rx="1.8" class="m-open"/><rect x="10.75" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="20.5" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="30.25" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="6" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="20.25" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="12" y="27" width="16" height="9" rx="1.8" class="m-known"/></svg>
+      <b>Overlooked</b><span>India</span>
+    </a>
+    <button class="menu" type="button" aria-controls="nav" aria-expanded="false" hidden><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Menu</button>
+    <nav class="main" id="nav" aria-label="Main">
+      <a href="/">Explore</a>
+      <a href="/changes">Changes</a>
+      <a href="/shortlist">Shortlists</a>
+      <a href="/fix">Records to fix</a>
+      <a href="/method">Sources and method</a>
+      <a href="/mcp" aria-current="page">MCP for AI</a>
+    </nav>
+  </div>
+</header>
+<script>
+// Small screens: the Menu button opens and closes the nav. With no JavaScript the button stays hidden and the nav is one row.
+(() => {
+  const b = document.querySelector('header.top button.menu'), n = document.getElementById('nav');
+  const set = open => { b.setAttribute('aria-expanded', open); n.classList.toggle('open', open); };
+  document.documentElement.classList.add('menu-js');
+  b.hidden = false;
+  b.addEventListener('click', () => set(b.getAttribute('aria-expanded') !== 'true'));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && n.classList.contains('open')) { set(false); b.focus(); } });
+})();
+</script>
+<!-- /part:header -->
+
+<main id="main" class="wrap">
+  <section style="margin-top:40px">
+    <h1 class="page">MCP server for AI assistants</h1>
+    <p class="lede">Ask your AI assistant about the species of India. With our MCP server, an assistant such as Claude or ChatGPT reads the same weekly list as this site and gives each answer with its sources. You need no key and no account. The server only reads data.</p>
+  </section>
+
+  <section class="card pad" style="margin-top:24px">
+    <h2>The address</h2>
+    <pre class="code wrapline">https://overlooked-india.pages.dev/mcp</pre>
+    <p class="note">MCP (Model Context Protocol) is an open standard that lets AI assistants use tools. This server uses Streamable HTTP and needs no authentication. Open this address in a browser and you see this page; an assistant at the same address gets the tools.</p>
+  </section>
+
+  <section class="card pad" style="margin-top:16px">
+    <h2>Add it to your assistant</h2>
+    <div class="client"><div class="who"><b>Claude</b><br><span class="muted">claude.ai and Claude Desktop</span></div><div>Open Settings, then Connectors, then <b>Add custom connector</b>. Name: Overlooked. URL: the address above. Then turn the connector on in a chat.</div></div>
+    <div class="client"><div class="who"><b>Claude Code</b></div><div>Run this in a terminal:<pre class="code">claude mcp add --transport http overlooked https://overlooked-india.pages.dev/mcp</pre></div></div>
+    <div class="client"><div class="who"><b>ChatGPT</b></div><div>Turn on developer mode in the settings for apps and connectors. Then create a connector with the address above, and choose no authentication.</div></div>
+    <div class="client"><div class="who"><b>VS Code</b></div><div>Add this to <span class="mono">.vscode/mcp.json</span>:<pre class="code">{
+  "servers": {
+    "overlooked": {
+      "type": "http",
+      "url": "https://overlooked-india.pages.dev/mcp"
+    }
+  }
+}</pre></div></div>
+    <div class="client"><div class="who"><b>Cursor and other clients</b></div><div>Add this to the MCP settings file of the client (for Cursor, <span class="mono">~/.cursor/mcp.json</span>):<pre class="code">{
+  "mcpServers": {
+    "overlooked": {
+      "type": "http",
+      "url": "https://overlooked-india.pages.dev/mcp"
+    }
+  }
+}</pre></div></div>
+  </section>
+
+  <section class="card pad" style="margin-top:16px">
+    <h2>What you can ask</h2>
+    <p class="note">Ask in your own words. The assistant chooses the tool. Some examples, with the tool that answers:</p>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>You ask</th><th>Tool</th></tr></thead>
+        <tbody>
+          <tr><td>What is the IUCN status of the Great Indian Bustard, and in which states does it have records?</td><td class="mono">find_species, get_species</td></tr>
+          <tr><td>How many threatened birds have an open record in Kerala?</td><td class="mono">count_species</td></tr>
+          <tr><td>List the threatened snakes of the Western Ghats.</td><td class="mono">list_species</td></tr>
+          <tr><td>Which species in India are critically endangered?</td><td class="mono">list_species</td></tr>
+          <tr><td>How many butterfly species are documented from India, and how many have a record since 2016?</td><td class="mono">count_species</td></tr>
+          <tr><td>Which orchids of Karnataka are not assessed by IUCN?</td><td class="mono">list_species</td></tr>
+          <tr><td>Which new frog species were described from India since 2025? Give the papers.</td><td class="mono">new_species</td></tr>
+          <tr><td>Does the king cobra have a DNA barcode from India, and how many records with photos?</td><td class="mono">find_species, get_species</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card pad" style="margin-top:16px">
+    <h2>Tools</h2>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Tool</th><th>What it gives</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">find_species</td><td>Species that match a Latin or English name, or its start (up to 10), with the key for <span class="mono">get_species</span>.</td></tr>
+          <tr><td class="mono">get_species</td><td>One species in full: the sources that list it, open record, states with an open record, biogeographic regions, IUCN category with the year, DOI and trend of the assessment, endemic mark, year described and authority, family and order, type specimens, photos and DNA barcodes from India, names in Indian languages, a photo with its credit, and the iNaturalist observations that wait for a name.</td></tr>
+          <tr><td class="mono">count_species</td><td>Numbers: documented, with an open record, threatened, recorded in the last 10 years, endemic, and per IUCN category.</td></tr>
+          <tr><td class="mono">list_species</td><td>The species, 100 to a page, with the total.</td></tr>
+          <tr><td class="mono">new_species</td><td>Species described from India since a year (2007 or later): year, group, state of the type locality, journal, a link to the paper, and records since the description.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><span class="mono">count_species</span> and <span class="mono">list_species</span> take filters, and the filters combine: group (birds, butterflies, orchids...), state, biogeographic region or province, IUCN categories or "threatened", endemic, order, suborder (snakes or lizards), family, open record, recorded since a year, described since a year.</p>
+    <p class="note">The server also gives four resources: <span class="mono">overlooked://about</span> (what the words mean), <span class="mono">overlooked://groups</span>, <span class="mono">overlooked://states</span> and <span class="mono">overlooked://regions</span> (the values the filters accept).</p>
+  </section>
+
+  <section class="card pad" style="margin-top:16px">
+    <h2>An example answer</h2>
+    <p class="note">The answer of <span class="mono">get_species</span> for the Great Indian Bustard, shortened:</p>
+    <pre class="code">{
+  "week": "2026-11-02",
+  "key": "GCMS",
+  "name": "Ardeotis nigriceps",
+  "english": "Great Indian Bustard",
+  "group": "Birds",
+  "iucn": { "category": "CR", "year": 2018, "trend": "Decreasing",
+            "doi": "https://doi.org/10.2305/IUCN.UK.2018-2.RLTS.T22691932A134188105.en" },
+  "states_with_open_record": ["Punjab", "Haryana", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh",
+                              "Gujarat", "Maharashtra", "Andhra Pradesh", "Karnataka"],
+  "regions": ["3A Desert: Thar", "3B Desert: Kutchchh", "4B Semi-Arid: Gujarat Rajputana", ...],
+  "url": "https://overlooked-india.pages.dev/species?key=GCMS",
+  "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
+  "attribution": "Overlooked (https://overlooked-india.pages.dev). Sources: GBIF.org ...",
+  "disclaimer": "Overlooked is not an official checklist or conservation assessment. ..."
+}</pre>
+  </section>
+
+  <section class="card pad" style="margin-top:16px">
+    <h2>Good to know</h2>
+    <ul class="note" style="padding-left:20px;margin-top:10px">
+      <li>Every answer gives the week of the list, the licence, the credits of the sources and a disclaimer. Please pass them on with what you publish.</li>
+      <li>Overlooked is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.</li>
+      <li>A species is in a state when it has an open record placed there. It is in a region when a GBIF record of it is placed there.</li>
+      <li>Regions are the biogeographic zones and provinces of the Wildlife Institute of India: 10 zones and 26 provinces. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.</li>
+      <li>Endemic marks come only from the sources that give them: Kew for plants, and ZSI and other checklists for some animal groups. Birds, mammals, reptiles, amphibians, fish and butterflies have no marks yet. The answer names these groups.</li>
+      <li>The server does not identify photos, and it posts nothing anywhere.</li>
+      <li>The same data is open as files: see <a href="/llms.txt">the data guide</a> and <a href="/method">Sources and method</a>.</li>
+    </ul>
+  </section>
+
+  <section class="card pad" style="margin:16px 0 40px">
+    <h2>Try it without an assistant</h2>
+    <p class="note">The server answers JSON-RPC over HTTP POST. For developers, this lists the tools:</p>
+    <pre class="code">curl -s https://overlooked-india.pages.dev/mcp \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</pre>
+    <p class="note">And this counts the threatened species of the Western Ghats:</p>
+    <pre class="code">curl -s https://overlooked-india.pages.dev/mcp \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_species",
+       "arguments":{"region":"Western Ghats","iucn":["threatened"]}}}'</pre>
+  </section>
+</main>
+
+<!-- part:footer -->
+<footer>
+  <div class="wrap">
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · Lichen checklist of India (Sinha, Nayaka &amp; Mishra 2024) · Bryophyte checklist of India (Dandotiya et al. 2011) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · GloBI · State of India&#39;s Birds · BOLD Systems · Wikidata · Wikimedia Commons (photos, credited on each page) · Bibliography of South Asian Ornithology (Aasheesh Pittie) · Local Government Directory and Wildlife Institute of India (biogeographic zones), via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+    </div>
+  </div>
+</footer>
+<!-- /part:footer -->
+</body>
+</html>

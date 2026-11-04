@@ -74,3 +74,22 @@ def test_a_changed_module_changes_the_version_of_every_module_above_it(tmp_path)
 def test_assets_are_cached_for_a_year_as_their_addresses_change_with_their_contents():
     headers = (pages.SITE / "_headers").read_text()
     assert "/assets/*\n  Cache-Control: public, max-age=31536000, immutable" in headers
+
+
+def test_the_nav_has_the_mcp_page_and_a_menu_button_for_small_screens():
+    """The MCP page is in the nav. Under 900 px a Menu button opens the nav (an inline script in the header part: it
+    works on every page, 404 too); with no JavaScript the button stays hidden and the nav is the row it was."""
+    header = pages.render(pages.part("header"), "mcp")
+    assert 'href="/mcp" aria-current="page"' in header
+    assert re.search(r'<button[^>]+class="menu"[^>]+aria-controls="nav"[^>]+aria-expanded="false"[^>]+hidden', header)
+    assert '<nav class="main" id="nav"' in header
+    assert "<script>" in header and "aria-expanded" in header
+
+
+def test_the_mcp_page():
+    text = (pages.SITE / "mcp.html").read_text()
+    for s in ("https://overlooked-india.pages.dev/mcp", "claude mcp add --transport http", '"mcpServers"', "Add custom connector",
+              "find_species", "get_species", "count_species", "list_species", "new_species", "overlooked://regions", "curl"):
+        assert s in text, s
+    assert not re.search(r"missing|lost|extinct|quiet|—", re.sub(r"<[^>]+>", " ", text), re.IGNORECASE)
+    assert "/mcp</loc>" in (pages.SITE / "sitemap.xml").read_text()

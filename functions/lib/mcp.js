@@ -502,6 +502,11 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
 /** The /mcp endpoint. waitUntil keeps the metrics write alive after the response. */
 export async function handle(request, env, waitUntil) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  // A browser gets the page with the instructions (site/mcp.html): the same address for people and agents. The asset
+  // server answers /mcp with mcp.html; /mcp.html would redirect back here.
+  if (request.method === 'GET' && /text\/html/.test(request.headers.get('accept') || '') && env.ASSETS) {
+    return env.ASSETS.fetch(new Request(new URL('/mcp', request.url), { headers: { accept: 'text/html' } }));
+  }
   if (request.method !== 'POST') {
     return new Response('This is an MCP server (Streamable HTTP): send JSON-RPC with POST. See https://overlooked-india.pages.dev/llms.txt',
       { status: 405, headers: { Allow: 'POST, OPTIONS', ...CORS } });

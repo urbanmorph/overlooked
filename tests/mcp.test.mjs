@@ -144,6 +144,17 @@ test('notifications get 202 and no body; GET is not offered (no server stream); 
   assert.match(o.headers.get('access-control-allow-headers'), /mcp-protocol-version/i);
 });
 
+test('a browser that opens /mcp gets the page with the instructions (the same address for people and agents)', async () => {
+  fresh();
+  let asked;
+  env.ASSETS = { fetch: async r => { asked = new URL(r.url ?? r).pathname; return new Response('<!doctype html>page', { headers: { 'content-type': 'text/html' } }); } };
+  const r = await rpc(null, { method: 'GET', headers: { accept: 'text/html,application/xhtml+xml' } });
+  assert.equal(r.status, 200);
+  assert.equal(asked, '/mcp');      // the asset path (/mcp.html redirects to /mcp, which is this function)
+  assert.equal(await r.text(), '<!doctype html>page');
+  assert.equal((await rpc(null, { method: 'GET', headers: { accept: 'text/event-stream' } })).status, 405);
+});
+
 test('bad JSON, unknown methods and unknown tools are JSON-RPC errors', async () => {
   fresh();
   const bad = await handle(new Request('https://x/mcp', { method: 'POST', body: '{' }), env, () => {});

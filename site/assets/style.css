@@ -40,6 +40,14 @@ nav.main a:focus-visible { outline-offset: -2px }
 nav.main a:hover { background: var(--chip) }
 nav.main a[aria-current] { background: var(--ink); color: #fff }
 nav.main span { color: #6B7771 } nav.main span small { font-size: 11px; margin-left: 4px }
+/* Under 900 px, with JavaScript: a Menu button opens the nav as a column (site-parts/header.html). */
+button.menu { display: none }
+@media (max-width: 899px) {
+  .menu-js button.menu:not([hidden]) { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 15px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--field); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer }
+  .menu-js button.menu[aria-expanded="true"] { background: var(--chip) }
+  .menu-js nav.main { display: none }
+  .menu-js nav.main.open { display: flex; flex-direction: column; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-bottom: 4px }
+}
 
 .dev { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: #FFF4D6; border-top: 1px solid #E8D59A; font-size: 14px }
 .dev .wrap { padding-block: 8px }
@@ -92,6 +100,11 @@ th { font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: left; p
 td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); font-size: 15px; vertical-align: top }
 td.n, th.n { text-align: right }
 .muted { color: var(--muted) }
+pre.code { margin: 10px 0 0; padding: 12px 14px; background: var(--ground); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font: 13px/1.5 var(--mono); color: var(--ink) }
+pre.code.wrapline { white-space: pre-wrap; overflow-wrap: anywhere }
+.client { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 4px 20px; padding: 14px 0; border-bottom: 1px solid var(--line-2); font-size: 15px }
+.client:last-child { border-bottom: 0 } .client .who { font-size: 15px }
+@media (max-width: 600px) { .client { grid-template-columns: minmax(0, 1fr) } }
 .bar { height: 10px; background: #EEF0ED; border-radius: 2px } .bar i { display: block; height: 10px; border-radius: 2px; background: var(--q2) }
 dl.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 15px }
 dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) }
