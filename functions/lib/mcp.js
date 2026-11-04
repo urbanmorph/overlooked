@@ -361,6 +361,18 @@ async function getSpecies(env, S, a) {
   };
 }
 
+/** One species as get_species gives it, with the summary and the week, for the species page (functions/species.js).
+ *  null when the list has no such key. */
+export async function lookupSpecies(env, key) {
+  const S = await file(env, 'summary.json');
+  try {
+    return { S, s: await getSpecies(env, S, { key }), week: memo.week };
+  } catch (e) {
+    if (e instanceof ToolError) return null;
+    throw e;
+  }
+}
+
 async function countSpecies(env, S, a) {
   const ix = await index(env);
   const ok = filter(S, ix, a), { status, iucn, last_year: last, labels } = ix.col;

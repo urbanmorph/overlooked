@@ -45,8 +45,8 @@ Direction: a printable monthly bulletin per state and group (field lists of spec
 
 ### Grassroots and reaching the divide-affected: 🟡
 The site is light (no map library, small files, fonts served from the site) and works on phones; each page is usable at 360 px.
-What falls short: the interface is English only; species pages show English common names (iNaturalist) and names in Indian languages where Wikidata has them (about 6,000 species), but search works on Latin and English names only; and the pages need JavaScript (a notice with links to the open files is shown without it).
-Direction: search by names in Indian languages, a localised interface, and pre-rendered plain HTML pages per species and per state that work without JavaScript and can be found in search.
+What falls short: the interface is English only; species pages show English common names (iNaturalist) and names in Indian languages where Wikidata has them (about 6,000 species), but search works on Latin and English names only; and the pages need JavaScript to draw maps and lists (without it, each species page still shows a plain summary: its names, IUCN category, states, regions and family, with links to the open files).
+Direction: search by names in Indian languages, a localised interface, and plain HTML pages per state that work without JavaScript. Species pages can be found in search (each in the sitemap, with its own title and description).
 
 ### Algorithmic transparency: ✅
 The few rules that shape the figures are public and in code: how names are matched to the Catalogue of Life (and kept, labelled, when they do not match), how duplicate keys are merged, how records that cannot go in a district (no coordinates, coordinates uncertain by more than 25 km, coordinates GBIF marks as possibly wrong) are placed by the state name as published, counted as observed and labelled by problem, what counts as an open record and as waiting for a name, how records are placed in districts and in the Wildlife Institute of India's biogeographic provinces, and how DNA-sequence records are labelled. No ranking or profiling of people.

@@ -441,6 +441,23 @@ def test_agent_index(built):
     assert [r["group"] for r in rows] == sorted(r["group"] for r in rows)
 
 
+def test_species_sitemaps(built):
+    """sitemaps/species-<i>.xml: every species page on the list, in SITEMAP_PARTS files (fixed, so the static
+    /sitemap.xml index can name them; each well under the 50,000 URLs a sitemap may hold)."""
+    import xml.etree.ElementTree as ET
+    out, s = built["out"], built["summary"]
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    urls = []
+    for i in range(master.SITEMAP_PARTS):
+        root = ET.parse(out / "sitemaps" / f"species-{i}.xml").getroot()
+        urls += [u.text for u in root.findall("s:url/s:loc", ns)]
+    keyed = [r for r in built["rows"].values() if r["key"]]
+    listed = {r["key"] for r in keyed if r["observed"] is not None}
+    assert "https://overlooked-india.pages.dev/species?key=K1" in urls
+    assert len(urls) == len(set(urls)) and all(u.startswith("https://overlooked-india.pages.dev/species?key=") for u in urls)
+    assert {u.rsplit("=", 1)[1] for u in urls} <= listed and len(urls) <= s["totals"]["documented"]
+
+
 def test_waiting_for_a_name(built):
     """iNaturalist needs-ID species per area: counts per group, and a file per group with the taxon to identify."""
     out, w = built["out"], built["summary"]["waiting"]

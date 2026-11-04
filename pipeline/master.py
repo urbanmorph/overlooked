@@ -36,6 +36,7 @@ changed after), then layers/master/<period>/current.json and layers/master/lates
   g/<gi>.json           all species of a group
   search/<p>.json       search index, one file per two-letter name prefix; search/places.json
   mcp/                  rows.bin, text.txt, meta.json: every species on the list for the agent server (/mcp)
+  sitemaps/             species-<i>.xml: every species page, for search engines (served at /sitemaps/)
 
 Usage:
   python -m pipeline.master seed                                 # local machine: ZSI and WCVP files to R2 cache/master/
@@ -1026,6 +1027,26 @@ def mcp_files(con, out: Path):
           "fields": {f: list(v) for f, v in MCP_FIELDS.items()}, "families": families}, out / "mcp" / "meta.json")
 
 
+SITE_URL = "https://overlooked-india.pages.dev"
+SITEMAP_PARTS = 5   # fixed: site/sitemap.xml (an index) names each part; 5 x 50,000 URLs at most
+
+
+def sitemap_files(con, out: Path):
+    """sitemaps/species-<i>.xml: the page of every species on the list with a key, for search engines (the species
+    page fills its own title and description, functions/species.js). A species goes to part shard_of(key) % parts, so
+    it stays in the same file from week to week."""
+    parts = [[] for _ in range(SITEMAP_PARTS)]
+    for (key,) in con.sql("SELECT key FROM site WHERE status < 2 AND key IS NOT NULL ORDER BY key").fetchall():
+        parts[shard_of(key) % SITEMAP_PARTS].append(key)
+    assert max(len(p) for p in parts) <= 50_000, "a sitemap holds 50,000 URLs at most: raise SITEMAP_PARTS"
+    shutil.rmtree(out / "sitemaps", ignore_errors=True)
+    (out / "sitemaps").mkdir(parents=True)
+    for i, keys in enumerate(parts):
+        urls = "".join(f"<url><loc>{SITE_URL}/species?key={k}</loc></url>\n" for k in keys)
+        (out / "sitemaps" / f"species-{i}.xml").write_text(
+            f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')
+
+
 def state_pairs(states):
     return [[b, int(c)] for b, c in states or []]
 
@@ -1399,6 +1420,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
         f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
     mcp_files(con, out)
+    sitemap_files(con, out)
     buckets = {}
     cols = "coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year"
     for r in con.sql(f"SELECT name, {cols} FROM site").fetchall():

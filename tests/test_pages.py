@@ -94,7 +94,7 @@ def test_the_mcp_page():
               "find_species", "get_species", "count_species", "list_species", "new_species", "overlooked://regions", "curl"):
         assert s in text, s
     assert not re.search(r"missing|lost|extinct|quiet|—", re.sub(r"<[^>]+>", " ", text), re.IGNORECASE)
-    assert "/mcp</loc>" in (pages.SITE / "sitemap.xml").read_text()
+    assert "/mcp</loc>" in (pages.SITE / "sitemap-pages.xml").read_text()
 
 
 def test_the_one_click_install_links_carry_the_server_address():

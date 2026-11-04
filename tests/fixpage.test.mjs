@@ -11,7 +11,7 @@ test('the records to fix are on their own page, with a state and a group to choo
   for (const id of ['fix-kpis', 'fix-holders', 'fix-only', 'fix-source', 'fstate', 'fgroup']) assert.ok(fix.includes(`id="${id}"`), id);
   assert.ok(!home.includes('id="fix-kpis"'));
   assert.ok(home.includes('href="/fix"'));
-  assert.ok(page('sitemap.xml').includes('/fix</loc>'));
+  assert.ok(page('sitemap-pages.xml').includes('/fix</loc>'));
   for (const p of ['index.html', 'fix.html', 'changes.html']) assert.ok(page(p).includes('<a href="/fix"'), p);
 });
 

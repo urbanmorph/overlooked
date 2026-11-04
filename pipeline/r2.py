@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 # Snapshot files never change once written; only latest.json moves.
 IMMUTABLE = "public, max-age=31536000, immutable"
 SHORT = "public, max-age=300"
-TYPES = {".json": "application/json", ".parquet": "application/vnd.apache.parquet", ".txt": "text/plain; charset=utf-8"}
+TYPES = {".json": "application/json", ".parquet": "application/vnd.apache.parquet", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml"}
 # sync_files: uploads at once (the client keeps as many connections), tries per file, pause before a retry (doubles).
 WORKERS = 16
 TRIES = 4
