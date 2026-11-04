@@ -344,3 +344,15 @@ test('tool calls are counted by tool name (metrics), never with their arguments'
   assert.equal(seen.length, 1);
   assert.deepEqual(seen[0].slice(1), ['mcp', 'find_species']);
 });
+
+test('no tool takes or gives a place finer than a state or biogeographic province (method page: Sensitive locations)', async () => {
+  fresh();
+  const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
+  const FINE = /district|lat|lon|lng|coord|point|place|pincode|block|village|radius|near|bbox|geo/i;
+  for (const t of result.tools) {
+    for (const p of Object.keys(t.inputSchema.properties || {})) assert.doesNotMatch(p, FINE, `${t.name}.${p}`);
+  }
+  const s = await out('get_species', { key: 'K1' });
+  const keys = JSON.stringify(s).match(/"([a-z_]+)":/g).map(k => k.slice(1, -2));
+  for (const k of keys) assert.doesNotMatch(k, /district|lat|lon|lng|coord|cell/i, k);
+});

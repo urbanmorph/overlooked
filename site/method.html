@@ -187,6 +187,19 @@
     <p class="note" style="padding:0 18px 18px" id="snapmeta"></p>
   </section>
 
+  <section class="card" id="sensitive">
+    <div class="bar-head"><h2 style="font-size:20px">Sensitive locations</h2></div>
+    <div class="note" style="padding:0 18px 18px">
+      <p style="margin:0">Some species are at risk when people know where they live: collectors, traders and hunters can use location data. We follow the practice of GBIF, eBird and iNaturalist.</p>
+      <ul style="padding-left:20px;margin:8px 0 0">
+        <li>We publish no coordinates. The smallest area we show is a district, on species pages and in the open data. Half of India's districts are larger than 3,100 km².</li>
+        <li>Our MCP server for AI assistants answers by state or biogeographic province only. It does not list species by district.</li>
+        <li>Our records come from GBIF. Before they reach us, iNaturalist moves each record of a threatened species to a random point in a cell of about 500 km², and many publishers make sensitive records less exact.</li>
+        <li>If you think a species should show only by state, <a href="https://github.com/urbanmorph/overlooked/issues/new?template=sensitive-species.yml">tell us</a>. Give the species and the reason, and do not write any location. We record the reason and a date to review it.</li>
+      </ul>
+    </div>
+  </section>
+
   <section class="card" id="agents">
     <div class="bar-head"><h2 style="font-size:20px">For AI agents</h2></div>
     <p class="note" style="padding:0 18px 18px">AI assistants can read the list through our MCP server at <span class="mono">https://overlooked-india.pages.dev/mcp</span> (Streamable HTTP, no key, read only). It can find a species by name, give one species in full, count and list species by group, state, biogeographic region, IUCN category, endemic mark, order or family, and list new species. Each answer gives the week of the list, the licence, the credits and the disclaimer. <a href="/llms.txt">The data guide</a> tells agents about the server and the open files.</p>

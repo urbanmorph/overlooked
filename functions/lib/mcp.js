@@ -242,6 +242,11 @@ function filterNote(S, ix, a) {
 
 // ---------------------------------------------------------------- tools
 
+// Places: no tool takes or gives a place finer than a state or a WII biogeographic province. Lists of threatened
+// species by district and recent year are what collectors and traders look for (method page, Sensitive locations);
+// the species pages and open files stop at the district. A district filter needs per-species rules first.
+// tests/mcp.test.mjs keeps this.
+
 const FILTERS = {
   group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids". See overlooked://groups.' },
   state: { type: 'string', description: 'A state or union territory of India: "Karnataka". See overlooked://states.' },

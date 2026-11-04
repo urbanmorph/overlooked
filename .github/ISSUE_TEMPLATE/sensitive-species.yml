@@ -1,0 +1,39 @@
+name: Sensitive species location
+description: Ask us to show a species only by state, because knowing where it lives puts it at risk.
+title: "Sensitive location: <species>"
+labels: ["sensitive-location"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Overlooked publishes no coordinates. The smallest area it shows is a district, on species pages and in the open data. Our AI assistant server answers only by state or biogeographic province. If showing a species by district puts it at risk (collection, trade, hunting, disturbance), tell us here. Do not write any location in this form.
+  - type: input
+    id: species
+    attributes:
+      label: Species
+      description: The Latin name, or the link to its page on Overlooked.
+    validations:
+      required: true
+  - type: dropdown
+    id: threat
+    attributes:
+      label: The risk
+      options:
+        - Collection or trade
+        - Hunting or poaching
+        - Disturbance at nests, roosts or breeding sites
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Why
+      description: The evidence for the risk, for example a listing, a paper or a known case. Do not write any location.
+    validations:
+      required: true
+  - type: input
+    id: who
+    attributes:
+      label: Your role (optional)
+      description: For example researcher, forest department, naturalist group.
