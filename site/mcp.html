@@ -116,6 +116,29 @@ url = "https://overlooked-india.pages.dev/mcp"</pre></div></div>
     </div>
   </section>
 
+  <section class="card pad" style="margin-top:16px" id="places">
+    <h2>With bharatlas: answers for a place</h2>
+    <p class="note">Add the <a href="https://bharatlas.com">bharatlas</a> MCP server too, and an assistant can answer for a place, a point or "near me". bharatlas finds the state and the biogeographic province of the place; Overlooked answers for them. The assistant must ask bharatlas <span class="mono">locate</span> for the layers <span class="mono">lgd_states</span> and <span class="mono">biogeographic_zones</span>: the province layer is not in its default list. Our server tells the assistant this.</p>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>You ask</th><th>What the assistant does</th></tr></thead>
+        <tbody>
+          <tr><td>What threatened mammals have records in the region around Bandipur?</td><td>bharatlas <span class="mono">locate</span> on Bandipur: Karnataka, province 5B. Then Overlooked <span class="mono">list_species</span> with state Karnataka, region 5B, group mammals, IUCN threatened.</td></tr>
+          <tr><td>I am in Shillong. How many birds of this region are not assessed by IUCN?</td><td>bharatlas <span class="mono">locate</span>: Meghalaya, province 9B. Then <span class="mono">count_species</span> with state Meghalaya, region 9B, group birds, IUCN NE.</td></tr>
+          <tr><td>What protected areas are near Ooty, and which threatened birds have records in that region?</td><td>bharatlas <span class="mono">nearby</span> on the protected areas layer, then <span class="mono">locate</span>. Then <span class="mono">list_species</span>.</td></tr>
+          <tr><td>Which endemic plants of the Western Ghats have records in Kerala?</td><td>No bharatlas needed: a region name goes straight to <span class="mono">list_species</span>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:12px"><b>What these answers mean.</b></p>
+    <ul class="note" style="padding-left:20px;margin-top:4px">
+      <li>They tell what is recorded in the state and the region, not what you will see at the spot. With a state and a region, a species has records in each, not always in the part where they meet.</li>
+      <li>This is not a field guide or a list of sightings. A record shows that a species was found in the area, not that it lives there now or how common it is. For a site, ask the forest department, local naturalists or eBird.</li>
+      <li>To protect species at risk from collection and trade, the answers stop at the state and the province. Do not add finer locations of threatened species from other sources. See <a href="/method#sensitive">Sensitive locations</a>.</li>
+      <li>Each answer gives its credits, the week of the list, and a disclaimer: Overlooked is a monitor of public data, not an authority.</li>
+    </ul>
+  </section>
+
   <section class="card pad" style="margin-top:16px">
     <h2>Tools</h2>
     <div class="tablebox">

@@ -129,3 +129,10 @@ def test_every_page_has_canonical_and_share_tags_from_its_own_title_and_descript
     assert '<meta name="robots" content="noindex">' in (pages.SITE / "404.html").read_text()
     assert pages.page_url("index") == "https://overlooked-india.pages.dev/" and pages.page_url("mcp").endswith("/mcp")
     assert (pages.SITE / "og.png").exists()
+
+
+def test_the_mcp_page_shows_places_through_bharatlas_with_its_limits():
+    text = (pages.SITE / "mcp.html").read_text()
+    assert 'id="places"' in text and "bharatlas" in text and "locate" in text
+    for s in ("recorded in", "not a field guide", "Sensitive locations", "forest department"):
+        assert s.lower() in text.lower(), s

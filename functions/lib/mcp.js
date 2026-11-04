@@ -20,7 +20,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `Overlooked: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. The resources give the valid groups, states and regions. Pass on the licence, attribution and disclaimer of each answer. Overlooked is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `Overlooked: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"biogeographic_zones\"] gives the state and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state and region. Answers stay at that level: say "recorded in" the state or region, never "found here", and do not add finer locations of threatened species from other sources. The resources give the valid groups, states and regions. Pass on the licence, attribution and disclaimer of each answer. Overlooked is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 const ABOUT = `# Overlooked
 
@@ -235,6 +235,9 @@ function filterNote(S, ix, a) {
       + `These groups have no endemic mark yet: ${unmarked(S, ix).join('; ')}. There, 0 endemic means not marked, not that none is endemic.`);
   }
   if (a.state != null) notes.push('A species is in a state when it has an open record placed there.');
+  if (a.state != null && a.region != null) {
+    notes.push('With a state and a region: species with records in the state and records in the region, not always in the part where they meet.');
+  }
   if (a.region != null) notes.push('A species is in a region when a GBIF record of it is placed there (WII biogeographic provinces).');
   if (a.recorded_since != null) notes.push('Recorded since: the latest open record placed in any state of India.');
   return notes.join(' ') || undefined;

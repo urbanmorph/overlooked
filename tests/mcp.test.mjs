@@ -356,3 +356,14 @@ test('no tool takes or gives a place finer than a state or biogeographic provinc
   const keys = JSON.stringify(s).match(/"([a-z_]+)":/g).map(k => k.slice(1, -2));
   for (const k of keys) assert.doesNotMatch(k, /district|lat|lon|lng|coord|cell/i, k);
 });
+
+test('places through bharatlas: the instructions say how, and answers say "recorded in", not "found here"', async () => {
+  fresh();
+  const { result } = await (await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).json();
+  assert.match(result.instructions, /bharatlas/);
+  assert.match(result.instructions, /locate/);
+  assert.match(result.instructions, /recorded in/i);
+  const both = await out('count_species', { state: 'Kerala', region: 'Western Ghats' });
+  assert.match(both.note, /records in the state and records in the region/);
+  assert.match(both.note, /not always in the part where they meet/);
+});
