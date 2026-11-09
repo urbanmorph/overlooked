@@ -20,12 +20,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=1f4d9a074a">
+<link rel="stylesheet" href="/assets/style.css?v=8d9955b3fe">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json', 'latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
-<link rel="modulepreload" href="/assets/common.js?v=17b9916484">
-<link rel="modulepreload" href="/assets/map.js?v=4adb8f969b">
-<script type="module" src="/assets/explore.js?v=e9c5164d8d"></script>
+<link rel="modulepreload" href="/assets/common.js?v=3e06016b4f">
+<link rel="modulepreload" href="/assets/map.js?v=3ab32e2d4b">
+<script type="module" src="/assets/explore.js?v=747266ec3d"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Overlooked","url":"https://overlooked-india.pages.dev/","description":"Every species documented from India, across sources: open records, names that wait, and IUCN status, by group and state. Updated each week.","publisher":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"license":"https://creativecommons.org/licenses/by/4.0/"}</script>
 </head>
 <body>
@@ -112,7 +112,7 @@
       <label class="sbox">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
         <span class="sr">Search</span>
-        <input id="q" type="search" autocomplete="off" placeholder="Search a species, group, state or district" aria-controls="hits">
+        <input id="q" type="search" autocomplete="off" placeholder="Search a species (English or Latin name), group, state or district" aria-controls="hits">
       </label>
       <button type="button" class="b fbtn" id="fbtn" aria-expanded="false" aria-controls="filters">Filters <span id="fcount"></span></button>
       <div id="hits" class="hits" role="listbox" hidden></div>

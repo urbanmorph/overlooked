@@ -1,7 +1,7 @@
 // What changed since the previous weekly list, from the master list (layers/master/<period>/changes.json).
 
-import { getJSON, fmt, esc, $, showLoadError, periodName, stateOptions, speciesLink } from './common.js?v=17b9916484';
-import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=e885eb6423';
+import { getJSON, fmt, esc, $, showLoadError, periodName, stateOptions, speciesLink } from './common.js?v=3e06016b4f';
+import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=0323815601';
 
 const KINDS = [
   ['observed', 'First open record', 'First open record in India', 'var(--accent)'],

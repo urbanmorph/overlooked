@@ -955,9 +955,11 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
-# One species in g/<gi>.json (and at the start of w/<gi>.json rows); the last field is the year described.
+# One species in g/<gi>.json (and at the start of w/<gi>.json rows): key, Latin name, sources, status, IUCN, labels,
+# states with an open record, year described, latest placed record, order, suborder, provinces, English name.
+# Needs site s LEFT JOIN english e USING (key).
 ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
-           "s.year, s.last_year, s.order_i, s.suborder_i, s.provinces_mask")
+           "s.year, s.last_year, s.order_i, s.suborder_i, s.provinces_mask, e.common")
 
 
 def per_area(rows, n, width):
@@ -1009,9 +1011,8 @@ def mcp_files(con, out: Path):
     null = lambda v, n: n if v is None else v
     for gi, status, iucn_i, sub, labels, states, prov, year, last, order, family, key, name, common in con.sql("""
             SELECT s.gi, s.status, s.iucn_i, s.suborder_i, s.labels_mask, s.states_obs_mask, s.provinces_mask, s.year,
-                   s.last_year, s.order_i, s.family, coalesce(s.key, ''), s.name, coalesce(p.common, '')
-            FROM site s LEFT JOIN (SELECT key, any_value(common) AS common FROM pics WHERE common IS NOT NULL
-                                   GROUP BY key) p USING (key)
+                   s.last_year, s.order_i, s.family, coalesce(s.key, ''), s.name, coalesce(e.common, '')
+            FROM site s LEFT JOIN english e USING (key)
             WHERE s.status < 2 ORDER BY s.gi, s.name""").fetchall():
         rows += MCP_ROW.pack(gi, status, iucn_i, null(sub, 0xFF), labels, states & 0xFFFFFFFF, states >> 32,
                              null(prov, 0xFFFFFFFF), year or 0, last or 0, null(order, 0xFFFF),
@@ -1121,7 +1122,7 @@ def waiting(con, n, out: Path, places, coarse=None):
                            for gi, *row, taxon, n_india, states in con.sql(f"""
         SELECT s.gi, {ROW_SQL}, any_value(w.taxon), coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0),
                list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL)
-        FROM wait w JOIN site s USING (id) LEFT JOIN state_bit b USING (state_lgd)
+        FROM wait w JOIN site s USING (id) LEFT JOIN state_bit b USING (state_lgd) LEFT JOIN english e ON e.key = s.key
         GROUP BY ALL ORDER BY s.gi, s.name""").fetchall()))
     counts = (coarse or {}).get("counts", {})
     return {"places": places, "india": india, "by_state": by_state, "genus": waiting_genus(con, n, out),
@@ -1299,6 +1300,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     its common name (Madras Treeshrew: ma and tr), with its Latin name last."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
+    con.sql("CREATE OR REPLACE TABLE english AS SELECT key, any_value(common) AS common FROM pics "
+            "WHERE common IS NOT NULL GROUP BY key")
     con.execute("CREATE OR REPLACE TABLE state_bit AS SELECT unnest($1) AS state_lgd, unnest($2) AS b",
                 [list(bit), list(bit.values())])
     orders = [o for (o,) in con.sql('SELECT DISTINCT "order" FROM master WHERE "order" IS NOT NULL ORDER BY 1').fetchall()]
@@ -1418,15 +1421,15 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     species_files(con, out)
     family_files(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
-        f"SELECT gi, {ROW_SQL} FROM site s WHERE status < 2 ORDER BY gi, s.name").fetchall()), range(n))
+        f"SELECT gi, {ROW_SQL} FROM site s LEFT JOIN english e USING (key) WHERE status < 2 ORDER BY gi, s.name"
+    ).fetchall()), range(n))
     mcp_files(con, out)
     sitemap_files(con, out)
     buckets = {}
     cols = "coalesce(key, ''), gi, status, iucn_i, sources_mask, labels_mask, year"
     for r in con.sql(f"SELECT name, {cols} FROM site").fetchall():
         buckets.setdefault(prefix(r[0]), []).append(list(r))
-    for r in con.sql(f"""SELECT p.common, {cols}, s.name FROM site s JOIN (SELECT key, any_value(common) AS common
-                         FROM pics WHERE common IS NOT NULL GROUP BY key) p USING (key)""").fetchall():
+    for r in con.sql(f"SELECT e.common, {cols}, s.name FROM site s JOIN english e USING (key)").fetchall():
         for p in {prefix(w) for w in re.findall(r"[^\W\d_]{2,}", r[0])}:
             buckets.setdefault(p, []).append(list(r))
     for p, rows in buckets.items():

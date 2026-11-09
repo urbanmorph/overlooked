@@ -78,6 +78,12 @@ test('speciesLink: the species page when it has one, else the name; the name in 
   assert.equal(speciesLink('', 'Aus <b>'), '<i>Aus &lt;b&gt;</i>');
 });
 
+test('speciesLink with an English name: the name on its own line under the Latin name, escaped', () => {
+  assert.equal(speciesLink('K1', 'Aus bus', 'Common <aus>'),
+    '<a href="/species?key=K1"><i>Aus bus</i></a><div class="en">Common &lt;aus&gt;</div>');
+  assert.equal(speciesLink('K1', 'Aus bus', null), '<a href="/species?key=K1"><i>Aus bus</i></a>');
+});
+
 test('iucnBadge: the category, "Not assessed" for NE', () => {
   assert.equal(iucnBadge('EN'), '<span class="iucn i-EN" title="IUCN Red List">EN</span>');
   assert.match(iucnBadge('NE'), />Not assessed</);

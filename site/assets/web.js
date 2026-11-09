@@ -2,8 +2,8 @@
 // as a small glyph; the partners (GloBI) as a tree, a branch per kind of link; the relatives in its family; the map
 // fill. species.js draws and wires them. A radial layout was tried first: with 30 partners per kind the names collided.
 
-import { esc, fmt } from './common.js?v=17b9916484';
-import { known } from './gaps.js?v=e09f5ccec1';
+import { esc, fmt } from './common.js?v=3e06016b4f';
+import { known } from './gaps.js?v=f1b6dfbd5e';
 
 // Kinds of link from the species' own side (pipeline/master.py web_files). Hues in this order validated for CVD and normal vision on
 // white; two are under 3:1, so every sector has a text label and the page has a table view.

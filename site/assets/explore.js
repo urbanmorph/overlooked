@@ -5,13 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=17b9916484';
-import { drawMap, legendHTML } from './map.js?v=4adb8f969b';
-import { signed } from './trend.js?v=e885eb6423';
-import { knowledge, segmentChanges } from './funnel.js?v=d9abf837fe';
-import { redlist } from './redlist.js?v=dd527bf5f3';
-import { gaps, gapAbsent } from './gaps.js?v=e09f5ccec1';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=62584af730';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=3e06016b4f';
+import { drawMap, legendHTML } from './map.js?v=3ab32e2d4b';
+import { signed } from './trend.js?v=0323815601';
+import { knowledge, segmentChanges } from './funnel.js?v=177d6bcc51';
+import { redlist } from './redlist.js?v=9086b59697';
+import { gaps, gapAbsent } from './gaps.js?v=f1b6dfbd5e';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=7f52dfc735';
 import { CATS } from './cats.js?v=7d886060d4';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
@@ -305,11 +305,11 @@ try {
   // Species list for the chosen group, filtered by state, view and the filter chips.
   let shown = PAGE;
   // A g row: key, name, sources, status, IUCN, labels, states with an open record, year described, latest year of a
-  // record placed in a state, order, suborder, WII biogeographic provinces with an open record; the group index is
-  // added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
-  // Lists built before 4 Nov 2026 (no summary provinces) have 9-field g rows.
-  const G = 12, WIDTH = S.provinces ? G : 9;
-  const withGroup = (r, gi) => { const x = r.slice(0, WIDTH); x[G] = gi; return x; };
+  // record placed in a state, order, suborder, WII biogeographic provinces with an open record, English name; the
+  // group index is added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
+  // Older lists have shorter g rows (9 fields before 4 Nov 2026, 12 before 9 Nov), so the width comes from the row.
+  const G = 13, EN = 12, W_EXTRA = 3;
+  const withGroup = (r, gi, width = r.length) => { const x = r.slice(0, width); x[G] = gi; return x; };
   const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => withGroup(r, gi)));
   function passes(r, f = st.filters, y = st.years) {
     const [, , src, status, iucn, labels, , year] = r;
@@ -325,7 +325,7 @@ try {
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
   const waitRows = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }))
-    .then(d => d.rows.map(x => [withGroup(x, gi), ...x.slice(WIDTH)]));
+    .then(d => d.rows.map(x => [withGroup(x, gi, x.length - W_EXTRA), ...x.slice(x.length - W_EXTRA)]));
   const endBit = S.labels.findIndex(l => l.code === 'end');
 
   // Species with observations that wait for a name, most useful first.
@@ -352,7 +352,7 @@ try {
         : first ? `<span class="why first">First open record in ${esc(place)}</span>` : '',
         threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
       const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(taxon)}`));
-      return `<tr><td>${speciesLink(r[0], r[1])}<div class="wm">${why}${iucnBadge(S.iucn[r[4]])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
+      return `<tr><td>${speciesLink(r[0], r[1], r[EN])}<div class="wm">${why}${iucnBadge(S.iucn[r[4]])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
         <td>${esc(S.groups[r[G]])}</td><td>${why || '<span class="muted">–</span>'}</td>
         <td>${iucnBadge(S.iucn[r[4]])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
     }).join('') || '<tr><td colspan="6" class="muted">No species wait for a name here.</td></tr>';
@@ -431,7 +431,7 @@ try {
     const picked = st.pick && parts.flat().find(r => !r[0] && r[1] === st.pick);
     if (picked) rows.splice(0, rows.length, picked, ...rows.filter(r => r !== picked));
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
-        <td>${speciesLink(r[0], r[1])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
+        <td>${speciesLink(r[0], r[1], r[EN])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
         <td>${iucnBadge(S.iucn[r[4]])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
       || `<tr><td colspan="${cols()}" class="muted">No species match.</td></tr>`;
     $('#more').hidden = rows.length <= shown;

@@ -379,7 +379,9 @@ def test_site_files(built):
     g = json.loads((out / "g" / f"{birds}.json").read_text())["rows"]
     aus = next(x for x in g if x[1] == "Aus bus")
     assert aus[0] == "K1" and aus[3] == 1 and aus[6] == 1 << 1      # an open record in state index 1 (32)
-    assert aus[7] == 1758 and aus[8] == 2020 and len(aus) == 12     # year described, latest placed record
+    assert aus[7] == 1758 and aus[8] == 2020 and len(aus) == 13     # year described, latest placed record
+    assert aus[12] == "Common aus"                                   # the English common name (pictures), else null
+    assert all(x[12] is None for x in g if x[0] != "K1")
     # Order (index into summary orders), suborder (index into summary suborders; snakes and lizards only), and the WII
     # biogeographic provinces with an open record (bits in the order of summary provinces).
     assert s["orders"][aus[9]] == "Passeriformes" and aus[10] is None
@@ -471,9 +473,9 @@ def test_waiting_for_a_name(built):
     g = {r[1]: r for r in json.loads((out / "g" / f"{birds}.json").read_text())["rows"]}
     # The species' g row (with the year), then iNaturalist taxon (the species, not a subspecies), observations in India,
     # [[state index, n]]. Zus zus is on no list (status 2), but its observations still wait.
-    assert rows[0][:12] == g["Hus ius"]
+    assert rows[0][:13] == g["Hus ius"]
     assert rows[1][1] == "Zus zus" and rows[1][3] == 2 and rows[1][6] == 0
-    assert [r[12:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
+    assert [r[13:] for r in rows] == [[3, 6, [[1, 6]]], [2, 1, [[0, 1]]]]
 
 
 def test_waiting_at_genus_and_above(built):

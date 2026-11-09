@@ -1,9 +1,9 @@
 // The Records to fix page: GBIF records from India that the site cannot use in full, for a state and a group family
 // chosen on the page. The address keeps the choice, so a view can be shared with a data publisher.
 
-import { getJSON, snapshot, esc, fmt, $, showLoadError, stateOptions, setParams } from './common.js?v=17b9916484';
-import { fixSection } from './fix.js?v=fa3eb3df56';
-import { reviewRowHTML, matchesRow } from './review.js?v=e2c2f999c9';
+import { getJSON, snapshot, esc, fmt, $, showLoadError, stateOptions, setParams } from './common.js?v=3e06016b4f';
+import { fixSection } from './fix.js?v=a8a8602b8b';
+import { reviewRowHTML, matchesRow } from './review.js?v=8fdb017abb';
 import { CATS } from './cats.js?v=7d886060d4';
 
 try {

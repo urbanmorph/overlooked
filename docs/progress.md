@@ -2,6 +2,10 @@
 
 Newest first. Updated as work happens.
 
+## 9 November 2026
+
+- English names in the species list: each g and w row ends with the species' English name (iNaturalist, else Wikidata; from the pictures table, about 29,600 species), shown under the Latin name. One `english` table in `site_files` now serves the g and w files, the agent index and search. The site reads each row's width, so lists from before still load. Search already found species by English name; the search box now says so.
+
 ## 4 November 2026
 
 - Regions: the Wildlife Institute of India's biogeographic zones and provinces (Rodgers, Panwar and Mathur; 10 zones, 26 provinces; GODL-India, via bharatlas). Each GBIF point takes the province it is in, or the nearest within 5 km (`pipeline/biogeo.py`, one placement for districts and provinces in `places.place_in`); outlines simplified to about 100 m (6 times faster, 0.25% of points differ, all on boundaries). The ledger writes `species_zones.parquet`; the master list adds each species' provinces (a bit mask in the g rows), its order, and for Squamata its suborder (Serpentes or Sauria, from `pipeline/ref/squamata.csv`). Western Ghats 15,191 species, Himalaya 15,714, Eastern Highlands (6C, the nearest unit to the Eastern Ghats) 4,056; 491 snakes, 533 lizards.
