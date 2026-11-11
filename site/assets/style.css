@@ -363,3 +363,9 @@ a.wp:hover { background: var(--line-2); color: var(--ink) } .wp:focus-visible { 
 .sp-map { margin-top: 20px; --none: var(--zero) }
 details.card > summary { cursor: pointer; list-style-position: inside } details.card[open] > summary { border-bottom: 1px solid var(--line) }
 button.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer }
+
+/* Place pages (/in, functions/lib/place_page.js): species lists in columns, links between places */
+.place-list { margin-top: 28px }
+.splist { columns: 3 260px; column-gap: 28px; list-style: none; padding: 0; margin: 8px 0 0 }
+.splist li { break-inside: avoid; padding: 3px 0 }
+.place-links { margin-top: 28px } .place-links p { line-height: 1.9 }
