@@ -1,10 +1,11 @@
-# Overlooked
+# yellide
 
-The master list of India's species, and what changes in it each week.
+The master list of India's species, and what changes in it each week. Formerly Overlooked: the site moved from
+overlooked-india.pages.dev to yellide.com on 11 Nov 2026 (ಎಲ್ಲಿದೆ, Kannada for "where is it?").
 
 **Site:** https://yellide.com
 
-Overlooked joins every public source on India's species into one list: GBIF, iNaturalist, the Zoological and
+yellide joins every public source on India's species into one list: GBIF, iNaturalist, the Zoological and
 Botanical Surveys of India (checklists and annual discoveries), Kew WCVP, the lichen and bryophyte checklists of India,
 Plazi, Catalogue of Life and the IUCN Red List. For each species, group, state and biogeographic region it shows
 whether the species has an open record (a specimen, photo or sighting anyone can check online), how many observations

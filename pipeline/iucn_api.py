@@ -48,7 +48,7 @@ class Api:
     def __init__(self, token, session=None, tries=6):
         self.session, self.tries = session or requests.Session(), tries
         self.session.headers.update({"Authorization": f"Bearer {token}",
-                                     "User-Agent": "Overlooked/1.0 (https://yellide.com)"})
+                                     "User-Agent": "yellide/1.0 (https://yellide.com)"})
         self.count = 0
 
     def get(self, path, params=None):

@@ -20,9 +20,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `Overlooked: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"biogeographic_zones\"] gives the state and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state and region. Answers stay at that level: say "recorded in" the state or region, never "found here", and do not add finer locations of threatened species from other sources. The resources give the valid groups, states and regions. Pass on the licence, attribution and disclaimer of each answer. Overlooked is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"biogeographic_zones\"] gives the state and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state and region. Answers stay at that level: say "recorded in" the state or region, never "found here", and do not add finer locations of threatened species from other sources. The resources give the valid groups, states and regions. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
-const ABOUT = `# Overlooked
+const ABOUT = `# yellide
 
 Every species documented from India, across sources. Updated each week. ${SITE}
 
@@ -37,7 +37,7 @@ Every species documented from India, across sources. Updated each week. ${SITE}
 
 Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence. Method and sources: ${SITE}/method
 
-Overlooked is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+yellide is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 // ---------------------------------------------------------------- data
 
@@ -149,7 +149,7 @@ function regionBits(S, value) {
     (plain(code) === q || plain(prov) === q || plain(zone) === q ? [i] : []));
   if (bits.length) return bits;
   const hint = /eastern ghats/.test(q) ? ' There is no Eastern Ghats unit in the WII classification: its nearest is 6C, Deccan Peninsula: Eastern Highlands.' : '';
-  throw new ToolError(`Unknown region "${value}".${hint} Valid zones: ${[...new Set(S.provinces.map(p => p[2]))].join(', ')}; or a province code (${S.provinces.map(p => p[0]).join(', ')}). See the resource overlooked://regions.`);
+  throw new ToolError(`Unknown region "${value}".${hint} Valid zones: ${[...new Set(S.provinces.map(p => p[2]))].join(', ')}; or a province code (${S.provinces.map(p => p[0]).join(', ')}). See the resource yellide://regions.`);
 }
 
 function iucnSet(S, values) {
@@ -251,9 +251,9 @@ function filterNote(S, ix, a) {
 // tests/mcp.test.mjs keeps this.
 
 const FILTERS = {
-  group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids". See overlooked://groups.' },
-  state: { type: 'string', description: 'A state or union territory of India: "Karnataka". See overlooked://states.' },
-  region: { type: 'string', description: 'A WII biogeographic zone ("Western Ghats", "Himalaya", "North-East", "Islands"), a province ("Western Ghats: Mountains") or a province code ("5B"). See overlooked://regions.' },
+  group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids". See yellide://groups.' },
+  state: { type: 'string', description: 'A state or union territory of India: "Karnataka". See yellide://states.' },
+  region: { type: 'string', description: 'A WII biogeographic zone ("Western Ghats", "Himalaya", "North-East", "Islands"), a province ("Western Ghats: Mountains") or a province code ("5B"). See yellide://regions.' },
   iucn: { type: 'array', items: { type: 'string' }, description: 'IUCN Red List categories: CR, EN, VU, NT, LC, DD, NE (not assessed), or "threatened" (CR, EN, VU).' },
   endemic: { type: 'boolean', description: 'true: only species a source marks as endemic to India; false: only species not marked. Some groups have no marks yet (the answer names them).' },
   order: { type: 'string', description: 'An order (Latin): "Squamata", "Anura" (frogs), "Lepidoptera".' },
@@ -454,11 +454,11 @@ async function newSpecies(env, S, a) {
 // ---------------------------------------------------------------- resources
 
 const RESOURCES = [
-  { uri: 'overlooked://about', name: 'about', title: 'What Overlooked is', mimeType: 'text/markdown', text: () => ABOUT },
-  { uri: 'overlooked://groups', name: 'groups', title: 'Groups of the list', mimeType: 'application/json', text: S => JSON.stringify(S.groups) },
-  { uri: 'overlooked://states', name: 'states', title: 'States and union territories', mimeType: 'application/json', text: S => JSON.stringify(S.states.map(s => s.name)) },
+  { uri: 'yellide://about', name: 'about', title: 'What yellide is', mimeType: 'text/markdown', text: () => ABOUT },
+  { uri: 'yellide://groups', name: 'groups', title: 'Groups of the list', mimeType: 'application/json', text: S => JSON.stringify(S.groups) },
+  { uri: 'yellide://states', name: 'states', title: 'States and union territories', mimeType: 'application/json', text: S => JSON.stringify(S.states.map(s => s.name)) },
   {
-    uri: 'overlooked://regions', name: 'regions', title: 'WII biogeographic zones and provinces', mimeType: 'application/json',
+    uri: 'yellide://regions', name: 'regions', title: 'WII biogeographic zones and provinces', mimeType: 'application/json',
     text: S => {
       const zones = {};
       for (const [code, , zone] of S.provinces) (zones[zone] ||= []).push(code);
@@ -483,7 +483,7 @@ async function answer(msg, env, metric) {
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
-        serverInfo: { name: 'overlooked', title: 'Overlooked: species of India', version: '1.0.0', websiteUrl: SITE },
+        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.0.0', websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     case 'ping':

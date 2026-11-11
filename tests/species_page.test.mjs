@@ -20,12 +20,12 @@ const page = (s = BUSTARD) => speciesPage(HTML, s.key, { S, s, week: '2026-11-02
 
 test('title and description are the species\' own', () => {
   const h = page();
-  assert.match(h, /<title>Great Indian Bustard \(Ardeotis nigriceps\) · Overlooked<\/title>/);
+  assert.match(h, /<title>Great Indian Bustard \(Ardeotis nigriceps\) · yellide<\/title>/);
   const d = h.match(/<meta name="description" content="([^"]*)">/)[1];
   assert.equal(d, 'Great Indian Bustard (Ardeotis nigriceps), a species of India. IUCN Critically Endangered (2018, decreasing). '
     + 'Open records in 2 states. Listed by GBIF, iNaturalist and IUCN. Group: Birds. Updated each week.');
   assert.ok(h.includes(`<meta property="og:description" content="${d}">`));
-  assert.ok(h.includes('<meta property="og:title" content="Great Indian Bustard (Ardeotis nigriceps) · Overlooked">'));
+  assert.ok(h.includes('<meta property="og:title" content="Great Indian Bustard (Ardeotis nigriceps) · yellide">'));
   assert.equal((h.match(/<title>/g) || []).length, 1);
 });
 
@@ -54,7 +54,7 @@ test('no English name, not assessed, endemic; text is escaped; banned words neve
   const s = { ...BUSTARD, key: 'K<1', name: 'Aus "bus"', english: null, iucn: { category: 'EX' }, endemic: true,
     states_with_open_record: [], open_record: false, regions: null, names_in_indian_languages: null };
   const h = page(s);
-  assert.match(h, /<title>Aus &quot;bus&quot; · Overlooked<\/title>/);
+  assert.match(h, /<title>Aus &quot;bus&quot; · yellide<\/title>/);
   assert.match(h, /Endemic to India\./);
   assert.match(h, /IUCN category EX/);
   assert.match(h, /No open record from India yet\./);
@@ -68,17 +68,17 @@ test('no English name, not assessed, endemic; text is escaped; banned words neve
 test('an unknown key: the page as it is, marked noindex', () => {
   const h = speciesPage(HTML, 'NOPE', null);
   assert.ok(h.includes('<meta name="robots" content="noindex">'));
-  assert.match(h, /<title>Species · Overlooked<\/title>/);
+  assert.match(h, /<title>Species · yellide<\/title>/);
 });
 
 test('the function: no key passes through; a key fills the page; a data failure still serves the page', async () => {
   const asset = () => new Response(HTML, { headers: { 'content-type': 'text/html; charset=utf-8', etag: '"x"' } });
   const plain = await onRequest({ request: new Request('https://x/species'), env: {}, next: asset });
-  assert.match(await plain.text(), /<title>Species · Overlooked<\/title>/);
+  assert.match(await plain.text(), /<title>Species · yellide<\/title>/);
   const broken = { DATA: { get: async () => { throw new Error('R2 down'); } } };
   const r = await onRequest({ request: new Request('https://x/species?key=GCMS'), env: broken, next: asset });
   assert.equal(r.status, 200);
-  assert.match(await r.text(), /<title>Species · Overlooked<\/title>/);
+  assert.match(await r.text(), /<title>Species · yellide<\/title>/);
 });
 
 import { onRequest as sitemap } from '../functions/sitemaps/[name].js';

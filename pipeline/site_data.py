@@ -17,12 +17,12 @@ from pipeline.util import dump, value
 # PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
 RIGHTS = {
     "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
-    "attribution": ("Overlooked (https://yellide.com). Sources: GBIF.org (cite the download DOIs), "
+    "attribution": ("yellide (https://yellide.com). Sources: GBIF.org (cite the download DOIs), "
                     "iNaturalist, Botanical Survey of India and Zoological Survey of India (Ministry of Environment, "
                     "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), Plazi, "
                     "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas, biogeographic zones "
                     "of India (Wildlife Institute of India, GODL-India) via bharatlas."),
-    "disclaimer": ("Overlooked is not an official checklist or conservation assessment. For the status of a species, "
+    "disclaimer": ("yellide is not an official checklist or conservation assessment. For the status of a species, "
                    "consult BSI, ZSI, the IUCN Red List and the state forest department."),
 }
 

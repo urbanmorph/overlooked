@@ -42,7 +42,7 @@ def meta(page, text):
                                             f'<meta property="og:url" content="{page_url(page)}">']
     if page == "404":
         tags.append('<meta name="robots" content="noindex">')
-    tags += ['<meta property="og:type" content="website">', '<meta property="og:site_name" content="Overlooked">',
+    tags += ['<meta property="og:type" content="website">', '<meta property="og:site_name" content="yellide">',
              f'<meta property="og:title" content="{title}">', f'<meta property="og:description" content="{desc}">',
              f'<meta property="og:image" content="{SITE_URL}/og.png">', '<meta property="og:image:width" content="1200">',
              '<meta property="og:image:height" content="630">', '<meta name="twitter:card" content="summary_large_image">']

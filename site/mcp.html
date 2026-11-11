@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MCP server for AI assistants · Overlooked</title>
-<meta name="description" content="Ask your AI assistant about the species of India. Add the Overlooked MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
+<title>MCP server for AI assistants · yellide</title>
+<meta name="description" content="Ask your AI assistant about the species of India. Add the yellide MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
 <!-- part:head -->
 <link rel="canonical" href="https://yellide.com/mcp">
 <meta property="og:url" content="https://yellide.com/mcp">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Overlooked">
-<meta property="og:title" content="MCP server for AI assistants · Overlooked">
-<meta property="og:description" content="Ask your AI assistant about the species of India. Add the Overlooked MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
+<meta property="og:site_name" content="yellide">
+<meta property="og:title" content="MCP server for AI assistants · yellide">
+<meta property="og:description" content="Ask your AI assistant about the species of India. Add the yellide MCP server to Claude, ChatGPT, VS Code or Cursor: no key, read only, updated each week.">
 <meta property="og:image" content="https://yellide.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -20,9 +20,9 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=8d9955b3fe">
+<link rel="stylesheet" href="/assets/style.css?v=05077332e1">
 <!-- /part:head -->
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebAPI","name":"Overlooked MCP server","description":"A Model Context Protocol server (Streamable HTTP, no key, read only) for AI assistants: find, count and list the species documented from India by group, state, biogeographic region, IUCN category, endemic mark, order or family, and new species described since 2007. Every answer carries the week of the list, the licence, the credits and a disclaimer.","url":"https://yellide.com/mcp","documentation":"https://yellide.com/mcp","termsOfService":"https://yellide.com/method","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"provider":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"about":{"@type":"Dataset","name":"Overlooked: species of India and their open records","url":"https://yellide.com/method"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebAPI","name":"yellide MCP server","description":"A Model Context Protocol server (Streamable HTTP, no key, read only) for AI assistants: find, count and list the species documented from India by group, state, biogeographic region, IUCN category, endemic mark, order or family, and new species described since 2007. Every answer carries the week of the list, the licence, the credits and a disclaimer.","url":"https://yellide.com/mcp","documentation":"https://yellide.com/mcp","termsOfService":"https://yellide.com/method","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"provider":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"about":{"@type":"Dataset","name":"yellide: species of India and their open records","url":"https://yellide.com/method"}}</script>
 </head>
 <body>
 <!-- part:header -->
@@ -31,7 +31,7 @@
   <div class="wrap">
     <a class="brand" href="/">
       <svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="5" width="8.25" height="9" rx="1.8" class="m-open"/><rect x="10.75" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="20.5" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="30.25" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="6" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="20.25" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="12" y="27" width="16" height="9" rx="1.8" class="m-known"/></svg>
-      <b>Overlooked</b><span>India</span>
+      <b>yellide</b><span>species of India</span>
     </a>
     <button class="menu" type="button" aria-controls="nav" aria-expanded="false" hidden><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Menu</button>
     <nav class="main" id="nav" aria-label="Main">
@@ -71,22 +71,22 @@
 
   <section class="card pad" style="margin-top:16px">
     <h2>Add it to your assistant</h2>
-    <div class="client"><div class="who"><b>Claude</b><br><span class="muted">claude.ai and Claude Desktop</span></div><div>Open Settings, then Connectors, then <b>Add custom connector</b>. Name: Overlooked. URL: the address above. Then turn the connector on in a chat.</div></div>
-    <div class="client"><div class="who"><b>Claude Code</b></div><div>Run this in a terminal. <span class="mono">--scope user</span> adds it for all your projects:<pre class="code">claude mcp add --transport http --scope user overlooked https://yellide.com/mcp</pre></div></div>
+    <div class="client"><div class="who"><b>Claude</b><br><span class="muted">claude.ai and Claude Desktop</span></div><div>Open Settings, then Connectors, then <b>Add custom connector</b>. Name: yellide. URL: the address above. Then turn the connector on in a chat.</div></div>
+    <div class="client"><div class="who"><b>Claude Code</b></div><div>Run this in a terminal. <span class="mono">--scope user</span> adds it for all your projects:<pre class="code">claude mcp add --transport http --scope user yellide https://yellide.com/mcp</pre></div></div>
     <div class="client"><div class="who"><b>ChatGPT</b></div><div>Turn on developer mode in the settings for apps and connectors. Then create a connector with the address above, and choose no authentication.</div></div>
-    <div class="client"><div class="who"><b>Codex</b><br><span class="muted">CLI, IDE extension and the ChatGPT desktop app</span></div><div>Run this in a terminal:<pre class="code">codex mcp add overlooked --url https://yellide.com/mcp</pre>Or add this to <span class="mono">~/.codex/config.toml</span>:<pre class="code">[mcp_servers.overlooked]
+    <div class="client"><div class="who"><b>Codex</b><br><span class="muted">CLI, IDE extension and the ChatGPT desktop app</span></div><div>Run this in a terminal:<pre class="code">codex mcp add yellide --url https://yellide.com/mcp</pre>Or add this to <span class="mono">~/.codex/config.toml</span>:<pre class="code">[mcp_servers.yellide]
 url = "https://yellide.com/mcp"</pre></div></div>
-    <div class="client"><div class="who"><b>VS Code</b></div><div><a class="b" href="https://vscode.dev/redirect/mcp/install?name=overlooked&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fyellide.com%2Fmcp%22%7D">Install in VS Code</a><br>Or add this to <span class="mono">.vscode/mcp.json</span>:<pre class="code">{
+    <div class="client"><div class="who"><b>VS Code</b></div><div><a class="b" href="https://vscode.dev/redirect/mcp/install?name=yellide&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fyellide.com%2Fmcp%22%7D">Install in VS Code</a><br>Or add this to <span class="mono">.vscode/mcp.json</span>:<pre class="code">{
   "servers": {
-    "overlooked": {
+    "yellide": {
       "type": "http",
       "url": "https://yellide.com/mcp"
     }
   }
 }</pre></div></div>
-    <div class="client"><div class="who"><b>Cursor</b></div><div><a class="b" href="cursor://anysphere.cursor-deeplink/mcp/install?name=overlooked&amp;config=eyJ1cmwiOiJodHRwczovL3llbGxpZGUuY29tL21jcCJ9">Install in Cursor</a><br>Or add this to <span class="mono">~/.cursor/mcp.json</span>:<pre class="code">{
+    <div class="client"><div class="who"><b>Cursor</b></div><div><a class="b" href="cursor://anysphere.cursor-deeplink/mcp/install?name=yellide&amp;config=eyJ1cmwiOiJodHRwczovL3llbGxpZGUuY29tL21jcCJ9">Install in Cursor</a><br>Or add this to <span class="mono">~/.cursor/mcp.json</span>:<pre class="code">{
   "mcpServers": {
-    "overlooked": {
+    "yellide": {
       "url": "https://yellide.com/mcp"
     }
   }
@@ -118,12 +118,12 @@ url = "https://yellide.com/mcp"</pre></div></div>
 
   <section class="card pad" style="margin-top:16px" id="places">
     <h2>With bharatlas: answers for a place</h2>
-    <p class="note">Add the <a href="https://bharatlas.com">bharatlas</a> MCP server too, and an assistant can answer for a place, a point or "near me". bharatlas finds the state and the biogeographic province of the place; Overlooked answers for them. The assistant must ask bharatlas <span class="mono">locate</span> for the layers <span class="mono">lgd_states</span> and <span class="mono">biogeographic_zones</span>: the province layer is not in its default list. Our server tells the assistant this.</p>
+    <p class="note">Add the <a href="https://bharatlas.com">bharatlas</a> MCP server too, and an assistant can answer for a place, a point or "near me". bharatlas finds the state and the biogeographic province of the place; yellide answers for them. The assistant must ask bharatlas <span class="mono">locate</span> for the layers <span class="mono">lgd_states</span> and <span class="mono">biogeographic_zones</span>: the province layer is not in its default list. Our server tells the assistant this.</p>
     <div class="tablebox">
       <table>
         <thead><tr><th>You ask</th><th>What the assistant does</th></tr></thead>
         <tbody>
-          <tr><td>What threatened mammals have records in the region around Bandipur?</td><td>bharatlas <span class="mono">locate</span> on Bandipur: Karnataka, province 5B. Then Overlooked <span class="mono">list_species</span> with state Karnataka, region 5B, group mammals, IUCN threatened.</td></tr>
+          <tr><td>What threatened mammals have records in the region around Bandipur?</td><td>bharatlas <span class="mono">locate</span> on Bandipur: Karnataka, province 5B. Then yellide <span class="mono">list_species</span> with state Karnataka, region 5B, group mammals, IUCN threatened.</td></tr>
           <tr><td>I am in Shillong. How many birds of this region are not assessed by IUCN?</td><td>bharatlas <span class="mono">locate</span>: Meghalaya, province 9B. Then <span class="mono">count_species</span> with state Meghalaya, region 9B, group birds, IUCN NE.</td></tr>
           <tr><td>What protected areas are near Ooty, and which threatened birds have records in that region?</td><td>bharatlas <span class="mono">nearby</span> on the protected areas layer, then <span class="mono">locate</span>. Then <span class="mono">list_species</span>.</td></tr>
           <tr><td>Which endemic plants of the Western Ghats have records in Kerala?</td><td>No bharatlas needed: a region name goes straight to <span class="mono">list_species</span>.</td></tr>
@@ -135,7 +135,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
       <li>They tell what is recorded in the state and the region, not what you will see at the spot. With a state and a region, a species has records in each, not always in the part where they meet.</li>
       <li>This is not a field guide or a list of sightings. A record shows that a species was found in the area, not that it lives there now or how common it is. For a site, ask the forest department, local naturalists or eBird.</li>
       <li>To protect species at risk from collection and trade, the answers stop at the state and the province. Do not add finer locations of threatened species from other sources. See <a href="/method#sensitive">Sensitive locations</a>.</li>
-      <li>Each answer gives its credits, the week of the list, and a disclaimer: Overlooked is a monitor of public data, not an authority.</li>
+      <li>Each answer gives its credits, the week of the list, and a disclaimer: yellide is a monitor of public data, not an authority.</li>
     </ul>
   </section>
 
@@ -154,7 +154,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
       </table>
     </div>
     <p class="note"><span class="mono">count_species</span> and <span class="mono">list_species</span> take filters, and the filters combine: group (birds, butterflies, orchids...), state, biogeographic region or province, IUCN categories or "threatened", endemic, order, suborder (snakes or lizards), family, open record, recorded since a year, described since a year.</p>
-    <p class="note">The server also gives four resources: <span class="mono">overlooked://about</span> (what the words mean), <span class="mono">overlooked://groups</span>, <span class="mono">overlooked://states</span> and <span class="mono">overlooked://regions</span> (the values the filters accept).</p>
+    <p class="note">The server also gives four resources: <span class="mono">yellide://about</span> (what the words mean), <span class="mono">yellide://groups</span>, <span class="mono">yellide://states</span> and <span class="mono">yellide://regions</span> (the values the filters accept).</p>
   </section>
 
   <section class="card pad" style="margin-top:16px">
@@ -173,8 +173,8 @@ url = "https://yellide.com/mcp"</pre></div></div>
   "regions": ["3A Desert: Thar", "3B Desert: Kutchchh", "4B Semi-Arid: Gujarat Rajputana", ...],
   "url": "https://yellide.com/species?key=GCMS",
   "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
-  "attribution": "Overlooked (https://yellide.com). Sources: GBIF.org ...",
-  "disclaimer": "Overlooked is not an official checklist or conservation assessment. ..."
+  "attribution": "yellide (https://yellide.com). Sources: GBIF.org ...",
+  "disclaimer": "yellide is not an official checklist or conservation assessment. ..."
 }</pre>
   </section>
 
@@ -183,7 +183,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
     <ul class="note" style="padding-left:20px;margin-top:10px">
       <li>Every answer gives the week of the list, the licence, the credits of the sources and a disclaimer. Please pass them on with what you publish.</li>
       <li>To protect species at risk from collection and trade, the server answers by state or biogeographic province only, never by district or point. See <a href="/method#sensitive">Sensitive locations</a>.</li>
-      <li>Overlooked is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.</li>
+      <li>yellide is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.</li>
       <li>A species is in a state when it has an open record placed there. It is in a region when a GBIF record of it is placed there.</li>
       <li>Regions are the biogeographic zones and provinces of the Wildlife Institute of India: 10 zones and 26 provinces. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.</li>
       <li>Endemic marks come only from the sources that give them: Kew for plants, and ZSI and other checklists for some animal groups. Birds, mammals, reptiles, amphibians, fish and butterflies have no marks yet. The answer names these groups.</li>
@@ -217,6 +217,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
       <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
       <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
       <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+      <div>yellide (<span lang="kn">ಎಲ್ಲಿದೆ</span>, “where is it?”) was called Overlooked until November 2026.</div>
     </div>
   </div>
 </footer>

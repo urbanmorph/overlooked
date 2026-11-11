@@ -89,9 +89,9 @@ def test_the_nav_has_the_mcp_page_and_a_menu_button_for_small_screens():
 def test_the_mcp_page():
     text = (pages.SITE / "mcp.html").read_text().replace("&amp;", "&")
     for s in ("https://yellide.com/mcp", "claude mcp add --transport http --scope user", '"mcpServers"', "Add custom connector",
-              "cursor://anysphere.cursor-deeplink/mcp/install?name=overlooked&config=", "https://vscode.dev/redirect/mcp/install?name=overlooked",
-              "codex mcp add overlooked --url", "[mcp_servers.overlooked]", "serverUrl",
-              "find_species", "get_species", "count_species", "list_species", "new_species", "overlooked://regions", "curl"):
+              "cursor://anysphere.cursor-deeplink/mcp/install?name=yellide&config=", "https://vscode.dev/redirect/mcp/install?name=yellide",
+              "codex mcp add yellide --url", "[mcp_servers.yellide]", "serverUrl",
+              "find_species", "get_species", "count_species", "list_species", "new_species", "yellide://regions", "curl"):
         assert s in text, s
     assert not re.search(r"missing|lost|extinct|quiet|—", re.sub(r"<[^>]+>", " ", text), re.IGNORECASE)
     assert "/mcp</loc>" in (pages.SITE / "sitemap-pages.xml").read_text()
