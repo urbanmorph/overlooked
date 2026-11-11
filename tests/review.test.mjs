@@ -9,7 +9,7 @@ const row = ['4Q34B', 'Pteropus vampyrus', 17, ['Pteropus giganteus'],
 
 test('a name to check: the species, the old names that reach it, its relatives on Indian checklists, a way to answer', () => {
   const h = reviewRowHTML(row);
-  assert.match(h, /href="\/species\?key=4Q34B"><i>Pteropus vampyrus<\/i>/);
+  assert.match(h, /href="\/species\/4Q34B\/pteropus-vampyrus"><i>Pteropus vampyrus<\/i>/);
   assert.match(h, /<i>Pteropus giganteus<\/i>/);
   assert.match(h, /<i>Pteropus medius<\/i>/);
   assert.match(h, /and 1 more/);                                   // at most 5 relatives shown

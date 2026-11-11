@@ -1,4 +1,5 @@
 // Shared helpers. Data lives under /data/ (R2 through the Pages Function, or scripts/serve.py locally).
+import { speciesPath } from './species_url.js?v=6eb2695080';
 
 export const DATA = '/data/';
 const cache = new Map();
@@ -32,7 +33,7 @@ export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;'
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
 /** A species name in italics, linked to its page when it has one (key); its English name, if given, on a line below. */
 export const speciesLink = (key, name, english) =>
-  (key ? `<a href="/species?key=${encodeURIComponent(key)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`)
+  (key ? `<a href="${speciesPath(key, name)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`)
   + (english ? `<div class="en">${esc(english)}</div>` : '');
 
 /** The IUCN Red List category as a badge (style.css .iucn .i-<cat>). */

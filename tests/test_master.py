@@ -444,20 +444,27 @@ def test_agent_index(built):
 
 
 def test_species_sitemaps(built):
-    """sitemaps/species-<i>.xml: every species page on the list, in SITEMAP_PARTS files (fixed, so the static
-    /sitemap.xml index can name them; each well under the 50,000 URLs a sitemap may hold)."""
+    """sitemaps/species-<i>.xml: the pages of the species worth a search, at their own address
+    (/species/<key>/<slug of the Latin name>): those with an open record from India or an IUCN assessment. In
+    SITEMAP_PARTS files (fixed, so the static /sitemap.xml index can name them; each under 50,000 URLs)."""
     import xml.etree.ElementTree as ET
-    out, s = built["out"], built["summary"]
+    out = built["out"]
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     urls = []
     for i in range(master.SITEMAP_PARTS):
         root = ET.parse(out / "sitemaps" / f"species-{i}.xml").getroot()
         urls += [u.text for u in root.findall("s:url/s:loc", ns)]
-    keyed = [r for r in built["rows"].values() if r["key"]]
-    listed = {r["key"] for r in keyed if r["observed"] is not None}
-    assert "https://yellide.com/species?key=K1" in urls
-    assert len(urls) == len(set(urls)) and all(u.startswith("https://yellide.com/species?key=") for u in urls)
-    assert {u.rsplit("=", 1)[1] for u in urls} <= listed and len(urls) <= s["totals"]["documented"]
+    keyed = [r for r in built["rows"].values() if r["key"] and r["observed"] is not None]
+    worth = {r["key"]: r["name"] for r in keyed if r["observed"] or r["iucn"] not in (None, "NE")}
+    assert worth and len(worth) < len(keyed)          # the fixture has species on both sides
+    assert sorted(urls) == sorted(f"https://yellide.com/species/{k}/{master.slug(n)}" for k, n in worth.items())
+
+
+def test_the_slug_is_the_one_the_site_uses():
+    """Python and site/assets/species_url.js turn a Latin name into the same address (tests/fixtures/species_slugs.json)."""
+    from pathlib import Path
+    for name, want in json.loads((Path(__file__).parent / "fixtures" / "species_slugs.json").read_text()):
+        assert master.slug(name) == want, name
 
 
 def test_waiting_for_a_name(built):

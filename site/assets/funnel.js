@@ -3,7 +3,7 @@
 // the gap: only in checklists and papers, no record with a place, no recent record. Built from summary.json;
 // history.json gives the changes.
 
-import { sumGroups } from './common.js?v=3e06016b4f';
+import { sumGroups } from './common.js?v=0f213c3aa5';
 
 // The steps, least known first. view: the map view a segment selects (checklists give no states: none).
 export const STEPS = [

@@ -2,7 +2,8 @@
 // of Life places under them, with a relative on an Indian checklist (pipeline/name_review.py, review/names.json). A
 // person who knows the group says whether the records are another species'; the answer comes as a GitHub issue.
 
-import { fmt, esc, plainName, speciesLink } from './common.js?v=3e06016b4f';
+import { fmt, esc, plainName, speciesLink } from './common.js?v=0f213c3aa5';
+import { speciesPath } from './species_url.js?v=6eb2695080';
 
 const NEAR = 5;
 const REPO = 'https://github.com/urbanmorph/overlooked';
@@ -12,7 +13,7 @@ const IUCN_CITE = 'IUCN (2026). The IUCN Red List of Threatened Species. Version
 
 /** A new GitHub issue about one name, with the facts filled in. */
 export function issueHref([key, name, , old, near, outside]) {
-  const body = `Species: ${name} (https://yellide.com/species?key=${key})\n`
+  const body = `Species: ${name} (https://yellide.com${speciesPath(key, name)})\n`
     + `Older names that reach it: ${old.join(', ')}\nRelatives on Indian checklists: ${near.join(', ')}\n`
     + (outside ? `${OUTSIDE} (${IUCN_CITE})\n` : '') + '\n'
     + 'Are the records from India this species, or one of its relatives? Your answer, and a source if you have one:\n';

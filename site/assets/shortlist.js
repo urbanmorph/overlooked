@@ -2,7 +2,7 @@
 // check (layers/shortlist/, contract in docs/shortlist_data.md). Bands and an order of names only, never scores.
 // Each card links out through /go/inat/<id>, a redirect that counts links followed per group (docs/metrics.md).
 
-import { getJSON, fmt, esc, $, monthName, showLoadError, stateOptions, setParams } from './common.js?v=3e06016b4f';
+import { getJSON, fmt, esc, $, monthName, showLoadError, stateOptions, setParams } from './common.js?v=0f213c3aa5';
 
 // The bands the page shows; rows in any other band (expert) are not shown.
 const BANDS = {

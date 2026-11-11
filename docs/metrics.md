@@ -24,7 +24,7 @@ One table, `daily(day, dim, key, n)`: one counter per UTC day, per dimension, pe
 | `view` | `observed`, `identified` or `iucn` | `?view=` on the front page |
 | `group` | group key, for example `birds` | `?group=` on the front page |
 | `state` | LGD state code | `?state=` on the front page |
-| `species` | GBIF key or Catalogue of Life ID | `/species?key=` page opens |
+| `species` | GBIF key or Catalogue of Life ID | species page opens (`/species/<key>/<slug>`, or `/species?key=` before 11 Nov 2026) |
 | `search` | first two letters of a search, for example `pa` | the search file the front page fetches (`layers/master/<m>/search/<p>.json`) |
 | `group_open` | group index | the group file the front page fetches (`layers/master/<m>/g/<gi>.json`) |
 | `inat_out` | shortlist group key, for example `true-bugs` | a link followed from the Shortlists page to iNaturalist (`/go/inat/<id>?g=<group>`, a 302 redirect by `functions/go/inat/[id].js`); the observation id is not stored |

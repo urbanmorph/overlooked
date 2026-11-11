@@ -95,6 +95,10 @@ test('species page open records the species key from the page URL', () => {
   assert.ok(has(observe(req('/species?key=6W3C4'), html()), 'species', '6W3C4'));
   assert.ok(!dims(observe(req('/species?key=a%20b%3Cc'), html())).includes('species'));
   assert.ok(!dims(observe(req('/species'), html())).includes('species'));
+  // the page's own address since 11 Nov 2026: one page, /species, and the key from the path
+  const p = observe(req('/species/6W3C4/ardeotis-nigriceps'), html());
+  assert.ok(has(p, 'species', '6W3C4') && has(p, 'page', '/species'));
+  assert.ok(!dims(observe(req('/species/a%20b%3Cc/x'), html())).includes('species'));
 });
 
 test('bots and AI crawlers bump only their class counter', () => {
