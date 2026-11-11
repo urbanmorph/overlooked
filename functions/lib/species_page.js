@@ -3,7 +3,8 @@
 // The browser still draws the full page from the data files; this is for search engines, AI crawlers (they do not
 // run JavaScript), link previews and readers with no JavaScript.
 // Pure: the static page in, the filled page out. The species comes from lookupSpecies (lib/mcp.js).
-import { speciesPath } from '../../site/assets/species_url.js';
+import { slug, speciesPath } from '../../site/assets/species_url.js';
+import { groupTitle } from './places.js';
 
 const SITE = 'https://yellide.com';
 // IUCN category names. EW and EX keep their codes: the site copy does not use those words.
@@ -37,6 +38,14 @@ function sentences(s) {
 function replaceMeta(html, attr, name, value) {
   const re = new RegExp(`<meta ${attr}="${name}" content="[^"]*">`);
   return html.replace(re, `<meta ${attr}="${name}" content="${value}">`);
+}
+
+/** Links to the pages of its group in each state where it has an open record ("Birds of Kerala"), lib/place_page.js. */
+function placeLinks(s) {
+  const states = s.states_with_open_record || [];
+  if (!s.group || !states.length) return '';
+  const g = groupTitle(s.group), gs = slug(s.group.replace(/\s*\(.*?\)/g, ''));
+  return `\n      <p class="note" id="places">${states.map(st => `<a href="/in/${slug(st)}/${gs}">${esc(`${g} of ${st.replace(/ & /g, ' and ')}`)}</a>`).join(' · ')}</p>`;
 }
 
 /** found: {S, s, week} from lookupSpecies, or null for a key the list does not have. */
@@ -73,7 +82,7 @@ export function speciesPage(html, key, found) {
   out = out.replace(/(<h1 class="page" id="name"[^>]*>)Loading…(<\/h1>)/, `$1${esc(s.name)}$2`)
     .replace(/(<p class="lede" id="common"[^>]*>)(<\/p>)/, `$1${esc(s.english || '')}$2`)
     .replace(/(<span id="crumb">)(<\/span>)/, `$1${esc(`/ ${s.group || ''}${s.family ? ` / ${s.family}` : ''}`)}$2`)
-    .replace(/(<div class="sp-pills" id="pills"><\/div>)/, `$1\n      <p class="note" id="summary" style="margin-top:12px">${esc(sentences(s).join(' '))}</p>`);
+    .replace(/(<div class="sp-pills" id="pills"><\/div>)/, `$1\n      <p class="note" id="summary" style="margin-top:12px">${esc(sentences(s).join(' '))}</p>${placeLinks(s)}`);
   const json = JSON.stringify(ld).replace(/</g, '\\u003c');
   return out.replace('</head>', `<link rel="canonical" href="${url}">\n<meta property="og:url" content="${url}">\n`
     + `<script type="application/ld+json">${json}</script>\n</head>`);

@@ -382,6 +382,50 @@ export async function lookupSpecies(env, key) {
   }
 }
 
+/** Every species on the list that passes the filters `a` (as list_species takes them: group, state, region...), for
+ *  the place pages (lib/place_page.js): [{key, name, english, gi, iucn, endemic, open}], with the summary, the week
+ *  and the groups that have no endemic mark. */
+export async function speciesWhere(env, a) {
+  const S = await file(env, 'summary.json'), ix = await index(env);
+  const ok = filter(S, ix, a), { col } = ix, end = S.labels.findIndex(l => l.code === 'end');
+  const rows = [];
+  for (let i = 0; i < ix.n; i++) {
+    if (!ok(i)) continue;
+    const { key, name, english } = ix.names(i);
+    rows.push({ key, name, english, gi: col.group[i], iucn: S.iucn[col.iucn[i]], endemic: ((col.labels[i] >>> end) & 1) === 1,
+      open: col.status[i] === 1 });
+  }
+  return { S, rows, week: memo.week, unmarked: unmarked(S, ix) };
+}
+
+/** Species per group for India, each state (open record placed there) and each WII zone (GBIF record placed there),
+ *  in one pass, for the place hubs and the sitemap: {S, india: [n per group], states: {code: [...]}, zones: {zone: [...]}}. */
+export async function placeCounts(env) {
+  const S = await file(env, 'summary.json'), ix = await index(env);
+  return { ...(await kept(await current(env), '@places', async () => countPlaces(S, ix))), S, week: memo.week };
+}
+
+function countPlaces(S, ix) {
+  const { col, nul } = ix, G = S.groups.length;
+  const zero = () => new Array(G).fill(0);
+  const india = zero(), states = Object.fromEntries(S.states.map(s => [s.code, zero()]));
+  const zoneOfBit = S.provinces.map(p => p[2]), zones = Object.fromEntries([...new Set(zoneOfBit)].map(z => [z, zero()]));
+  for (let i = 0; i < ix.n; i++) {
+    const g = col.group[i];
+    india[g]++;
+    for (let b = 0; b < S.states.length; b++) {
+      const m = b < 32 ? col.states_lo[i] : col.states_hi[i];
+      if (((m >>> (b % 32)) & 1) === 1) states[S.states[b].code][g]++;
+    }
+    const p = col.provinces[i];
+    if (p === nul.provinces || !p) continue;
+    const seen = new Set();
+    for (let b = 0; b < zoneOfBit.length; b++) if ((p >>> b) & 1) seen.add(zoneOfBit[b]);
+    for (const z of seen) zones[z][g]++;
+  }
+  return { india, states, zones };
+}
+
 async function countSpecies(env, S, a) {
   const ix = await index(env);
   const ok = filter(S, ix, a), { status, iucn, last_year: last, labels } = ix.col;

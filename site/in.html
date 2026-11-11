@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Species by place · yellide</title>
+<meta name="description" content="The species of India by state and biogeographic region, group by group: how many have an open record there, which are threatened and which are endemic.">
+<!-- part:head -->
+<link rel="canonical" href="https://yellide.com/in">
+<meta property="og:url" content="https://yellide.com/in">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="yellide">
+<meta property="og:title" content="Species by place · yellide">
+<meta property="og:description" content="The species of India by state and biogeographic region, group by group: how many have an open record there, which are threatened and which are endemic.">
+<meta property="og:image" content="https://yellide.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css?v=32cbe8d20a">
+<!-- /part:head -->
+</head>
+<body>
+<!-- part:noscript -->
+<noscript><div class="wrap" style="padding:16px 0"><b>This page needs JavaScript to draw the map and lists.</b> The same data is open without it: see <a href="/llms.txt">the data guide</a>, the files under <a href="/data/layers/master/latest.json">/data/</a>, and <a href="/method">Sources and method</a>.</div></noscript>
+<!-- /part:noscript -->
+<!-- part:header -->
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="5" width="8.25" height="9" rx="1.8" class="m-open"/><rect x="10.75" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="20.5" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="30.25" y="5" width="8.25" height="9" rx="1.8" class="m-part"/><rect x="6" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="20.25" y="16" width="13" height="9" rx="1.8" class="m-known"/><rect x="12" y="27" width="16" height="9" rx="1.8" class="m-known"/></svg>
+      <b>yellide</b><span>species of India</span>
+    </a>
+    <button class="menu" type="button" aria-controls="nav" aria-expanded="false" hidden><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Menu</button>
+    <nav class="main" id="nav" aria-label="Main">
+      <a href="/">Explore</a>
+      <a href="/changes">Changes</a>
+      <a href="/shortlist">Shortlists</a>
+      <a href="/fix">Records to fix</a>
+      <a href="/method">Sources and method</a>
+      <a href="/mcp">MCP for AI</a>
+    </nav>
+  </div>
+</header>
+<script>
+// Small screens: the Menu button opens and closes the nav. With no JavaScript the button stays hidden and the nav is one row.
+(() => {
+  const b = document.querySelector('header.top button.menu'), n = document.getElementById('nav');
+  const set = open => { b.setAttribute('aria-expanded', open); n.classList.toggle('open', open); };
+  document.documentElement.classList.add('menu-js');
+  b.hidden = false;
+  b.addEventListener('click', () => set(b.getAttribute('aria-expanded') !== 'true'));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && n.classList.contains('open')) { set(false); b.focus(); } });
+})();
+</script>
+<!-- /part:header -->
+
+<main id="main" class="wrap place">
+<!-- place: functions/in/[[path]].js writes each place page here -->
+</main>
+
+<!-- part:footer -->
+<footer>
+  <div class="wrap">
+    <div class="grow">
+      <b style="color:var(--ink)">Sources</b>
+      <div class="sources">Zoological Survey of India · Botanical Survey of India · Royal Botanic Gardens, Kew (WCVP) · Lichen checklist of India (Sinha, Nayaka &amp; Mishra 2024) · Bryophyte checklist of India (Dandotiya et al. 2011) · GBIF.org · iNaturalist · Plazi · IUCN Red List · Catalogue of Life · GloBI · State of India&#39;s Birds · BOLD Systems · Wikidata · Wikimedia Commons (photos, credited on each page) · Bibliography of South Asian Ornithology (Aasheesh Pittie) · Local Government Directory and Wildlife Institute of India (biogeographic zones), via bharatlas</div>
+    </div>
+    <div style="flex:1 1 260px">
+      <div>Data and text: CC BY 4.0, Sathya Sankaran. Each source keeps its own licence.</div>
+      <div><a href="/in">Species by state and region</a></div>
+      <div>Code: MIT · <a href="https://github.com/urbanmorph/overlooked">GitHub</a> · <a href="https://github.com/urbanmorph/overlooked/blob/main/PDGI.md">PDGI</a></div>
+      <div>Follows <a href="https://overlooked-species.surge.sh">The Overlooked Species</a></div>
+      <div>yellide (<span lang="kn">ಎಲ್ಲಿದೆ</span>, “where is it?”) was called Overlooked until November 2026.</div>
+    </div>
+  </div>
+</footer>
+<!-- /part:footer -->
+</body>
+</html>

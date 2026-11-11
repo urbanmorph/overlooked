@@ -56,6 +56,9 @@ This machine (India)
   `functions/species/[[path]].js` serves each species page at its own address, `/species/<key>/<slug of the Latin
   name>`, with its title, description, canonical address, schema.org Taxon, its name and a summary in the HTML, for
   search engines, AI crawlers and link previews; `/species?key=` and a wrong slug redirect there.
+  `functions/in/[[path]].js` serves the place pages, `/in/<place>/<group>` ("Birds of Kerala", from the agent index:
+  counts, threatened, endemic and every species linked), `/in/<place>` and `/in`; pages with fewer than 10 species are
+  `noindex`. `/sitemaps/places.xml` names the rest.
   `/sitemap.xml` indexes the page sitemap and five species sitemaps that the master build writes (species with an open
   record or an IUCN assessment; `functions/sitemaps/[name].js` serves them).
   `functions/go/inat/[id].js` sends a Shortlists link on to iNaturalist and counts it. `functions/_middleware.js`
