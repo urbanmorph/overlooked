@@ -1,8 +1,8 @@
 {
- "run_id": "2026-11-02",
- "built": "2026-11-04T07:03:16Z",
- "base": "snapshots/2026-11-02/",
- "manifest": "snapshots/2026-11-02/manifest.json",
- "summary": "snapshots/2026-11-02/summary.json",
+ "run_id": "2026-11-09",
+ "built": "2026-11-11T11:49:32Z",
+ "base": "snapshots/2026-11-09/",
+ "manifest": "snapshots/2026-11-09/manifest.json",
+ "summary": "snapshots/2026-11-09/summary.json",
  "boundaries": "boundaries/lgd-c205da56ce05/districts_map.json"
 }
