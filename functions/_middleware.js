@@ -5,10 +5,13 @@ import { observe, record } from './lib/metrics.js';
 
 const HOME = 'yellide.com';
 const MOVED = new Set(['overlooked-india.pages.dev', 'www.yellide.com']);   // previews (<id>.overlooked-india.pages.dev) stay
+// Search Console's file check fails on a redirect to another domain: the old property keeps its file, so it stays
+// verified for Change of Address. Pages serves it at its name without .html.
+const VERIFICATION = /^\/google[0-9a-f]+(\.html)?$/;
 
 export async function onRequest({ request, env, next, waitUntil }) {
   const url = new URL(request.url);
-  if (MOVED.has(url.hostname)) return Response.redirect(`https://${HOME}${url.pathname}${url.search}`, 301);
+  if (MOVED.has(url.hostname) && !VERIFICATION.test(url.pathname)) return Response.redirect(`https://${HOME}${url.pathname}${url.search}`, 301);
   const response = await next();
   if (env.DB) {
     try {
