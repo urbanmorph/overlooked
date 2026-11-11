@@ -28,7 +28,7 @@ FROM occurrence
 WHERE countrycode = 'IN'
   AND (hascoordinate = FALSE OR hasgeospatialissues = TRUE OR coordinateuncertaintyinmeters > 25000)
   AND NOT GBIF_STRINGARRAYCONTAINS(issue, 'COUNTRY_COORDINATE_MISMATCH', FALSE)
-  AND occurrencestatus = 'PRESENT'
+  AND occurrencestatus IN ('PRESENT', 'DETECTED')
   AND taxonkey IS NOT NULL
   AND basisofrecord <> 'FOSSIL_SPECIMEN' AND basisofrecord <> 'LIVING_SPECIMEN'
   AND datasetkey NOT IN ({excluded})

@@ -2,6 +2,10 @@
 
 Newest first. Updated as work happens.
 
+## 11 November 2026
+
+- GBIF renamed occurrence status values in SQL downloads (release of 10 Nov): PRESENT is now DETECTED, ABSENT is now NOT_DETECTED. The unlocated query kept only 'PRESENT' and came back with 0 records twice; the weekly build crashed on the empty table (issue #9). Every query now takes `occurrencestatus IN ('PRESENT', 'DETECTED')` (all checked with GBIF's validator), and the run asks again when a download finishes with no record, stopping after 3 (`run.take_status`). The search API still takes both names, so the health check did not change.
+
 ## 9 November 2026
 
 - English names in the species list: each g and w row ends with the species' English name (iNaturalist, else Wikidata; from the pictures table, about 29,600 species), shown under the Latin name. One `english` table in `site_files` now serves the g and w files, the agent index and search. The site reads each row's width, so lists from before still load. Search already found species by English name; the search box now says so.

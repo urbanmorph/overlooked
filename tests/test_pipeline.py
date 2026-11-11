@@ -253,6 +253,16 @@ def test_no_unused_placeholders_in_queries():
         assert "{excluded_unlocated}" not in q.read_text()
 
 
+def test_queries_keep_present_records_under_old_and_new_status_names():
+    """10 Nov 2026: GBIF renamed occurrence status PRESENT to DETECTED (ABSENT to NOT_DETECTED) in SQL downloads, and
+    the unlocated query, which kept only 'PRESENT', came back empty. Every query takes both names."""
+    for q in gbif.QUERIES.glob("*.sql"):
+        text = q.read_text()
+        assert "occurrencestatus = 'PRESENT'" not in text, q.name
+        if "occurrencestatus" in text:
+            assert "occurrencestatus IN ('PRESENT', 'DETECTED')" in text, q.name
+
+
 class Answer:
     def __init__(self, code, body=None):
         self.status_code, self.ok, self.text, self.body = code, code < 400, "<html>Broken at the moment</html>", body

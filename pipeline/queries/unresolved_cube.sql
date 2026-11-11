@@ -19,7 +19,7 @@ FROM occurrence
 WHERE countrycode = 'IN'
   AND hascoordinate = TRUE
   AND hasgeospatialissues = FALSE
-  AND occurrencestatus = 'PRESENT'
+  AND occurrencestatus IN ('PRESENT', 'DETECTED')
   AND specieskey IS NULL
   AND taxonkey IS NOT NULL
   AND basisofrecord <> 'FOSSIL_SPECIMEN' AND basisofrecord <> 'LIVING_SPECIMEN'

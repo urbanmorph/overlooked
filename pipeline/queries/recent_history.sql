@@ -10,7 +10,7 @@ SELECT
   COUNT(*) AS n_records
 FROM occurrence
 WHERE countrycode = 'IN'
-  AND occurrencestatus = 'PRESENT'
+  AND occurrencestatus IN ('PRESENT', 'DETECTED')
   AND specieskey IS NOT NULL
   AND "year" >= {first_year}
   AND basisofrecord <> 'FOSSIL_SPECIMEN' AND basisofrecord <> 'LIVING_SPECIMEN'

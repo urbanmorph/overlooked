@@ -37,7 +37,7 @@ def main():
         FROM read_csv('{POINTS}', delim = '\t', header = true, quote = '', all_varchar = false,
                       sample_size = -1, ignore_errors = true)
         WHERE speciesKey IS NOT NULL AND decimalLatitude IS NOT NULL
-          AND occurrenceStatus = 'PRESENT'
+          AND occurrenceStatus IN ('PRESENT', 'DETECTED')
           AND basisOfRecord NOT IN ('FOSSIL_SPECIMEN', 'LIVING_SPECIMEN')
           AND (coordinateUncertaintyInMeters IS NULL OR coordinateUncertaintyInMeters <= 25000)
           AND datasetKey NOT IN (SELECT datasetKey FROM read_csv('{EXCLUDED}'))

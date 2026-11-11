@@ -33,7 +33,7 @@ def main():
         SELECT speciesKey AS specieskey, species AS name, kingdom, phylum, class, "order", family,
                "year", round(decimalLatitude, 3) AS lat, round(decimalLongitude, 3) AS lon
         FROM read_csv('{POINTS}', delim = '\t', header = true, quote = '', sample_size = -1, ignore_errors = true)
-        WHERE speciesKey IS NOT NULL AND decimalLatitude IS NOT NULL AND occurrenceStatus = 'PRESENT'
+        WHERE speciesKey IS NOT NULL AND decimalLatitude IS NOT NULL AND occurrenceStatus IN ('PRESENT', 'DETECTED')
           AND basisOfRecord NOT IN ('FOSSIL_SPECIMEN', 'LIVING_SPECIMEN')
           AND (coordinateUncertaintyInMeters IS NULL OR coordinateUncertaintyInMeters <= 25000)
           AND datasetKey NOT IN (SELECT datasetKey FROM read_csv('{EXCLUDED}'))
