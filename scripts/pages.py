@@ -26,7 +26,7 @@ IMPORT = re.compile(r"""(\b(?:from|import)\s+)(['"])\./([\w-]+\.js)(?:\?v=\w+)?\
 REF = re.compile(r"""(["'])/assets/([\w-]+\.(?:js|css))(?:\?v=\w+)?\1""")              # a reference in a page
 
 
-SITE_URL = "https://overlooked-india.pages.dev"
+SITE_URL = "https://yellide.com"
 NO_CANONICAL = {"species", "404"}   # species: the address carries ?key=; 404: not a page to index
 
 

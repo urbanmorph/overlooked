@@ -17,7 +17,7 @@ from pipeline.util import dump, value
 # PDGI: the rights travel inside the data, so nobody can use a file without the credit and the limits.
 RIGHTS = {
     "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
-    "attribution": ("Overlooked (https://overlooked-india.pages.dev). Sources: GBIF.org (cite the download DOIs), "
+    "attribution": ("Overlooked (https://yellide.com). Sources: GBIF.org (cite the download DOIs), "
                     "iNaturalist, Botanical Survey of India and Zoological Survey of India (Ministry of Environment, "
                     "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), Plazi, "
                     "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas, biogeographic zones "

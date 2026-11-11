@@ -3,7 +3,7 @@
 // is for search engines, AI crawlers (they do not run JavaScript), link previews and readers with no JavaScript.
 // Pure: the static page in, the filled page out. The species comes from lookupSpecies (lib/mcp.js).
 
-const SITE = 'https://overlooked-india.pages.dev';
+const SITE = 'https://yellide.com';
 // IUCN category names. EW and EX keep their codes: the site copy does not use those words.
 const IUCN_NAMES = { CR: 'Critically Endangered', EN: 'Endangered', VU: 'Vulnerable', NT: 'Near Threatened', LC: 'Least Concern', DD: 'Data Deficient' };
 
