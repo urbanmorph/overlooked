@@ -33,6 +33,14 @@ test('yellide.com itself and preview deployments are served as they are', async 
   }
 });
 
+test('the old property\'s Search Console verification file is served on the old address, with or without .html', async () => {
+  for (const url of ['https://overlooked-india.pages.dev/google10baad30f7442a2a', 'https://overlooked-india.pages.dev/google10baad30f7442a2a.html']) {
+    const { r, served } = await visit(url);
+    assert.equal(served, true, url);
+    assert.equal(r.status, 200);
+  }
+});
+
 test('robots and sitemaps go through the redirect; the old property\'s verification file stays put', () => {
   const ex = JSON.parse(fs.readFileSync(new URL('../site/_routes.json', import.meta.url), 'utf8')).exclude;
   for (const f of ['/robots.txt', '/sitemap.xml', '/sitemap-pages.xml']) assert.ok(!ex.includes(f), f);
