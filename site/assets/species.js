@@ -151,7 +151,7 @@ try {
   const nKnown = gaps.filter(g => g.state === 'known').length, nNa = gaps.filter(g => g.state === 'na').length;
 
   // Name, picture and the few facts that tell what this species is on the list.
-  document.title = `${name} · Overlooked`;
+  document.title = `${name} · yellide`;
   $('#name').textContent = name;
   const fam = family || gbif?.family;
   $('#crumb').textContent = `/ ${group}${fam ? ` / ${fam}` : ''}`;

@@ -42,7 +42,7 @@ export function speciesPage(html, key, found) {
   if (!found) return html.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
   const { s, week } = found;
   const url = `${SITE}/species?key=${encodeURIComponent(key)}`;
-  const title = esc(`${s.english ? `${s.english} (${s.name})` : s.name} · Overlooked`);
+  const title = esc(`${s.english ? `${s.english} (${s.name})` : s.name} · yellide`);
   const desc = esc(`${sentences(s).join(' ')} Updated each week.`);
   const names = [s.english, ...(s.names_in_indian_languages || []).map(([, n]) => n)].filter(Boolean);
   const ld = {
@@ -50,7 +50,7 @@ export function speciesPage(html, key, found) {
     ...(names.length ? { alternateName: names } : {}),
     ...(s.family ? { parentTaxon: { '@type': 'Taxon', name: s.family, taxonRank: 'family' } } : {}),
     description: sentences(s).join(' '),
-    isPartOf: { '@type': 'Dataset', name: 'Overlooked: species of India and their open records', url: `${SITE}/method` },
+    isPartOf: { '@type': 'Dataset', name: 'yellide: species of India and their open records', url: `${SITE}/method` },
   };
   const facts = [
     s.described?.year || s.described?.authority ? `Described: ${esc(s.described.authority || s.described.year)}.` : null,
@@ -61,7 +61,7 @@ export function speciesPage(html, key, found) {
   const summary = `<noscript><div class="wrap" style="padding:16px 0">`
     + `<h1 class="page">${s.english ? `${esc(s.english)} ` : ''}<i>${esc(s.name)}</i></h1>`
     + `<p>${esc(sentences(s).join(' '))}</p><ul>${facts}</ul>`
-    + `<p class="note">List of the week of ${esc(week)}. This page needs JavaScript to draw the map and lists. The same data is open without it: see <a href="/llms.txt">the data guide</a> and <a href="/method">Sources and method</a>. Data: CC BY 4.0, Sathya Sankaran; each source keeps its own licence. Overlooked is a monitor of public data, not an authority.</p>`
+    + `<p class="note">List of the week of ${esc(week)}. This page needs JavaScript to draw the map and lists. The same data is open without it: see <a href="/llms.txt">the data guide</a> and <a href="/method">Sources and method</a>. Data: CC BY 4.0, Sathya Sankaran; each source keeps its own licence. yellide is a monitor of public data, not an authority.</p>`
     + `</div></noscript>`;
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   out = replaceMeta(out, 'name', 'description', desc);

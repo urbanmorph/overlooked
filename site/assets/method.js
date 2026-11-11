@@ -7,7 +7,7 @@ const QUERY = {
   unlocated_cube: 'Records that cannot go in a district',
 };
 const SOURCE = {
-  gbif_api: 'GBIF API', gbif_downloads: 'GBIF downloads', r2: 'Overlooked data store', lgd_boundaries: 'LGD boundaries (bharatlas)',
+  gbif_api: 'GBIF API', gbif_downloads: 'GBIF downloads', r2: 'yellide data store', lgd_boundaries: 'LGD boundaries (bharatlas)',
   plazi: 'Plazi', ipni: 'IPNI', index_fungorum: 'Index Fungorum', inaturalist: 'iNaturalist',
   ibp_gbif_dataset: 'India Biodiversity Portal (GBIF dataset)', kew_wcvp: 'Kew WCVP',
   bsi_plant_discoveries: 'BSI Plant Discoveries', bsi_ivh: 'BSI Indian Virtual Herbarium',

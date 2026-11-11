@@ -127,7 +127,7 @@ test('initialize: the protocol version the client asks for, tools and resources,
   const { result } = await r.json();
   assert.equal(result.protocolVersion, '2025-06-18');
   assert.deepEqual(Object.keys(result.capabilities).sort(), ['resources', 'tools']);
-  assert.equal(result.serverInfo.name, 'overlooked');
+  assert.equal(result.serverInfo.name, 'yellide');
   assert.match(result.instructions, /not an authority/i);
   const old = await (await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '1999-01-01' } })).json();
   assert.equal(old.result.protocolVersion, '2025-06-18');      // one we know, for the client to accept or not
@@ -298,11 +298,11 @@ test('new_species: described from India since a year, with the paper and records
 test('resources: about, groups, states and regions', async () => {
   fresh();
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/list' })).json();
-  assert.deepEqual(result.resources.map(r => r.uri), ['overlooked://about', 'overlooked://groups', 'overlooked://states', 'overlooked://regions']);
+  assert.deepEqual(result.resources.map(r => r.uri), ['yellide://about', 'yellide://groups', 'yellide://states', 'yellide://regions']);
   const read = async uri => (await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/read', params: { uri } })).json()).result.contents[0];
-  assert.match((await read('overlooked://about')).text, /open record/);
-  assert.deepEqual(JSON.parse((await read('overlooked://states')).text), ['Karnataka', 'Kerala']);
-  const regions = JSON.parse((await read('overlooked://regions')).text);
+  assert.match((await read('yellide://about')).text, /open record/);
+  assert.deepEqual(JSON.parse((await read('yellide://states')).text), ['Karnataka', 'Kerala']);
+  const regions = JSON.parse((await read('yellide://regions')).text);
   assert.deepEqual(regions.zones['Western Ghats'], ['5A', '5B']);
 });
 
