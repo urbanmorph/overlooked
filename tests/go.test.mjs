@@ -5,7 +5,7 @@ import { onRequest as go } from '../functions/go/inat/[id].js';
 import { onRequest as middleware } from '../functions/_middleware.js';
 
 const FIREFOX = 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0';
-const req = (path, ua = FIREFOX) => new Request('https://overlooked-india.pages.dev' + path, { headers: { 'user-agent': ua } });
+const req = (path, ua = FIREFOX) => new Request('https://yellide.com' + path, { headers: { 'user-agent': ua } });
 const id = path => path.split('?')[0].split('/').pop();
 const open = path => go({ request: req(path), params: { id: id(path) } });
 

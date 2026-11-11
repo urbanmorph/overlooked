@@ -12,7 +12,7 @@ const IUCN_CITE = 'IUCN (2026). The IUCN Red List of Threatened Species. Version
 
 /** A new GitHub issue about one name, with the facts filled in. */
 export function issueHref([key, name, , old, near, outside]) {
-  const body = `Species: ${name} (https://overlooked-india.pages.dev/species?key=${key})\n`
+  const body = `Species: ${name} (https://yellide.com/species?key=${key})\n`
     + `Older names that reach it: ${old.join(', ')}\nRelatives on Indian checklists: ${near.join(', ')}\n`
     + (outside ? `${OUTSIDE} (${IUCN_CITE})\n` : '') + '\n'
     + 'Are the records from India this species, or one of its relatives? Your answer, and a source if you have one:\n';

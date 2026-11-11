@@ -1028,7 +1028,7 @@ def mcp_files(con, out: Path):
           "fields": {f: list(v) for f, v in MCP_FIELDS.items()}, "families": families}, out / "mcp" / "meta.json")
 
 
-SITE_URL = "https://overlooked-india.pages.dev"
+SITE_URL = "https://yellide.com"
 SITEMAP_PARTS = 5   # fixed: site/sitemap.xml (an index) names each part; 5 x 50,000 URLs at most
 
 

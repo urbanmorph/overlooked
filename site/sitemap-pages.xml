@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://overlooked-india.pages.dev/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://overlooked-india.pages.dev/changes</loc><changefreq>weekly</changefreq></url>
-  <url><loc>https://overlooked-india.pages.dev/shortlist</loc><changefreq>weekly</changefreq></url>
-  <url><loc>https://overlooked-india.pages.dev/fix</loc><changefreq>weekly</changefreq></url>
-  <url><loc>https://overlooked-india.pages.dev/method</loc><changefreq>weekly</changefreq></url>
-  <url><loc>https://overlooked-india.pages.dev/mcp</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://yellide.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://yellide.com/changes</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://yellide.com/shortlist</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://yellide.com/fix</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://yellide.com/method</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://yellide.com/mcp</loc><changefreq>monthly</changefreq></url>
 </urlset>

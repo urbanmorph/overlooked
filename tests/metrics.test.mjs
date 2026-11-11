@@ -13,7 +13,7 @@ function req(path, { ua = FIREFOX, method = 'GET', referer, country = 'IN', head
   const h = new Headers(headers);
   if (ua) h.set('user-agent', ua);
   if (referer) h.set('referer', referer);
-  const r = new Request('https://overlooked-india.pages.dev' + path, { method, headers: h });
+  const r = new Request('https://yellide.com' + path, { method, headers: h });
   // request.cf is not settable on a Node Request; observe() reads it through this field
   Object.defineProperty(r, 'cf', { value: country ? { country } : undefined });
   return r;
@@ -47,8 +47,9 @@ test('deviceClass: mobile, tablet or desktop from the user agent', () => {
 test('refHost: external host only, never the path or query; own hosts are dropped', () => {
   assert.equal(refHost('https://www.google.com/search?q=private+words'), 'google.com');
   assert.equal(refHost('https://Twitter.com/someone/status/1'), 'twitter.com');
+  assert.equal(refHost('https://yellide.com/ledger'), null);
+  assert.equal(refHost('https://abc123.overlooked-india.pages.dev/'), null);   // previews, and links still on the old address
   assert.equal(refHost('https://overlooked-india.pages.dev/ledger'), null);
-  assert.equal(refHost('https://abc123.overlooked-india.pages.dev/'), null);
   assert.equal(refHost('http://localhost:8000/'), null);
   assert.equal(refHost('not a url'), null);
   assert.equal(refHost(''), null);
@@ -73,7 +74,7 @@ test('page view: trailing slash and .html are folded into one path', () => {
 
 test('page view: no referrer row for direct visits or internal navigation', () => {
   assert.ok(!dims(observe(req('/'), html())).includes('ref'));
-  assert.ok(!dims(observe(req('/', { referer: 'https://overlooked-india.pages.dev/ledger' }), html())).includes('ref'));
+  assert.ok(!dims(observe(req('/', { referer: 'https://yellide.com/ledger' }), html())).includes('ref'));
 });
 
 test('front page URL parameters record view, group and state selections', () => {

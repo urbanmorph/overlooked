@@ -7,7 +7,7 @@
 // parsing the g files takes 40 ms. Files are read once per isolate and week.
 import { record } from './metrics.js';
 
-const SITE = 'https://overlooked-india.pages.dev';
+const SITE = 'https://yellide.com';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const LATEST_TTL = 300_000;             // ms between reads of layers/master/latest.json
 const LIST_MAX = 100;
@@ -528,7 +528,7 @@ export async function handle(request, env, waitUntil) {
     return env.ASSETS.fetch(new Request(new URL('/mcp', request.url), { headers: { accept: 'text/html' } }));
   }
   if (request.method !== 'POST') {
-    return new Response('This is an MCP server (Streamable HTTP): send JSON-RPC with POST. See https://overlooked-india.pages.dev/llms.txt',
+    return new Response('This is an MCP server (Streamable HTTP): send JSON-RPC with POST. See https://yellide.com/llms.txt',
       { status: 405, headers: { Allow: 'POST, OPTIONS', ...CORS } });
   }
   let body;

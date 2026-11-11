@@ -2,7 +2,7 @@
 
 The master list of India's species, and what changes in it each week.
 
-**Site:** https://overlooked-india.pages.dev
+**Site:** https://yellide.com
 
 Overlooked joins every public source on India's species into one list: GBIF, iNaturalist, the Zoological and
 Botanical Surveys of India (checklists and annual discoveries), Kew WCVP, the lichen and bryophyte checklists of India,
@@ -10,7 +10,7 @@ Plazi, Catalogue of Life and the IUCN Red List. For each species, group, state a
 whether the species has an open record (a specimen, photo or sighting anyone can check online), how many observations
 of it wait for a name, and its IUCN status. Species pages add evidence (type specimens, photos, DNA barcodes),
 interactions (GloBI), population trends (IUCN, State of India's Birds) and names in Indian languages (Wikidata). AI
-assistants can ask the same list through an MCP server at [`/mcp`](https://overlooked-india.pages.dev/mcp). Each week it builds a new dated list from the sources and compares it with the week before. It
+assistants can ask the same list through an MCP server at [`/mcp`](https://yellide.com/mcp). Each week it builds a new dated list from the sources and compares it with the week before. It
 holds no sightings and takes no user input; every figure links back to its source. The larger aim is to track the
 health of India's species over time. It follows the data story
 [The Overlooked Species](https://overlooked-species.surge.sh).
@@ -118,7 +118,7 @@ GBIF, Catalogue of Life, iNaturalist, Plazi, the Botanical and Zoological Survey
 lichen and bryophyte checklists of India, the IUCN Red List, GloBI, BOLD, Wikidata and Wikimedia Commons, State of
 India's Birds, the Bibliography of South Asian Ornithology (Aasheesh Pittie), and the Local Government Directory and
 the Wildlife Institute of India's biogeographic zones (via bharatlas). Limits, terms and how each source is used: [docs/sources.md](docs/sources.md).
-Data layout for people and agents: [/llms.txt](https://overlooked-india.pages.dev/llms.txt). Usage counts:
+Data layout for people and agents: [/llms.txt](https://yellide.com/llms.txt). Usage counts:
 [docs/metrics.md](docs/metrics.md). Plan and decisions: [docs/plan.md](docs/plan.md). Progress:
 [docs/progress.md](docs/progress.md). How we follow PDGI: [PDGI.md](PDGI.md).
 

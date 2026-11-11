@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://overlooked-india.pages.dev/sitemap.xml
+Sitemap: https://yellide.com/sitemap.xml

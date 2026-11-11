@@ -14,7 +14,7 @@ const BUSTARD = {
   status: 'open record', open_record: true, iucn: { category: 'CR', year: 2018, doi: 'https://doi.org/x', trend: 'Decreasing' },
   endemic: false, sources: ['GBIF', 'iNaturalist', 'IUCN'], states_with_open_record: ['Rajasthan', 'Gujarat'],
   regions: ['3A Desert: Thar'], described: { year: 1831, authority: '(Vigors, 1831)' }, names_in_indian_languages: [['hi', 'सोन चिरैया']],
-  url: 'https://overlooked-india.pages.dev/species?key=GCMS',
+  url: 'https://yellide.com/species?key=GCMS',
 };
 const page = (s = BUSTARD) => speciesPage(HTML, s.key, { S, s, week: '2026-11-02' });
 
@@ -31,8 +31,8 @@ test('title and description are the species\' own', () => {
 
 test('canonical address with the key, and schema.org Taxon', () => {
   const h = page();
-  assert.ok(h.includes('<link rel="canonical" href="https://overlooked-india.pages.dev/species?key=GCMS">'));
-  assert.ok(h.includes('<meta property="og:url" content="https://overlooked-india.pages.dev/species?key=GCMS">'));
+  assert.ok(h.includes('<link rel="canonical" href="https://yellide.com/species?key=GCMS">'));
+  assert.ok(h.includes('<meta property="og:url" content="https://yellide.com/species?key=GCMS">'));
   const ld = JSON.parse(h.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
   assert.equal(ld['@type'], 'Taxon');
   assert.equal(ld.name, 'Ardeotis nigriceps');
@@ -94,6 +94,6 @@ test('species sitemaps come from the current build in R2; other names are not se
   assert.equal((await ask('species-4.xml')).status, 404);
   assert.equal((await ask('../latest.json')).status, 404);
   const index = readFileSync(new URL('../site/sitemap.xml', import.meta.url), 'utf8');
-  for (let i = 0; i < 5; i++) assert.ok(index.includes(`https://overlooked-india.pages.dev/sitemaps/species-${i}.xml`));
-  assert.ok(index.includes('https://overlooked-india.pages.dev/sitemap-pages.xml') && index.includes('<sitemapindex'));
+  for (let i = 0; i < 5; i++) assert.ok(index.includes(`https://yellide.com/sitemaps/species-${i}.xml`));
+  assert.ok(index.includes('https://yellide.com/sitemap-pages.xml') && index.includes('<sitemapindex'));
 });

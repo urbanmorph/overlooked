@@ -2,7 +2,7 @@
 figures typed into the pages. Reads the published files at /data/ (the live site by default). Prints each problem;
 exit 1 when there is one. Run after a weekly publish.
 
-Usage: .venv/bin/python scripts/check_numbers.py [--site https://overlooked-india.pages.dev]
+Usage: .venv/bin/python scripts/check_numbers.py [--site https://yellide.com]
 """
 
 import argparse
@@ -127,7 +127,7 @@ def check_method_table(page, gate):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--site", default="https://overlooked-india.pages.dev")
+    p.add_argument("--site", default="https://yellide.com")
     a = p.parse_args()
     http = requests.Session()
     def get(path):

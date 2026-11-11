@@ -455,8 +455,8 @@ def test_species_sitemaps(built):
         urls += [u.text for u in root.findall("s:url/s:loc", ns)]
     keyed = [r for r in built["rows"].values() if r["key"]]
     listed = {r["key"] for r in keyed if r["observed"] is not None}
-    assert "https://overlooked-india.pages.dev/species?key=K1" in urls
-    assert len(urls) == len(set(urls)) and all(u.startswith("https://overlooked-india.pages.dev/species?key=") for u in urls)
+    assert "https://yellide.com/species?key=K1" in urls
+    assert len(urls) == len(set(urls)) and all(u.startswith("https://yellide.com/species?key=") for u in urls)
     assert {u.rsplit("=", 1)[1] for u in urls} <= listed and len(urls) <= s["totals"]["documented"]
 
 
