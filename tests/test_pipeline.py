@@ -276,6 +276,24 @@ def test_a_gbif_outage_is_a_wait_not_a_failed_build():
     assert gbif.status(ok, "K") == {"status": "RUNNING"}
 
 
+def test_an_empty_download_is_asked_again_then_fails():
+    """11 Nov 2026: GBIF finished the unlocated query with 0 records (336,569 the week before; the records were still
+    there) and the build crashed on the empty table. A query over all of India is never empty: ask again, up to 3 times."""
+    from pipeline.run import take_status
+    d = {"key": "K1", "status": "PREPARING"}
+    take_status(d, {"status": "RUNNING"})
+    assert d == {"key": "K1", "status": "RUNNING"}
+    take_status(d, {"status": "SUCCEEDED", "totalRecords": 5})
+    assert d["status"] == "SUCCEEDED" and d["key"] == "K1"
+    d = {"key": "K1", "status": "PREPARING"}
+    for tries in (1, 2):
+        take_status(d, {"status": "SUCCEEDED", "totalRecords": 0})
+        assert d["status"] == "WAITING" and "key" not in d and d["empty"] == tries    # submit_next asks again
+        d["key"] = f"K{tries + 1}"
+    take_status(d, {"status": "SUCCEEDED", "totalRecords": 0})
+    assert d["status"] == "FAILED" and d["key"] == "K3"                              # the run stops and says so
+
+
 def test_a_session_names_us_and_tries_a_busy_server_again(monkeypatch):
     """health.session: our User-Agent; a GET that meets a 429 or 5xx is asked again (3 times, short pauses);
     a POST is not (a download request must not be sent twice)."""

@@ -77,6 +77,24 @@ def code_commit():
         return None
 
 
+EMPTY_TRIES = 3
+
+
+def take_status(d, meta):
+    """Update a download's state from GBIF's metadata. A finished download with no record is a fault at GBIF (every
+    query covers all of India): the key goes, so submit_next asks again; after EMPTY_TRIES empty answers it fails."""
+    if meta["status"] == DONE and meta.get("totalRecords") == 0:
+        d["empty"] = d.get("empty", 0) + 1
+        if d["empty"] >= EMPTY_TRIES:
+            d["status"] = "FAILED"
+            print(f"download {d['key']}: GBIF gave no record {d['empty']} times; stopping", flush=True)
+        else:
+            print(f"download {d.pop('key')}: GBIF gave no record; asking again", flush=True)
+            d["status"] = "WAITING"
+        return
+    d["status"] = meta["status"]
+
+
 def submit_next(http, state):
     """GBIF lets one account run very few downloads at once, so queries go one after another.
     Submit the next query that has no key yet, if nothing is running. Returns True if one was submitted."""
@@ -194,8 +212,9 @@ def build(args):
         time.sleep(1.0)
         if meta is None:            # GBIF down for a while: the status is kept and asked again at the next check
             continue
-        d["status"] = meta["status"]
-        metas[name] = meta
+        take_status(d, meta)
+        if d.get("key"):
+            metas[name] = meta
     if any(d.get("key") and name not in metas for name, d in state["downloads"].items()):
         save(state)
         print(f"run {run_id}: GBIF did not give every download's status; waiting for the next check")
