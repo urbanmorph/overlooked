@@ -51,9 +51,12 @@ import re
 import shutil
 import struct
 import time
+import unicodedata
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 import duckdb
 import requests
@@ -1032,18 +1035,27 @@ SITE_URL = "https://yellide.com"
 SITEMAP_PARTS = 5   # fixed: site/sitemap.xml (an index) names each part; 5 x 50,000 URLs at most
 
 
+def slug(name):
+    """The Latin name in lower case, accents dropped, every run of other characters one hyphen: the last part of a
+    species page's address. site/assets/species_url.js makes the same (tests/fixtures/species_slugs.json)."""
+    s = re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFKD", str(name or ""))).lower()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
 def sitemap_files(con, out: Path):
-    """sitemaps/species-<i>.xml: the page of every species on the list with a key, for search engines (the species
-    page fills its own title and description, functions/species.js). A species goes to part shard_of(key) % parts, so
-    it stays in the same file from week to week."""
+    """sitemaps/species-<i>.xml: for search engines, the pages of the species worth a search: an open record from
+    India or an IUCN assessment (the page fills its own title, description and summary, functions/species/[[path]].js),
+    at their own address, /species/<key>/<slug>. A species goes to part shard_of(key) % parts, so it stays in the same
+    file from week to week."""
     parts = [[] for _ in range(SITEMAP_PARTS)]
-    for (key,) in con.sql("SELECT key FROM site WHERE status < 2 AND key IS NOT NULL ORDER BY key").fetchall():
-        parts[shard_of(key) % SITEMAP_PARTS].append(key)
+    for key, name in con.sql("""SELECT key, name FROM site WHERE key IS NOT NULL AND status < 2
+                                  AND (status = 1 OR coalesce(iucn, 'NE') <> 'NE') ORDER BY key""").fetchall():
+        parts[shard_of(key) % SITEMAP_PARTS].append(f"/species/{quote(key, safe='')}/{slug(name)}")
     assert max(len(p) for p in parts) <= 50_000, "a sitemap holds 50,000 URLs at most: raise SITEMAP_PARTS"
     shutil.rmtree(out / "sitemaps", ignore_errors=True)
     (out / "sitemaps").mkdir(parents=True)
-    for i, keys in enumerate(parts):
-        urls = "".join(f"<url><loc>{SITE_URL}/species?key={k}</loc></url>\n" for k in keys)
+    for i, paths in enumerate(parts):
+        urls = "".join(f"<url><loc>{SITE_URL}{escape(p)}</loc></url>\n" for p in paths)
         (out / "sitemaps" / f"species-{i}.xml").write_text(
             f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')
 

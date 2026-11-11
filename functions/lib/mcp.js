@@ -6,6 +6,7 @@
 // fixed-width row per species written by pipeline/master.py mcp_files: a scan takes about a millisecond, where
 // parsing the g files takes 40 ms. Files are read once per isolate and week.
 import { record } from './metrics.js';
+import { speciesPath } from '../../site/assets/species_url.js';
 
 const SITE = 'https://yellide.com';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
@@ -52,7 +53,7 @@ class ToolError extends Error {}
 const plain = s => String(s ?? '').toLowerCase().replace(/['’]/g, '').replace(/[-\s]+/g, ' ').trim();
 // pipeline/master.py prefix: the first two letters, lower case ASCII; anything else is '_'.
 const prefix = s => [...String(s).toLowerCase().slice(0, 2)].map(c => (c >= 'a' && c <= 'z' ? c : '_')).join('').padEnd(2, '_');
-const url = key => (key ? `${SITE}/species?key=${encodeURIComponent(key)}` : null);
+const url = (key, name) => (key ? SITE + speciesPath(key, name) : null);
 
 let memo = { checked: 0, base: null, week: null, files: new Map() };
 /** For tests: forget what this isolate has read. */
@@ -321,7 +322,7 @@ async function findSpecies(env, S, a) {
     if (!(n.startsWith(q) || n.includes(' ' + q))) continue;
     const common = r.length > 8, id = r[1] || 'n:' + (common ? r[8] : r[0]);
     const s = by.get(id) || { key: r[1] || null, name: common ? r[8] : r[0], english: null, group: S.groups[r[2]],
-      iucn: S.iucn[r[4]], status: STATUS[r[3]], described: r[7], url: url(r[1]), exact: false };
+      iucn: S.iucn[r[4]], status: STATUS[r[3]], described: r[7], url: url(r[1], common ? r[8] : r[0]), exact: false };
     if (common && !s.english) s.english = r[0];
     s.exact ||= n === q;
     by.set(id, s);
@@ -365,11 +366,11 @@ async function getSpecies(env, S, a) {
       observations_in_india: nIndia,
       identify: `https://www.inaturalist.org/observations/identify?quality_grade=needs_id&taxon_id=${taxon}&place_id=${place}`,
     } : null,
-    url: url(key),
+    url: url(key, name),
   };
 }
 
-/** One species as get_species gives it, with the summary and the week, for the species page (functions/species.js).
+/** One species as get_species gives it, with the summary and the week, for the species page (functions/species/[[path]].js).
  *  null when the list has no such key. */
 export async function lookupSpecies(env, key) {
   const S = await file(env, 'summary.json');
@@ -416,7 +417,7 @@ async function listSpecies(env, S, a) {
     const { key, name, english } = ix.names(i), f = val('family', i);
     species.push({ key, name, english, group: S.groups[col.group[i]], family: f == null ? null : ix.families[f],
       iucn: S.iucn[col.iucn[i]], endemic: ((col.labels[i] >>> end) & 1) === 1, open_record: col.status[i] === 1,
-      latest_record_year: val('last_year', i), described: val('described', i), url: url(key) });
+      latest_record_year: val('last_year', i), described: val('described', i), url: url(key, name) });
   }
   return { total, species, next_cursor: next, note: filterNote(S, ix, a) };
 }
@@ -446,7 +447,7 @@ async function newSpecies(env, S, a) {
     species.push({ name: c.name[i], key: c.key[i] || null, year: c.year[i], group: l.group[c.group[i]] || null,
       type_locality_state: l.state[c.state[i]] || null, journal: l.journal[c.journal[i]] || null, link: link || null,
       sources: l.sources[c.sources[i]], records_since_description: l.status[c.status[i]], latest_record_after: c.latest_after[i],
-      url: url(c.key[i]) });
+      url: url(c.key[i], c.name[i]) });
   }
   return { total, species, next_cursor: next };
 }

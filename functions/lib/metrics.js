@@ -72,7 +72,9 @@ export function observe(request, response) {
   if (response.status !== 200 || !(response.headers.get('content-type') || '').includes('text/html')) return [];
   if (cls !== 'human') return [['class', cls]];
 
-  const path = pagePath(url.pathname);
+  // a species page is one page, /species, whatever its key and slug (/species/<key>/<slug>)
+  const own = url.pathname.match(/^\/species\/([^/]+)/);
+  const path = own ? '/species' : pagePath(url.pathname);
   const out = [['class', 'human'], ['page', path], ['device', deviceClass(ua)]];
   const country = request.cf?.country;
   if (typeof country === 'string' && /^[A-Z0-9]{2}$/.test(country)) out.push(['country', country]);
@@ -84,8 +86,10 @@ export function observe(request, response) {
     if (VIEWS.has(q.get('view'))) out.push(['view', q.get('view')]);
     if (GROUP.test(q.get('group') || '')) out.push(['group', q.get('group')]);
     if (STATE.test(q.get('state') || '')) out.push(['state', q.get('state')]);
-  } else if (path === '/species' && SPECIES.test(q.get('key') || '')) {
-    out.push(['species', q.get('key')]);
+  } else if (path === '/species') {
+    let key = q.get('key') || '';
+    try { if (own) key = decodeURIComponent(own[1]); } catch { key = ''; }
+    if (SPECIES.test(key)) out.push(['species', key]);
   }
   return out;
 }

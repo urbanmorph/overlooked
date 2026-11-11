@@ -190,7 +190,7 @@ test('find_species: Latin or English name, any word of the English name; one row
   assert.deepEqual(a.species.map(s => [s.key, s.name, s.english]), [['K1', 'Aus bus', 'Malabar Aus']]);
   assert.equal(a.species[0].group, 'Birds');
   assert.equal(a.species[0].iucn, 'EN');
-  assert.equal(a.species[0].url, 'https://yellide.com/species?key=K1');
+  assert.equal(a.species[0].url, 'https://yellide.com/species/K1/aus-bus');
   assert.equal((await out('find_species', { name: 'Malabar a' })).species[0].key, 'K1');
   const z = await out('find_species', { name: 'Zus' });
   assert.equal(z.species[0].key, null);
@@ -272,7 +272,7 @@ test('list_species: filters, pages with a cursor, and the total', async () => {
   const row = r.species[0];
   assert.deepEqual(row, { key: 'K1', name: 'Aus bus', english: 'Malabar Aus', group: 'Birds', family: 'Cettiidae',
     iucn: 'EN', endemic: true, open_record: true, latest_record_year: 2020, described: 1758,
-    url: 'https://yellide.com/species?key=K1' });
+    url: 'https://yellide.com/species/K1/aus-bus' });
   assert.deepEqual((await out('list_species', { recorded_since: 2020 })).species.map(s => s.key), ['K1', 'K3']);
   assert.deepEqual((await out('list_species', { described_since: 2015 })).species.map(s => s.key), ['K5', 'K6']);
   assert.deepEqual((await out('list_species', { open_record: false })).species.map(s => s.key), ['K2', 'K6']);
@@ -288,7 +288,7 @@ test('new_species: described from India since a year, with the paper and records
   assert.deepEqual(e, { name: 'Eus fus', key: 'K5', year: 2015, group: 'Mammals: bats', type_locality_state: 'Kerala',
     journal: 'Zootaxa', link: 'https://tb.plazi.org/ABC', sources: ['Plazi'],
     records_since_description: 'recorded', latest_record_after: 2015,
-    url: 'https://yellide.com/species?key=K5' });
+    url: 'https://yellide.com/species/K5/eus-fus' });
   assert.equal(r.species[1].link, null);
   assert.deepEqual((await out('new_species', { since: 2007, group: 'reptiles' })).species.map(s => s.name), ['Gus hus']);
   assert.deepEqual((await out('new_species', { since: 2007, state: 'Kerala' })).species.map(s => s.name), ['Eus fus', 'Old one']);

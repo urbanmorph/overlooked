@@ -1,7 +1,9 @@
-// The species page with the species' own title, description, canonical address, share tags, schema.org Taxon and a
-// plain summary in <noscript> (functions/species.js). The browser still draws the full page from the data files; this
-// is for search engines, AI crawlers (they do not run JavaScript), link previews and readers with no JavaScript.
+// The species page with the species' own title, description, canonical address (/species/<key>/<slug>), share tags,
+// schema.org Taxon, its name in the heading and a summary under it, in the HTML itself (functions/species/[[path]].js).
+// The browser still draws the full page from the data files; this is for search engines, AI crawlers (they do not
+// run JavaScript), link previews and readers with no JavaScript.
 // Pure: the static page in, the filled page out. The species comes from lookupSpecies (lib/mcp.js).
+import { speciesPath } from '../../site/assets/species_url.js';
 
 const SITE = 'https://yellide.com';
 // IUCN category names. EW and EX keep their codes: the site copy does not use those words.
@@ -41,7 +43,7 @@ function replaceMeta(html, attr, name, value) {
 export function speciesPage(html, key, found) {
   if (!found) return html.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
   const { s, week } = found;
-  const url = `${SITE}/species?key=${encodeURIComponent(key)}`;
+  const url = SITE + speciesPath(key, s.name);
   const title = esc(`${s.english ? `${s.english} (${s.name})` : s.name} · yellide`);
   const desc = esc(`${sentences(s).join(' ')} Updated each week.`);
   const names = [s.english, ...(s.names_in_indian_languages || []).map(([, n]) => n)].filter(Boolean);
@@ -59,8 +61,7 @@ export function speciesPage(html, key, found) {
     s.family ? `Family: ${esc(s.family)}${s.order ? `; order: ${esc(s.order)}` : ''}.` : null,
   ].filter(Boolean).map(f => `<li>${f}</li>`).join('');
   const summary = `<noscript><div class="wrap" style="padding:16px 0">`
-    + `<h1 class="page">${s.english ? `${esc(s.english)} ` : ''}<i>${esc(s.name)}</i></h1>`
-    + `<p>${esc(sentences(s).join(' '))}</p><ul>${facts}</ul>`
+    + `<ul>${facts}</ul>`
     + `<p class="note">List of the week of ${esc(week)}. This page needs JavaScript to draw the map and lists. The same data is open without it: see <a href="/llms.txt">the data guide</a> and <a href="/method">Sources and method</a>. Data: CC BY 4.0, Sathya Sankaran; each source keeps its own licence. yellide is a monitor of public data, not an authority.</p>`
     + `</div></noscript>`;
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
@@ -68,6 +69,11 @@ export function speciesPage(html, key, found) {
   out = replaceMeta(out, 'property', 'og:title', title);
   out = replaceMeta(out, 'property', 'og:description', desc);
   out = out.replace(/<noscript>.*?<\/noscript>/s, summary);
+  // what the browser fills in later, in the HTML from the start: one heading, the English name, the path, a summary
+  out = out.replace(/(<h1 class="page" id="name"[^>]*>)Loading…(<\/h1>)/, `$1${esc(s.name)}$2`)
+    .replace(/(<p class="lede" id="common"[^>]*>)(<\/p>)/, `$1${esc(s.english || '')}$2`)
+    .replace(/(<span id="crumb">)(<\/span>)/, `$1${esc(`/ ${s.group || ''}${s.family ? ` / ${s.family}` : ''}`)}$2`)
+    .replace(/(<div class="sp-pills" id="pills"><\/div>)/, `$1\n      <p class="note" id="summary" style="margin-top:12px">${esc(sentences(s).join(' '))}</p>`);
   const json = JSON.stringify(ld).replace(/</g, '\\u003c');
   return out.replace('</head>', `<link rel="canonical" href="${url}">\n<meta property="og:url" content="${url}">\n`
     + `<script type="application/ld+json">${json}</script>\n</head>`);

@@ -5,14 +5,15 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=3e06016b4f';
-import { drawMap, legendHTML } from './map.js?v=3ab32e2d4b';
-import { signed } from './trend.js?v=0323815601';
-import { knowledge, segmentChanges } from './funnel.js?v=177d6bcc51';
-import { redlist } from './redlist.js?v=9086b59697';
-import { gaps, gapAbsent } from './gaps.js?v=f1b6dfbd5e';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=7f52dfc735';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=0f213c3aa5';
+import { drawMap, legendHTML } from './map.js?v=9d34d190cf';
+import { signed } from './trend.js?v=4a69b0d593';
+import { knowledge, segmentChanges } from './funnel.js?v=5d61a67a1a';
+import { redlist } from './redlist.js?v=a884c3f6d2';
+import { gaps, gapAbsent } from './gaps.js?v=9436626c52';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=f65a413ff8';
 import { CATS } from './cats.js?v=7d886060d4';
+import { speciesPath } from './species_url.js?v=6eb2695080';
 
 // Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
 const STATUS = ['No open record yet', 'Open record', 'Not on the list: waits for a name'];
@@ -563,7 +564,7 @@ try {
       const latin = r[8] ?? r[0];
       if (nameMatches(r, q) && !seen.has(latin) && passes([r[1], latin, r[5], r[3], r[4], r[6], 0, r[7]])) {
         seen.add(latin);
-        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(S.iucn[r[4]])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(`/species?key=${encodeURIComponent(r[1])}`) : showName(latin, r[2], r[3])) });
+        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(S.iucn[r[4]])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(speciesPath(r[1], latin)) : showName(latin, r[2], r[3])) });
       }
     }
     box.innerHTML = hits.map((h, i) => `<button type="button" role="option" data-i="${i}"><span>${h.html}</span><span class="muted">${h.kind}</span></button>`).join('')

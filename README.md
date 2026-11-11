@@ -53,9 +53,11 @@ This machine (India)
 - **The site** is static HTML and JavaScript in `site/`. `functions/data/[[path]].js` serves R2 at `/data/<key>`
   (CORS open, `noindex`). `functions/mcp.js` is the MCP server (`functions/lib/mcp.js`: Streamable HTTP, stateless,
   read only, no key; it scans the master build's `mcp/` index and gives browsers the `/mcp` page).
-  `functions/species.js` fills each species page with its own title, description, canonical address, schema.org Taxon
-  and a plain summary in `<noscript>`, for search engines, AI crawlers and link previews; `/sitemap.xml` indexes the
-  page sitemap and five species sitemaps that the master build writes (`functions/sitemaps/[name].js` serves them).
+  `functions/species/[[path]].js` serves each species page at its own address, `/species/<key>/<slug of the Latin
+  name>`, with its title, description, canonical address, schema.org Taxon, its name and a summary in the HTML, for
+  search engines, AI crawlers and link previews; `/species?key=` and a wrong slug redirect there.
+  `/sitemap.xml` indexes the page sitemap and five species sitemaps that the master build writes (species with an open
+  record or an IUCN assessment; `functions/sitemaps/[name].js` serves them).
   `functions/go/inat/[id].js` sends a Shortlists link on to iNaturalist and counts it. `functions/_middleware.js`
   keeps aggregate daily counts in D1 (no IP, no cookies): [docs/metrics.md](docs/metrics.md).
 - A week is named by its Monday in UTC (`2026-10-26`). Lists before 27 October 2026 were monthly (`2026-10`).

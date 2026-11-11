@@ -2,11 +2,12 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge } from './common.js?v=3e06016b4f';
-import { drawMap } from './map.js?v=3ab32e2d4b';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge } from './common.js?v=0f213c3aa5';
+import { drawMap } from './map.js?v=9d34d190cf';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=5affc99dbc';
-import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=7f52dfc735';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=07b041ed89';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=f65a413ff8';
+import { speciesPath } from './species_url.js?v=6eb2695080';
 
 // Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
 function shardOf(key) {
@@ -111,7 +112,7 @@ function relativesSVG(R, key, since) {
   R.forEach((r, i) => {
     const y = top + i * rowH + rowH / 2, me = r.key === key, c = me ? 'var(--accent)' : 'var(--field)';
     const tip = `${r.name}: ${r.year ?? 'year not known'} to ${r.last ?? 'no placed record'}; ${fmt(r.states)} state${r.states === 1 ? '' : 's'} with an open record`;
-    s += `<a href="/species?key=${encodeURIComponent(r.key)}" class="${me ? 'me' : ''}"><title>${esc(tip)}</title>`
+    s += `<a href="${speciesPath(r.key, r.name)}" class="${me ? 'me' : ''}"><title>${esc(tip)}</title>`
       + `<rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`
       + glyphSVG(r.gaps, 26).replace('<svg ', `<svg x="0" y="${y - 10}" `)
       + (/^https:\/\//.test(r.pic || '') ? `<clipPath id="rc${i}"><circle cx="${tx + th / 2}" cy="${y}" r="${th / 2}"/></clipPath><image href="${esc(r.pic)}" x="${tx}" y="${y - th / 2}" width="${th}" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#rc${i})"/>`
@@ -125,7 +126,8 @@ function relativesSVG(R, key, since) {
 }
 
 try {
-  const key = new URLSearchParams(location.search).get('key');
+  // the address is /species/<key>/<slug>; the old one put the key in the query, still read if a redirect was missed
+  const key = decodeURIComponent(location.pathname.split('/')[2] || '') || new URLSearchParams(location.search).get('key');
   if (!key) throw new Error('no species key in the address');
   const [latest, snap] = await Promise.all([getJSON('layers/master/latest.json'), snapshot()]);
   const shard = shardOf(key);
@@ -151,11 +153,12 @@ try {
   const nKnown = gaps.filter(g => g.state === 'known').length, nNa = gaps.filter(g => g.state === 'na').length;
 
   // Name, picture and the few facts that tell what this species is on the list.
-  document.title = `${name} · yellide`;
   $('#name').textContent = name;
   const fam = family || gbif?.family;
   $('#crumb').textContent = `/ ${group}${fam ? ` / ${fam}` : ''}`;
   const pic = pics === undefined ? undefined : pics[key] ?? null;
+  // the same title the server gave the page (functions/lib/species_page.js)
+  document.title = `${pic?.[5] ? `${pic[5]} (${name})` : name} · yellide`;
   $('#common').textContent = pic?.[5] || '';
   $('#common').hidden = !pic?.[5];
   $('#photo').innerHTML = picture(pic, name);
@@ -255,7 +258,7 @@ try {
         <ul>${rows.slice(0, limit).map(r => {
           const inner = `<i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${esc(r.name)}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span>`;
           const tip = `${r.types.map(t => VERBS[t] || t).join(', ')} · ${fmt(r.n)} record${r.n === 1 ? '' : 's'}${r.india ? ', some from India' : ', none from India'}`;
-          return `<li>${r.key ? `<a class="wp" href="/species?key=${encodeURIComponent(r.key)}" title="${esc(tip)}">${inner}</a>` : `<span class="wp" title="${esc(tip)}">${inner}</span>`}</li>`;
+          return `<li>${r.key ? `<a class="wp" href="${speciesPath(r.key, r.name)}" title="${esc(tip)}">${inner}</a>` : `<span class="wp" title="${esc(tip)}">${inner}</span>`}</li>`;
         }).join('')}</ul>
         ${rows.length > limit ? `<button type="button" class="linkish wmore" data-k="${br.kind}">Show all ${fmt(rows.length)}</button>` : ''}</section>`;
     }).join('');

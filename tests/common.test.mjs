@@ -74,14 +74,14 @@ test('safeHref: a web address from a source, or nothing (a javascript: link neve
 });
 
 test('speciesLink: the species page when it has one, else the name; the name in italics and escaped', () => {
-  assert.equal(speciesLink('4Q 7', 'Aus bus'), '<a href="/species?key=4Q%207"><i>Aus bus</i></a>');
+  assert.equal(speciesLink('4Q 7', 'Aus bus'), '<a href="/species/4Q%207/aus-bus"><i>Aus bus</i></a>');
   assert.equal(speciesLink('', 'Aus <b>'), '<i>Aus &lt;b&gt;</i>');
 });
 
 test('speciesLink with an English name: the name on its own line under the Latin name, escaped', () => {
   assert.equal(speciesLink('K1', 'Aus bus', 'Common <aus>'),
-    '<a href="/species?key=K1"><i>Aus bus</i></a><div class="en">Common &lt;aus&gt;</div>');
-  assert.equal(speciesLink('K1', 'Aus bus', null), '<a href="/species?key=K1"><i>Aus bus</i></a>');
+    '<a href="/species/K1/aus-bus"><i>Aus bus</i></a><div class="en">Common &lt;aus&gt;</div>');
+  assert.equal(speciesLink('K1', 'Aus bus', null), '<a href="/species/K1/aus-bus"><i>Aus bus</i></a>');
 });
 
 test('iucnBadge: the category, "Not assessed" for NE', () => {
