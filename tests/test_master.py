@@ -1224,3 +1224,36 @@ def test_a_snapshot_without_zones_leaves_provinces_unmeasured(inputs, tmp_path, 
     birds = GROUPS.index("Birds")
     aus = next(x for x in json.loads((tmp_path / "o" / "g" / f"{birds}.json").read_text())["rows"] if x[1] == "Aus bus")
     assert aus[11] is None and s["provinces"] is not None
+
+
+def test_summary_names_every_row_field_so_readers_take_fields_by_name(built):
+    """summary.json "fields" names each field of the g, w, search and sp rows (site/assets/species_model.js reads them
+    by name, in the browser and the agent server), with the words for status and IUCN and the threatened codes."""
+    out, s = built["out"], built["summary"]
+    f = s["fields"]
+    birds = GROUPS.index("Birds")
+    g = next(x for x in json.loads((out / "g" / f"{birds}.json").read_text())["rows"] if x[1] == "Aus bus")
+    row = dict(zip(f["g"], g, strict=True))
+    assert (row["key"], row["status"], row["year"], row["english"]) == ("K1", 1, 1758, "Common aus")
+    assert f["w"][:len(f["g"])] == f["g"] and f["w"][len(f["g"]):] == ["taxon", "waiting_india", "waiting_states"]
+    search = json.loads((out / "search" / "co.json").read_text())["rows"][0]
+    assert dict(zip(f["search"], search, strict=True))["latin"] == "Aus bus"
+    assert f["search"][:-1] == ["name", "key", "group", "status", "iucn", "sources", "labels", "year"]
+    from pipeline.site_data import shard_of
+    sp = dict(zip(f["sp"], json.loads((out / "sp" / f"{shard_of('K1')}.json").read_text())["K1"], strict=True))
+    assert (sp["name"], sp["group"], sp["year"]) == ("Aus bus", birds, 1758)
+    assert s["status"] == ["No open record yet", "Open record", "Not on the India list yet: waits for a name"]
+    assert s["threatened"] == ["CR", "EN", "VU"]
+    assert s["iucn_names"]["CR"] == "Critically Endangered" and set(s["iucn_names"]) <= set(s["iucn"])
+
+
+def test_english_names_by_key_in_small_shards(built):
+    """en/<shard>.json: {key: English name} for every species with one, in EN_SHARDS shards (site_data.shard_of with
+    that many), so any page can name the species it lists without its own copy of the names."""
+    from pipeline.site_data import shard_of
+    out = built["out"]
+    part = json.loads((out / "en" / f"{shard_of('K1', master.EN_SHARDS)}.json").read_text())
+    assert part["K1"] == "Common aus"
+    names = {k: v for p in (out / "en").iterdir() for k, v in json.loads(p.read_text()).items()}
+    assert names == {"K1": "Common aus"}                  # only species with an English name
+    assert len(list((out / "en").iterdir())) <= master.EN_SHARDS

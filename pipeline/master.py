@@ -958,11 +958,29 @@ def states_list(districts_path):
     return [{"code": str(c), "name": title(n)} for c, n in rows]
 
 
+# The rows the site and the agent server read are lists; summary.json "fields" names their fields, so every reader
+# takes a field by name (site/assets/species_model.js). Change a row here and its readers follow.
 # One species in g/<gi>.json (and at the start of w/<gi>.json rows): key, Latin name, sources, status, IUCN, labels,
 # states with an open record, year described, latest placed record, order, suborder, provinces, English name.
 # Needs site s LEFT JOIN english e USING (key).
-ROW_SQL = ("coalesce(s.key, ''), s.name, s.sources_mask, s.status, s.iucn_i, s.labels_mask, s.states_obs_mask, "
-           "s.year, s.last_year, s.order_i, s.suborder_i, s.provinces_mask, e.common")
+ROW_FIELDS = [("key", "coalesce(s.key, '')"), ("name", "s.name"), ("sources", "s.sources_mask"), ("status", "s.status"),
+              ("iucn", "s.iucn_i"), ("labels", "s.labels_mask"), ("states", "s.states_obs_mask"), ("year", "s.year"),
+              ("last_year", "s.last_year"), ("order", "s.order_i"), ("suborder", "s.suborder_i"),
+              ("provinces", "s.provinces_mask"), ("english", "e.common")]
+ROW_SQL = ", ".join(sql for _, sql in ROW_FIELDS)
+WAIT_FIELDS = ["taxon", "waiting_india", "waiting_states"]   # after the row fields in w/<gi>.json
+# search/<p>.json: a name (Latin, or English with the Latin name last), then the species.
+SEARCH_FIELDS = ["name", "key", "group", "status", "iucn", "sources", "labels", "year", "latin"]
+SP_FIELDS = ["name", "group", "sources", "status", "iucn", "labels", "states", "taxon", "waiting_india",
+             "waiting_states", "year", "authority", "paper", "iucn_year", "iucn_doi", "partners", "interactions_india",
+             "cells", "types", "photos", "barcode", "local_names", "trend", "traits", "precise", "papers",
+             "papers_latest", "iucn_trend", "family", "order", "suborder", "provinces"]
+# The words for the status of a species (0, 1, 2) and for the IUCN categories, the same on every page.
+STATUS_NAMES = ["No open record yet", "Open record", "Not on the India list yet: waits for a name"]
+# EW and EX keep their codes: the site copy does not use those words.
+IUCN_NAMES = {"CR": "Critically Endangered", "EN": "Endangered", "VU": "Vulnerable", "NT": "Near Threatened",
+              "LC": "Least Concern", "DD": "Data Deficient", "NE": "Not assessed"}
+EN_SHARDS = 64   # en/<shard>.json: English names by key, about 460 per file
 
 
 def per_area(rows, n, width):
@@ -980,6 +998,14 @@ def shard_files(out: Path, folder, parts):
     for i, part in parts.items():
         dump(part, out / folder / f"{i}.json")
     return len(parts)
+
+
+def english_files(con, out: Path):
+    """en/<shard>.json: {key: English name} for each species on the list with one (table english), EN_SHARDS shards."""
+    parts = {}
+    for key, common in con.sql("SELECT e.key, e.common FROM english e JOIN site s USING (key) WHERE s.status < 2").fetchall():
+        parts.setdefault(shard_of(key, EN_SHARDS), {})[key] = common
+    return shard_files(out, "en", parts)
 
 
 def group_files(out: Path, folder, rows, every=()):
@@ -1428,13 +1454,17 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "recent_from": since,
                "orders": orders, "suborders": SUBORDERS, "provinces": [list(p) for p in biogeo.PROVINCES],
                "waiting": waiting(con, n, out, places or {}, coarse),
-               "totals": totals, "described": described_summary(con), "notes": notes, **RIGHTS}
+               "totals": totals, "described": described_summary(con), "notes": notes,
+               "fields": {"g": [f for f, _ in ROW_FIELDS], "w": [f for f, _ in ROW_FIELDS] + WAIT_FIELDS,
+                          "search": SEARCH_FIELDS, "sp": SP_FIELDS},
+               "status": STATUS_NAMES, "threatened": list(THREATENED), "iucn_names": IUCN_NAMES, **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
     family_files(con, out)
     group_files(out, "g", ((gi, row) for gi, *row in con.sql(
         f"SELECT gi, {ROW_SQL} FROM site s LEFT JOIN english e USING (key) WHERE status < 2 ORDER BY gi, s.name"
     ).fetchall()), range(n))
+    english_files(con, out)
     mcp_files(con, out)
     sitemap_files(con, out)
     buckets = {}

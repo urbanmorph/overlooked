@@ -147,13 +147,14 @@ def unlocated_json(con, out: Path, titles=None, cap=2000, top=50, per_state=3):
 SHARDS = 512
 
 
-def shard_of(key):
-    """FNV-1a (32-bit) of the species key, modulo SHARDS. The site computes the same in JavaScript."""
+def shard_of(key, shards=SHARDS):
+    """FNV-1a (32-bit) of the species key, modulo shards. The site computes the same in JavaScript
+    (site/assets/species_model.js shardOf)."""
     h = 0x811C9DC5
     for ch in str(key).encode("utf-8"):
         h ^= ch
         h = (h * 0x01000193) & 0xFFFFFFFF
-    return h % SHARDS
+    return h % shards
 
 
 def species_shards(con, out: Path):
