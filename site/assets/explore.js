@@ -5,19 +5,15 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesLink, iucnBadge } from './common.js?v=0f213c3aa5';
-import { drawMap, legendHTML } from './map.js?v=9d34d190cf';
-import { signed } from './trend.js?v=4a69b0d593';
-import { knowledge, segmentChanges } from './funnel.js?v=5d61a67a1a';
-import { redlist } from './redlist.js?v=a884c3f6d2';
-import { gaps, gapAbsent } from './gaps.js?v=9436626c52';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=f65a413ff8';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesName, speciesInline, iucnBadge, model, speciesPath } from './common.js?v=13f69a4a12';
+import { drawMap, legendHTML } from './map.js?v=c9a780a4b8';
+import { signed } from './trend.js?v=42df4072cc';
+import { knowledge, segmentChanges } from './funnel.js?v=5e149b196c';
+import { redlist } from './redlist.js?v=5b88f6e792';
+import { gaps, gapAbsent } from './gaps.js?v=3d8fc9acf2';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=d2197ab59a';
 import { CATS } from './cats.js?v=7d886060d4';
-import { speciesPath } from './species_url.js?v=6eb2695080';
 
-// Status of a species: on the list with no open record, with an open record, or named only in observations that wait.
-const STATUS = ['No open record yet', 'Open record', 'Not on the list: waits for a name'];
-const THREAT = new Set(['CR', 'EN', 'VU']);
 const VIEW_TEXT = {
   observed: { card: 'share with an open record', unit: 'species with an open record' },
   recent: { card: 'share recorded in the last 10 years', unit: 'species recorded in the last 10 years' },
@@ -50,7 +46,12 @@ try {
   const cats = CATS.map(([key, name, test]) => ({ key, name, gis: S.groups.map((g, i) => (test(g) ? i : -1)).filter(i => i >= 0) }))
     .filter(c => c.gis.length);
   const allGis = S.groups.map((_, i) => i);
-  const threatIdx = S.iucn.map((c, i) => (THREAT.has(c) ? i : -1)).filter(i => i >= 0);
+  // The fields of the list's rows by name (species_model.js, from summary.json fields), its status words and rules.
+  const M = model(S);
+  const { key: KEY, name: NAME, sources: SRC, status: STATUS_AT, iucn: IUCN, labels: LABELS, states: STATES, year: YEAR,
+    last_year: LAST, english: EN } = M.g;
+  const G = S.fields.g.length;   // the group index, added after the fields of a g row
+  const threatIdx = S.iucn.map((_, i) => (M.threatenedAt(i) ? i : -1)).filter(i => i >= 0);
 
   // State held in the URL so a view can be shared.
   const url = new URL(location.href);
@@ -119,12 +120,12 @@ try {
     const [g, w] = await Promise.all([Promise.all(allGis.map(groupRows)), Promise.all(allGis.map(waitRows))]);
     for (const r of g.flat()) {
       if (!passes(r)) continue;
-      const gi = r[G], row = india[gi], threat = THREAT.has(S.iucn[r[4]]);
-      const placed = r[3] === 1 && r[6] !== 0;
-      row[0]++; row[1] += r[3] === 1; row[2][r[4]]++; row[3] += threat && r[3] === 1;
-      row[4] += placed; row[5] += placed && r[8] >= S.recent_from;
+      const gi = r[G], row = india[gi], threat = M.threatenedAt(r[IUCN]), open = r[STATUS_AT] === 1;
+      const placed = open && r[STATES] !== 0;
+      row[0]++; row[1] += open; row[2][r[IUCN]]++; row[3] += threat && open;
+      row[4] += placed; row[5] += placed && r[LAST] >= S.recent_from;
       for (let i = 0; i < codes.length; i++) {
-        if (!bit(r[6], i)) continue;
+        if (!bit(r[STATES], i)) continue;
         const v = cell(byState, codes[i], 3)[gi];
         v[0]++; v[1] += threat; v[2] = null;   // the year of a record per state is not in the group files
       }
@@ -132,9 +133,9 @@ try {
     for (const [r, , nIndia, states] of w.flat()) {
       if (!passes(r)) continue;
       const gi = r[G];
-      if (nIndia) { const v = wIndia[gi]; v[0]++; v[1] += nIndia; v[2] += r[3] !== 1; }
-      if (r[3] === 2) unlisted[gi]++;
-      for (const [i, k] of states) { const v = cell(wState, codes[i], 3)[gi]; v[0]++; v[1] += k; v[2] += !bit(r[6], i); }
+      if (nIndia) { const v = wIndia[gi]; v[0]++; v[1] += nIndia; v[2] += r[STATUS_AT] !== 1; }
+      if (r[STATUS_AT] === 2) unlisted[gi]++;
+      for (const [i, k] of states) { const v = cell(wState, codes[i], 3)[gi]; v[0]++; v[1] += k; v[2] += !bit(r[STATES], i); }
     }
     return { india, by_state: byState, unlisted, wait: { india: wIndia, by_state: wState } };
   }
@@ -152,7 +153,7 @@ try {
       : f.recent == null ? { big: '–', line: 'records by year and state are not counted when filters are on', n: null }
       : { big: fmt(f.recent), line: `species recorded here since ${S.recent_from}`, n: f.recent };
     if (st.view === 'waiting') return { big: fmt(f.wait[0]), line: `species wait for a name · ${fmt(f.wait[1])} observations`, n: f.wait[0] };
-    return india ? { big: fmt(f.thr), line: `threatened (CR, EN, VU) · ${fmt(f.assessed)} of ${fmt(f.doc)} assessed`, n: f.thr } : { big: fmt(f.thrObs), line: 'threatened species with an open record here', n: f.thrObs };
+    return india ? { big: fmt(f.thr), line: `threatened (${S.threatened.join(', ')}) · ${fmt(f.assessed)} of ${fmt(f.doc)} assessed`, n: f.thr } : { big: fmt(f.thrObs), line: 'threatened species with an open record here', n: f.thrObs };
   }
 
   // Map: districts shaded by their state's figure.
@@ -208,7 +209,7 @@ try {
     const districtNote = district ? ` The figures are for all of ${stName.get(st.state)}: the list counts species by state, not by district.` : '';
     $('#psub').textContent = st.view === 'waiting' ? `species named in observations that wait for a name on iNaturalist.${districtNote}`
       : india
-      ? (st.view === 'iucn' ? `threatened species (CR, EN, VU) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`
+      ? (st.view === 'iucn' ? `threatened species (${S.threatened.join(', ')}) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`
         : st.view === 'recent' ? `of ${fmt(f.doc)} documented species have a record placed in a state since ${S.recent_from} (${pct(f.recent, f.doc)}).`
         : `of ${fmt(f.doc)} documented species have an open record you can check online (${pct(f.obs, f.doc)}). The rest are known from checklists and papers.`)
       : `${v.line}.${districtNote}`;
@@ -305,15 +306,12 @@ try {
 
   // Species list for the chosen group, filtered by state, view and the filter chips.
   let shown = PAGE;
-  // A g row: key, name, sources, status, IUCN, labels, states with an open record, year described, latest year of a
-  // record placed in a state, order, suborder, WII biogeographic provinces with an open record, English name; the
-  // group index is added at G. A w row: that g row, then iNaturalist taxon, observations in India, [[state index, n]].
-  // Older lists have shorter g rows (9 fields before 4 Nov 2026, 12 before 9 Nov), so the width comes from the row.
-  const G = 13, EN = 12, W_EXTRA = 3;
-  const withGroup = (r, gi, width = r.length) => { const x = r.slice(0, width); x[G] = gi; return x; };
+  // A g row (fields in M.g) with its group index added at G. A w row: the g row, then its own fields (M.w): the
+  // iNaturalist taxon, observations in India, [[state index, n]].
+  const withGroup = (r, gi) => { const x = r.slice(0, G); x[G] = gi; return x; };
   const groupRows = gi => getJSON(`${base}g/${gi}.json`).then(d => d.rows.map(r => withGroup(r, gi)));
-  function passes(r, f = st.filters, y = st.years) {
-    const [, , src, status, iucn, labels, , year] = r;
+  const passes = (r, f, y) => passesWith(r[SRC], r[STATUS_AT], r[IUCN], r[LABELS], r[YEAR], f, y);
+  function passesWith(src, status, iucn, labels, year, f = st.filters, y = st.years) {
     if ((y.from || y.to) && (year == null || year < (y.from || 0) || year > (y.to || 9999))) return false;
     if (f.sources.size && ![...f.sources].some(i => bit(src, i))) return false;
     if (f.status.size && !f.status.has(status)) return false;
@@ -325,9 +323,9 @@ try {
   const HEAD_WAIT = '<tr><th>Species</th><th>Group</th><th>Why it matters</th><th>IUCN</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_GENUS = '<tr><th>Genus</th><th>Group</th><th>Why it matters</th><th>Species in India</th><th>Waiting</th><th>Help</th></tr>';
   const HEAD_COARSE = '<tr><th>Group</th><th></th><th></th><th></th><th>Waiting</th><th>Help</th></tr>';
+  const { taxon: TAXON, waiting_india: W_INDIA, waiting_states: W_STATES } = M.w;
   const waitRows = gi => getJSON(`${base}w/${gi}.json`).catch(() => ({ rows: [] }))
-    .then(d => d.rows.map(x => [withGroup(x, gi, x.length - W_EXTRA), ...x.slice(x.length - W_EXTRA)]));
-  const endBit = S.labels.findIndex(l => l.code === 'end');
+    .then(d => d.rows.map(x => [withGroup(x, gi), x[TAXON], x[W_INDIA], x[W_STATES]]));
 
   // Species with observations that wait for a name, most useful first.
   let listSeq = 0;
@@ -341,11 +339,11 @@ try {
       const n = waitingIn(nIndia, states, si);
       if (!n) continue;
       // never: no open record in India (not on the list at all, or known from checklists only); first: none here.
-      const first = si == null ? r[3] !== 1 : !bit(r[6], si), never = r[3] !== 1, unlisted = r[3] === 2;
-      const threat = THREAT.has(S.iucn[r[4]]), endemic = endBit >= 0 && bit(r[5], endBit);
+      const first = si == null ? r[STATUS_AT] !== 1 : !bit(r[STATES], si), never = r[STATUS_AT] !== 1, unlisted = r[STATUS_AT] === 2;
+      const threat = M.threatenedAt(r[IUCN]), endemic = M.endemic(r[LABELS]);
       rows.push({ r, n, taxon, first, never, unlisted, threat, endemic, score: unlisted * 16 + never * 8 + first * 4 + threat * 2 + endemic });
     }
-    rows.sort((a, b) => b.score - a.score || b.n - a.n || a.r[1].localeCompare(b.r[1]));
+    rows.sort((a, b) => b.score - a.score || b.n - a.n || a.r[NAME].localeCompare(b.r[NAME]));
     $('#list-sub').textContent = `${fmt(rows.length)} species wait for a name · ${c.name}${st.state ? ` · ${place}` : ''}`;
     $('#list').innerHTML = rows.slice(0, shown).map(({ r, n, taxon, first, never, unlisted, threat, endemic }) => {
       const why = [unlisted ? '<span class="why first">Not on the India list yet</span>'
@@ -353,9 +351,9 @@ try {
         : first ? `<span class="why first">First open record in ${esc(place)}</span>` : '',
         threat ? '<span class="why">Threatened</span>' : '', endemic ? '<span class="why">Endemic to India</span>' : ''].join('');
       const link = idLink(identifyURL(pid, `taxon_id=${encodeURIComponent(taxon)}`));
-      return `<tr><td>${speciesLink(r[0], r[1], r[EN])}<div class="wm">${why}${iucnBadge(S.iucn[r[4]])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
+      return `<tr><td>${speciesName(r[KEY], r[NAME], r[EN])}<div class="wm">${why}${iucnBadge(S.iucn[r[IUCN]])}<br><span class="mono">${fmt(n)}</span> waiting · ${link}</div></td>
         <td>${esc(S.groups[r[G]])}</td><td>${why || '<span class="muted">–</span>'}</td>
-        <td>${iucnBadge(S.iucn[r[4]])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
+        <td>${iucnBadge(S.iucn[r[IUCN]])}</td><td class="mono">${fmt(n)}</td><td>${link}</td></tr>`;
     }).join('') || '<tr><td colspan="6" class="muted">No species wait for a name here.</td></tr>';
     $('#more').hidden = rows.length <= shown;
   }
@@ -420,20 +418,20 @@ try {
     const si = st.state ? stIndex.get(st.state) : null;
     const rows = parts.flat().filter(r => {
       if (si != null) {
-        if (!bit(r[6], si)) return false;
-      } else if (st.view === 'observed' && r[3] !== 1) return false;
+        if (!bit(r[STATES], si)) return false;
+      } else if (st.view === 'observed' && r[STATUS_AT] !== 1) return false;
       // Recent: the latest record placed in any state; the files give no year per state.
-      if (st.view === 'recent' && !(r[3] === 1 && r[8] >= S.recent_from)) return false;
-      if (st.view === 'iucn' && !THREAT.has(S.iucn[r[4]])) return false;
+      if (st.view === 'recent' && !(r[STATUS_AT] === 1 && r[LAST] >= S.recent_from)) return false;
+      if (st.view === 'iucn' && !M.threatenedAt(r[IUCN])) return false;
       return passes(r);
-    }).sort((a, b) => a[1].localeCompare(b[1]));
+    }).sort((a, b) => a[NAME].localeCompare(b[NAME]));
     $('#list-sub').textContent = `${fmt(rows.length)} species · ${c.name}${st.state ? ` · ${stName.get(st.state)}` : ''}`;
     // A name chosen in search with no species page goes first, whatever the view and the state.
-    const picked = st.pick && parts.flat().find(r => !r[0] && r[1] === st.pick);
+    const picked = st.pick && parts.flat().find(r => !r[KEY] && r[NAME] === st.pick);
     if (picked) rows.splice(0, rows.length, picked, ...rows.filter(r => r !== picked));
     $('#list').innerHTML = rows.slice(0, shown).map(r => `<tr${r === picked ? ' class="picked"' : ''}>
-        <td>${speciesLink(r[0], r[1], r[EN])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[7] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[8] ?? '<span class="muted">–</span>'}</td><td>${STATUS[r[3]]}</td>
-        <td>${iucnBadge(S.iucn[r[4]])}</td><td>${tags(r[2], S.sources)}</td><td>${tags(r[5], S.labels.map(l => l.name))}</td></tr>`).join('')
+        <td>${speciesName(r[KEY], r[NAME], r[EN])}${r === picked ? '<div class="muted">This name does not match the Catalogue of Life yet, so it has no species page.</div>' : ''}</td><td>${esc(S.groups[r[G]])}</td><td class="mono">${r[YEAR] ?? '<span class="muted">–</span>'}</td><td class="mono">${r[LAST] ?? '<span class="muted">–</span>'}</td><td>${esc(M.status(r[STATUS_AT]))}</td>
+        <td>${iucnBadge(S.iucn[r[IUCN]])}</td><td>${tags(r[SRC], S.sources)}</td><td>${tags(r[LABELS], S.labels.map(l => l.name))}</td></tr>`).join('')
       || `<tr><td colspan="${cols()}" class="muted">No species match.</td></tr>`;
     $('#more').hidden = rows.length <= shown;
   }
@@ -496,7 +494,7 @@ try {
   // Filters: sources, status, IUCN category and labels.
   const fdefs = [
     ['sources', 'Sources', S.sources.map((n, i) => [i, n])],
-    ['status', 'Status', STATUS.map((n, i) => [i, n])],
+    ['status', 'Status', S.status.map((n, i) => [i, n])],
     ['iucn', 'IUCN', S.iucn.map((n, i) => [i, n === 'NE' ? 'Not assessed' : n])],
     ['labels', 'Identification', S.labels.map((l, i) => [i, l.name, l.kind]).filter(x => x[2] === 'id')],
     ['labels', 'Other labels', S.labels.map((l, i) => [i, l.name, l.kind]).filter(x => x[2] !== 'id')],
@@ -559,12 +557,15 @@ try {
       if (r[0].toLowerCase().startsWith(q)) hits.push({ html: esc(r[0]), kind: r[1] === 'state' ? 'State' : `District, ${esc(stName.get(String(r[3])) || '')}`, go: () => (r[1] === 'state' ? setState(String(r[2])) : setState(String(r[3]), r[2])) });
     }
     const seen = new Set();          // a species found by its Latin and its common name is one hit
+    const f = M.search;
     for (const r of sp.rows) {
       if (hits.length > 12) break;
-      const latin = r[8] ?? r[0];
-      if (nameMatches(r, q) && !seen.has(latin) && passes([r[1], latin, r[5], r[3], r[4], r[6], 0, r[7]])) {
+      const english = r.length > f.latin, latin = english ? r[f.latin] : r[f.name];
+      if (nameMatches(r[f.name], q, english) && !seen.has(latin) && passesWith(r[f.sources], r[f.status], r[f.iucn], r[f.labels], r[f.year])) {
         seen.add(latin);
-        hits.push({ html: `${r[8] ? `${esc(r[0])} ` : ''}<i>${esc(latin)}</i> ${iucnBadge(S.iucn[r[4]])}`, kind: `${STATUS[r[3]]} · ${esc(S.groups[r[2]])}`, go: () => (r[1] ? location.assign(speciesPath(r[1], latin)) : showName(latin, r[2], r[3])) });
+        const key = r[f.key], gi = r[f.group], status = r[f.status];
+        hits.push({ html: `${speciesInline(latin, english ? r[f.name] : null)} ${iucnBadge(S.iucn[r[f.iucn]])}`, kind: `${esc(M.status(status))} · ${esc(S.groups[gi])}`,
+          go: () => (key ? location.assign(speciesPath(key, latin)) : showName(latin, gi, status)) });
       }
     }
     box.innerHTML = hits.map((h, i) => `<button type="button" role="option" data-i="${i}"><span>${h.html}</span><span class="muted">${h.kind}</span></button>`).join('')

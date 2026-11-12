@@ -17,11 +17,14 @@ const REAL_GROUPS = ['Birds', 'Mammals: large (cats, elephants, deer, primates..
   'Plants: ferns & lycophytes', 'Plants: other flowering plants & conifers', 'Mosses & liverworts', 'Lichens', 'Fungi',
   'Algae & diatoms', 'Other'];
 
+// The summary parts every reader takes from the list (tests/test_master.py keeps this fixture equal to the pipeline's).
+const FX = JSON.parse(readFileSync(new URL('./fixtures/summary_model.json', import.meta.url)));
 const S = {
+  ...FX,
   groups: ['Birds', 'Amphibians', 'Insects: bees, wasps, ants'],
   states: [{ code: '32', name: 'Kerala' }, { code: '29', name: 'Karnataka' }, { code: '1', name: 'Jammu & Kashmir' }],
   provinces: [['5B', 'Western Ghats: Mountains', 'Western Ghats'], ['2A', 'Himalaya: North West', 'Himalaya']],
-  iucn: ['CR', 'EN', 'VU', 'NT', 'LC', 'DD', 'NE'], recent_from: 2016,
+  recent_from: 2016,
 };
 // 14 birds in Kerala (3 threatened, 2 endemic), 4 amphibians in Kerala (so its page is noindex), a bird only in Karnataka
 const SPECIES = [
@@ -77,7 +80,7 @@ test('a group in a place: title and heading say it, the counts, the threatened b
   assert.match(h, /<meta name="description" content="14 birds on the India list have an open record placed in Kerala, 3 of them threatened \(1 Critically Endangered, 1 Endangered and 1 Vulnerable\) and 2 endemic to India\./);
   const thr = h.match(/<section[^>]*id="threatened"[^>]*>(.*?)<\/section>/s)[1];
   assert.deepEqual([...thr.matchAll(/href="([^"]+)"/g)].map(m => m[1]), ['/species/C1/yus-cr', '/species/E1/xus-en', '/species/V1/zus-vu']);
-  assert.match(thr, /Great Yus/);
+  assert.match(thr, /<i>Yus cr<\/i><\/a> <span class="iucn i-CR"[^>]*>CR<\/span><span class="en">Great Yus<\/span>/);   // species_model speciesName
   assert.match(h.match(/<section[^>]*id="endemic"[^>]*>(.*?)<\/section>/s)[1], /Yus cr.*Zus vu/s);
   const all = h.match(/<section[^>]*id="all"[^>]*>(.*?)<\/section>/s)[1];
   assert.equal((all.match(/href="\/species\//g) || []).length, 14);

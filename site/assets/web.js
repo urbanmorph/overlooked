@@ -2,8 +2,8 @@
 // as a small glyph; the partners (GloBI) as a tree, a branch per kind of link; the relatives in its family; the map
 // fill. species.js draws and wires them. A radial layout was tried first: with 30 partners per kind the names collided.
 
-import { esc, fmt } from './common.js?v=0f213c3aa5';
-import { known } from './gaps.js?v=9436626c52';
+import { esc, fmt, model } from './common.js?v=13f69a4a12';
+import { known } from './gaps.js?v=3d8fc9acf2';
 
 // Kinds of link from the species' own side (pipeline/master.py web_files). Hues in this order validated for CVD and normal vision on
 // white; two are under 3:1, so every sector has a text label and the page has a table view.
@@ -55,11 +55,13 @@ export function gapStates(f, S) {
 /** The partner tree: one branch per kind of link the species has (in KINDS order), its partners with most records
  * first, `top` of them shown at first. [{kind, label, color, total, rows: [{name, key, n, india, types, bar, shown}]}];
  * bar: records as a share of the kind's largest. */
-export function tree(web, { top = 8 } = {}) {
+export function tree(web, S, { top = 8 } = {}) {
+  const f = model(S).web;
   return KINDS.filter(k => web.n?.[k.k]).map(k => {
-    const list = web.p[k.k] || [], max = Math.max(1, ...list.map(r => r[2]));
+    const list = web.p[k.k] || [], max = Math.max(1, ...list.map(r => r[f.records]));
     return { kind: k.k, label: k.label, color: k.color, total: web.n[k.k],
-      rows: list.map(([name, key, n, india, types], i) => ({ name, key, n, india: india > 0, types, bar: n / max, shown: i < top })) };
+      rows: list.map((r, i) => ({ name: r[f.name], key: r[f.key], n: r[f.records], india: r[f.records_india] > 0, types: r[f.types],
+        bar: r[f.records] / max, shown: i < top })) };
   });
 }
 
@@ -118,9 +120,12 @@ export function thumb(url) {
  * not in it). {rows: [{key, name, year, last, states, gaps: [state x 7], pic}], total}. */
 export function relatives(rows, key, name, S, top = 40) {
   const genus = name.split(' ')[0];
-  const all = rows.map(([k, name, year, last, states, trend, dna, barcode, traits, precise, partners, interactionsIndia, pic]) => ({
-    key: k, name, year, last, states, pic: thumb(pic) || null,
-    gaps: gapStates({ year, latest: last, trend, dna, barcode, traits, precise, partners, interactionsIndia }, S).map(g => g.state) }));
+  const m = model(S);
+  const all = rows.map(row => {
+    const { key: k, name, year, last_year: last, states, trend, dna, barcode, traits, precise, partners, interactions_india: interactionsIndia, pic } = m.read('fam', row);
+    return { key: k, name, year, last, states, pic: thumb(pic) || null,
+      gaps: gapStates({ year, latest: last, trend, dna, barcode, traits, precise, partners, interactionsIndia }, S).map(g => g.state) };
+  });
   all.sort((a, b) => (b.name.split(' ')[0] === genus) - (a.name.split(' ')[0] === genus) || (b.last ?? 0) - (a.last ?? 0)
     || a.name.localeCompare(b.name));
   const shown = all.slice(0, top);

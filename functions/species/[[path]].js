@@ -6,7 +6,7 @@
 // goes out: the browser draws it from the address.
 import { lookupSpecies } from '../lib/mcp.js';
 import { speciesPage } from '../lib/species_page.js';
-import { speciesPath } from '../../site/assets/species_url.js';
+import { speciesPath } from '../../site/assets/species_model.js';
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };
 

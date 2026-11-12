@@ -1,0 +1,143 @@
+{
+ "fields": {
+  "g": [
+   "key",
+   "name",
+   "sources",
+   "status",
+   "iucn",
+   "labels",
+   "states",
+   "year",
+   "last_year",
+   "order",
+   "suborder",
+   "provinces",
+   "english"
+  ],
+  "w": [
+   "key",
+   "name",
+   "sources",
+   "status",
+   "iucn",
+   "labels",
+   "states",
+   "year",
+   "last_year",
+   "order",
+   "suborder",
+   "provinces",
+   "english",
+   "taxon",
+   "waiting_india",
+   "waiting_states"
+  ],
+  "search": [
+   "name",
+   "key",
+   "group",
+   "status",
+   "iucn",
+   "sources",
+   "labels",
+   "year",
+   "latin"
+  ],
+  "sp": [
+   "name",
+   "group",
+   "sources",
+   "status",
+   "iucn",
+   "labels",
+   "states",
+   "taxon",
+   "waiting_india",
+   "waiting_states",
+   "year",
+   "authority",
+   "paper",
+   "iucn_year",
+   "iucn_doi",
+   "partners",
+   "interactions_india",
+   "cells",
+   "types",
+   "photos",
+   "barcode",
+   "local_names",
+   "trend",
+   "traits",
+   "precise",
+   "papers",
+   "papers_latest",
+   "iucn_trend",
+   "family",
+   "order",
+   "suborder",
+   "provinces"
+  ],
+  "fam": [
+   "key",
+   "name",
+   "year",
+   "last_year",
+   "states",
+   "trend",
+   "dna",
+   "barcode",
+   "traits",
+   "precise",
+   "partners",
+   "interactions_india",
+   "pic"
+  ],
+  "pic": [
+   "url",
+   "page",
+   "by",
+   "licence",
+   "source",
+   "english"
+  ],
+  "web": [
+   "name",
+   "key",
+   "records",
+   "records_india",
+   "types"
+  ]
+ },
+ "status": [
+  "No open record yet",
+  "Open record",
+  "Not on the India list yet: waits for a name"
+ ],
+ "threatened": [
+  "CR",
+  "EN",
+  "VU"
+ ],
+ "iucn": [
+  "CR",
+  "EN",
+  "VU",
+  "NT",
+  "LC",
+  "DD",
+  "NE",
+  "EW",
+  "EX"
+ ],
+ "iucn_names": {
+  "CR": "Critically Endangered",
+  "EN": "Endangered",
+  "VU": "Vulnerable",
+  "NT": "Near Threatened",
+  "LC": "Least Concern",
+  "DD": "Data Deficient",
+  "NE": "Not assessed"
+ },
+ "en_shards": 64
+}

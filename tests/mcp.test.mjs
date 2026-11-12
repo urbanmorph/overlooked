@@ -3,7 +3,12 @@
 // writes (pipeline/master.py mcp_files; the layout comes from meta.json, as there).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { handle, shardOf, _reset } from '../functions/lib/mcp.js';
+import { hashOf } from '../site/assets/species_model.js';
+
+// The summary parts every reader takes from the list (tests/test_master.py keeps this fixture equal to the pipeline's).
+const FX = JSON.parse(readFileSync(new URL('./fixtures/summary_model.json', import.meta.url)));
 
 const BASE = 'layers/master/2026-11-02/b1/';
 const FIELDS = {
@@ -16,6 +21,7 @@ const IUCN = ['CR', 'EN', 'VU', 'NT', 'LC', 'DD', 'NE', 'EW', 'EX'];
 const PROVINCES = [['5A', 'Western Ghats: Malabar Plains', 'Western Ghats'], ['5B', 'Western Ghats: Mountains', 'Western Ghats'],
   ['2D', 'Himalaya: East', 'Himalaya'], ['6C', 'Deccan Peninsula: Eastern Highlands', 'Deccan Peninsula']];
 const SUMMARY = {
+  ...FX, iucn: IUCN,
   period: '2026-11-02', groups: ['Birds', 'Reptiles', 'Mammals: bats', 'Mammals: rodents, shrews, hares'],
   states: [{ code: '29', name: 'Karnataka' }, { code: '32', name: 'Kerala' }],
   labels: [{ code: 'rg' }, { code: 'end' }], iucn: IUCN, sources: ['ZSI', 'GBIF'],
@@ -67,6 +73,7 @@ function files() {
     [BASE + 'search/au.json']: { rows: [['Aus bus', 'K1', 0, 1, 1, 3, 3, 1758], ['Malabar Aus', 'K1', 0, 1, 1, 3, 3, 1758, 'Aus bus']] },
     [BASE + 'search/zu.json']: { rows: [['Zus zus', '', 0, 2, 6, 0, 0, null]] },
     [BASE + `sp/${shardOf('K1')}.json`]: { K1: sp },
+    [BASE + `en/${hashOf('K1') % 64}.json`]: { K1: 'Malabar Aus' },
     [BASE + `pic/${shardOf('K1')}.json`]: { K1: ['https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC 4.0', 'iNaturalist (India)', 'Malabar Aus'] },
     'layers/newspecies/latest.json': { period: '2026-10-26', file: 'layers/newspecies/2026-10-26/new_species.json' },
     'layers/newspecies/2026-10-26/new_species.json': {

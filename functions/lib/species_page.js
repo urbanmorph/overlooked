@@ -3,31 +3,28 @@
 // The browser still draws the full page from the data files; this is for search engines, AI crawlers (they do not
 // run JavaScript), link previews and readers with no JavaScript.
 // Pure: the static page in, the filled page out. The species comes from lookupSpecies (lib/mcp.js).
-import { slug, speciesPath } from '../../site/assets/species_url.js';
 import { groupTitle } from './places.js';
+import { esc, model, slug, speciesPath, speciesTitle } from '../../site/assets/species_model.js';
 
 const SITE = 'https://yellide.com';
-// IUCN category names. EW and EX keep their codes: the site copy does not use those words.
-const IUCN_NAMES = { CR: 'Critically Endangered', EN: 'Endangered', VU: 'Vulnerable', NT: 'Near Threatened', LC: 'Least Concern', DD: 'Data Deficient' };
 
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const list = xs => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-function iucnText({ category, year, trend }) {
+function iucnText({ category, year, trend }, M) {
   if (!category || category === 'NE') return 'Not assessed by IUCN.';
-  const name = IUCN_NAMES[category];
+  const name = M.iucnName(category) !== category ? M.iucnName(category) : null;   // EW and EX keep their codes
   const when = [year, trend && trend !== 'Unknown' ? trend.toLowerCase() : null].filter(Boolean).join(', ');
   return `${name ? `IUCN ${name}` : `IUCN category ${category}`}${when ? ` (${when})` : ''}.`;
 }
 
 /** The sentences of the description, also the start of the summary. */
-function sentences(s) {
-  const head = s.english ? `${s.english} (${s.name})` : s.name;
+function sentences(s, M) {
+  const head = speciesTitle(s.name, s.english);
   const states = s.states_with_open_record || [];
   return [
     `${head}, a species of India.`,
-    iucnText(s.iucn),
+    iucnText(s.iucn, M),
     s.endemic ? 'Endemic to India.' : null,
     states.length ? `Open records in ${plural(states.length, 'state', 'states')}.` : 'No open record from India yet.',
     s.sources?.length ? `Listed by ${list(s.sources)}.` : null,
@@ -51,16 +48,16 @@ function placeLinks(s) {
 /** found: {S, s, week} from lookupSpecies, or null for a key the list does not have. */
 export function speciesPage(html, key, found) {
   if (!found) return html.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
-  const { s, week } = found;
+  const { s, week } = found, M = model(found.S);
   const url = SITE + speciesPath(key, s.name);
-  const title = esc(`${s.english ? `${s.english} (${s.name})` : s.name} · yellide`);
-  const desc = esc(`${sentences(s).join(' ')} Updated each week.`);
+  const title = esc(`${speciesTitle(s.name, s.english)} · yellide`);
+  const desc = esc(`${sentences(s, M).join(' ')} Updated each week.`);
   const names = [s.english, ...(s.names_in_indian_languages || []).map(([, n]) => n)].filter(Boolean);
   const ld = {
     '@context': 'https://schema.org', '@type': 'Taxon', name: s.name, taxonRank: 'species', url,
     ...(names.length ? { alternateName: names } : {}),
     ...(s.family ? { parentTaxon: { '@type': 'Taxon', name: s.family, taxonRank: 'family' } } : {}),
-    description: sentences(s).join(' '),
+    description: sentences(s, M).join(' '),
     isPartOf: { '@type': 'Dataset', name: 'yellide: species of India and their open records', url: `${SITE}/method` },
   };
   const facts = [
@@ -82,7 +79,7 @@ export function speciesPage(html, key, found) {
   out = out.replace(/(<h1 class="page" id="name"[^>]*>)Loading…(<\/h1>)/, `$1${esc(s.name)}$2`)
     .replace(/(<p class="lede" id="common"[^>]*>)(<\/p>)/, `$1${esc(s.english || '')}$2`)
     .replace(/(<span id="crumb">)(<\/span>)/, `$1${esc(`/ ${s.group || ''}${s.family ? ` / ${s.family}` : ''}`)}$2`)
-    .replace(/(<div class="sp-pills" id="pills"><\/div>)/, `$1\n      <p class="note" id="summary" style="margin-top:12px">${esc(sentences(s).join(' '))}</p>${placeLinks(s)}`);
+    .replace(/(<div class="sp-pills" id="pills"><\/div>)/, `$1\n      <p class="note" id="summary" style="margin-top:12px">${esc(sentences(s, M).join(' '))}</p>${placeLinks(s)}`);
   const json = JSON.stringify(ld).replace(/</g, '\\u003c');
   return out.replace('</head>', `<link rel="canonical" href="${url}">\n<meta property="og:url" content="${url}">\n`
     + `<script type="application/ld+json">${json}</script>\n</head>`);

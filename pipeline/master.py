@@ -1067,7 +1067,7 @@ SITEMAP_PARTS = 5   # fixed: site/sitemap.xml (an index) names each part; 5 x 50
 
 def slug(name):
     """The Latin name in lower case, accents dropped, every run of other characters one hyphen: the last part of a
-    species page's address. site/assets/species_url.js makes the same (tests/fixtures/species_slugs.json)."""
+    species page's address. site/assets/species_model.js makes the same (tests/fixtures/species_slugs.json)."""
     s = re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFKD", str(name or ""))).lower()
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 

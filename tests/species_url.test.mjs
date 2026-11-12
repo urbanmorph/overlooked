@@ -3,12 +3,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { slug, speciesPath } from '../site/assets/species_url.js';
+import { slug, speciesPath } from '../site/assets/species_model.js';
 import { handle } from '../functions/species/[[path]].js';
 
 const SLUGS = JSON.parse(readFileSync(new URL('./fixtures/species_slugs.json', import.meta.url), 'utf8'));
 const HTML = readFileSync(new URL('../site/species.html', import.meta.url), 'utf8');
-const S = { iucn: ['CR', 'EN', 'VU', 'NT', 'LC', 'DD', 'NE'] };
+const S = JSON.parse(readFileSync(new URL('./fixtures/summary_model.json', import.meta.url), 'utf8'));   // as the pipeline writes it
 const BUSTARD = { key: 'GCMS', name: 'Ardeotis nigriceps', english: 'Great Indian Bustard', group: 'Birds', family: 'Otididae',
   iucn: { category: 'CR', year: 2018 }, sources: ['GBIF'], states_with_open_record: ['Rajasthan'] };
 const lookup = async (env, key) => (key === 'GCMS' ? { S, s: BUSTARD, week: '2026-11-09' } : null);

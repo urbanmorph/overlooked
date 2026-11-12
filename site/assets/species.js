@@ -2,20 +2,13 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge } from './common.js?v=0f213c3aa5';
-import { drawMap } from './map.js?v=9d34d190cf';
-import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=5e428c2f50';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=07b041ed89';
-import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=f65a413ff8';
-import { speciesPath } from './species_url.js?v=6eb2695080';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge, model, englishOf, speciesTitle, speciesText, shardOf, speciesPath } from './common.js?v=13f69a4a12';
+import { drawMap } from './map.js?v=c9a780a4b8';
+import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=91a54857a5';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=edfd4a6224';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=d2197ab59a';
 
-// Same hash as pipeline/site_data.py shard_of: FNV-1a 32-bit of the UTF-8 key, modulo 512.
-function shardOf(key) {
-  let h = 0x811c9dc5;
-  for (const b of new TextEncoder().encode(String(key))) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
-  return h % 512;
-}
-const STATUS = ['No open record yet', 'Open record', 'Not on the India list yet'];
+// What each status (summary.json status, species_model.js) means, in a sentence.
 const STATUS_TEXT = [
   'A checklist or a paper lists this species for India. No open record of it is online yet: no specimen, photo or sighting that anyone can check.',
   'There is an open record of it from India: a specimen, photo or sighting that anyone can check online.',
@@ -90,11 +83,11 @@ function evidenceRows(S, name, types, photos, barcode, names) {
 // confirm the name before it shows here); undefined (a list with no pictures yet), nothing.
 function picture(pic, name) {
   if (pic === undefined) return '';
-  if (!/^https:\/\//.test(pic?.[0] || '')) {
+  if (!/^https:\/\//.test(pic?.url || '')) {
     return `<div class="ph none"><b>No open photo yet</b><span>Seen it in India? Add your photo to iNaturalist. Once others there confirm the name, it shows here.</span>
       <a href="https://www.inaturalist.org/observations/upload" target="_blank" rel="noopener">Add a photo on iNaturalist</a></div>`;
   }
-  const [url, page, by, licence, source] = pic;
+  const { url, page, by, licence, source } = pic;
   const from = /^https:\/\//.test(page || '') ? `<a href="${esc(page)}" target="_blank" rel="noopener">${esc(source)}</a>` : esc(source);
   return `<div class="ph"><img src="${esc(url)}" alt="${esc(name)}" decoding="async"></div>
     <figcaption>Photo: ${by ? `${esc(by)}, ` : ''}${esc(licence)} · ${from}</figcaption>`;
@@ -111,13 +104,14 @@ function relativesSVG(R, key, since) {
   for (let y = y0; y <= 2025; y += 25) s += `<line x1="${x(y)}" x2="${x(y)}" y1="${top - 6}" y2="${H - 6}" stroke="var(--line)"/><text class="ax" x="${x(y)}" y="14" text-anchor="middle">${y}</text>`;
   R.forEach((r, i) => {
     const y = top + i * rowH + rowH / 2, me = r.key === key, c = me ? 'var(--accent)' : 'var(--field)';
-    const tip = `${r.name}: ${r.year ?? 'year not known'} to ${r.last ?? 'no placed record'}; ${fmt(r.states)} state${r.states === 1 ? '' : 's'} with an open record`;
+    const tip = `${speciesTitle(r.name, r.english)}: ${r.year ?? 'year not known'} to ${r.last ?? 'no placed record'}; ${fmt(r.states)} state${r.states === 1 ? '' : 's'} with an open record`;
     s += `<a href="${speciesPath(r.key, r.name)}" class="${me ? 'me' : ''}"><title>${esc(tip)}</title>`
       + `<rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`
       + glyphSVG(r.gaps, 26).replace('<svg ', `<svg x="0" y="${y - 10}" `)
       + (/^https:\/\//.test(r.pic || '') ? `<clipPath id="rc${i}"><circle cx="${tx + th / 2}" cy="${y}" r="${th / 2}"/></clipPath><image href="${esc(r.pic)}" x="${tx}" y="${y - th / 2}" width="${th}" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#rc${i})"/>`
         : `<circle cx="${tx + th / 2}" cy="${y}" r="${th / 2 - 1}" fill="var(--line-2)" stroke="var(--field)" stroke-dasharray="3 2"/>`)
-      + `<text x="${tx + th + 10}" y="${y + 4}" font-style="italic">${esc(r.name)}</text>`
+      + (r.english ? `<text x="${tx + th + 10}" y="${y - 2}" font-style="italic">${esc(r.name)}</text><text class="en" x="${tx + th + 10}" y="${y + 13}">${esc(r.english)}</text>`
+        : `<text x="${tx + th + 10}" y="${y + 4}" font-style="italic">${esc(r.name)}</text>`)
       + (r.year && r.last ? `<line x1="${x(r.year)}" x2="${x(r.last)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${me ? 4 : 2.5}" stroke-linecap="round"/>` : '')
       + (r.year ? `<circle cx="${x(r.year)}" cy="${y}" r="4.5" fill="var(--surface)" stroke="${c}" stroke-width="2"/>` : '')
       + (r.last ? `<circle cx="${x(r.last)}" cy="${y}" r="5" fill="${c}"/>` : '') + '</a>';
@@ -130,18 +124,19 @@ try {
   const key = decodeURIComponent(location.pathname.split('/')[2] || '') || new URLSearchParams(location.search).get('key');
   if (!key) throw new Error('no species key in the address');
   const [latest, snap] = await Promise.all([getJSON('layers/master/latest.json'), snapshot()]);
-  const shard = shardOf(key);
+  const shard = shardOf(key);   // 512 shards, as pipeline/site_data.py SHARDS
   const [S, part, snapSummary, boundaries, gbif, web, pics] = await Promise.all([
     getJSON(latest.base + 'summary.json'), getJSON(`${latest.base}sp/${shard}.json`),
     snap.summary(), snap.boundaries(), getJSON(snap.file(`species/${shard}.json`)).then(p => p[key]).catch(() => null),
     getJSON(`${latest.base}web/${shard}.json`).then(p => p[key] || null).catch(() => undefined),   // undefined: a list with no web yet
     getJSON(`${latest.base}pic/${shard}.json`).catch(() => undefined)]);                           // undefined: a list with no pictures yet
   showDevBanner(snapSummary);
-  const row = part[key];
-  if (!row) throw new Error('species not on the master list');
-  const [name, gi, sources, status, iucn, labels, obsMask, taxon, waitIndia, waitStates, year, authority, paper, iucnYear, iucnDoi,
-    partners, interactionsIndia, cells, types, photos, barcode, localPairs, trend, traits, precise, papers, papersLatest, iucnTrend,
-    family] = row;
+  if (!part[key]) throw new Error('species not on the master list');
+  const M = model(S);
+  const { name, group: gi, sources, status, iucn, labels, states: obsMask, taxon, waiting_india: waitIndia, waiting_states: waitStates,
+    year, authority, paper, iucn_year: iucnYear, iucn_doi: iucnDoi, partners, interactions_india: interactionsIndia, cells, types,
+    photos, barcode, local_names: localPairs, trend, traits, precise, papers, papers_latest: papersLatest, iucn_trend: iucnTrend,
+    family } = M.read('sp', part[key]);
   const group = S.groups[gi] || '', word = groupWord(group);
   const states = S.states.map((st, i) => ({ ...st, i, obs: bit(obsMask, i), wait: (waitStates.find(x => x[0] === i) || [0, 0])[1] }));
   const nObs = states.filter(s => s.obs).length;
@@ -156,17 +151,17 @@ try {
   $('#name').textContent = name;
   const fam = family || gbif?.family;
   $('#crumb').textContent = `/ ${group}${fam ? ` / ${fam}` : ''}`;
-  const pic = pics === undefined ? undefined : pics[key] ?? null;
+  const pic = pics === undefined ? undefined : pics[key] ? M.read('pic', pics[key]) : null;
   // the same title the server gave the page (functions/lib/species_page.js)
-  document.title = `${pic?.[5] ? `${pic[5]} (${name})` : name} · yellide`;
-  $('#common').textContent = pic?.[5] || '';
-  $('#common').hidden = !pic?.[5];
+  document.title = `${speciesTitle(name, pic?.english)} · yellide`;
+  $('#common').textContent = pic?.english || '';
+  $('#common').hidden = !pic?.english;
   $('#photo').innerHTML = picture(pic, name);
   const author = (authority || '').replace(/,?\s*\d{4}\)?\s*$/, m => (m.endsWith(')') ? ')' : ''));
   const trendWord = ['Increasing', 'Stable', 'Decreasing'].includes(iucnTrend) ? `population ${iucnTrend.toLowerCase()} · ` : '';
   $('#pills').innerHTML = [
     `<span class="sp-pill">${glyphSVG(gaps.map(g => g.state), 26)} ${nKnown} of 7 known</span>`,
-    `<span class="sp-pill"><b>${esc(STATUS[status])}</b></span>`,
+    `<span class="sp-pill"><b>${esc(M.status(status))}</b></span>`,
     cat && cat !== 'NE' ? `<span class="sp-pill"><b>IUCN ${esc(cat)}</b> <span>${esc(trendWord)}${iucnYear ? `assessed ${iucnYear}` : ''}</span></span>`
       : '<span class="sp-pill">Not assessed by IUCN</span>',
     year ? `<span class="sp-pill"><b>Described</b> <a href="/?described=${year}-${year}">${year}</a>${author ? ` by ${esc(author)}` : ''}</span>` : '',
@@ -238,7 +233,7 @@ try {
   ].filter(Boolean).map(([v, l, s]) => `<div><b>${esc(v)}</b><span>${esc(l)}${s ? `<br><small>${esc(s)}</small>` : ''}</span></div>`).join('');
 
   // Who it interacts with: a bar of kinds (pick to show or hide), a search, India only, then a branch per kind.
-  const T = tree(web || { n: {}, p: {} }), shownAll = new Set(), on = new Set(T.map(b => b.kind));
+  const T = tree(web || { n: {}, p: {} }, S), shownAll = new Set(), on = new Set(T.map(b => b.kind));
   const allN = T.reduce((a, b) => a + b.total, 0);
   $('#webnote').innerHTML = web
     ? `${fmt(partners)} partner species in GloBI (Global Biotic Interactions), by kind of link, the most records first; a filled dot has a record from India. <a href="https://www.globalbioticinteractions.org/?interactionType=interactsWith&amp;sourceTaxon=${encodeURIComponent(name)}">All links on GloBI</a>.`
@@ -246,17 +241,18 @@ try {
   $('#webcontrols').hidden = !T.length;
   $('#kindsbar').innerHTML = T.map(b => `<button type="button" aria-pressed="true" data-k="${b.kind}" style="flex:${b.total} 1 0;background:${b.color}"
     title="${esc(b.label)}: ${fmt(b.total)} species, ${Math.round(100 * b.total / allN)}% of links">${esc(b.label)} ${fmt(b.total)}</button>`).join('');
+  let english = new Map();   // the partners' English names, once read (en/ by key)
   const drawTree = () => {
     const q = $('#q').value.trim().toLowerCase(), india = $('#indiaonly').checked;
     const html = T.filter(br => on.has(br.kind)).map(br => {
-      const rows = br.rows.filter(r => (!q || r.name.toLowerCase().includes(q)) && (!india || r.india));
+      const rows = br.rows.filter(r => (!q || `${r.name} ${english.get(r.key) || ''}`.toLowerCase().includes(q)) && (!india || r.india));
       if (!rows.length) return '';
       const limit = shownAll.has(br.kind) || q ? rows.length : 8;
       const microbes = br.kind === 'hosts' && rows.slice(0, limit).some(r => /virus|bacter|plasm/i.test(r.name));
       return `<section class="wb" style="--c:${br.color}"><h3><i></i>${esc(br.label)} <span class="note">${fmt(rows.length)} shown of ${fmt(br.total)}</span></h3>
         ${microbes ? '<p class="note why">Viruses and microbes here come from screening studies: they were found in the animal, which does not mean they make it ill.</p>' : ''}
         <ul>${rows.slice(0, limit).map(r => {
-          const inner = `<i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${esc(r.name)}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span>`;
+          const inner = `<i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${speciesText(r.name, english.get(r.key))}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span>`;
           const tip = `${r.types.map(t => VERBS[t] || t).join(', ')} · ${fmt(r.n)} record${r.n === 1 ? '' : 's'}${r.india ? ', some from India' : ', none from India'}`;
           return `<li>${r.key ? `<a class="wp" href="${speciesPath(r.key, r.name)}" title="${esc(tip)}">${inner}</a>` : `<span class="wp" title="${esc(tip)}">${inner}</span>`}</li>`;
         }).join('')}</ul>
@@ -279,16 +275,19 @@ try {
   $('#q').addEventListener('input', drawTree);
   $('#indiaonly').addEventListener('change', drawTree);
   drawTree();
+  englishOf(getJSON, latest.base, S, T.flatMap(b => b.rows.map(r => r.key))).then(en => { english = en; if (en.size) drawTree(); });
   $('#weblegend').innerHTML = web ? `<span class="lbl"><i class="dot in" style="--c:var(--ink-2)"></i>A record of the link from India</span>
     <span class="lbl"><i class="dot" style="--c:var(--ink-2)"></i>None from India</span><span class="lbl">Bar and number: records of the link</span>
     <span class="lbl">A name in colour links to its page</span>` : '';
 
   // Relatives: the species of the family on the list, on a time axis.
   if (family) {
-    getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(p => {
+    getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(async p => {
       const rows = p[family] || [];
       if (rows.length < 2) return;
-      const R = relatives(rows, key, name, S), { svg, viewBox } = relativesSVG(R.rows, key, since);
+      const R = relatives(rows, key, name, S), en = await englishOf(getJSON, latest.base, S, R.rows.map(r => r.key));
+      R.rows.forEach(r => { r.english = en.get(r.key) || null; });
+      const { svg, viewBox } = relativesSVG(R.rows, key, since);
       const genus = name.split(' ')[0];
       $('#rel').setAttribute('viewBox', viewBox);
       $('#rel').innerHTML = svg;
@@ -299,7 +298,7 @@ try {
 
   // Details: status, the evidence behind it, sources and labels, and the next step a person can take.
   const chips = (mask, names) => tags(mask, names) || '<span class="muted">–</span>';
-  $('#status').innerHTML = `<h2 style="font-size:18px">${esc(STATUS[status])}</h2><p class="note" style="margin:4px 0 12px">${STATUS_TEXT[status]}</p>
+  $('#status').innerHTML = `<h2 style="font-size:18px">${esc(M.status(status))}</h2><p class="note" style="margin:4px 0 12px">${STATUS_TEXT[status]}</p>
     <dl class="stats">
       <dt>Area of occupancy</dt><dd>${cells == null ? '<span class="muted">Not counted yet</span>'
         : `${fmt(4 * cells)} km² <span class="muted">· ${fmt(cells)} ${cells === 1 ? 'cell' : 'cells'} of 2 × 2 km with an open record placed in India</span>`}</dd>
@@ -315,7 +314,7 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != 
     <div class="sp-wait" id="next"></div>`;
   // Next step: what a person can do for this species, and where. GBIF links fill in when GBIF gives its key.
   const showNext = gbifKey => {
-    const steps = nextSteps({ status, iucn: cat, codes, wait: waitIndia, identify: taxon ? identify(S.waiting?.places?.india) : null,
+    const steps = nextSteps({ status, iucn: cat, threatened: M.threatened(cat), codes, wait: waitIndia, identify: taxon ? identify(S.waiting?.places?.india) : null,
       gbifKey, name, paper: paper?.[2] });
     $('#next').hidden = !steps.length;
     $('#next').innerHTML = `<div class="note" style="margin:0 0 4px">Next step</div><ol class="next-steps">${steps.map(s => `<li>${esc(s.text)}${s.links.length ? `<br>${s.links.map(l =>

@@ -2,12 +2,11 @@
 // of Life places under them, with a relative on an Indian checklist (pipeline/name_review.py, review/names.json). A
 // person who knows the group says whether the records are another species'; the answer comes as a GitHub issue.
 
-import { fmt, esc, plainName, speciesLink } from './common.js?v=0f213c3aa5';
-import { speciesPath } from './species_url.js?v=6eb2695080';
+import { fmt, esc, plainName, speciesName, speciesInline, speciesPath } from './common.js?v=13f69a4a12';
 
 const NEAR = 5;
 const REPO = 'https://github.com/urbanmorph/overlooked';
-const names = (list, common = []) => list.map((n, i) => `<i>${esc(n)}</i>${common[i] ? ` (${esc(common[i])})` : ''}`).join(', ');
+const names = (list, common = []) => list.map((n, i) => speciesInline(n, common[i])).join(', ');
 const OUTSIDE = 'The IUCN Red List range map does not include India';
 const IUCN_CITE = 'IUCN (2026). The IUCN Red List of Threatened Species. Version 2026-1.';
 
@@ -31,7 +30,7 @@ export function matchesRow([, name, , old, near, , common, nearCommon = []], q) 
 export function reviewRowHTML(row) {
   const [key, name, states, old, near, outside, common, nearCommon = []] = row;
   const more = near.length - NEAR;
-  return `<li>${speciesLink(key, name)}${common ? ` ${esc(common)}` : ''}`
+  return `<li>${speciesName(key, name, common ?? null)}`
     + ` <span class="muted">open records in ${fmt(states)} state${states === 1 ? '' : 's'}</span><br>`
     + (outside ? `<b>${OUTSIDE}.</b> <span class="muted" title="${esc(IUCN_CITE)}">(IUCN 2026-1)</span> ` : '')
     + `Reached by ${names(old)}. Relatives on Indian checklists: ${names(near.slice(0, NEAR), nearCommon)}${more > 0 ? ` and ${fmt(more)} more` : ''}.`

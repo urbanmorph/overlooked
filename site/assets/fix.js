@@ -2,7 +2,7 @@
 // unlocated.json (records that cannot go in a district) and unresolved.json (records not named to species) are in the GBIF
 // snapshot. The section follows the chosen state and group.
 
-import { getJSON, fmt, esc, $, speciesLink } from './common.js?v=0f213c3aa5';
+import { getJSON, fmt, esc, $, speciesName, fillEnglish } from './common.js?v=13f69a4a12';
 
 const HOLDERS = 10, ONLY = 20;
 const PROBLEM = { none: 'have no coordinates', coarse: 'have coordinates uncertain by more than 25 km', issue: 'have coordinates that GBIF marks as possibly wrong' };
@@ -16,6 +16,8 @@ export async function fixSection(snap) {
     getJSON(snap.latest.manifest).catch(() => null),
   ]);
   if (!u && !un) return { paint() {} };
+  // The English names come from the master list (en/ by key), read only when the table has species.
+  const master = () => getJSON('layers/master/latest.json').then(l => getJSON(l.base + 'summary.json').then(S => ({ base: l.base, S })));
   const dois = [u?.download?.doi, (manifest?.downloads || []).find(d => d.query === 'unresolved_cube' && un)?.doi].filter(Boolean);
   $('#fix-source').innerHTML = !dois.length ? '' : `Source: GBIF.org, ${dois.map(d => `<a class="mono" href="https://doi.org/${esc(d)}">doi:${esc(d)}</a>`).join(', ')}.`;
   $('#fix').hidden = false;
@@ -51,10 +53,11 @@ export async function fixSection(snap) {
     $('#fix-only').innerHTML = only.length ? `<h3 class="pad fix-h">Species known from India only in records that cannot go on the map</h3>
       <div class="tablebox"><table class="sp-table"><thead><tr><th>Species</th><th>Group</th><th>Records</th><th>Years</th><th>States named</th></tr></thead><tbody>
       ${only.slice(0, ONLY).map(([k, name, gi, n, first, last, states]) => `<tr>
-        <td>${speciesLink(k, name)}</td><td>${esc(u.groups[gi])}</td>
+        <td>${speciesName(k, name)}</td><td>${esc(u.groups[gi])}</td>
         <td class="mono">${fmt(n)}</td><td class="mono">${first == null ? '–' : first === last ? first : `${first}–${last}`}</td><td class="mono">${fmt(states)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="pad muted note" style="padding-top:8px">Most records first. Exact coordinates on these records put the species on the map. Some of these records can give the wrong country: correct that too.${onlyN > ONLY ? ` The first ${ONLY} of ${fmt(onlyN)}.` : ''}</p>` : '';
+    if (only.length) master().then(m => fillEnglish($('#fix-only'), getJSON, m.base, m.S)).catch(() => {});
   }
   return { paint };
 }

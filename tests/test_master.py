@@ -461,7 +461,7 @@ def test_species_sitemaps(built):
 
 
 def test_the_slug_is_the_one_the_site_uses():
-    """Python and site/assets/species_url.js turn a Latin name into the same address (tests/fixtures/species_slugs.json)."""
+    """Python and site/assets/species_model.js turn a Latin name into the same address (tests/fixtures/species_slugs.json)."""
     from pathlib import Path
     for name, want in json.loads((Path(__file__).parent / "fixtures" / "species_slugs.json").read_text()):
         assert master.slug(name) == want, name
@@ -1265,3 +1265,12 @@ def test_english_names_by_key_in_small_shards(built):
     names = {k: v for p in (out / "en").iterdir() for k, v in json.loads(p.read_text()).items()}
     assert names == {"K1": "Common aus"}                  # only species with an English name
     assert len(list((out / "en").iterdir())) <= master.EN_SHARDS
+
+
+def test_the_js_tests_read_the_fields_the_pipeline_publishes(built):
+    """tests/fixtures/summary_model.json (the summary parts the JavaScript tests use) is what site_files writes, so a
+    changed row fails here until the fixture, and the tests that read it, follow."""
+    from pathlib import Path
+    fx = json.loads((Path(__file__).parent / "fixtures" / "summary_model.json").read_text())
+    s = built["summary"]
+    assert fx == {k: s[k] for k in fx}

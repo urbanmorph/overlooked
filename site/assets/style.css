@@ -101,7 +101,7 @@ th { font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: left; p
 td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); font-size: 15px; vertical-align: top }
 td.n, th.n { text-align: right }
 .muted { color: var(--muted) }
-td .en { color: var(--muted); font-size: 14px; margin-top: 2px }
+.en { display: block; color: var(--muted); font-size: 14px; font-style: normal; margin-top: 2px }   /* an English name under a Latin name (species_model.js) */
 pre.code { margin: 10px 0 0; padding: 12px 14px; background: var(--ground); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font: 13px/1.5 var(--mono); color: var(--ink) }
 pre.code.wrapline { white-space: pre-wrap; overflow-wrap: anywhere }
 .client { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 4px 20px; padding: 14px 0; border-bottom: 1px solid var(--line-2); font-size: 15px }
@@ -354,8 +354,8 @@ a.wp:hover { background: var(--line-2); color: var(--ink) } .wp:focus-visible { 
 .wmore { margin: 4px 0 0 18px; font-size: 14px }
 @media (max-width: 520px) { .wp { grid-template-columns: 12px minmax(0, 1fr) 40px } .wp .bar { display: none } }
 #rel { width: 100%; min-width: 640px; height: auto; display: block }
-#rel text { font: 13px var(--sans); fill: var(--ink-2) } #rel .ax { font: 12px var(--mono); fill: var(--muted) }
-#rel .me text { fill: var(--ink); font-weight: 600 } #rel a:hover text { fill: var(--accent) }
+#rel text { font: 13px var(--sans); fill: var(--ink-2) } #rel text[font-style="italic"] { font-style: italic } #rel .ax { font: 12px var(--mono); fill: var(--muted) }
+#rel text.en { font-size: 12px; fill: var(--muted) } #rel .me text { fill: var(--ink); font-weight: 600 } #rel a:hover text { fill: var(--accent) }
 .glyph { display: inline-block; vertical-align: middle } .glyph rect { stroke-width: 1.4 }
 .g-known, .m-known { fill: var(--gap-known) } .g-part, .m-part { fill: var(--gap-part) } .m-open { fill: var(--gap-open) }
 .g-gap { fill: #fff; stroke: var(--gap-open); stroke-width: 2 }

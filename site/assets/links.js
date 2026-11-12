@@ -53,6 +53,6 @@ export function nextSteps(sp) {
   const end = c.has('end') ? ' It is endemic to India, so records from India decide its assessment.' : '';
   if (!sp.iucn || sp.iucn === 'NE') out.push({ text: `The IUCN Red List has not assessed it.${end} Records with an exact place and date are the evidence for an assessment.`, links: [{ href: IUCN_PROCESS, text: 'How IUCN assesses a species' }] });
   else if (sp.iucn === 'DD') out.push({ text: `The IUCN Red List has too little data to give it a category.${end} More records from India help.`, links: [{ href: `https://www.iucnredlist.org/search?query=${q}`, text: 'IUCN Red List' }] });
-  else if (['CR', 'EN', 'VU'].includes(sp.iucn)) out.push({ text: 'It is threatened on the IUCN Red List. Send new records from India to the state forest department, and check its protection under the Wild Life (Protection) Act, 1972.', links: [{ href: `https://www.iucnredlist.org/search?query=${q}`, text: 'IUCN Red List' }] });
+  else if (sp.threatened) out.push({ text: 'It is threatened on the IUCN Red List. Send new records from India to the state forest department, and check its protection under the Wild Life (Protection) Act, 1972.', links: [{ href: `https://www.iucnredlist.org/search?query=${q}`, text: 'IUCN Red List' }] });
   return out;
 }

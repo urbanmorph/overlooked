@@ -5,7 +5,10 @@ import { readFileSync } from 'node:fs';
 import { REDLIST, redlist } from '../site/assets/redlist.js';
 
 const cats = n => [0, 0, 0, 0, n, 0, 0, 0, 0];
+// The summary parts every reader takes from the list (tests/test_master.py keeps this fixture equal to the pipeline's).
+const FX = JSON.parse(readFileSync(new URL('./fixtures/summary_model.json', import.meta.url)));
 const S = {
+  ...FX,
   recent_from: 2016,
   india: [[100, 60, cats(100), 3, 40, 15], [50, 20, cats(50), 1, 10, 2]],
   redlist: { assessed: [30, 5], assessable: [7, 1], out_of_date: [10, 2], dd_newer: [2, 0], threatened_not_recent: [1, 1], endemic_not_assessed: [4, 0] },

@@ -51,7 +51,7 @@ test('IUCN: not assessed, too little data, threatened', () => {
   assert.match(texts({ iucn: 'NE' }), /not assessed/);
   assert.match(texts({ iucn: 'NE', codes: new Set(['end']) }), /endemic to India/);
   assert.match(texts({ iucn: 'DD' }), /too little data/);
-  assert.match(texts({ iucn: 'EN' }), /threatened/);
+  assert.match(texts({ iucn: 'EN', threatened: true }), /threatened/);   // species_model threatened, from the list
   assert.match(texts({ status: 0, iucn: 'NE' }), /not assessed/);
 });
 

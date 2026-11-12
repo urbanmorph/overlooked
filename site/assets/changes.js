@@ -1,7 +1,7 @@
 // What changed since the previous weekly list, from the master list (layers/master/<period>/changes.json).
 
-import { getJSON, fmt, esc, $, showLoadError, periodName, stateOptions, speciesLink } from './common.js?v=0f213c3aa5';
-import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=4a69b0d593';
+import { getJSON, fmt, esc, $, showLoadError, periodName, stateOptions, speciesName, fillEnglish } from './common.js?v=13f69a4a12';
+import { MEASURES, series, geometry, nearest, tile, signed } from './trend.js?v=42df4072cc';
 
 const KINDS = [
   ['observed', 'First open record', 'First open record in India', 'var(--accent)'],
@@ -112,7 +112,6 @@ try {
       if (r.kind === 'iucn') return r.extra?.[0] ? `IUCN Red List category was ${r.extra[0]}, now ${r.extra[1]}.` : `First IUCN Red List category: ${r.extra?.[1]}.`;
       return 'No longer on the list. The name changed, a source merged it with another species, or its records are not from India.';
     };
-    const link = r => speciesLink(r.key, r.name);
     function render() {
       const inState = r => state == null || r.states.includes(state);
       const count = k => rows.filter(r => r.kind === k && inState(r)).length;
@@ -121,9 +120,10 @@ try {
       $('#items').innerHTML = slice.map(r => `<li>
           <span class="dot" style="background:${KIND[r.kind].dot}"></span>
           <div><div class="kind" style="color:${KIND[r.kind].dot}">${KIND[r.kind].label}</div>
-          <div>${link(r)} · ${esc(S.groups[r.gi] || '')}</div>
-          <div class="note" style="margin:2px 0 0">${esc(text(r))}</div></div></li>`).join('')
+          <div>${speciesName(r.key, r.name)}</div>
+          <div class="note" style="margin:2px 0 0">${esc(S.groups[r.gi] || '')} · ${esc(text(r))}</div></div></li>`).join('')
         || '<li class="muted" style="padding:24px;display:block">No changes of this kind here.</li>';
+      fillEnglish($('#items'), getJSON, latest.base, S);
       $('#pinfo').textContent = view.length ? `Showing ${fmt(page * PAGE + 1)} to ${fmt(page * PAGE + slice.length)} of ${fmt(view.length)}` : '';
       $('#prev').disabled = page === 0; $('#next').disabled = (page + 1) * PAGE >= view.length;
       // A state only applies to open records, which carry their states.

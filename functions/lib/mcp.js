@@ -6,15 +6,15 @@
 // fixed-width row per species written by pipeline/master.py mcp_files: a scan takes about a millisecond, where
 // parsing the g files takes 40 ms. Files are read once per isolate and week.
 import { record } from './metrics.js';
-import { speciesPath } from '../../site/assets/species_url.js';
+import { model, shardOf, nameMatches, plainName as plain, englishOf, speciesPath } from '../../site/assets/species_model.js';
+
+export { shardOf };
 
 const SITE = 'https://yellide.com';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const LATEST_TTL = 300_000;             // ms between reads of layers/master/latest.json
 const LIST_MAX = 100;
 const FIND_MAX = 10;
-const THREATENED = ['CR', 'EN', 'VU'];
-const STATUS = ['no open record yet', 'open record', 'not on the India list yet (only in observations that wait for a name)'];
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -42,15 +42,7 @@ yellide is a monitor of public data, not an authority. For the status of a speci
 
 // ---------------------------------------------------------------- data
 
-/** FNV-1a 32-bit of the UTF-8 key, modulo 512: pipeline/site_data.py shard_of and site/assets/species.js. */
-export function shardOf(key) {
-  let h = 0x811c9dc5;
-  for (const b of new TextEncoder().encode(String(key))) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
-  return h % 512;
-}
-
 class ToolError extends Error {}
-const plain = s => String(s ?? '').toLowerCase().replace(/['’]/g, '').replace(/[-\s]+/g, ' ').trim();
 // pipeline/master.py prefix: the first two letters, lower case ASCII; anything else is '_'.
 const prefix = s => [...String(s).toLowerCase().slice(0, 2)].map(c => (c >= 'a' && c <= 'z' ? c : '_')).join('').padEnd(2, '_');
 const url = (key, name) => (key ? SITE + speciesPath(key, name) : null);
@@ -157,7 +149,7 @@ function iucnSet(S, values) {
   const out = [];
   for (const v of [].concat(values)) {
     const c = String(v).toUpperCase();
-    if (c === 'THREATENED') THREATENED.forEach(t => out.push(S.iucn.indexOf(t)));
+    if (c === 'THREATENED') S.threatened.forEach(t => out.push(S.iucn.indexOf(t)));
     else if (S.iucn.includes(c)) out.push(S.iucn.indexOf(c));
     else oneOf('IUCN category', v, [...S.iucn, 'threatened']);
   }
@@ -191,7 +183,7 @@ function filter(S, ix, a) {
   }
   if (a.iucn != null) { const t = table(256, iucnSet(S, a.iucn)), c = col.iucn; tests.push(i => t[c[i]] === 1); }
   if (a.endemic != null) {
-    const b = S.labels.findIndex(l => l.code === 'end'), want = a.endemic ? 1 : 0, l = col.labels;
+    const b = model(S).endBit, want = a.endemic ? 1 : 0, l = col.labels;
     tests.push(i => ((l[i] >>> b) & 1) === want);
   }
   if (a.order != null) {
@@ -221,7 +213,7 @@ function filter(S, ix, a) {
 /** Groups where no source marks any species as endemic (computed once per index). */
 function unmarked(S, ix) {
   if (!ix.unmarked) {
-    const end = S.labels.findIndex(l => l.code === 'end'), marked = new Set();
+    const end = model(S).endBit, marked = new Set();
     const { labels, group } = ix.col;
     for (let i = 0; i < ix.n; i++) if ((labels[i] >>> end) & 1) marked.add(group[i]);
     ix.unmarked = S.groups.filter((_, g) => !marked.has(g));
@@ -317,21 +309,22 @@ async function findSpecies(env, S, a) {
   if (q.length < 2) throw new ToolError('Give at least two letters of a name.');
   const f = await shard(env, `search/${prefix(q)}.json`);
   const by = new Map();
+  const M = model(S), F = M.search;
   for (const r of f?.rows || []) {
-    const n = plain(r[0]);
-    if (!(n.startsWith(q) || n.includes(' ' + q))) continue;
-    const common = r.length > 8, id = r[1] || 'n:' + (common ? r[8] : r[0]);
-    const s = by.get(id) || { key: r[1] || null, name: common ? r[8] : r[0], english: null, group: S.groups[r[2]],
-      iucn: S.iucn[r[4]], status: STATUS[r[3]], described: r[7], url: url(r[1], common ? r[8] : r[0]), exact: false };
-    if (common && !s.english) s.english = r[0];
-    s.exact ||= n === q;
+    const common = r.length > F.latin, latin = common ? r[F.latin] : r[F.name];
+    if (!nameMatches(r[F.name], q, common)) continue;
+    const id = r[F.key] || 'n:' + latin;
+    const s = by.get(id) || { key: r[F.key] || null, name: latin, english: null, group: S.groups[r[F.group]],
+      iucn: S.iucn[r[F.iucn]], status: M.status(r[F.status]), described: r[F.year], url: url(r[F.key], latin), exact: false };
+    if (common && !s.english) s.english = r[F.name];
+    s.exact ||= plain(r[F.name]) === q;
     by.set(id, s);
   }
   const species = [...by.values()].sort((x, y) => y.exact - x.exact).slice(0, FIND_MAX).map(({ exact, ...s }) => s);
-  // A Latin name's English name is in the search file of its own first letters: take it from the picture file.
-  await Promise.all(species.filter(s => s.key && !s.english).map(async s => {
-    s.english = (await shard(env, `pic/${shardOf(s.key)}.json`))?.[s.key]?.[5] || null;
-  }));
+  // A Latin name's English name is in the search file of its own first letters: take it from en/ by key.
+  const missing = species.filter(s => s.key && !s.english);
+  const en = await englishOf(path => shard(env, path), '', S, missing.map(s => s.key));
+  for (const s of missing) s.english = en.get(s.key) || null;
   return { species };
 }
 
@@ -341,17 +334,18 @@ async function getSpecies(env, S, a) {
   const [sp, pics] = await Promise.all([shard(env, `sp/${sh}.json`), shard(env, `pic/${sh}.json`)]);
   const r = sp?.[key];
   if (!r) throw new ToolError(`No species with key "${key}". Use find_species to get a key.`);
-  const [name, gi, sources, status, iucn, labels, states, taxon, nIndia, , year, authority, paper, iucnYear, iucnDoi,
-    partners, interIndia, , types, photos, barcode, local, , , , , , iucnTrend, family, order, suborder, provinces] = r;
-  const pic = pics?.[key];
-  const end = S.labels.findIndex(l => l.code === 'end');
+  const M = model(S);
+  const { name, group: gi, sources, status, iucn, labels, states, taxon, waiting_india: nIndia, year, authority, paper,
+    iucn_year: iucnYear, iucn_doi: iucnDoi, partners, interactions_india: interIndia, types, photos, barcode, local_names: local,
+    iucn_trend: iucnTrend, family, order, suborder, provinces } = M.read('sp', r);
+  const pic = pics?.[key] ? M.read('pic', pics[key]) : null;
   const place = S.waiting?.places?.india;
   const prov = new Map(S.provinces.map(p => [p[0], p[1]]));
   return {
-    key, name, english: pic?.[5] || null, group: S.groups[gi], family: family || null, order: order || null, suborder: suborder || null,
-    status: STATUS[status], open_record: status === 1,
+    key, name, english: pic?.english || null, group: S.groups[gi], family: family || null, order: order || null, suborder: suborder || null,
+    status: M.status(status), open_record: status === 1,
     iucn: { category: S.iucn[iucn], year: iucnYear ?? null, doi: iucnDoi ?? null, trend: iucnTrend ?? null },
-    endemic: end >= 0 && Math.floor(labels / 2 ** end) % 2 === 1,
+    endemic: M.endemic(labels),
     sources: S.sources.filter((_, i) => Math.floor(sources / 2 ** i) % 2 === 1),
     states_with_open_record: S.states.filter((_, i) => Math.floor(states / 2 ** i) % 2 === 1).map(s => s.name),
     regions: provinces ? provinces.map(c => `${c} ${prov.get(c) ?? ''}`.trim()) : null,
@@ -361,7 +355,7 @@ async function getSpecies(env, S, a) {
       dna_barcode: ['none', 'yes, not from India', 'yes, from India'][barcode] ?? null },
     interactions: partners == null ? null : { partner_species: partners, recorded_in_india: Boolean(interIndia) },
     names_in_indian_languages: local || null,
-    photo: pic ? { url: pic[0], page: pic[1], credit: [pic[2], pic[3], pic[4]].filter(Boolean).join(', ') } : null,
+    photo: pic ? { url: pic.url, page: pic.page, credit: [pic.by, pic.licence, pic.source].filter(Boolean).join(', ') } : null,
     waiting_for_a_name: taxon ? {
       observations_in_india: nIndia,
       identify: `https://www.inaturalist.org/observations/identify?quality_grade=needs_id&taxon_id=${taxon}&place_id=${place}`,
@@ -387,7 +381,7 @@ export async function lookupSpecies(env, key) {
  *  and the groups that have no endemic mark. */
 export async function speciesWhere(env, a) {
   const S = await file(env, 'summary.json'), ix = await index(env);
-  const ok = filter(S, ix, a), { col } = ix, end = S.labels.findIndex(l => l.code === 'end');
+  const ok = filter(S, ix, a), { col } = ix, end = model(S).endBit;
   const rows = [];
   for (let i = 0; i < ix.n; i++) {
     if (!ok(i)) continue;
@@ -429,7 +423,7 @@ function countPlaces(S, ix) {
 async function countSpecies(env, S, a) {
   const ix = await index(env);
   const ok = filter(S, ix, a), { status, iucn, last_year: last, labels } = ix.col;
-  const thr = table(256, THREATENED.map(c => S.iucn.indexOf(c))), end = S.labels.findIndex(l => l.code === 'end');
+  const thr = table(256, S.threatened.map(c => S.iucn.indexOf(c))), end = model(S).endBit;
   const since = S.recent_from, byIucn = new Array(S.iucn.length).fill(0);
   let documented = 0, open = 0, threatened = 0, recent = 0, endemic = 0;
   for (let i = 0; i < ix.n; i++) {
@@ -450,7 +444,7 @@ async function countSpecies(env, S, a) {
 async function listSpecies(env, S, a) {
   const ix = await index(env);
   const ok = filter(S, ix, a), { col, val } = ix, { limit, from } = pageOf(a);
-  const end = S.labels.findIndex(l => l.code === 'end');
+  const end = model(S).endBit;
   const species = [];
   let total = 0, next = null;
   for (let i = 0; i < ix.n; i++) {

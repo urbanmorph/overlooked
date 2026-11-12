@@ -8,7 +8,8 @@ import { speciesPage } from '../functions/lib/species_page.js';
 import { handle } from '../functions/species/[[path]].js';
 
 const HTML = readFileSync(new URL('../site/species.html', import.meta.url), 'utf8');
-const S = { iucn: ['CR', 'EN', 'VU', 'NT', 'LC', 'DD', 'NE', 'EW', 'EX'] };
+// The summary parts every reader takes from the list (tests/test_master.py keeps this fixture equal to the pipeline's).
+const S = JSON.parse(readFileSync(new URL('./fixtures/summary_model.json', import.meta.url)));
 const BUSTARD = {
   key: 'GCMS', name: 'Ardeotis nigriceps', english: 'Great Indian Bustard', group: 'Birds', family: 'Otididae', order: 'Otidiformes',
   status: 'open record', open_record: true, iucn: { category: 'CR', year: 2018, doi: 'https://doi.org/x', trend: 'Decreasing' },

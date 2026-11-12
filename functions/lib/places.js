@@ -2,7 +2,7 @@
 // addresses. A place is India, a state (a species is there with an open record placed there) or a WII biogeographic
 // zone (a GBIF record placed there). The groups and states come from the week's summary.json, so a new one gets
 // pages without a change here; only the words for a title (GROUP_NOUNS, ZONE_TITLES) are written out.
-import { slug } from '../../site/assets/species_url.js';
+import { slug } from '../../site/assets/species_model.js';
 
 /** A page is worth indexing, and goes in the sitemap, from this many species. Fewer: the page is noindex. */
 export const MIN_SPECIES = 10;

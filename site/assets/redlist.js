@@ -2,7 +2,7 @@
 // The counts use IUCN's categories and the year of each assessment (IUCN's CC BY copy on GBIF) with the list's own
 // records; nothing else from IUCN. Order and keys as summary.json "redlist".
 
-import { sumGroups } from './common.js?v=0f213c3aa5';
+import { sumGroups, model } from './common.js?v=13f69a4a12';
 
 export const REDLIST = [
   { key: 'assessed', label: () => 'Assessed by IUCN', note: () => 'species with a category on the IUCN Red List', share: true },
@@ -13,7 +13,7 @@ export const REDLIST = [
   { key: 'dd_newer', label: () => 'Data Deficient, with newer records',
     note: () => 'records with a place after the year of the assessment: data the assessor did not have' },
   { key: 'threatened_not_recent', label: () => 'Threatened, with no recent record',
-    note: S => `Critically Endangered, Endangered or Vulnerable, with no record placed in a state since ${S.recent_from}` },
+    note: S => `${model(S).threatenedWords}, with no record placed in a state since ${S.recent_from}` },
   { key: 'endemic_not_assessed', label: () => 'Endemic to India, not assessed',
     note: () => 'found only in India, so records from India decide its assessment' },
 ];

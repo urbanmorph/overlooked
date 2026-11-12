@@ -1,16 +1,13 @@
 // The place pages in HTML (functions/in/[[path]].js): /in, /in/<place> and /in/<place>/<group>, written into the
 // shell site/in.html with their own title, description, canonical address and schema.org CollectionPage, so search
 // engines and AI crawlers read them without JavaScript. Pure: the shell and the data in, the page out.
-import { speciesPath } from '../../site/assets/species_url.js';
+import { esc, iucnBadge, model, speciesName } from '../../site/assets/species_model.js';
 import { CATS } from '../../site/assets/cats.js';
 import { MIN_SPECIES, countsOf, groupNoun, groupTitle, placePath, places } from './places.js';
 
 const SITE = 'https://yellide.com';
-const THREATENED = ['CR', 'EN', 'VU'];
-const IUCN_NAMES = { CR: 'Critically Endangered', EN: 'Endangered', VU: 'Vulnerable' };
 const LIST_MAX = 500;        // species named in full on one page; more are a link to the map
 
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nf = new Intl.NumberFormat('en-IN');
 const fmt = n => nf.format(n);
 const list = xs => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
@@ -40,10 +37,8 @@ const crumbs = items => `<nav aria-label="Breadcrumb" class="note crumbs" style=
 const breadcrumbLd = items => ({ '@type': 'BreadcrumbList', itemListElement: items.map(([name, path], i) =>
   ({ '@type': 'ListItem', position: i + 1, name, ...(path ? { item: SITE + path } : {}) })) });
 
-const badge = c => `<span class="iucn i-${esc(c)}" title="IUCN Red List">${esc(c === 'NE' ? 'Not assessed' : c)}</span>`;
-
-const speciesItems = rows => rows.map(r => `<li><a href="${speciesPath(r.key, r.name)}"><i>${esc(r.name)}</i></a>`
-  + `${r.english ? ` <span class="muted">${esc(r.english)}</span>` : ''}${r.iucn && r.iucn !== 'NE' && r.iucn !== 'LC' ? ` ${badge(r.iucn)}` : ''}</li>`).join('');
+const speciesItems = rows => rows.map(r => `<li>${speciesName(r.key, r.name, r.english ?? null,
+  r.iucn && r.iucn !== 'NE' && r.iucn !== 'LC' ? iucnBadge(r.iucn) : '')}</li>`).join('');
 
 /** "on the map" on the front page: the group's family there, and the state. */
 function mapHref(place, group) {
@@ -63,11 +58,12 @@ function sentence(place, n, noun) {
 export function groupPage(shell, { place, gi, d, C }) {
   const { S, rows, week } = d, group = S.groups[gi], noun = groupNoun(group), title = `${groupTitle(group)} of ${place.title}`;
   const path = placePath(place, group);
-  const thr = rows.filter(r => THREATENED.includes(r.iucn)).sort((a, b) => THREATENED.indexOf(a.iucn) - THREATENED.indexOf(b.iucn) || byName(a, b));
+  const M = model(S), order = c => S.threatened.indexOf(c);
+  const thr = rows.filter(r => M.threatened(r.iucn)).sort((a, b) => order(a.iucn) - order(b.iucn) || byName(a, b));
   const marked = !d.unmarked.includes(group), end = marked ? rows.filter(r => r.endemic).sort(byName) : [];
-  const byCat = THREATENED.map(c => [c, thr.filter(r => r.iucn === c).length]).filter(([, n]) => n);
+  const byCat = S.threatened.map(c => [c, thr.filter(r => r.iucn === c).length]).filter(([, n]) => n);
   const n = rows.length;
-  const lead = n ? `${sentence(place, n, noun)}${thr.length ? `, ${fmt(thr.length)} of them threatened (${list(byCat.map(([c, k]) => `${fmt(k)} ${IUCN_NAMES[c]}`))})` : ''}`
+  const lead = n ? `${sentence(place, n, noun)}${thr.length ? `, ${fmt(thr.length)} of them threatened (${list(byCat.map(([c, k]) => `${fmt(k)} ${M.iucnName(c)}`))})` : ''}`
     + `${end.length ? `${thr.length ? ' and' : ','} ${fmt(end.length)} endemic to India` : ''}.` : 'No species on the list is recorded here yet.';
   const what = place.kind === 'state' ? 'A species is in a state when it has an open record placed there: a record anyone can check online (a GBIF record, or a research-grade iNaturalist observation).'
     : place.kind === 'zone' ? 'A species is in a region when a GBIF record of it is placed there (the biogeographic zones of the Wildlife Institute of India).'
@@ -79,7 +75,7 @@ export function groupPage(shell, { place, gi, d, C }) {
   const body = `${crumbs(trail)}
 <h1 class="page">${esc(title)}</h1>
 <p class="lede">${esc(lead)}</p>
-<p class="note">${esc(what)} Threatened: IUCN Red List Critically Endangered, Endangered or Vulnerable. ${marked ? '' : `The sources give no endemic mark for ${esc(noun)} yet. `}List of the week of ${esc(week)}.</p>
+<p class="note">${esc(what)} Threatened: IUCN Red List ${esc(M.threatenedWords)}. ${marked ? '' : `The sources give no endemic mark for ${esc(noun)} yet. `}List of the week of ${esc(week)}.</p>
 ${thr.length ? `<section id="threatened" class="place-list"><h2>Threatened ${esc(noun)} of ${esc(place.title)} (${fmt(thr.length)})</h2><ul class="splist">${speciesItems(thr.slice(0, LIST_MAX))}</ul></section>` : ''}
 ${end.length ? `<section id="endemic" class="place-list"><h2>${esc(groupTitle(group))} of ${esc(place.title)} endemic to India (${fmt(end.length)})</h2><ul class="splist">${speciesItems(end.slice(0, LIST_MAX))}</ul></section>` : ''}
 ${n ? `<section id="all" class="place-list"><h2>All ${esc(noun)} of ${esc(place.title)} on the list (${fmt(n)})</h2><ul class="splist">${speciesItems(all.slice(0, LIST_MAX))}</ul>
@@ -99,8 +95,8 @@ ${others.length ? `<section class="place-links"><h2>Other species of ${esc(place
 /** /in/<place>: its groups, with how many species and how many threatened are there. d: speciesWhere for the place. */
 export function placeHub(shell, { place, d, C }) {
   const { S, rows, week } = d, counts = countsOf(C, place), n = rows.length;
-  const thr = rows.filter(r => THREATENED.includes(r.iucn)).length;
-  const thrBy = S.groups.map((_, i) => rows.filter(r => r.gi === i && THREATENED.includes(r.iucn)).length);
+  const M = model(S), thr = rows.filter(r => M.threatened(r.iucn)).length;
+  const thrBy = S.groups.map((_, i) => rows.filter(r => r.gi === i && M.threatened(r.iucn)).length);
   const title = `Species of ${place.title}`, path = placePath(place);
   const lead = n ? `${sentence(place, n, 'species')}, ${fmt(thr)} of them threatened.` : 'No species on the list is recorded here yet.';
   const trail = [['Places', '/in'], [place.name, null]];

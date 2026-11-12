@@ -33,8 +33,8 @@ test('the answer opens a GitHub issue with the species named', () => {
 
 test('a row shows the common names of the species and of its relatives where known', () => {
   const h = reviewRowHTML(row);
-  assert.match(h, /<i>Pteropus vampyrus<\/i><\/a> Large Flying Fox/);
-  assert.match(h, /<i>Pteropus medius<\/i> \(Indian Flying Fox\)/);
+  assert.match(h, /<i>Pteropus vampyrus<\/i><\/a><span class=\"en\">Large Flying Fox<\/span>/);   // species_model speciesName
+  assert.match(h, /Indian Flying Fox \(<i>Pteropus medius<\/i>\)/);                         // speciesInline
   assert.match(h, /<i>Pteropus faunulus<\/i>,/);                       // no common name: none shown
   assert.doesNotMatch(reviewRowHTML(['K', 'Aus bus', 1, ['Aus c'], ['Aus d'], false, '<b>x', ['<b>y']]), /<b>/);
   assert.match(reviewRowHTML(['K', 'Aus bus', 1, ['Aus c'], ['Aus d'], false]), /Aus bus/);   // older files: no names

@@ -1,4 +1,4 @@
-import { snapshot, getJSON, fmt, esc, $, monthName, showDevBanner, showLoadError } from './common.js?v=0f213c3aa5';
+import { snapshot, getJSON, fmt, esc, $, monthName, showDevBanner, showLoadError } from './common.js?v=13f69a4a12';
 
 const QUERY = {
   ledger_cube: 'Species at each place, first and latest year',

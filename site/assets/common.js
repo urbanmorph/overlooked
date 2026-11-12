@@ -1,5 +1,9 @@
 // Shared helpers. Data lives under /data/ (R2 through the Pages Function, or scripts/serve.py locally).
-import { speciesPath } from './species_url.js?v=6eb2695080';
+import { esc } from './species_model.js?v=eb5180d3d3';
+
+// One way to read and show a species (species_model.js), here too so every page imports its helpers from one place.
+export { esc, iucnBadge, speciesName, speciesText, speciesTitle, speciesInline, model, shardOf, fillEnglish, englishOf, plainName,
+  nameMatches, slug, speciesPath } from './species_model.js?v=eb5180d3d3';
 
 export const DATA = '/data/';
 const cache = new Map();
@@ -29,16 +33,6 @@ export async function snapshot() {
 
 const nf = new Intl.NumberFormat('en-IN');
 export const fmt = n => (n == null ? '–' : nf.format(n));
-export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
-/** A species name in italics, linked to its page when it has one (key); its English name, if given, on a line below. */
-export const speciesLink = (key, name, english) =>
-  (key ? `<a href="${speciesPath(key, name)}"><i>${esc(name)}</i></a>` : `<i>${esc(name)}</i>`)
-  + (english ? `<div class="en">${esc(english)}</div>` : '');
-
-/** The IUCN Red List category as a badge (style.css .iucn .i-<cat>). */
-export const iucnBadge = cat => `<span class="iucn i-${esc(cat)}" title="IUCN Red List">${esc(cat === 'NE' ? 'Not assessed' : cat)}</span>`;
-
 /** One <option> per state of the list (summary.json states). */
 export const stateOptions = S => S.states.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
 
@@ -51,16 +45,6 @@ export function setParams(pairs) {
 
 /** A web address from a source (a paper, an assessment) for an href, or null: never a javascript: or data: link. */
 export const safeHref = u => (/^https?:\/\//i.test(u || '') ? u : null);
-
-/** A name as people type it: lower case, hyphens and runs of spaces as one space, no apostrophes. */
-export const plainName = s => s.toLowerCase().replace(/['\u2019]/g, '').replace(/[-\s]+/g, ' ').trim();
-
-/** Whether a search row (pipeline/master.py site_files) answers the words typed: a Latin name from its start; an
- *  English common name (rows with the Latin name as a ninth field) from the start of any of its words. */
-export function nameMatches(row, q) {
-  const name = plainName(row[0]), words = plainName(q);
-  return name.startsWith(words) || (row.length > 8 && name.includes(' ' + words));
-}
 
 export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 // One label chip per bit set in mask.
