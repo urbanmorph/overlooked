@@ -158,3 +158,20 @@ test('a species page links the pages of its group in the states where it has an 
   assert.match(h, /Birds of Kerala/);
   assert.ok(SHELL.includes('href="/in"'), 'the footer links the places');
 });
+
+test('a state\'s pages link the same place on the sister sites: its cities\' sky on mugilu, its ward maps on bharatlas', async () => {
+  for (const path of ['/in/kerala/birds', '/in/kerala']) {
+    const { h } = await get(path);
+    const s = h.match(/<section class="place-links sister"[^>]*>(.*?)<\/section>/s)?.[1] || '';
+    assert.match(s, /<h2>Kerala today<\/h2>/, path);
+    assert.ok(s.includes('<a href="https://mugilu.live/c/thiruvananthapuram">Thiruvananthapuram</a>'), path);
+    assert.ok(s.includes('<a href="https://mugilu.live/c/kochi">Kochi</a>'), path);
+    assert.match(s, /Air, heat and warnings now \(mugilu\)/);
+    assert.ok(s.includes('<a href="https://bharatlas.com/view/wards_kochi">Kochi</a>'), path);
+    assert.match(s, /Ward maps \(bharatlas\)/);
+  }
+  const ka = (await get('/in/karnataka')).h;
+  assert.ok(ka.includes('https://bharatlas.com/view/wards_bengaluru_gba'));
+  for (const path of ['/in/india/birds', '/in/western-ghats/birds', '/in'])          // only states are one place on all three
+    assert.ok(!(await get(path)).h.includes('class="place-links sister"'), path);
+});
