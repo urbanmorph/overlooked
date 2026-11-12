@@ -3,6 +3,7 @@
 // engines and AI crawlers read them without JavaScript. Pure: the shell and the data in, the page out.
 import { esc, iucnBadge, model, speciesName } from '../../site/assets/species_model.js';
 import { CATS } from '../../site/assets/cats.js';
+import { MUGILU, WARD_MAPS, mugiluUrl, wardMapUrl } from './sister.js';
 import { MIN_SPECIES, countsOf, groupNoun, groupTitle, placePath, places } from './places.js';
 
 const SITE = 'https://yellide.com';
@@ -54,6 +55,18 @@ function sentence(place, n, noun) {
   return `${fmt(n)} ${noun} on the India list have a GBIF record placed in ${place.title}`;
 }
 
+/** A state's sister-site links: the air, heat and warnings now in its cities (mugilu), its ward maps (bharatlas).
+ *  Only a state is one place on all three sites; India and the zones get none. */
+function sisterLinks(place) {
+  if (place.kind !== 'state') return '';
+  const cities = MUGILU[place.slug] || [], maps = WARD_MAPS[place.slug] || [];
+  if (!cities.length && !maps.length) return '';
+  const line = (label, items, url) => `<p>${esc(label)}: ${items.map(([n, k]) => `<a href="${url(k)}">${esc(n)}</a>`).join(' · ')}</p>`;
+  return `<section class="place-links sister"><h2>${esc(place.title)} today</h2>`
+    + (cities.length ? line('Air, heat and warnings now (mugilu)', cities, mugiluUrl) : '')
+    + (maps.length ? line('Ward maps (bharatlas)', maps, wardMapUrl) : '') + '</section>';
+}
+
 /** /in/<place>/<group>. d: {S, rows, week, unmarked} from speciesWhere; C: placeCounts. */
 export function groupPage(shell, { place, gi, d, C }) {
   const { S, rows, week } = d, group = S.groups[gi], noun = groupNoun(group), title = `${groupTitle(group)} of ${place.title}`;
@@ -81,7 +94,8 @@ ${end.length ? `<section id="endemic" class="place-list"><h2>${esc(groupTitle(gr
 ${n ? `<section id="all" class="place-list"><h2>All ${esc(noun)} of ${esc(place.title)} on the list (${fmt(n)})</h2><ul class="splist">${speciesItems(all.slice(0, LIST_MAX))}</ul>
 <p class="note">${n > LIST_MAX ? `The first ${fmt(LIST_MAX)} by name. ` : ''}<a href="${esc(mapHref(place, group))}">See them on the map, with filters</a>.</p></section>` : ''}
 ${elsewhere.length ? `<section class="place-links"><h2>${esc(groupTitle(group))} elsewhere</h2><p>${elsewhere.map(p => `<a href="${placePath(p, group)}">${esc(p.name)}</a>`).join(' · ')}</p></section>` : ''}
-${others.length ? `<section class="place-links"><h2>Other species of ${esc(place.title)}</h2><p>${others.map(([g]) => `<a href="${placePath(place, g)}">${esc(groupTitle(g))}</a>`).join(' · ')}</p></section>` : ''}`;
+${others.length ? `<section class="place-links"><h2>Other species of ${esc(place.title)}</h2><p>${others.map(([g]) => `<a href="${placePath(place, g)}">${esc(groupTitle(g))}</a>`).join(' · ')}</p></section>` : ''}
+${sisterLinks(place)}`;
   const desc = `${lead} ${what.split(':')[0]}. Updated each week.`;
   return fill(shell, {
     title: `${title}: ${fmt(n)} species${thr.length ? `, ${fmt(thr.length)} threatened` : ''} · yellide`, desc, path, body, index: n >= MIN_SPECIES,
@@ -106,7 +120,8 @@ export function placeHub(shell, { place, d, C }) {
 <h1 class="page">${esc(title)}</h1>
 <p class="lede">${esc(lead)}</p>
 <p class="note">List of the week of ${esc(week)}. Pick a group for its species.</p>
-${rowsHtml ? `<div class="tablebox"><table><thead><tr><th>Group</th><th class="n">Species</th><th class="n">Threatened</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}`;
+${rowsHtml ? `<div class="tablebox"><table><thead><tr><th>Group</th><th class="n">Species</th><th class="n">Threatened</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
+${sisterLinks(place)}`;
   return fill(shell, {
     title: `${title}: ${fmt(n)} species by group · yellide`, desc: `${lead} By group: birds, mammals, reptiles, amphibians, insects, plants and more. Updated each week.`,
     path, body, index: n >= MIN_SPECIES,
