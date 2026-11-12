@@ -1245,6 +1245,7 @@ def test_summary_names_every_row_field_so_readers_take_fields_by_name(built):
     assert s["status"] == ["No open record yet", "Open record", "Not on the India list yet: waits for a name"]
     assert s["threatened"] == ["CR", "EN", "VU"]
     assert s["iucn_names"]["CR"] == "Critically Endangered" and set(s["iucn_names"]) <= set(s["iucn"])
+    assert s["en_shards"] == master.EN_SHARDS
 
 
 def test_english_names_by_key_in_small_shards(built):

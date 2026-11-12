@@ -1457,7 +1457,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "described": described_summary(con), "notes": notes,
                "fields": {"g": [f for f, _ in ROW_FIELDS], "w": [f for f, _ in ROW_FIELDS] + WAIT_FIELDS,
                           "search": SEARCH_FIELDS, "sp": SP_FIELDS},
-               "status": STATUS_NAMES, "threatened": list(THREATENED), "iucn_names": IUCN_NAMES, **RIGHTS}
+               "status": STATUS_NAMES, "threatened": list(THREATENED), "iucn_names": IUCN_NAMES, "en_shards": EN_SHARDS,
+               **RIGHTS}
     dump(summary, out / "summary.json")
     species_files(con, out)
     family_files(con, out)
