@@ -198,3 +198,15 @@ def test_a_label_that_is_the_item_s_own_scientific_name_is_not_a_common_name(tmp
     corpus.write_text("name,url,page,by,licence\n")
     table = pictures.refresh(FakeWeb(), None, [("K7", "Mus nus")], corpus, cache=tmp_path / "c", today="2026-10-31")
     assert duckdb.sql(f"SELECT * FROM '{table}'").fetchall() == []
+
+
+@pytest.mark.parametrize("given, shown", [
+    ("indian leopard", "Indian Leopard"),
+    ("small-flowered forget-me-not", "Small-flowered Forget-me-not"),
+    ("tree of heaven", "Tree of Heaven"),
+    ("fortune's spindle", "Fortune's Spindle"),
+    ("Sacred fig", "Sacred fig"),              # a name with a capital is kept as its source writes it
+    ("eBird Tern", "eBird Tern"),
+])
+def test_an_english_name_all_in_lower_case_takes_capitals(given, shown):
+    assert pictures.capitalise(given) == shown

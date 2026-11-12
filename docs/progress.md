@@ -2,6 +2,10 @@
 
 Newest first. Updated as work happens.
 
+## 12 November 2026
+
+- English names all in lower case (4,177 of 29,630, mostly Wikidata labels) take capitals in the style of most names, iNaturalist's: "Indian Leopard", "Small-flowered Forget-me-not", "Tree of Heaven" (`pictures.capitalise`). Names with a capital stay as their source writes them.
+
 ## 11 November 2026
 
 - GBIF renamed occurrence status values in SQL downloads (release of 10 Nov): PRESENT is now DETECTED, ABSENT is now NOT_DETECTED. The unlocated query kept only 'PRESENT' and came back with 0 records twice; the weekly build crashed on the empty table (issue #9). Every query now takes `occurrencestatus IN ('PRESENT', 'DETECTED')` (all checked with GBIF's validator), and the run asks again when a download finishes with no record, stopping after 3 (`run.take_status`). The search API still takes both names, so the health check did not change.

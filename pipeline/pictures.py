@@ -225,6 +225,18 @@ def harvest(http, store, names, need_commons, today, deadline=None, save=None):
     return True
 
 
+SMALL_WORDS = {"a", "an", "and", "at", "by", "de", "for", "in", "of", "on", "or", "the", "to", "with"}
+
+
+def capitalise(common):
+    """An English name all in lower case (as many Wikidata labels are) in the style of most names here, iNaturalist's:
+    each word takes a capital, except short joining words and the parts after a hyphen. Other names stay as written."""
+    if not common or common != common.lower():
+        return common
+    words = common.split(" ")
+    return " ".join(w if i and w in SMALL_WORDS else w[:1].upper() + w[1:] for i, w in enumerate(words))
+
+
 def choose(key, name, store, corpus):
     """[url, page, by, licence, source, common] for one species, or None when there is neither a photo nor a name."""
     _, file, taxon, label = wikidata_of(store, key)
@@ -234,7 +246,7 @@ def choose(key, name, store, corpus):
              or ((store["commons"].get(file) or [None, None])[1] if file else None))
     if photo and photo[4] == "Wikimedia Commons" and photo[0]:
         photo = [photo[0].split("?")[0], *photo[1:]]       # Commons adds tracking parameters to its thumbnails
-    common = (t[2] if t else None) or (label if label and label.lower() != name.lower() else None)
+    common = capitalise((t[2] if t else None) or (label if label and label.lower() != name.lower() else None))
     if not photo and not common:
         return None
     return [*(photo or [None] * 5), common]
