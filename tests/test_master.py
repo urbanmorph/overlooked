@@ -1246,6 +1246,13 @@ def test_summary_names_every_row_field_so_readers_take_fields_by_name(built):
     assert s["threatened"] == ["CR", "EN", "VU"]
     assert s["iucn_names"]["CR"] == "Critically Endangered" and set(s["iucn_names"]) <= set(s["iucn"])
     assert s["en_shards"] == master.EN_SHARDS
+    read = lambda folder: [json.loads(p.read_text()) for p in (out / folder).iterdir()]
+    fam = [r for part in read("fam") for rows in part.values() for r in rows]
+    pic = [r for part in read("pic") for r in part.values()]
+    web = [r for part in read("web") for sp_ in part.values() for rows in sp_["p"].values() for r in rows]
+    assert fam and pic and web
+    assert {len(r) for r in fam} == {len(f["fam"])} and {len(r) for r in pic} == {len(f["pic"])}
+    assert {len(r) for r in web} == {len(f["web"])}
 
 
 def test_english_names_by_key_in_small_shards(built):

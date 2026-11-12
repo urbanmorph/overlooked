@@ -975,6 +975,10 @@ SP_FIELDS = ["name", "group", "sources", "status", "iucn", "labels", "states", "
              "waiting_states", "year", "authority", "paper", "iucn_year", "iucn_doi", "partners", "interactions_india",
              "cells", "types", "photos", "barcode", "local_names", "trend", "traits", "precise", "papers",
              "papers_latest", "iucn_trend", "family", "order", "suborder", "provinces"]
+FAM_FIELDS = ["key", "name", "year", "last_year", "states", "trend", "dna", "barcode", "traits", "precise", "partners",
+              "interactions_india", "pic"]                       # each species of fam/<shard>.json {family: [row]}
+PIC_FIELDS = ["url", "page", "by", "licence", "source", "english"]   # pic/<shard>.json {key: row}
+WEB_FIELDS = ["name", "key", "records", "records_india", "types"]   # each partner of web/<shard>.json {key: {"p": {kind: [row]}}}
 # The words for the status of a species (0, 1, 2) and for the IUCN categories, the same on every page.
 STATUS_NAMES = ["No open record yet", "Open record", "Not on the India list yet: waits for a name"]
 # EW and EX keep their codes: the site copy does not use those words.
@@ -1456,7 +1460,8 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "waiting": waiting(con, n, out, places or {}, coarse),
                "totals": totals, "described": described_summary(con), "notes": notes,
                "fields": {"g": [f for f, _ in ROW_FIELDS], "w": [f for f, _ in ROW_FIELDS] + WAIT_FIELDS,
-                          "search": SEARCH_FIELDS, "sp": SP_FIELDS},
+                          "search": SEARCH_FIELDS, "sp": SP_FIELDS, "fam": FAM_FIELDS, "pic": PIC_FIELDS,
+                          "web": WEB_FIELDS},
                "status": STATUS_NAMES, "threatened": list(THREATENED), "iucn_names": IUCN_NAMES, "en_shards": EN_SHARDS,
                **RIGHTS}
     dump(summary, out / "summary.json")
