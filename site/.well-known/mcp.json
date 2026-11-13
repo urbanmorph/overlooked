@@ -1,0 +1,11 @@
+{
+  "name": "yellide",
+  "title": "yellide: species of India and their open records",
+  "description": "Every species documented from India, across sources: find a species, see its open records, states, biogeographic regions and IUCN Red List status, and count or list species by group, state, region or threat. Read only, no key.",
+  "homepage": "https://yellide.com",
+  "remotes": [
+    { "type": "streamable-http", "url": "https://yellide.com/mcp" }
+  ],
+  "tools": ["find_species", "get_species", "count_species", "list_species", "new_species"],
+  "license": "Code MIT; data CC BY 4.0, each source keeping its own terms (see https://yellide.com/method)"
+}

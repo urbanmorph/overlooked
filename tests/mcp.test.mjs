@@ -374,3 +374,12 @@ test('places through bharatlas: the instructions say how, and answers say "recor
   assert.match(both.note, /records in the state and records in the region/);
   assert.match(both.note, /not always in the part where they meet/);
 });
+
+test('/.well-known/mcp.json: points agents at /mcp and names the tools tools/list gives', async () => {
+  const m = JSON.parse(readFileSync(new URL('../site/.well-known/mcp.json', import.meta.url)));
+  assert.equal(m.name, 'yellide');
+  assert.equal(m.homepage, 'https://yellide.com');
+  assert.deepEqual(m.remotes, [{ type: 'streamable-http', url: 'https://yellide.com/mcp' }]);
+  const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
+  assert.deepEqual(m.tools, result.tools.map((t) => t.name));
+});
