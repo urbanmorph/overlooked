@@ -373,6 +373,20 @@ test('a district: by name or LGD code, with the years and records there; threate
   assert.equal((await out('list_species', {})).species[0].in_district, undefined);      // no district: no district years
 });
 
+test('several districts (an area such as a delta): each species once, its years and records across them, and where', async () => {
+  fresh();
+  const c = await out('count_species', { district: ['Ernakulam', '201'] });
+  assert.equal(c.counts.documented, 4);                                    // K1, K4, K5 in Ernakulam; K3 in 201
+  const extra = { [BASE + 'd/102.json']: { rows: [['K1', 2001, 2024, 2]] } };
+  env = { DATA: bucket({ ...files(), ...extra }) }; _reset();
+  const l = await out('list_species', { district: ['Ernakulam', 'Aurangabad'], state: 'Kerala' });
+  assert.deepEqual(l.species.find(s => s.key === 'K1').in_district,
+    { first_year: 2001, latest_year: 2024, records: 7, districts: ['Aurangabad', 'Ernakulam'] });
+  assert.equal(l.total, 3);                                                // K1 counted once
+  const many = await call('count_species', { district: Array.from({ length: 51 }, () => 'Ernakulam') });
+  assert.equal(many.isError, true);
+});
+
 test('a district name in two states needs the state; an unknown district is a tool error', async () => {
   fresh();
   const both = await call('count_species', { district: 'Aurangabad' });

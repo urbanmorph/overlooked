@@ -22,7 +22,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. A species is in a district when a GBIF record of it is placed there: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 const ABOUT = `# yellide
 
@@ -138,24 +138,51 @@ function rowOf(ix) {
   return ix.rowOf;
 }
 
-/** The district a request names (its name or LGD code, with the state when two states have the name) and its species:
- *  {district, at: Map(index row -> {first_year, latest_year, records})}; null when no district is asked for. */
+const DISTRICTS_MAX = 50;
+/** f of two years, either of which can be null. */
+const either = (f, x, y) => (x == null ? y : y == null ? x : f(x, y));
+
+/** One district a request names: its name or LGD code, with the state when two states have the name. */
+function oneDistrict(S, all, value, state) {
+  const q = plain(value), stateName = code => S.states.find(s => s.code === code)?.name ?? code;
+  let found = all.filter(d => String(d.code) === String(value).trim() || plain(d.name) === q);
+  if (state != null) found = found.filter(d => d.state === S.states[stateOf(S, state)].code);
+  if (!found.length) throw new ToolError(`Unknown district "${value}"${state != null ? ` in ${state}` : ''}. Give its name or LGD code, as in the resource yellide://districts.`);
+  if (found.length > 1) {
+    throw new ToolError(`There is a district "${value}" in ${found.map(d => stateName(d.state)).join(' and ')}: give the state too, or the LGD code (${found.map(d => d.code).join(', ')}).`);
+  }
+  return found[0];
+}
+
+/** The districts a request names (one, or a list for an area such as a delta) and their species, each once:
+ *  {at: Map(index row -> {first_year, latest_year, records[, districts]})}, the years and records across the
+ *  districts, and with several districts the ones it is recorded in. null when no district is asked for. */
 async function inDistrict(env, S, ix, a) {
   if (a.district == null) return null;
-  const all = await districts(env, S), q = plain(a.district);
-  let found = all.filter(d => String(d.code) === String(a.district).trim() || plain(d.name) === q);
-  if (a.state != null) found = found.filter(d => d.state === S.states[stateOf(S, a.state)].code);
-  const stateName = code => S.states.find(s => s.code === code)?.name ?? code;
-  if (!found.length) throw new ToolError(`Unknown district "${a.district}"${a.state != null ? ` in ${a.state}` : ''}. Give its name or LGD code, as in the resource yellide://districts.`);
-  if (found.length > 1) {
-    throw new ToolError(`There is a district "${a.district}" in ${found.map(d => stateName(d.state)).join(' and ')}: give the state too, or the LGD code (${found.map(d => d.code).join(', ')}).`);
-  }
-  const district = found[0], f = await shard(env, `d/${district.code}.json`), F = model(S).d, rows = rowOf(ix), at = new Map();
-  for (const r of f?.rows || []) {
-    const i = rows.get(r[F.key]);
-    if (i != null) at.set(i, { first_year: r[F.first_year], latest_year: r[F.last_year], records: r[F.records] });
-  }
-  return { district: { ...district, state: stateName(district.state) }, at };
+  const list = Array.isArray(a.district) ? a.district : [a.district];
+  if (!list.length || list.length > DISTRICTS_MAX) throw new ToolError(`Give 1 to ${DISTRICTS_MAX} districts.`);
+  const asked = [...new Set(list)];
+  const all = await districts(env, S);
+  const ds = [...new Map(asked.map(v => oneDistrict(S, all, v, a.state)).map(d => [d.code, d])).values()];
+  const F = model(S).d, rows = rowOf(ix), at = new Map(), several = ds.length > 1;
+  const files = await Promise.all(ds.map(d => shard(env, `d/${d.code}.json`)));
+  ds.forEach((d, n) => {
+    for (const r of files[n]?.rows || []) {
+      const i = rows.get(r[F.key]);
+      if (i == null) continue;
+      const s = at.get(i);
+      if (!s) {
+        at.set(i, { first_year: r[F.first_year], latest_year: r[F.last_year], records: r[F.records], ...(several ? { districts: [d.name] } : {}) });
+        continue;
+      }
+      s.first_year = either(Math.min, s.first_year, r[F.first_year]);
+      s.latest_year = either(Math.max, s.latest_year, r[F.last_year]);
+      s.records += r[F.records];
+      s.districts.push(d.name);
+    }
+  });
+  for (const s of at.values()) s.districts?.sort((x, y) => x.localeCompare(y));
+  return { at };
 }
 
 // ---------------------------------------------------------------- filters
@@ -215,7 +242,8 @@ function filter(S, ix, a, dist = null) {
   const tests = [], { col, nul } = ix;
   if (dist) tests.push(i => dist.at.has(i));
   if (a.group != null) { const t = table(256, groupsOf(S, a.group)), g = col.group; tests.push(i => t[g[i]] === 1); }
-  if (a.state != null) {
+  // With a district, the state only tells which district of that name.
+  if (a.state != null && !dist) {
     const b = stateOf(S, a.state), m = b < 32 ? col.states_lo : col.states_hi, k = b % 32;
     tests.push(i => ((m[i] >>> k) & 1) === 1);
   }
@@ -276,8 +304,8 @@ function filterNote(S, ix, a) {
     notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants, ZSI and other checklists for some animal groups). '
       + `These groups have no endemic mark yet: ${unmarked(S, ix).join('; ')}. There, 0 endemic means not marked, not that none is endemic.`);
   }
-  if (a.state != null) notes.push('A species is in a state when it has an open record placed there.');
-  if (a.state != null && a.region != null) {
+  if (a.state != null && a.district == null) notes.push('A species is in a state when it has an open record placed there.');
+  if (a.state != null && a.region != null && a.district == null) {
     notes.push('With a state and a region: species with records in the state and records in the region, not always in the part where they meet.');
   }
   if (a.region != null) notes.push('A species is in a region when a GBIF record of it is placed there (WII biogeographic provinces).');
@@ -292,7 +320,7 @@ function filterNote(S, ix, a) {
 const FILTERS = {
   group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids". See yellide://groups.' },
   state: { type: 'string', description: 'A state or union territory of India: "Karnataka". See yellide://states.' },
-  district: { type: 'string', description: 'A district (LGD): its name, "Wayanad", or its LGD code. Give the state too when two states have the name. See yellide://districts.' },
+  district: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' }, maxItems: 50 }], description: 'A district (LGD): its name, "Wayanad", or its LGD code; or a list of districts for an area that is made of districts (the Mahanadi delta: ["Cuttack", "Jagatsinghapur", "Kendrapara", "Puri"]), where each species counts once. Give the state too when two states have the name. See yellide://districts.' },
   region: { type: 'string', description: 'A WII biogeographic zone ("Western Ghats", "Himalaya", "North-East", "Islands"), a province ("Western Ghats: Mountains") or a province code ("5B"). See yellide://regions.' },
   iucn: { type: 'array', items: { type: 'string' }, description: 'IUCN Red List categories: CR, EN, VU, NT, LC, DD, NE (not assessed), or "threatened" (CR, EN, VU).' },
   endemic: { type: 'boolean', description: 'true: only species a source marks as endemic to India; false: only species not marked. Some groups have no marks yet (the answer names them).' },
