@@ -11,7 +11,7 @@ const urlset = paths => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="
 
 async function placesSitemap(env, counts) {
   const C = await counts(env), paths = ['/in'];
-  for (const p of places(C.S)) {
+  for (const p of places(C.S, C.districts)) {
     const c = countsOf(C, p);
     if (c.reduce((a, b) => a + b, 0) < MIN_SPECIES) continue;
     paths.push(placePath(p));

@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=22fb933be7">
+<link rel="stylesheet" href="/assets/style.css?v=50678574c4">
 <!-- /part:head -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebAPI","name":"yellide MCP server","description":"A Model Context Protocol server (Streamable HTTP, no key, read only) for AI assistants: find, count and list the species documented from India by group, state, biogeographic region, IUCN category, endemic mark, order or family, and new species described since 2007. Every answer carries the week of the list, the licence, the credits and a disclaimer.","url":"https://yellide.com/mcp","documentation":"https://yellide.com/mcp","termsOfService":"https://yellide.com/method","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"provider":{"@type":"Organization","name":"Urban Morph","url":"https://urbanmorph.com"},"about":{"@type":"Dataset","name":"yellide: species of India and their open records","url":"https://yellide.com/method"}}</script>
 </head>
@@ -132,9 +132,9 @@ url = "https://yellide.com/mcp"</pre></div></div>
     </div>
     <p class="note" style="margin-top:12px"><b>What these answers mean.</b></p>
     <ul class="note" style="padding-left:20px;margin-top:4px">
-      <li>They tell what is recorded in the state and the region, not what you will see at the spot. With a state and a region, a species has records in each, not always in the part where they meet.</li>
+      <li>They tell what is recorded in the state, the district and the region, not what you will see at the spot. With a state and a region, a species has records in each, not always in the part where they meet.</li>
       <li>This is not a field guide or a list of sightings. A record shows that a species was found in the area, not that it lives there now or how common it is. For a site, ask the forest department, local naturalists or eBird.</li>
-      <li>To protect species at risk from collection and trade, the answers stop at the state and the province. Do not add finer locations of threatened species from other sources. See <a href="/method#sensitive">Sensitive locations</a>.</li>
+      <li>For a district, the answers give the year of the latest record there. A record can be in the wrong district, and many of these species are protected under the Wild Life (Protection) Act, 1972. See <a href="/method#sensitive">Sensitive locations</a>.</li>
       <li>Each answer gives its credits, the week of the list, and a disclaimer: yellide is a monitor of public data, not an authority.</li>
     </ul>
   </section>
@@ -182,9 +182,9 @@ url = "https://yellide.com/mcp"</pre></div></div>
     <h2>Good to know</h2>
     <ul class="note" style="padding-left:20px;margin-top:10px">
       <li>Every answer gives the week of the list, the licence, the credits of the sources and a disclaimer. Please pass them on with what you publish.</li>
-      <li>To protect species at risk from collection and trade, the server answers by state or biogeographic province only, never by district or point. See <a href="/method#sensitive">Sensitive locations</a>.</li>
+      <li>The smallest area is a district; the server gives no point or coordinates. Each answer for a district says how to read it. See <a href="/method#sensitive">Sensitive locations</a>.</li>
       <li>yellide is a monitor of public data, not an authority. For the status of a species, consult BSI, ZSI, the IUCN Red List and the state forest department.</li>
-      <li>A species is in a state when it has an open record placed there. It is in a region when a GBIF record of it is placed there.</li>
+      <li>A species is in a state when it has an open record placed there. It is in a district or a region when a GBIF record of it is placed there.</li>
       <li>Regions are the biogeographic zones and provinces of the Wildlife Institute of India: 10 zones and 26 provinces. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.</li>
       <li>Endemic marks come only from the sources that give them: Kew for plants, and ZSI and other checklists for some animal groups. Birds, mammals, reptiles, amphibians, fish and butterflies have no marks yet. The answer names these groups.</li>
       <li>The server does not identify photos, and it posts nothing anywhere.</li>

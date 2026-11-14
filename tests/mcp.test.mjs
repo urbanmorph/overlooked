@@ -73,6 +73,11 @@ function files() {
     [BASE + 'search/au.json']: { rows: [['Aus bus', 'K1', 0, 1, 1, 3, 3, 1758], ['Malabar Aus', 'K1', 0, 1, 1, 3, 3, 1758, 'Aus bus']] },
     [BASE + 'search/zu.json']: { rows: [['Zus zus', '', 0, 2, 6, 0, 0, null]] },
     [BASE + `sp/${shardOf('K1')}.json`]: { K1: sp },
+    // Districts: [code, name, state code, species per group]; Aurangabad is a name in two states.
+    [BASE + 'd/places.json']: { rows: [[101, 'Ernakulam', '32', [1, 1, 1, 0]], [102, 'Aurangabad', '32', [0, 0, 0, 0]],
+      [201, 'Aurangabad', '29', [0, 1, 0, 0]]] },
+    [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]] },
+    [BASE + 'd/201.json']: { rows: [['K3', 2022, 2024, 3]] },
     [BASE + `en/${hashOf('K1') % 64}.json`]: { K1: 'Malabar Aus' },
     [BASE + `pic/${shardOf('K1')}.json`]: { K1: ['https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC 4.0', 'iNaturalist (India)', 'Malabar Aus'] },
     'layers/newspecies/latest.json': { period: '2026-10-26', file: 'layers/newspecies/2026-10-26/new_species.json' },
@@ -305,12 +310,13 @@ test('new_species: described from India since a year, with the paper and records
 test('resources: about, groups, states and regions', async () => {
   fresh();
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/list' })).json();
-  assert.deepEqual(result.resources.map(r => r.uri), ['yellide://about', 'yellide://groups', 'yellide://states', 'yellide://regions']);
+  assert.deepEqual(result.resources.map(r => r.uri), ['yellide://about', 'yellide://groups', 'yellide://states', 'yellide://districts', 'yellide://regions']);
   const read = async uri => (await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/read', params: { uri } })).json()).result.contents[0];
   assert.match((await read('yellide://about')).text, /open record/);
   assert.deepEqual(JSON.parse((await read('yellide://states')).text), ['Karnataka', 'Kerala']);
   const regions = JSON.parse((await read('yellide://regions')).text);
   assert.deepEqual(regions.zones['Western Ghats'], ['5A', '5B']);
+  assert.deepEqual(JSON.parse((await read('yellide://districts')).text), { Karnataka: ['Aurangabad'], Kerala: ['Aurangabad', 'Ernakulam'] });
 });
 
 test('the data is read once per isolate and week: a second call reads no index again', async () => {
@@ -352,16 +358,45 @@ test('tool calls are counted by tool name (metrics), never with their arguments'
   assert.deepEqual(seen[0].slice(1), ['mcp', 'find_species']);
 });
 
-test('no tool takes or gives a place finer than a state or biogeographic province (method page: Sensitive locations)', async () => {
+test('a district: by name or LGD code, with the years and records there; threatened species too, with the exact year', async () => {
+  fresh();
+  const c = await out('count_species', { district: 'ernakulam' });
+  assert.deepEqual(c.counts, { documented: 3, open_record: 3, threatened: 2, recorded_since_2016: 1, endemic: 2 });  // 2019 there
+  assert.match(c.note, /GBIF record of it is placed in the district/);
+  assert.match(c.note, /does not show that it lives there now/);
+  assert.match(c.note, /Wild Life \(Protection\) Act/);
+  assert.equal((await out('count_species', { district: 101 })).counts.documented, 3);
+  const l = await out('list_species', { district: 'Ernakulam', iucn: ['threatened'] });
+  assert.deepEqual(l.species.map(s => [s.key, s.in_district]), [
+    ['K1', { first_year: 2010, latest_year: 2019, records: 5 }], ['K5', { first_year: 2015, latest_year: 2015, records: 1 }]]);
+  assert.deepEqual((await out('list_species', { district: 'Ernakulam', recorded_since: 2016 })).species.map(s => s.key), ['K1']);
+  assert.equal((await out('list_species', {})).species[0].in_district, undefined);      // no district: no district years
+});
+
+test('a district name in two states needs the state; an unknown district is a tool error', async () => {
+  fresh();
+  const both = await call('count_species', { district: 'Aurangabad' });
+  assert.equal(both.isError, true);
+  assert.match(both.content[0].text, /Karnataka/);
+  assert.match(both.content[0].text, /Kerala/);
+  assert.deepEqual((await out('list_species', { district: 'Aurangabad', state: 'Karnataka' })).species.map(s => s.key), ['K3']);
+  assert.equal((await out('count_species', { district: 'Aurangabad', state: 'Kerala' })).counts.documented, 0);   // no file: none
+  assert.match((await call('count_species', { district: 'Ernakulam', state: 'Karnataka' })).content[0].text, /Unknown district "Ernakulam" in Karnataka/);
+  const no = await call('count_species', { district: 'Atlantis' });
+  assert.equal(no.isError, true);
+  assert.match(no.content[0].text, /yellide:\/\/districts/);
+});
+
+test('no tool takes or gives a point or coordinates', async () => {
   fresh();
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
-  const FINE = /district|lat|lon|lng|coord|point|place|pincode|block|village|radius|near|bbox|geo/i;
+  const FINE = /lat|lon|lng|coord|point|pincode|block|village|radius|near|bbox|geo/i;
   for (const t of result.tools) {
     for (const p of Object.keys(t.inputSchema.properties || {})) assert.doesNotMatch(p, FINE, `${t.name}.${p}`);
   }
   const s = await out('get_species', { key: 'K1' });
   const keys = JSON.stringify(s).match(/"([a-z_]+)":/g).map(k => k.slice(1, -2));
-  for (const k of keys) assert.doesNotMatch(k, /district|lat|lon|lng|coord|cell/i, k);
+  for (const k of keys) assert.doesNotMatch(k, /lat|lon|lng|coord|cell/i, k);
 });
 
 test('places through bharatlas: the instructions say how, and answers say "recorded in", not "found here"', async () => {
@@ -370,6 +405,8 @@ test('places through bharatlas: the instructions say how, and answers say "recor
   assert.match(result.instructions, /bharatlas/);
   assert.match(result.instructions, /locate/);
   assert.match(result.instructions, /recorded in/i);
+  assert.match(result.instructions, /lgd_districts/);
+  assert.match(result.instructions, /district/);
   const both = await out('count_species', { state: 'Kerala', region: 'Western Ghats' });
   assert.match(both.note, /records in the state and records in the region/);
   assert.match(both.note, /not always in the part where they meet/);

@@ -368,4 +368,6 @@ button.linkish { background: none; border: 0; padding: 0; font: inherit; color: 
 .place-list { margin-top: 28px }
 .splist { columns: 3 260px; column-gap: 28px; list-style: none; padding: 0; margin: 8px 0 0 }
 .splist li { break-inside: avoid; padding: 3px 0 }
+.splist .yr { color: var(--muted); font-size: 13px; white-space: nowrap }   /* a district list: the year of the latest record there */
 .place-links { margin-top: 28px } .place-links p { line-height: 1.9 }
+.place-notes { margin: 14px 0 0 } .place-notes p { margin: 6px 0 0 }

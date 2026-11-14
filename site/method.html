@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=22fb933be7">
+<link rel="stylesheet" href="/assets/style.css?v=50678574c4">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=13f69a4a12">
@@ -190,12 +190,12 @@
   <section class="card" id="sensitive">
     <div class="bar-head"><h2 style="font-size:20px">Sensitive locations</h2></div>
     <div class="note" style="padding:0 18px 18px">
-      <p style="margin:0">Some species are at risk when people know where they live: collectors, traders and hunters can use location data. We follow the practice of GBIF, eBird and iNaturalist.</p>
+      <p style="margin:0">We publish no coordinates. The smallest area we show is a district: on species pages, on the place pages, in the open data and in our MCP server for AI assistants. Half of India's districts are larger than 3,100 km².</p>
       <ul style="padding-left:20px;margin:8px 0 0">
-        <li>We publish no coordinates. The smallest area we show is a district, on species pages and in the open data. Half of India's districts are larger than 3,100 km².</li>
-        <li>Our MCP server for AI assistants answers by state or biogeographic province only. It does not list species by district.</li>
+        <li>We show every species by district, threatened species too, with the year of its latest record there. The same records are public on GBIF, with their coordinates.</li>
         <li>Our records come from GBIF. Before they reach us, iNaturalist moves each record of a threatened species to a random point in a cell of about 500 km², and many publishers make sensitive records less exact.</li>
-        <li>If you think a species should show only by state, <a href="https://github.com/urbanmorph/overlooked/issues/new?template=sensitive-species.yml">tell us</a>. Give the species and the reason, and do not write any location. We record the reason and a date to review it.</li>
+        <li><b>About these records.</b> A species is in a district when a GBIF record of it is placed in the district. This does not show that it lives there now: look at the year of the latest record there. A record can be in the wrong district: some sources move records of species at risk to a random point nearby, and some records give only an approximate place. When a species is not on the list, there is no record of it there, not that it is absent. Districts with few naturalists have fewer records.</li>
+        <li><b>Respect the species.</b> Many of these species are protected under the Wild Life (Protection) Act, 1972. Do not use this list to find, disturb, collect or trade them.</li>
       </ul>
     </div>
   </section>

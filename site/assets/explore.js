@@ -5,7 +5,7 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesName, speciesInline, iucnBadge, model, speciesPath } from './common.js?v=13f69a4a12';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesName, speciesInline, iucnBadge, model, slug, speciesPath } from './common.js?v=13f69a4a12';
 import { drawMap, legendHTML } from './map.js?v=c9a780a4b8';
 import { signed } from './trend.js?v=42df4072cc';
 import { knowledge, segmentChanges } from './funnel.js?v=5e149b196c';
@@ -206,7 +206,13 @@ try {
     const district = st.district && map.info.get(st.district)?.name;
     $('#crumb').textContent = `${st.state ? `India / ${stName.get(st.state)}${district ? ` / ${district}` : ''}` : 'India'} · ${groupName()}${filterText()}`;
     $('#pq').textContent = india ? fmt({ observed: f.obs, recent: f.recent, waiting: f.wait[0] }[st.view] ?? f.thr) : v.big;
-    const districtNote = district ? ` The figures are for all of ${stName.get(st.state)}: the list counts species by state, not by district.` : '';
+    const districtNote = district ? ` The figures are for all of ${stName.get(st.state)}. The species of the district are on its own page.` : '';
+    const page = $('#district-page');
+    page.hidden = !district;
+    if (district) {
+      page.href = `/in/${slug(district)}-${slug(stName.get(st.state))}`;   // functions/lib/places.js: the district's slug, then its state's
+      page.textContent = `Species of ${district}`;
+    }
     $('#psub').textContent = st.view === 'waiting' ? `species named in observations that wait for a name on iNaturalist.${districtNote}`
       : india
       ? (st.view === 'iucn' ? `threatened species (${S.threatened.join(', ')}) of ${fmt(f.doc)} documented. ${fmt(f.assessed)} ${f.assessed === 1 ? "is" : "are"} assessed by IUCN.`

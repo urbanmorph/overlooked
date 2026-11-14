@@ -107,6 +107,18 @@
    "records",
    "records_india",
    "types"
+  ],
+  "d": [
+   "key",
+   "first_year",
+   "last_year",
+   "records"
+  ],
+  "dp": [
+   "code",
+   "name",
+   "state",
+   "groups"
   ]
  },
  "status": [

@@ -37,10 +37,14 @@ const SPECIES = [
   ...Array.from({ length: 4 }, (_, i) => ({ key: `A${i}`, name: `Rana ${i}`, english: null, gi: 1, iucn: 'NE', endemic: false,
     open: true, states: ['32'], zones: ['Western Ghats'] })),
 ];
+// Districts: Wayanad (Kerala) has the 14 Kerala birds, each with its latest record there; Aurangabad (Karnataka) one bird.
+const DISTRICTS = [{ code: 595, name: 'Wayanad', state: '32', groups: [14, 0, 0] }, { code: 600, name: 'Aurangabad', state: '29', groups: [1, 0, 0] }];
+const IN_DISTRICT = { 595: s => s.gi === 0 && s.states.includes('32'), 600: s => s.key === 'K1' };
 const where = async (env, a) => ({
   S, week: '2026-11-09', unmarked: ['Insects: bees, wasps, ants'],
   rows: SPECIES.filter(s => (a.group == null || S.groups[s.gi] === a.group) && (a.state == null || s.states.includes(a.state))
-    && (a.region == null || s.zones.includes(a.region))),
+    && (a.region == null || s.zones.includes(a.region)) && (a.district == null || IN_DISTRICT[a.district](s)))
+    .map(s => (a.district == null ? s : { ...s, latest: s.iucn === 'CR' ? 2023 : 2019 })),
 });
 const counts = async () => {
   const z = () => S.groups.map(() => 0), C = { S, week: '2026-11-09', india: z(), states: { 32: z(), 29: z(), 1: z() }, zones: { 'Western Ghats': z(), Himalaya: z() } };
@@ -49,7 +53,7 @@ const counts = async () => {
     for (const st of s.states) C.states[st][s.gi]++;
     for (const zn of s.zones) C.zones[zn][s.gi]++;
   }
-  return C;
+  return { ...C, districts: DISTRICTS };
 };
 const data = { where, counts };
 const asset = async () => new Response(SHELL, { headers: { 'content-type': 'text/html; charset=utf-8' } });
@@ -66,6 +70,8 @@ test('every group, state and zone has its own slug; a group drops its bracket', 
   assert.equal(groupTitle('Insects: bees, wasps, ants'), 'Bees, wasps and ants');
   const ps = places(S).map(p => p.slug);
   assert.deepEqual(ps, ['india', 'jammu-kashmir', 'karnataka', 'kerala', 'western-ghats', 'himalaya']);
+  // A district: its name and its state's, as two states can have a district of the same name.
+  assert.deepEqual(places(S, DISTRICTS).slice(6).map(p => [p.slug, p.title]), [['aurangabad-karnataka', 'Aurangabad, Karnataka'], ['wayanad-kerala', 'Wayanad, Kerala']]);
   assert.equal(places(S).find(p => p.slug === 'jammu-kashmir').title, 'Jammu and Kashmir');
   assert.equal(placePath('kerala', 'Birds'), '/in/kerala/birds');
 });
@@ -118,8 +124,37 @@ test('a place: its groups with their counts, linked; /in: every place', async ()
   assert.ok(h.includes('href="/in/kerala/birds"') && h.includes('href="/in/kerala/amphibians"'));
   assert.ok(!h.includes('href="/in/kerala/insects-bees-wasps-ants"'), 'no link to a group with none here');
   const idx = await get('/in');
-  assert.match(idx.h, /<h1 class="page">Species of India, by state and region<\/h1>/);
+  assert.match(idx.h, /<h1 class="page">Species of India, by state, district and region<\/h1>/);
   for (const p of ['/in/india', '/in/kerala', '/in/karnataka', '/in/western-ghats']) assert.ok(idx.h.includes(`href="${p}"`), p);
+});
+
+test('a district: its species with the year of the latest record there, threatened ones too, and how to read the list', async () => {
+  const { r, h } = await get('/in/wayanad-kerala/birds');
+  assert.equal(r.status, 200);
+  assert.match(h, /<h1 class="page">Birds of Wayanad, Kerala<\/h1>/);
+  assert.match(h, /14 birds on the India list have a GBIF record placed in Wayanad, Kerala, 3 of them threatened/);
+  const thr = h.match(/<section[^>]*id="threatened"[^>]*>(.*?)<\/section>/s)[1];
+  assert.match(thr, /Yus cr<\/i><\/a> <span class="iucn i-CR"[^>]*>CR<\/span> <span class="yr">latest record 2023<\/span>/);
+  assert.match(h, /does not show that it lives there now/);
+  assert.match(h, /Wild Life \(Protection\) Act, 1972/);
+  assert.doesNotMatch(h, /tell us/i);
+  const ld = JSON.parse(h.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+  assert.deepEqual(ld['@graph'][1].itemListElement.map(i => i.name), ['Places', 'Kerala', 'Wayanad', 'Birds']);
+  assert.ok(h.includes('href="/in/kerala/birds"'), 'the state');
+  assert.ok(!h.includes('href="/in/aurangabad-karnataka/birds"'), 'districts of other states are on their state\'s pages');
+  const st = await get('/in/kerala/birds');
+  assert.doesNotMatch(st.h, /latest record/);                       // a state lists no district years
+  assert.ok(!st.h.includes('href="/in/wayanad-kerala/birds"'), 'a state page links its districts on its own page');
+});
+
+test('a state lists its districts; a district page has its groups and the same notes', async () => {
+  const { h } = await get('/in/kerala');
+  const d = h.match(/<section[^>]*id="districts"[^>]*>(.*?)<\/section>/s)[1];
+  assert.ok(d.includes('href="/in/wayanad-kerala"') && !d.includes('aurangabad'));
+  const hub = await get('/in/wayanad-kerala');
+  assert.match(hub.h, /<h1 class="page">Species of Wayanad, Kerala<\/h1>/);
+  assert.ok(hub.h.includes('href="/in/wayanad-kerala/birds"'));
+  assert.match(hub.h, /does not show that it lives there now/);
 });
 
 test('an unknown place or group is a noindex 404; a trailing slash or extra parts send to the page for good', async () => {
@@ -145,7 +180,8 @@ test('/sitemaps/places.xml: /in, every place and every group in a place with eno
   const r = await sitemap({ request: new Request('https://yellide.com/sitemaps/places.xml'), env: {}, params: { name: 'places.xml' }, counts });
   assert.equal(r.status, 200);
   const urls = [...(await r.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].replace('https://yellide.com', ''));
-  assert.deepEqual(urls, ['/in', '/in/india', '/in/india/birds', '/in/kerala', '/in/kerala/birds', '/in/western-ghats', '/in/western-ghats/birds']);
+  assert.deepEqual(urls, ['/in', '/in/india', '/in/india/birds', '/in/kerala', '/in/kerala/birds', '/in/western-ghats', '/in/western-ghats/birds',
+    '/in/wayanad-kerala', '/in/wayanad-kerala/birds']);
   assert.match(readFileSync(new URL('../site/sitemap.xml', import.meta.url), 'utf8'), /https:\/\/yellide\.com\/sitemaps\/places\.xml/);
 });
 

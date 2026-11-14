@@ -36,6 +36,7 @@ changed after), then layers/master/<period>/current.json and layers/master/lates
   g/<gi>.json           all species of a group
   search/<p>.json       search index, one file per two-letter name prefix; search/places.json
   mcp/                  rows.bin, text.txt, meta.json: every species on the list for the agent server (/mcp)
+  d/<district>.json     species with a GBIF record placed in the district (first, latest year, records); d/places.json
   sitemaps/             species-<i>.xml: every species page, for search engines (served at /sitemaps/)
 
 Usage:
@@ -985,6 +986,8 @@ STATUS_NAMES = ["No open record yet", "Open record", "Not on the India list yet:
 IUCN_NAMES = {"CR": "Critically Endangered", "EN": "Endangered", "VU": "Vulnerable", "NT": "Near Threatened",
               "LC": "Least Concern", "DD": "Data Deficient", "NE": "Not assessed"}
 EN_SHARDS = 64   # en/<shard>.json: English names by key, about 460 per file
+D_FIELDS = ["key", "first_year", "last_year", "records"]   # d/<district LGD code>.json rows
+DP_FIELDS = ["code", "name", "state", "groups"]            # d/places.json rows: a district, its state, species per group
 
 
 def per_area(rows, n, width):
@@ -1010,6 +1013,30 @@ def english_files(con, out: Path):
     for key, common in con.sql("SELECT e.key, e.common FROM english e JOIN site s USING (key) WHERE s.status < 2").fetchall():
         parts.setdefault(shard_of(key, EN_SHARDS), {})[key] = common
     return shard_files(out, "en", parts)
+
+
+def district_files(con, ledger, districts_path, out: Path):
+    """d/<district LGD code>.json: the species on the list with a GBIF record placed in the district (the snapshot's
+    ledger), with the first and latest year and the records there, by key. d/places.json: every district with its
+    name, its state's LGD code and its species per group, for the place pages and the agent server."""
+    shutil.rmtree(out / "d", ignore_errors=True)
+    con.sql(f"""CREATE OR REPLACE TEMP TABLE dist_sp AS
+                SELECT l.district_lgd AS d, l.species_key AS key, min(l.first_year) AS first_year,
+                       max(l.last_year) AS last_year, sum(l.n_records)::BIGINT AS records, any_value(s.gi) AS gi
+                FROM '{ledger}' l JOIN site s ON s.key = l.species_key
+                WHERE s.status < 2 AND l.district_lgd > 0 GROUP BY 1, 2""")
+    files = {}
+    for d, key, y0, y1, n in con.sql("SELECT d, key, first_year, last_year, records FROM dist_sp ORDER BY d, key").fetchall():
+        files.setdefault(d, []).append([key, y0, y1, n])
+    for d, rows in files.items():
+        dump({"rows": rows}, out / "d" / f"{d}.json")
+    groups = {}
+    for d, gi, k in con.sql("SELECT d, gi, count(*) FROM dist_sp GROUP BY 1, 2").fetchall():
+        groups.setdefault(d, [0] * len(GROUPS))[gi] = k
+    places = [[int(d), title(nm), str(st), groups.get(d, [0] * len(GROUPS))] for d, st, nm in duckdb.sql(
+        f"SELECT dist_lgd, state_lgd, dtname FROM '{districts_path}' WHERE dist_lgd > 0 ORDER BY 1").fetchall()]
+    dump({"rows": places}, out / "d" / "places.json")
+    return len(files)
 
 
 def group_files(out: Path, folder, rows, every=()):
@@ -1461,7 +1488,7 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
                "totals": totals, "described": described_summary(con), "notes": notes,
                "fields": {"g": [f for f, _ in ROW_FIELDS], "w": [f for f, _ in ROW_FIELDS] + WAIT_FIELDS,
                           "search": SEARCH_FIELDS, "sp": SP_FIELDS, "fam": FAM_FIELDS, "pic": PIC_FIELDS,
-                          "web": WEB_FIELDS},
+                          "web": WEB_FIELDS, "d": D_FIELDS, "dp": DP_FIELDS},
                "status": STATUS_NAMES, "threatened": list(THREATENED), "iucn_names": IUCN_NAMES, "en_shards": EN_SHARDS,
                **RIGHTS}
     dump(summary, out / "summary.json")
@@ -1793,6 +1820,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
+    district_files(con, paths["ledger"], districts_path, out)
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}

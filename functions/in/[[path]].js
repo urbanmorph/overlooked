@@ -19,7 +19,7 @@ export async function handle(request, env, asset, data = { where: speciesWhere, 
   } catch {
     return new Response('The list cannot be read just now. Try again in a few minutes.', { status: 503, headers: { 'retry-after': '300' } });
   }
-  const place = parts[0] ? places(C.S).find(p => p.slug === parts[0]) : null;
+  const place = parts[0] ? places(C.S, C.districts).find(p => p.slug === parts[0]) : null;
   const gi = place && parts[1] ? C.S.groups.findIndex(g => groupSlug(g) === parts[1]) : -1;
   if ((parts[0] && !place) || (parts[1] && gi < 0)) return page(notFound(await shell()), 404);
   const want = placePath(place, gi >= 0 ? C.S.groups[gi] : null);

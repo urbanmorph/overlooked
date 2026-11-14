@@ -403,6 +403,23 @@ def test_site_files(built):
     assert ["Kerala", "state", 32, 32] in places and ["Mysuru", "district", 201, 29] in places
 
 
+def test_district_files(built):
+    """d/<district LGD code>.json: the species on the list with a GBIF record placed in the district, with the first
+    and latest year and the records there; d/places.json: every district, its state and its species per group."""
+    out, s = built["out"], built["summary"]
+    assert s["fields"]["d"] == ["key", "first_year", "last_year", "records"]
+    assert s["fields"]["dp"] == ["code", "name", "state", "groups"]
+    rows = json.loads((out / "d" / "101.json").read_text())["rows"]
+    assert ["K1", 2010, 2020, 5] in rows and ["K3", 2011, 2011, 2] in rows
+    assert [r[0] for r in rows] == sorted(r[0] for r in rows)
+    assert json.loads((out / "d" / "201.json").read_text())["rows"] == [["K2", 1900, 1900, 1]]
+    places = {r[0]: r for r in json.loads((out / "d" / "places.json").read_text())["rows"]}
+    assert places[201][:3] == [201, "Mysuru", "29"]
+    n = places[101][3]
+    assert len(n) == len(GROUPS) and n[GROUPS.index("Insects: beetles")] == 1
+    assert sum(n) == len(rows)
+
+
 def mcp_rows(out):
     """Read mcp/rows.bin with the layout mcp/meta.json gives (as functions/lib/mcp.js does)."""
     import struct
