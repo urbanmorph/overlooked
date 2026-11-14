@@ -22,7 +22,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. A name with a small spelling mistake is read as the nearest valid name, and the answer says how it was read: tell the user. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 const ABOUT = `# yellide
 
@@ -143,10 +143,16 @@ const DISTRICTS_MAX = 50;
 const either = (f, x, y) => (x == null ? y : y == null ? x : f(x, y));
 
 /** One district a request names: its name or LGD code, with the state when two states have the name. */
-function oneDistrict(S, all, value, state) {
-  const q = plain(value), stateName = code => S.states.find(s => s.code === code)?.name ?? code;
-  let found = all.filter(d => String(d.code) === String(value).trim() || plain(d.name) === q);
-  if (state != null) found = found.filter(d => d.state === S.states[stateOf(S, state)].code);
+function oneDistrict(S, all, value, state, a) {
+  const stateName = code => S.states.find(s => s.code === code)?.name ?? code;
+  const here = state != null ? all.filter(d => d.state === S.states[stateOf(S, state, a)].code) : all;
+  let found = here.filter(d => String(d.code) === String(value).trim());
+  if (!found.length) {
+    found = nearest(value, here.map(d => d.name)).map(i => here[i]);
+    const names = [...new Set(found.map(d => d.name))];
+    if (names.length > 1) throw new ToolError(`"${value}" is as near to ${names.join(' as to ')}: which district?`);
+    if (found.length) readAs(a, value, found[0].name);
+  }
   if (!found.length) throw new ToolError(`Unknown district "${value}"${state != null ? ` in ${state}` : ''}. Give its name or LGD code, as in the resource yellide://districts.`);
   if (found.length > 1) {
     throw new ToolError(`There is a district "${value}" in ${found.map(d => stateName(d.state)).join(' and ')}: give the state too, or the LGD code (${found.map(d => d.code).join(', ')}).`);
@@ -163,7 +169,7 @@ async function inDistrict(env, S, ix, a) {
   if (!list.length || list.length > DISTRICTS_MAX) throw new ToolError(`Give 1 to ${DISTRICTS_MAX} districts.`);
   const asked = [...new Set(list)];
   const all = await districts(env, S);
-  const ds = [...new Map(asked.map(v => oneDistrict(S, all, v, a.state)).map(d => [d.code, d])).values()];
+  const ds = [...new Map(asked.map(v => oneDistrict(S, all, v, a.state, a)).map(d => [d.code, d])).values()];
   const F = model(S).d, rows = rowOf(ix), at = new Map(), several = ds.length > 1;
   const files = await Promise.all(ds.map(d => shard(env, `d/${d.code}.json`)));
   ds.forEach((d, n) => {
@@ -191,27 +197,79 @@ const oneOf = (what, value, valid) => {
   throw new ToolError(`Unknown ${what} "${value}". Valid values: ${valid.join(', ')}.`);
 };
 
-function groupsOf(S, value) {
+// Names with a spelling mistake: a name asked for is read as the nearest name the list has, within a few edits for
+// its length (none under 5 letters), and the answer says how it was read.
+const READ = Symbol('read');
+
+/** Edits between two strings: a letter added, dropped or changed, or two neighbours swapped. */
+export function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+const slack = n => (n < 5 ? 0 : n < 9 ? 1 : n < 15 ? 2 : 3);
+
+/** The indexes of the names nearest to value: the ones equal as people type them, else the nearest within slack. */
+function nearest(value, names) {
+  const q = plain(value), exact = names.flatMap((n, i) => (plain(n) === q ? [i] : []));
+  if (exact.length) return exact;
+  const edits = names.map(n => editDistance(q, plain(n))), best = Math.min(...edits);
+  return best <= slack(q.length) ? names.flatMap((_, i) => (edits[i] === best ? [i] : [])) : [];
+}
+
+/** Note that value was read as name (the answer's note says so). */
+const readAs = (a, value, name) => { if (a && plain(value) !== plain(name)) (a[READ] ||= []).push(`"${value}" read as ${name}.`); };
+
+/** One name of a list for value, or a tool error naming the valid ones (or the nearest, when two are as near). */
+function one(what, value, names, valid, a) {
+  const at = nearest(value, names), distinct = [...new Set(at.map(i => names[i]))];
+  if (distinct.length > 1) throw new ToolError(`"${value}" is as near to ${distinct.join(' as to ')}: which ${what}?`);
+  if (!at.length) oneOf(what, value, valid);
+  readAs(a, value, names[at[0]]);
+  return at[0];
+}
+
+function groupsOf(S, value, a) {
   const q = plain(value);
   const exact = S.groups.findIndex(g => plain(g) === q);
   if (exact >= 0) return [exact];
   const some = S.groups.flatMap((g, i) => (plain(g).includes(q) ? [i] : []));
-  return some.length ? some : oneOf('group', value, S.groups);
+  return some.length ? some : [one('group', value, S.groups, S.groups, a)];
 }
 
-function stateOf(S, value) {
-  const q = plain(value);
-  const i = S.states.findIndex(s => plain(s.name) === q || s.code === String(value));
-  return i >= 0 ? i : oneOf('state', value, S.states.map(s => s.name));
+// States by an earlier name, as older papers and records give them.
+const STATE_NAMES_BEFORE = { orissa: 'Odisha', pondicherry: 'Puducherry', uttaranchal: 'Uttarakhand' };
+
+function stateOf(S, value, a) {
+  const i = S.states.findIndex(s => s.code === String(value));
+  if (i >= 0) return i;
+  const now = STATE_NAMES_BEFORE[plain(value)];
+  if (now && S.states.some(s => s.name === now)) { readAs(a, value, now); return S.states.findIndex(s => s.name === now); }
+  const names = S.states.map(s => s.name);
+  return one('state', value, names, names, a);
 }
 
 /** A province code (5B), a province (Western Ghats: Mountains) or a zone (Western Ghats): the province bits. */
-function regionBits(S, value) {
+function regionBits(S, value, a) {
   const q = plain(value);
-  const bits = S.provinces.flatMap(([code, prov, zone], i) =>
+  let bits = S.provinces.flatMap(([code, prov, zone], i) =>
     (plain(code) === q || plain(prov) === q || plain(zone) === q ? [i] : []));
   if (bits.length) return bits;
-  const hint = /eastern ghats/.test(q) ? ' There is no Eastern Ghats unit in the WII classification: its nearest is 6C, Deccan Peninsula: Eastern Highlands.' : '';
+  // Eastern Ghats is one letter from Western Ghats, but it is a real place WII has no unit for: say so.
+  const eastern = /eastern ghats/.test(q);
+  const names = [...new Set(S.provinces.flatMap(([, prov, zone]) => [prov, zone]))], at = eastern ? [] : nearest(value, names);
+  if (at.length === 1) {
+    readAs(a, value, names[at[0]]);
+    bits = S.provinces.flatMap(([, prov, zone], i) => (prov === names[at[0]] || zone === names[at[0]] ? [i] : []));
+    return bits;
+  }
+  const hint = eastern ? ' There is no Eastern Ghats unit in the WII classification: its nearest is 6C, Deccan Peninsula: Eastern Highlands.' : '';
   throw new ToolError(`Unknown region "${value}".${hint} Valid zones: ${[...new Set(S.provinces.map(p => p[2]))].join(', ')}; or a province code (${S.provinces.map(p => p[0]).join(', ')}). See the resource yellide://regions.`);
 }
 
@@ -241,15 +299,15 @@ const year = (what, v) => {
 function filter(S, ix, a, dist = null) {
   const tests = [], { col, nul } = ix;
   if (dist) tests.push(i => dist.at.has(i));
-  if (a.group != null) { const t = table(256, groupsOf(S, a.group)), g = col.group; tests.push(i => t[g[i]] === 1); }
+  if (a.group != null) { const t = table(256, groupsOf(S, a.group, a)), g = col.group; tests.push(i => t[g[i]] === 1); }
   // With a district, the state only tells which district of that name.
   if (a.state != null && !dist) {
-    const b = stateOf(S, a.state), m = b < 32 ? col.states_lo : col.states_hi, k = b % 32;
+    const b = stateOf(S, a.state, a), m = b < 32 ? col.states_lo : col.states_hi, k = b % 32;
     tests.push(i => ((m[i] >>> k) & 1) === 1);
   }
   if (a.region != null) {
     let mask = 0;
-    for (const b of regionBits(S, a.region)) mask |= 1 << b;
+    for (const b of regionBits(S, a.region, a)) mask |= 1 << b;
     const p = col.provinces, none = nul.provinces;
     tests.push(i => p[i] !== none && (p[i] & mask) !== 0);
   }
@@ -259,8 +317,7 @@ function filter(S, ix, a, dist = null) {
     tests.push(i => ((l[i] >>> b) & 1) === want);
   }
   if (a.order != null) {
-    const o = S.orders.findIndex(x => plain(x) === plain(a.order)), c = col.order;
-    if (o < 0) oneOf('order', a.order, ['an order name such as Squamata, Anura, Lepidoptera or Orchidales (Latin)']);
+    const o = one('order', a.order, S.orders, ['an order name such as Squamata, Anura, Lepidoptera or Orchidales (Latin)'], a), c = col.order;
     tests.push(i => c[i] === o);
   }
   if (a.suborder != null) {
@@ -270,8 +327,7 @@ function filter(S, ix, a, dist = null) {
     tests.push(i => c[i] === s);
   }
   if (a.family != null) {
-    const f = ix.families.findIndex(x => plain(x) === plain(a.family)), c = col.family;
-    if (f < 0) oneOf('family', a.family, ['a family name in Latin, such as Elapidae or Orchidaceae']);
+    const f = one('family', a.family, ix.families, ['a family name in Latin, such as Elapidae or Orchidaceae'], a), c = col.family;
     tests.push(i => c[i] === f);
   }
   if (a.open_record != null) { const want = a.open_record ? 1 : 0, c = col.status; tests.push(i => (c[i] === 1 ? 1 : 0) === want); }
@@ -298,7 +354,7 @@ function unmarked(S, ix) {
 }
 
 function filterNote(S, ix, a) {
-  const notes = [];
+  const notes = [...(a[READ] || [])];
   if (a.district != null) notes.push(DISTRICT_NOTE, RESPECT_NOTE);
   if (a.endemic != null) {
     notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants, ZSI and other checklists for some animal groups). '
@@ -384,10 +440,19 @@ async function findSpecies(env, S, a) {
   if (q.length < 2) throw new ToolError('Give at least two letters of a name.');
   const f = await shard(env, `search/${prefix(q)}.json`);
   const by = new Map();
-  const M = model(S), F = M.search;
-  for (const r of f?.rows || []) {
+  const M = model(S), F = M.search, rows = f?.rows || [];
+  // As written; else, for a name with a spelling mistake, the names whose start is nearest to it.
+  let hits = rows.filter(r => nameMatches(r[F.name], q, r.length > F.latin)), readAsNote;
+  if (!hits.length && slack(q.length)) {
+    const near = rows.map(r => editDistance(q, plain(r[F.name]).slice(0, q.length)));
+    const best = Math.min(...near);
+    if (best <= slack(q.length)) {
+      hits = rows.filter((_, i) => near[i] === best);
+      readAsNote = `No name starts with "${a.name}": these are the nearest names.`;
+    }
+  }
+  for (const r of hits) {
     const common = r.length > F.latin, latin = common ? r[F.latin] : r[F.name];
-    if (!nameMatches(r[F.name], q, common)) continue;
     const id = r[F.key] || 'n:' + latin;
     const s = by.get(id) || { key: r[F.key] || null, name: latin, english: null, group: S.groups[r[F.group]],
       iucn: S.iucn[r[F.iucn]], status: M.status(r[F.status]), described: r[F.year], url: url(r[F.key], latin), exact: false };
@@ -400,7 +465,7 @@ async function findSpecies(env, S, a) {
   const missing = species.filter(s => s.key && !s.english);
   const en = await englishOf(path => shard(env, path), '', S, missing.map(s => s.key));
   for (const s of missing) s.english = en.get(s.key) || null;
-  return { species };
+  return { species, ...(readAsNote ? { read_as: readAsNote } : {}) };
 }
 
 async function getSpecies(env, S, a) {

@@ -401,6 +401,29 @@ test('a district name in two states needs the state; an unknown district is a to
   assert.match(no.content[0].text, /yellide:\/\/districts/);
 });
 
+test('names with a spelling mistake: the nearest name is read, and the answer says so; too far or too short stays an error', async () => {
+  fresh();
+  const d = await out('count_species', { district: 'Ernakulum' });
+  assert.equal(d.counts.documented, 3);
+  assert.match(d.note, /"Ernakulum" read as Ernakulam/);
+  assert.equal((await out('count_species', { state: 'Karnatka' })).counts.documented, 3);
+  assert.equal((await out('count_species', { region: 'Westrn Ghats' })).counts.documented, 3);
+  assert.equal((await out('count_species', { group: 'Brids' })).counts.documented, 2);
+  assert.equal((await out('count_species', { family: 'Elapidea' })).counts.documented, 1);
+  assert.equal((await out('count_species', { order: 'Squamtaa' })).counts.documented, 2);
+  assert.match((await out('count_species', { state: 'Kerela' })).note, /"Kerela" read as Kerala/);
+  assert.equal((await call('count_species', { state: 'Atlantis' })).isError, true);
+  assert.equal((await call('count_species', { district: 'Ernakxxxx' })).isError, true);
+  assert.equal((await call('count_species', { state: 'Kerxxa' })).isError, true);      // 6 letters: one edit, not two
+  env = { DATA: bucket({ ...files(), [BASE + 'summary.json']: { ...SUMMARY, states: [...SUMMARY.states, { code: '21', name: 'Odisha' }] } }) }; _reset();
+  assert.match((await out('count_species', { state: 'Orissa' })).note, /"Orissa" read as Odisha/);   // an earlier name
+  fresh();
+  const f = await out('find_species', { name: 'Aus bos' });
+  assert.deepEqual(f.species.map(s => s.key), ['K1']);
+  assert.match(f.read_as, /"Aus bos"/);
+  assert.equal((await out('find_species', { name: 'Aus bus' })).read_as, undefined);   // found as written: nothing to say
+});
+
 test('no tool takes or gives a point or coordinates', async () => {
   fresh();
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
