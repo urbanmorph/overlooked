@@ -14,6 +14,7 @@ It was called Overlooked until November 2026, when the site moved from overlooke
 [![Runs on Cloudflare](https://img.shields.io/badge/runs_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com)
 [![yellide MCP connector: tool definition quality and endpoint health on Glama](https://glama.ai/mcp/connectors/io.github.sathya-sankaran/yellide/badges/score.svg)](https://glama.ai/mcp/connectors/io.github.sathya-sankaran/yellide)
 [![yellide MCP connector on mcptry](https://mcptry.com/badge/io.github.sathya-sankaran/yellide)](https://mcptry.com/servers/io.github.sathya-sankaran/yellide)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/urbanmorph/overlooked)
 
 ![The yellide home page: seven gaps in what we know about the species of India, with the share of documented species where each is known](docs/screenshots/home-desktop.png)
 
