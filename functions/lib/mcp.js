@@ -673,7 +673,7 @@ async function answer(msg, env, metric) {
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
-        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.0.0', websiteUrl: SITE },
+        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.1.0', websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     case 'ping':
