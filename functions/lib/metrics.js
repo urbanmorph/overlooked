@@ -23,6 +23,35 @@ export function clientClass(ua) {
   return 'human';
 }
 
+/** Crawlers, monitors, link previews and empty agents: not use, for the counts by mode. Scripts (curl, python, node,
+ *  DuckDB) and AI clients acting for a person (Claude-User, ChatGPT-User) are use: they are how the API and MCP are read. */
+export function isBot(ua) {
+  return !ua || /bot|crawl|spider|slurp|headless|scan|monitor|uptime|preview|facebookexternalhit|whatsapp|telegram|embedly|bytespider|google-extended|meta-external|cohere-ai/i.test(ua);
+}
+
+// MCP client products, from initialize params.clientInfo.name. The first match wins (cursor-vscode is cursor);
+// anything else is 'other'. Only the product is counted, never the name the client sent.
+const CLIENTS = [
+  ['claude-code', /claude[ -]?code/], ['claude-ai', /claude/], ['cursor', /cursor/], ['chatgpt', /chatgpt|openai/],
+  ['windsurf', /windsurf|codeium/], ['vscode', /visual studio code|vscode|copilot/], ['gemini', /gemini/],
+  ['cline', /\bcline\b/], ['zed', /^zed\b/], ['inspector', /inspector/],
+];
+export const MCP_CLIENTS = [...CLIENTS.map(([k]) => k), 'other'];
+
+/** The MCP client product for a clientInfo.name: one of MCP_CLIENTS. */
+export function mcpClient(name) {
+  const s = typeof name === 'string' ? name.toLowerCase().slice(0, 100) : '';
+  return CLIENTS.find(([, re]) => re.test(s))?.[0] ?? 'other';
+}
+
+/** A fetch made by one of our own pages (the website), not by another site, a script, an agent, or a person who
+ *  followed a link to the file (a navigation). Browsers without Sec-Fetch headers send our page as the Referer. */
+function ownPage(h) {
+  if (h.get('sec-fetch-mode') === 'navigate') return false;
+  if (h.get('sec-fetch-site') === 'same-origin') return true;
+  try { return OWN_HOST.test(new URL(h.get('referer')).hostname); } catch { return false; }
+}
+
 /** mobile, tablet or desktop. */
 export function deviceClass(ua) {
   const s = (ua ?? '').toLowerCase();
@@ -61,7 +90,15 @@ export function observe(request, response) {
   }
 
   if (url.pathname.startsWith('/data/')) {
-    if (!ok || cls !== 'human') return [];
+    if (!ok) return [];
+    // Use by mode: a JSON file read by another site, a script or an agent is the API; another whole file is a
+    // download (range reads, such as DuckDB's of a Parquet file, are parts of one and are not counted).
+    if (!ownPage(h)) {
+      if (isBot(ua)) return [];
+      if (/\.json$/.test(url.pathname)) return [['mode', 'api']];
+      return response.status === 200 ? [['mode', 'download']] : [];
+    }
+    if (cls !== 'human') return [];
     const s = url.pathname.match(SEARCH);
     if (s) return [['search', s[1]]];
     const g = url.pathname.match(GROUP_FILE);
@@ -75,7 +112,7 @@ export function observe(request, response) {
   // a species page is one page, /species, whatever its key and slug (/species/<key>/<slug>)
   const own = url.pathname.match(/^\/species\/([^/]+)/);
   const path = own ? '/species' : pagePath(url.pathname);
-  const out = [['class', 'human'], ['page', path], ['device', deviceClass(ua)]];
+  const out = [['class', 'human'], ['mode', 'website'], ['page', path], ['device', deviceClass(ua)]];
   const country = request.cf?.country;
   if (typeof country === 'string' && /^[A-Z0-9]{2}$/.test(country)) out.push(['country', country]);
   const ref = refHost(h.get('referer'));

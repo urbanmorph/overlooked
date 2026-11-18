@@ -358,6 +358,29 @@ test('tool calls are counted by tool name (metrics), never with their arguments'
   assert.deepEqual(seen[0].slice(1), ['mcp', 'find_species']);
 });
 
+test('use by mode: each tool call adds mode mcp; initialize adds the client product, never the raw name', async () => {
+  fresh();
+  const seen = [];
+  const db = { prepare: () => ({ bind: (...a) => a }), batch: async q => { seen.push(q.map(a => a.slice(1))); } };
+  const ua = { 'user-agent': 'node' };
+  await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'find_species', arguments: { name: 'aus' } } }, { db, headers: ua });
+  assert.deepEqual(seen.pop(), [['mcp', 'find_species'], ['mode', 'mcp']]);
+  await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'claude-code', version: '2' } } }, { db, headers: ua });
+  assert.deepEqual(seen.pop(), [['mcp_client', 'claude-code']]);
+  await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'Someone Private' } } }, { db, headers: ua });
+  assert.deepEqual(seen.pop(), [['mcp_client', 'other']]);
+  // a batch: one write for the whole request
+  await rpc([{ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'cursor-vscode' } } },
+    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'find_species', arguments: { name: 'aus' } } }], { db, headers: ua });
+  assert.equal(seen.length, 1);
+  assert.deepEqual(seen.pop().sort(), [['mcp', 'find_species'], ['mcp_client', 'cursor'], ['mode', 'mcp']]);
+  // bots: no mode or client count (the tool count stays as before)
+  await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'claude-ai' } } }, { db, headers: { 'user-agent': 'Googlebot/2.1' } });
+  assert.equal(seen.length, 0);
+  await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'find_species', arguments: { name: 'aus' } } }, { db, headers: { 'user-agent': 'SomeBot/1' } });
+  assert.deepEqual(seen.pop(), [['mcp', 'find_species']]);
+});
+
 test('a district: by name or LGD code, with the years and records there; threatened species too, with the exact year', async () => {
   fresh();
   const c = await out('count_species', { district: 'ernakulam' });
