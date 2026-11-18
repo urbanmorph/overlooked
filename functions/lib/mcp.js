@@ -5,7 +5,7 @@
 // Questions across all of India (every endangered species, the species of a region) scan mcp/rows.bin, one
 // fixed-width row per species written by pipeline/master.py mcp_files: a scan takes about a millisecond, where
 // parsing the g files takes 40 ms. Files are read once per isolate and week.
-import { record } from './metrics.js';
+import { record, isBot, mcpClient } from './metrics.js';
 import { DISTRICT_NOTE, RESPECT_NOTE } from './places.js';
 import { model, shardOf, nameMatches, plainName as plain, englishOf, speciesPath } from '../../site/assets/species_model.js';
 
@@ -670,6 +670,7 @@ async function answer(msg, env, metric) {
   if (id === undefined) return null;                    // a notification: nothing to answer
   switch (method) {
     case 'initialize':
+      metric.client(params.clientInfo?.name);
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
@@ -691,7 +692,7 @@ async function answer(msg, env, metric) {
     case 'tools/call': {
       const tool = TOOLS.find(t => t.name === params.name);
       if (!tool) return fail(id, -32602, `Unknown tool: ${params.name}`);
-      metric(tool.name);
+      metric.tool(tool.name);
       try {
         const S = await file(env, 'summary.json');
         const out = { week: memo.week, ...(await tool.run(env, S, params.arguments || {})),
@@ -723,8 +724,14 @@ export async function handle(request, env, waitUntil) {
   }
   let body;
   try { body = await request.json(); } catch { return json(fail(null, -32700, 'Parse error'), 400); }
+  // Counted per request, written once: each tool by name, and (bots aside) the mode and the client product. Never
+  // the arguments, and never the client's name as it sent it (see metrics.js mcpClient).
+  const bot = isBot(request.headers.get('user-agent'));
   const names = [];
-  const metric = name => names.push(['mcp', name]);
+  const metric = {
+    tool: name => { names.push(['mcp', name]); if (!bot) names.push(['mode', 'mcp']); },
+    client: name => { if (!bot) names.push(['mcp_client', mcpClient(name)]); },
+  };
   let out;
   try {
     out = Array.isArray(body)

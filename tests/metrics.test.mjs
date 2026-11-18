@@ -1,7 +1,7 @@
 // Tests for the server-side usage metrics (functions/lib/metrics.js). Run: node --test tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clientClass, deviceClass, refHost, observe, record } from '../functions/lib/metrics.js';
+import { clientClass, deviceClass, refHost, observe, record, isBot, mcpClient, MCP_CLIENTS } from '../functions/lib/metrics.js';
 
 const FIREFOX = 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1';
@@ -20,6 +20,8 @@ function req(path, { ua = FIREFOX, method = 'GET', referer, country = 'IN', head
 }
 const html = (status = 200) => new Response('<!doctype html>', { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 const json = (status = 200) => new Response(status === 304 ? null : '{}', { status, headers: { 'content-type': 'application/json' } });
+// what our own pages send with each fetch
+const SAME = { 'sec-fetch-site': 'same-origin' };
 const has = (pairs, dim, key) => pairs.some(([d, k]) => d === dim && k === key);
 const dims = pairs => pairs.map(([d]) => d);
 
@@ -115,22 +117,22 @@ test('prefetches, HEAD requests, errors and non-HTML responses are not page view
 });
 
 test('search shard fetch records the two-letter prefix only', () => {
-  const p = observe(req('/data/layers/master/2026-10/search/pa.json'), json());
+  const p = observe(req('/data/layers/master/2026-10/search/pa.json', { headers: SAME }), json());
   assert.deepEqual(p, [['search', 'pa']]);
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/a_.json'), json(304)), [['search', 'a_']]);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/a_.json', { headers: SAME }), json(304)), [['search', 'a_']]);
   // places.json loads with every front page, so it says nothing about a search
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/places.json'), json()), []);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/places.json', { headers: SAME }), json()), []);
 });
 
 test('group file fetch records the group index', () => {
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/g/12.json'), json()), [['group_open', '12']]);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/g/12.json', { headers: SAME }), json()), [['group_open', '12']]);
 });
 
 test('other data files, failed fetches and bot fetches record nothing', () => {
-  assert.deepEqual(observe(req('/data/latest.json'), json()), []);
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/summary.json'), json()), []);
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/pa.json'), json(404)), []);
-  assert.deepEqual(observe(req('/data/layers/master/2026-10/g/1.json', { ua: 'curl/8' }), json()), []);
+  assert.deepEqual(observe(req('/data/latest.json', { headers: SAME }), json()), []);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/summary.json', { headers: SAME }), json()), []);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/search/pa.json', { headers: SAME }), json(404)), []);
+  assert.deepEqual(observe(req('/data/layers/master/2026-10/g/1.json', { ua: 'curl/8', headers: SAME }), json()), []);
 });
 
 test('link out to iNaturalist from the shortlist page records the group key only', () => {
@@ -191,4 +193,59 @@ test('middleware: with the binding, counts go to waitUntil and a failing D1 chan
   assert.equal(out, res);
   assert.equal(waits.length, 1);
   await waits[0];
+});
+
+// ---------------------------------------------------------------- use by mode (decision 18 Nov 2026)
+
+test('isBot: crawlers and empty agents are bots; browsers, scripts and AI clients acting for a person are not', () => {
+  for (const ua of ['Mozilla/5.0 (compatible; Googlebot/2.1)', 'Mozilla/5.0 (compatible; GPTBot/1.2)', 'ClaudeBot/1.0',
+    'Mozilla/5.0 HeadlessChrome/126.0', 'facebookexternalhit/1.1', 'UptimeRobot/2.0', '', null]) assert.equal(isBot(ua), true, ua);
+  for (const ua of [FIREFOX, 'curl/8.4.0', 'python-requests/2.32', 'node', 'DuckDB', 'Claude-User/1.0', 'ChatGPT-User/1.0'])
+    assert.equal(isBot(ua), false, ua);
+});
+
+test('mode website: one count per human page view, none for bots', () => {
+  assert.ok(has(observe(req('/ledger'), html()), 'mode', 'website'));
+  assert.ok(!dims(observe(req('/', { ua: 'curl/8' }), html())).includes('mode'));
+  assert.ok(!dims(observe(req('/', { ua: 'Mozilla/5.0 (compatible; GPTBot/1.2)' }), html())).includes('mode'));
+});
+
+test('mode api: a JSON file under /data/ fetched by anything but our own pages and bots', () => {
+  assert.deepEqual(observe(req('/data/latest.json', { ua: 'python-requests/2.32' }), json()), [['mode', 'api']]);
+  assert.deepEqual(observe(req('/data/layers/master/m/summary.json', { ua: 'curl/8', headers: { 'sec-fetch-site': 'none' } }), json(304)), [['mode', 'api']]);
+  // another site's page, by CORS
+  assert.deepEqual(observe(req('/data/latest.json', { referer: 'https://example.org/', headers: { 'sec-fetch-site': 'cross-site' } }), json()), [['mode', 'api']]);
+  // our own pages: the website, already counted by its page view
+  assert.deepEqual(observe(req('/data/latest.json', { headers: { 'sec-fetch-site': 'same-origin' } }), json()), []);
+  assert.deepEqual(observe(req('/data/latest.json', { referer: 'https://yellide.com/' }), json()), []);
+  assert.deepEqual(observe(req('/data/layers/master/m/search/pa.json', { headers: { 'sec-fetch-site': 'same-origin' } }), json()), [['search', 'pa']]);
+  // bots, failures and HEAD
+  assert.deepEqual(observe(req('/data/latest.json', { ua: 'Mozilla/5.0 (compatible; Googlebot/2.1)' }), json()), []);
+  assert.deepEqual(observe(req('/data/latest.json', { ua: '' }), json()), []);
+  assert.deepEqual(observe(req('/data/latest.json', { ua: 'curl/8' }), json(404)), []);
+  assert.deepEqual(observe(req('/data/latest.json', { ua: 'curl/8', method: 'HEAD' }), json()), []);
+});
+
+test('mode download: a whole non-JSON file under /data/; range reads are not downloads', () => {
+  const file = (status = 200) => new Response(status === 304 ? null : 'PAR1', { status, headers: { 'content-type': 'application/octet-stream' } });
+  assert.deepEqual(observe(req('/data/layers/master/m/species.parquet', { ua: 'curl/8' }), file()), [['mode', 'download']]);
+  assert.deepEqual(observe(req('/data/layers/master/m/species.parquet', { ua: 'DuckDB' }), file(206)), []);
+  assert.deepEqual(observe(req('/data/layers/master/m/species.parquet', { headers: { 'sec-fetch-site': 'same-origin' } }), file()), []);
+  assert.deepEqual(observe(req('/data/layers/master/m/species.parquet', { ua: 'Mozilla/5.0 (compatible; bingbot/2.0)' }), file()), []);
+  // a person following a link to a file from our method page: a navigation, not the page's own fetch
+  const click = { 'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate' };
+  assert.deepEqual(observe(req('/data/layers/master/m/species.parquet', { headers: click, referer: 'https://yellide.com/method' }), file()), [['mode', 'download']]);
+  assert.deepEqual(observe(req('/data/layers/master/latest.json', { headers: click, referer: 'https://yellide.com/method' }), json()), [['mode', 'api']]);
+});
+
+test('mcpClient: the client product from initialize clientInfo.name, a small fixed set, never the raw name', () => {
+  const cases = {
+    'claude-ai': 'claude-ai', 'Claude Desktop': 'claude-ai', 'claude-code': 'claude-code', 'cursor-vscode': 'cursor',
+    'Cursor': 'cursor', 'openai-mcp': 'chatgpt', 'ChatGPT': 'chatgpt', 'Visual Studio Code': 'vscode',
+    'GitHub Copilot': 'vscode', 'windsurf-client': 'windsurf', 'Codeium': 'windsurf', 'gemini-cli-mcp-client': 'gemini',
+    'Cline': 'cline', 'Zed': 'zed', 'mcp-inspector': 'inspector',
+    'my-secret-agent Sathya': 'other', 'mcp-client-line': 'other', '': 'other', undefined: 'other', 42: 'other',
+  };
+  for (const [name, want] of Object.entries(cases)) assert.equal(mcpClient(name === 'undefined' ? undefined : name === '42' ? 42 : name), want, name);
+  for (const k of Object.values(cases)) assert.ok(MCP_CLIENTS.includes(k), k);
 });

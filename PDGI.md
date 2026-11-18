@@ -26,7 +26,7 @@ Falls short: not every source is fully open. The IUCN Red List is non-commercial
 Direction: prefer the open source where two say the same thing.
 
 ### Privacy: ✅
-No accounts, no cookies, no personal data. Use is counted on the server in aggregate only (pages, and the group, state or search prefix asked for): no IP addresses, no identifiers. Cloudflare Web Analytics, cookieless, is the only script that is not ours.
+No accounts, no cookies, no personal data. Use is counted on the server in aggregate only (pages, and the group, state or search prefix asked for; daily totals by mode: website, API, download, MCP, and MCP calls by AI client product from a fixed list): nothing about the caller is stored, no IP addresses, no user agents, no names, no identifiers. Cloudflare Web Analytics, cookieless, is the only script that is not ours.
 Evidence: `functions/lib/metrics.js`, [docs/metrics.md](./docs/metrics.md).
 
 ### Platform cooperativism: 🟡

@@ -29,17 +29,36 @@ One table, `daily(day, dim, key, n)`: one counter per UTC day, per dimension, pe
 | `group_open` | group index | the group file the front page fetches (`layers/master/<m>/g/<gi>.json`) |
 | `inat_out` | shortlist group key, for example `true-bugs` | a link followed from the Shortlists page to iNaturalist (`/go/inat/<id>?g=<group>`, a 302 redirect by `functions/go/inat/[id].js`); the observation id is not stored |
 | `mcp` | tool name, for example `list_species` | a tool call to the MCP server (`/mcp`, `functions/lib/mcp.js`); the arguments are not stored |
+| `mode` | `website`, `api`, `download` or `mcp` | use by mode (below) |
+| `mcp_client` | `claude-ai`, `claude-code`, `cursor`, `chatgpt`, `windsurf`, `vscode`, `gemini`, `cline`, `zed`, `inspector` or `other` | an MCP `initialize` (below) |
 
-Only page views with status 200 and an HTML body count, and the `/go/inat/` redirects with status 302. Prefetches, HEAD requests, errors and other files do not count. Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
+Only page views with status 200 and an HTML body count, and the `/go/inat/` redirects with status 302. Prefetches, HEAD requests, errors and other files do not count, except as use by mode (below). Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
 
 Bots and AI crawlers add one `class` counter and nothing else (the same lists as mugilu), so the other counts show people.
 
+### Use by mode (since 18 Nov 2026)
+
+Every app counts its use by mode as daily totals, bots excluded. In yellide (`mode` dimension):
+
+| key | one count for |
+|---|---|
+| `website` | each human page view (the same requests as `class` `human`) |
+| `api` | a JSON file under `/data/` (status 200 or 304) read by anything but our own pages: a script, an agent, another site |
+| `download` | a whole other file under `/data/` (status 200; for example a Parquet file) read by anything but our own pages. Range reads (206), such as DuckDB's, are parts of a file and are not counted |
+| `mcp` | each tool call to `/mcp` (one per call, also inside a JSON-RPC batch) |
+
+- The files our own pages fetch (`Sec-Fetch-Site: same-origin`, or our page as the `Referer` in browsers without Sec-Fetch headers) are the website and are not counted again as `api`; a person who follows a link to a file (a navigation) is counted.
+- Bots here are crawlers, monitors, link previews and requests with no user agent (`isBot` in `functions/lib/metrics.js`). Scripts (curl, Python, Node, DuckDB) and AI clients acting for a person (Claude-User, ChatGPT-User) are use: that is how the API and MCP are read. So `api` and `mcp` count requests the `class` dimension calls `bot` or `llm`.
+- `mcp_client`: one count per MCP `initialize` (bots excluded), by the client product read from `params.clientInfo.name` and mapped to a fixed list (`MCP_CLIENTS`); any other name is `other`. The name the client sent is read and dropped, never stored.
+- The `mcp` dimension (per tool) still counts every tool call, bots included, as before; `mode` `mcp` leaves bots out, so it can be lower.
+
 ## What is not stored
 
-- No IP address, no cookie, no user agent string, no session or user ID.
+- Nothing about the caller: no IP address, no cookie, no user agent string, no name (not even the MCP client's name as sent; only its product from a fixed list), no session or user ID.
 - No search text. Only the two-letter prefix that picks the search file. The rest of the text stays in the browser.
 - No full referrer URL. Only the host.
 - No observation id for a link to iNaturalist. Only the shortlist group.
+- No arguments of an MCP call and no address of an API call beyond its mode.
 - No rows per visit. Each dimension is a separate counter, so the table cannot say which country opened which species, or which search came from which page.
 
 ## Limits
@@ -59,7 +78,7 @@ npx wrangler d1 execute overlooked-metrics --remote --command "DELETE FROM daily
 
 ## Privacy paragraph (for PDGI.md)
 
-> **Privacy.** No third-party analytics, no tracking scripts, no ad tech, no accounts and no personal data. The first-party usage counts we keep (to improve the site, not to sell) are aggregate and server-side: daily counters of page views, country, device class, referring host, species pages opened, groups opened, links followed to iNaturalist per shortlist group, and the two-letter prefix of front-page searches. We store no IP address, no cookies, no user agent, no search text, no per-user or per-visit records, and the site sends no client-side beacon. Each count is kept separately, so no record links one visitor's country, searches and pages. Evidence: `functions/_middleware.js`, `functions/lib/metrics.js`, `migrations/0001_metrics.sql`, this file.
+> **Privacy.** No third-party analytics, no tracking scripts, no ad tech, no accounts and no personal data. The first-party usage counts we keep (to improve the site, not to sell) are aggregate and server-side: daily counters of page views, country, device class, referring host, species pages opened, groups opened, links followed to iNaturalist per shortlist group, the two-letter prefix of front-page searches, use by mode (website, API, download, MCP; bots excluded) and MCP tool calls by tool and by client product (such as Claude or Cursor, from a fixed list). We store nothing about the caller: no IP address, no cookies, no user agent, no names, no search text, no per-user or per-visit records, and the site sends no client-side beacon. Each count is kept separately, so no record links one visitor's country, searches and pages. Evidence: `functions/_middleware.js`, `functions/lib/metrics.js`, `migrations/0001_metrics.sql`, this file.
 
 ## Set-up steps (for the lead; not done by the code)
 
