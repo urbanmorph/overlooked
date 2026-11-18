@@ -43,6 +43,21 @@ def test_the_favicon_is_three_bars_with_the_top_layer_light_green_and_orange():
     assert fills((ROOT / "site" / "favicon.svg").read_text()) == [PART, ORANGE, ACCENT, ACCENT]
 
 
+def test_search_engines_get_raster_favicons_in_multiples_of_48_pixels():
+    # Google's favicon fetcher (search results, Search Console) wants a square multiple of 48 px and falls back to
+    # /favicon.ico; until 18 Nov 2026 yellide had only the SVG and no .ico, and Google showed a blank globe.
+    # Both come from the light version of favicon.svg:
+    #   rsvg-convert -w 96 -h 96 site/favicon.svg -o site/favicon-96.png
+    #   for s in 16 32 48; do rsvg-convert -w $s -h $s site/favicon.svg -o /tmp/f$s.png; done
+    #   magick /tmp/f16.png /tmp/f32.png /tmp/f48.png site/favicon.ico
+    png = (ROOT / "site" / "favicon-96.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (96, 96)
+    ico = (ROOT / "site" / "favicon.ico").read_bytes()
+    assert ico[:4] == b"\x00\x00\x01\x00"
+    sizes = [ico[6 + 16 * i] or 256 for i in range(struct.unpack("<H", ico[4:6])[0])]
+    assert 48 in sizes and 16 in sizes, sizes
+
+
 def test_the_home_screen_icon_is_180_pixels():
     png = (ROOT / "site" / "apple-touch-icon.png").read_bytes()
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (180, 180)

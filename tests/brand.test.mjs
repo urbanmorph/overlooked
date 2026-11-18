@@ -15,6 +15,9 @@ test('every page wears the yellide wordmark with "species of India", the same ic
     const h = read('site/' + f);
     assert.ok(h.includes('<b>yellide</b><span>species of India</span>'), f);
     assert.ok(h.includes('<link rel="icon" href="/favicon.svg"') && h.includes('<link rel="apple-touch-icon" href="/apple-touch-icon.png">'), f);
+    // a 96 px PNG for Google's favicon fetcher, listed before the SVG so browsers that read both keep the SVG
+    assert.ok(h.indexOf('<link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">') > -1 &&
+      h.indexOf('<link rel="icon" href="/favicon-96.png"') < h.indexOf('<link rel="icon" href="/favicon.svg"'), f);
     assert.match(h.match(/<title>([^<]*)<\/title>/)[1], /yellide/, f);
     assert.ok(!/Overlooked(?! Species| until November 2026)/.test(h.replace(/<script type="application\/ld\+json">.*?<\/script>/s, "")), `${f} still says Overlooked`);
     assert.ok(h.includes('The Overlooked Species'), `${f} credits The Overlooked Species`);
