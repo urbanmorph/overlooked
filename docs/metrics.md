@@ -1,6 +1,6 @@
 # Usage metrics
 
-Overlooked counts how the site is used so that we can improve it. The counts are first-party, server-side and aggregate. This follows the mugilu pattern (`mugilu/apps/worker/src/metrics.ts`): aggregate counters in D1, no IP, no cookies, no per-user rows, no client-side beacon.
+yellide counts how the site is used so that we can improve it. The counts are first-party, server-side and aggregate. This follows the mugilu pattern (`mugilu/apps/worker/src/metrics.ts`): aggregate counters in D1, no IP, no cookies, no per-user rows, no client-side beacon.
 
 ## How it works
 

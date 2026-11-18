@@ -2,13 +2,13 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sathya-sankaran/yellide",
   "title": "yellide",
-  "description": "Species of India: find species, where they occur, and their status, from open biodiversity data.",
+  "description": "Species of India: find a species; count or list species by group, state, district, region or threat.",
   "repository": {
     "url": "https://github.com/urbanmorph/overlooked",
     "source": "github"
   },
   "websiteUrl": "https://yellide.com",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "remotes": [
     {
       "type": "streamable-http",

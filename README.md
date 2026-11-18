@@ -56,7 +56,7 @@ over time. It follows the data story [The Overlooked Species](https://overlooked
 |---|---|
 | [`/`](https://yellide.com/) Explore | Species of India by group and state: the seven gaps in what we know, open records, observations that wait for a name, IUCN status; search by Latin or English name. |
 | `/species/<key>/<slug>` | One species, for example [Ardeotis nigriceps](https://yellide.com/species/GCMS/ardeotis-nigriceps): its sources, the seven gaps, its web of partners (GloBI), map by district, records by decade, IUCN status and trend, evidence, photo, names in Indian languages, observations that wait for a name. |
-| [`/in`](https://yellide.com/in) | Place pages: `/in/<place>` and `/in/<place>/<group>` ("Birds of Kerala"), with counts, threatened and endemic species, and every species linked. |
+| [`/in`](https://yellide.com/in) | Place pages for a state, a district or a region: `/in/<place>` and `/in/<place>/<group>` ("Birds of Kerala", [`/in/wayanad-kerala/birds`](https://yellide.com/in/wayanad-kerala/birds)), with counts, threatened and endemic species, and every species linked. |
 | [`/changes`](https://yellide.com/changes) | The totals by week as tiles and a chart, then what moved since last week: IUCN category changed; a first open record in India or in a state; added to or taken off the list. |
 | [`/fix`](https://yellide.com/fix) | Records to fix, for data publishers: GBIF records from India with no exact place or no species name, by dataset, state and group. |
 | [`/shortlist`](https://yellide.com/shortlist) | Experimental. Observations on iNaturalist that wait for a name, each with a short list of names from a model, for a person to check on iNaturalist. |
@@ -65,8 +65,9 @@ over time. It follows the data story [The Overlooked Species](https://overlooked
 
 Other things worth knowing:
 
-- No coordinates are published. The smallest area shown is a district; the MCP server answers only by state or
-  biogeographic province.
+- No coordinates are published. The smallest area shown is a district, on the site and in the MCP server. Every
+  district page and answer says how to read the records and asks people to respect the species
+  ([Sensitive locations](https://yellide.com/method#sensitive)).
 - Open data: the site reads its files through `/data/<key>` (CORS open). The data layout for people and agents is in
   [/llms.txt](https://yellide.com/llms.txt).
 - Species pages are served at their own address with a title, description, canonical address and schema.org Taxon in
@@ -110,9 +111,10 @@ Any other client: add a remote (HTTP) server with the URL `https://yellide.com/m
 | `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". Up to 100 rows per page, with the total and a cursor for the next page. |
 | `new_species` | Species described from India since a year (2007 or later), from Plazi, BSI Plant Discoveries and ZSI Animal Discoveries: year, group, state of the type locality, journal and a link to the paper, and whether it has been recorded since. |
 
-Filters for `count_species` and `list_species`: `group`, `state`, `region` (WII biogeographic zone or province),
-`iucn`, `endemic`, `order`, `suborder`, `family`, `open_record`, `recorded_since`, `described_since`. The server also
-offers the resources `yellide://about`, `yellide://groups`, `yellide://states` and `yellide://regions`.
+Filters for `count_species` and `list_species`: `group`, `state`, `district` (LGD name or code, or a list of up to 50
+districts for an area such as a delta), `region` (WII biogeographic zone or province), `iucn`, `endemic`, `order`,
+`suborder`, `family`, `open_record`, `recorded_since`, `described_since`. The server also offers the resources
+`yellide://about`, `yellide://groups`, `yellide://states`, `yellide://districts` and `yellide://regions`.
 
 Try it without an assistant:
 
@@ -192,6 +194,7 @@ A week is named by its Monday in UTC (`2026-10-26`). Lists before 27 October 202
 | `master.yml` | 10:37 daily, and by hand | Master list, the change feed and the MCP index. Does nothing when no input changed. |
 | `globi.yml` | 04:41 on Wednesdays, and by hand | GloBI interactions, only when GloBI's snapshot changed. |
 | `iucn.yml` | 03:29 on the 3rd of each month, and by hand | IUCN Red List API: the population trend of each assessed species (needs `IUCN_TOKEN`). |
+| `publish-mcp.yml` | 04:38 daily, when `server.json` changes on `main`, and by hand | Publishes `server.json` to the MCP Registry when the Registry does not have its version yet (needs `MCP_PUBLISHER_TOKEN`, not `PIPELINE_ENABLED`). |
 | `checks.yml` | Every push to `main` and every pull request | Runs the tests. |
 
 Scheduled runs need the repository variable `PIPELINE_ENABLED=true`. Runs started by hand always work. A failed run
@@ -241,7 +244,7 @@ site-parts/      Shared header, footer and head, copied into site/ by scripts/pa
 migrations/      D1 schema for the usage counters
 scripts/         Local server, page builder, backfills, failure reporting
 tests/           Python tests (test_*.py) and Node tests (*.test.mjs)
-.github/         Workflows and the issue template
+.github/         Workflows
 runs/            Run state of each weekly snapshot (committed by request.yml)
 experiments/     Shortlist corpus and model work (needs its own environment)
 docs/            Sources, metrics, plan, progress, shortlist data contract, screenshots
@@ -301,9 +304,6 @@ Issues and pull requests are welcome at [github.com/urbanmorph/overlooked](https
 - Run the checks above before opening a pull request; `checks.yml` runs them on every pull request.
 - If you edit `site-parts/` or `site/assets/`, run `scripts/pages.py` and commit the result.
 - A new source needs its limits and terms recorded in [docs/sources.md](docs/sources.md) and its credit on the site.
-- If showing a species by district puts it at risk, use the
-  [sensitive species location](https://github.com/urbanmorph/overlooked/issues/new?template=sensitive-species.yml)
-  issue form. Do not write any location in it.
 
 Plan and decisions: [docs/plan.md](docs/plan.md). Progress: [docs/progress.md](docs/progress.md). Usage counts:
 [docs/metrics.md](docs/metrics.md). How the project follows PDGI: [PDGI.md](PDGI.md).

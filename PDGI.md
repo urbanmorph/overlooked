@@ -1,13 +1,13 @@
-# How Overlooked follows PDGI
+# How yellide follows PDGI
 
-[Overlooked](https://yellide.com) is built on the principles of [People's Digital Goods and Infrastructure (PDGI)](https://pdgi.org/blog/peoples-digital-goods-and-infrastructure/): people before digital, rights-centric, commons-oriented, transparent. The categories are the ones [bharatlas](https://github.com/urbanmorph/geodata/blob/main/PDGI.md) uses.
+[yellide](https://yellide.com) (called Overlooked until November 2026) is built on the principles of [People's Digital Goods and Infrastructure (PDGI)](https://pdgi.org/blog/peoples-digital-goods-and-infrastructure/): people before digital, rights-centric, commons-oriented, transparent. The categories are the ones [bharatlas](https://github.com/urbanmorph/geodata/blob/main/PDGI.md) uses.
 
 Status key: ✅ implemented · 🟡 partial · ⛳ gap, with intended direction.
 
 ## Scorecard
 
 ### People before digital (rights and collective identity): 🟡
-Overlooked holds no observations of its own and decides nothing about a species. It joins what others document (ZSI, BSI, Kew, the lichen and bryophyte checklists, GBIF, iNaturalist, Plazi, the IUCN Red List) and credits each one. A species that BSI or ZSI lists counts as documented, whatever an aggregator holds. Every page, file and MCP answer says that this is not an official checklist or conservation assessment, and sends people to BSI, ZSI, the IUCN Red List and the state forest department.
+yellide holds no observations of its own and decides nothing about a species. It joins what others document (ZSI, BSI, Kew, the lichen and bryophyte checklists, GBIF, iNaturalist, Plazi, the IUCN Red List) and credits each one. A species that BSI or ZSI lists counts as documented, whatever an aggregator holds. Every page, file and MCP answer says that this is not an official checklist or conservation assessment, and sends people to BSI, ZSI, the IUCN Red List and the state forest department.
 The smallest area published is a district; no coordinates. Every species is shown by district, threatened species too, with the year of its latest record there. These records are public on GBIF with their coordinates, and iNaturalist and many publishers make records of species at risk less exact before they reach GBIF. Every district page and answer says how to read the list and asks people to respect the species (Wild Life (Protection) Act, 1972).
 Falls short: lists of threatened species by district are easier to find here than on GBIF.
 Evidence: `licence`, `attribution` and `disclaimer` in every `summary.json` (`RIGHTS` in `pipeline/site_data.py`), [Sources and method](https://yellide.com/method), `DISTRICT_NOTE` and `RESPECT_NOTE` in `functions/lib/places.js`.
@@ -22,7 +22,7 @@ Evidence: [/llms.txt](https://yellide.com/llms.txt), the [MIT licence](./LICENSE
 
 ### Free software and the digital commons: 🟡
 Code: MIT. Data and text: CC BY 4.0, Sathya Sankaran, free to reuse with the credits in each file. Each source keeps its own terms; we use official APIs and downloads within their limits.
-Falls short: not every source is fully open. The IUCN Red List is non-commercial with attribution; some GBIF datasets are CC BY-NC; BSI and ZSI material is free to reproduce with acknowledgement, not under an open licence. Overlooked is non-commercial and passes those terms on.
+Falls short: not every source is fully open. The IUCN Red List is non-commercial with attribution; some GBIF datasets are CC BY-NC; BSI and ZSI material is free to reproduce with acknowledgement, not under an open licence. yellide is non-commercial and passes those terms on.
 Direction: prefer the open source where two say the same thing.
 
 ### Privacy: ✅
@@ -39,7 +39,7 @@ No figure is made by a model. AI names stay a shortlist: a taxonomist approves e
 Evidence: `functions/lib/mcp.js`, [/llms.txt](https://yellide.com/llms.txt), the JSON-LD in the page source.
 
 ### A non-digital alternative must exist: 🟡
-Overlooked informs; it replaces no official process. The official channels (BSI, ZSI, the IUCN Red List, the state forest department) are named on every summary, and each species page names the place to act. The data can be downloaded and printed.
+yellide informs; it replaces no official process. The official channels (BSI, ZSI, the IUCN Red List, the state forest department) are named on every summary, and each species page names the place to act. The data can be downloaded and printed.
 Direction: a printable bulletin per state and group for forest departments, BSI and ZSI regional centres, universities and naturalist groups.
 
 ### Grassroots and reaching the divide-affected: 🟡

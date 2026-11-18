@@ -136,3 +136,10 @@ def test_the_mcp_page_shows_places_through_bharatlas_with_its_limits():
     assert 'id="places"' in text and "bharatlas" in text and "locate" in text
     for s in ("recorded in", "not a field guide", "Sensitive locations", "forest department"):
         assert s.lower() in text.lower(), s
+
+
+def test_the_home_page_description_names_the_district():
+    """The smallest area the site shows is a district: the description search engines and link previews show says so."""
+    text = (pages.SITE / "index.html").read_text()
+    desc = re.search(r'<meta name="description" content="([^"]*)"', text).group(1)
+    assert "district" in desc

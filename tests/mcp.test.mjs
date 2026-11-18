@@ -457,3 +457,12 @@ test('/.well-known/mcp.json: points agents at /mcp and names the tools tools/lis
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
   assert.deepEqual(m.tools, result.tools.map((t) => t.name));
 });
+
+test('server.json (the MCP Registry entry) carries the version the server reports, and says it answers by district', async () => {
+  fresh();
+  const entry = JSON.parse(readFileSync(new URL('../server.json', import.meta.url)));
+  const { result } = await (await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).json();
+  assert.equal(entry.version, result.serverInfo.version);
+  assert.match(entry.description, /district/);
+  assert.ok(entry.description.length <= 100, 'the Registry takes at most 100 characters');
+});
