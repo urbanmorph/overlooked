@@ -86,7 +86,7 @@ Other things worth knowing:
 
 yellide runs a remote [Model Context Protocol](https://modelcontextprotocol.io) server. It is read only, needs no key
 and no account, and reads the same weekly list as the site. AI apps send their own name when they connect. We count
-calls by app (Claude, Cursor, …) and keep nothing else.
+MCP sessions by app (Claude, Cursor, …) and keep nothing else.
 
 - **Endpoint:** `https://yellide.com/mcp` (Streamable HTTP, stateless)
 - **MCP Registry:** [`io.github.sathya-sankaran/yellide`](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.sathya-sankaran/yellide) (see [server.json](server.json))
