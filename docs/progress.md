@@ -97,6 +97,11 @@ Newest first. Updated as work happens.
 
 ## Status (19 October 2026)
 
+As of 19 October 2026, kept as history. Now: live at https://yellide.com (from overlooked-india.pages.dev, November
+2026), weekly runs since 27 October 2026 (GBIF snapshot each Monday); the list of the week of 16 November 2026 has
+1,68,246 species documented from India, 97,493 with an open record. The [README](../README.md) describes the system
+as it is now.
+
 | Area | State |
 |---|---|
 | Repository, licence, secrets | Done. Public repo `urbanmorph/overlooked` (MIT). Actions secrets: GBIF and bucket-scoped R2 keys only. |

@@ -1,6 +1,6 @@
 # Plan: modules 1 to 3
 
-> This plan records the decisions as they were made, with their dates. For how the system works now, see the [README](../README.md), [/llms.txt](https://overlooked-india.pages.dev/llms.txt) and [progress.md](progress.md).
+> This plan records the decisions as they were made, with their dates. For how the system works now, see the [README](../README.md), [/llms.txt](https://yellide.com/llms.txt) and [progress.md](progress.md).
 
 Approved 16 October 2026.
 
