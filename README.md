@@ -69,7 +69,9 @@ Other things worth knowing:
   district page and answer says how to read the records and asks people to respect the species
   ([Sensitive locations](https://yellide.com/method#sensitive)).
 - Open data: the site reads its files through `/data/<key>` (CORS open). The data layout for people and agents is in
-  [/llms.txt](https://yellide.com/llms.txt).
+  [/llms.txt](https://yellide.com/llms.txt). No key. Please send a `User-Agent` that names your app (for example
+  `my-app/1.0`). We read it only to tell apps, AI tools and crawlers apart, so our counts of how each mode is used stay
+  honest. We don't store it, and we don't track who you are.
 - Species pages are served at their own address with a title, description, canonical address and schema.org Taxon in
   the HTML, so search engines and link previews see them.
 
@@ -83,7 +85,8 @@ Other things worth knowing:
 ## Use it from an AI assistant (MCP)
 
 yellide runs a remote [Model Context Protocol](https://modelcontextprotocol.io) server. It is read only, needs no key
-and no account, and reads the same weekly list as the site.
+and no account, and reads the same weekly list as the site. AI apps send their own name when they connect. We count
+calls by app (Claude, Cursor, …) and keep nothing else.
 
 - **Endpoint:** `https://yellide.com/mcp` (Streamable HTTP, stateless)
 - **MCP Registry:** [`io.github.sathya-sankaran/yellide`](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.sathya-sankaran/yellide) (see [server.json](server.json))
