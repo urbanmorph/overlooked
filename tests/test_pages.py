@@ -143,3 +143,17 @@ def test_the_home_page_description_names_the_district():
     text = (pages.SITE / "index.html").read_text()
     desc = re.search(r'<meta name="description" content="([^"]*)"', text).group(1)
     assert "district" in desc
+
+
+def test_the_species_page_holds_the_space_its_script_fills_so_nothing_jumps():
+    # Field CLS was 0.67 on species pages (Nov 2026): the pyramid, photo and gap note arrived empty and pushed the
+    # map and records down about 400 px once species.js filled them.
+    site = Path(__file__).resolve().parent.parent / "site"
+    html = (site / "species.html").read_text()
+    pyr = re.search(r'<div class="pyr" id="pyr">(.*?)</div>\s*<div class="legend" id="pyrkey">', html, re.S)[1]
+    assert [len(re.findall(r'class="blk sk"', lvl)) for lvl in re.findall(r'<div class="lvl l\d">(.*?)</div>', pyr)] == [4, 2, 1]
+    assert re.search(r'<div class="legend" id="pyrkey">\s*<span class="lbl">', html)
+    assert re.search(r'id="gapnote"[^>]*>[^<]+</div>', html)
+    css = (site / "assets" / "style.css").read_text()
+    assert ".sp-photo:empty { display: none }" not in css
+    assert re.search(r"\.sp-photo:empty \{[^}]*aspect-ratio", css)

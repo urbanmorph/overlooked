@@ -19,12 +19,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/style.css?v=50678574c4">
+<link rel="stylesheet" href="/assets/style.css?v=000a4584af">
 <!-- /part:head -->
 <script>window.early = Object.fromEntries(['layers/master/latest.json', 'latest.json'].map(p => [p, fetch('/data/' + p)]));</script>
 <link rel="modulepreload" href="/assets/common.js?v=13f69a4a12">
 <link rel="modulepreload" href="/assets/map.js?v=c9a780a4b8">
-<script type="module" src="/assets/species.js?v=9a0d0379c2"></script>
+<script type="module" src="/assets/species.js?v=fcb126aff2"></script>
 </head>
 <body>
 <!-- part:noscript -->
@@ -77,9 +77,9 @@
     <h2 id="know-h">How much do we know?</h2>
     <p class="note" style="margin:4px 0 12px">Seven things we can know about a species. Each layer rests on the one below: a species needs a name before a map, and a map before its numbers, traits, needs and partners can be studied.</p>
     <div class="card pad">
-      <div class="pyr" id="pyr"></div>
-      <div class="legend" id="pyrkey"></div>
-      <div class="sp-gapnote" id="gapnote" aria-live="polite"></div>
+      <div class="pyr" id="pyr"><div class="lvl l4"><span class="blk sk" aria-hidden="true"></span><span class="blk sk" aria-hidden="true"></span><span class="blk sk" aria-hidden="true"></span><span class="blk sk" aria-hidden="true"></span></div><div class="lvl l2"><span class="blk sk" aria-hidden="true"></span><span class="blk sk" aria-hidden="true"></span></div><div class="lvl l1"><span class="blk sk" aria-hidden="true"></span></div></div>
+      <div class="legend" id="pyrkey"><span class="lbl"><i class="sw blk known"></i>Known for this species</span><span class="lbl"><i class="sw blk part"></i>Part known for this species</span><span class="lbl"><i class="sw blk gap"></i>Open gap for this species</span><span class="lbl"><i class="sw blk na"></i>Not measured for this species</span></div>
+      <div class="sp-gapnote" id="gapnote" aria-live="polite">Loading what we know about this species…</div>
     </div>
   </section>
 

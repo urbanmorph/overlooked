@@ -294,7 +294,10 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
    (stat tiles under the timeline); who it interacts with; its relatives; then the details. */
 .sp-head { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px 28px; align-items: start }
 @media (max-width: 720px) { .sp-head { grid-template-columns: minmax(0, 1fr) } .sp-photo { width: min(420px, 100%) } }
-.sp-photo { margin: 32px 0 0 } .sp-photo:empty { display: none }
+.sp-photo { margin: 32px 0 0 }
+/* the photo's slot (4:3 and a caption line) is held until species.js fills it, so the page doesn't jump */
+.sp-photo:empty { aspect-ratio: 4 / 3; border-radius: 12px; background: var(--line-2); margin-bottom: 26px }
+.sp-photo .none { margin-bottom: 26px }
 .sp-photo .ph { aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: var(--line-2); border: 1px solid var(--line) }
 .sp-photo img { width: 100%; height: 100%; object-fit: cover; display: block }
 .sp-photo figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.4 } .sp-photo figcaption a { color: inherit }
@@ -314,6 +317,7 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .blk.gap { background: var(--surface); border-color: var(--gap-open) }
 .blk.list { background: var(--surface); border-color: var(--line); color: var(--ink) } .blk.list .bar i { background: var(--accent) }
 .gaps-pyr { padding-top: 8px }
+.blk.sk { background: var(--line-2); cursor: default }
 .blk.na { background: repeating-linear-gradient(45deg, var(--line-2) 0 6px, var(--surface) 6px 12px); border-color: var(--line); color: var(--muted) }
 .blk[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink) }
 .legend .sw.blk { min-height: 0; padding: 0 } .legend .sw.blk.na { border: 1px solid var(--gap-na) }

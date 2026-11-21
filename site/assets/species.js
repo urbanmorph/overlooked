@@ -157,6 +157,7 @@ try {
   $('#common').textContent = pic?.english || '';
   $('#common').hidden = !pic?.english;
   $('#photo').innerHTML = picture(pic, name);
+  $('#photo').hidden = pic === undefined;   // a list with no pictures yet: give up the held slot
   const author = (authority || '').replace(/,?\s*\d{4}\)?\s*$/, m => (m.endsWith(')') ? ')' : ''));
   const trendWord = ['Increasing', 'Stable', 'Decreasing'].includes(iucnTrend) ? `population ${iucnTrend.toLowerCase()} · ` : '';
   $('#pills').innerHTML = [
