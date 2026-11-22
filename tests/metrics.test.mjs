@@ -34,6 +34,7 @@ test('clientClass: browsers are human, AI crawlers are llm, scripts are bot', ()
   assert.equal(clientClass('curl/8.4.0'), 'bot');
   assert.equal(clientClass('python-requests/2.32'), 'bot');
   assert.equal(clientClass('Mozilla/5.0 HeadlessChrome/126.0'), 'bot');
+  assert.equal(clientClass('Lightpanda/1.0'), 'bot');   // opened 12,414 species pages on 21 Nov, counted as people
   assert.equal(clientClass(''), 'bot');
   assert.equal(clientClass(null), 'bot');
 });
@@ -199,7 +200,7 @@ test('middleware: with the binding, counts go to waitUntil and a failing D1 chan
 
 test('isBot: crawlers and empty agents are bots; browsers, scripts and AI clients acting for a person are not', () => {
   for (const ua of ['Mozilla/5.0 (compatible; Googlebot/2.1)', 'Mozilla/5.0 (compatible; GPTBot/1.2)', 'ClaudeBot/1.0',
-    'Mozilla/5.0 HeadlessChrome/126.0', 'facebookexternalhit/1.1', 'UptimeRobot/2.0', '', null]) assert.equal(isBot(ua), true, ua);
+    'Mozilla/5.0 HeadlessChrome/126.0', 'Lightpanda/1.0', 'facebookexternalhit/1.1', 'UptimeRobot/2.0', '', null]) assert.equal(isBot(ua), true, ua);
   for (const ua of [FIREFOX, 'curl/8.4.0', 'python-requests/2.32', 'node', 'DuckDB', 'Claude-User/1.0', 'ChatGPT-User/1.0'])
     assert.equal(isBot(ua), false, ua);
 });

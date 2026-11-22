@@ -19,14 +19,14 @@ export function clientClass(ua) {
   const s = (ua ?? '').toLowerCase();
   if (!s) return 'bot';
   if (/gptbot|chatgpt|oai-searchbot|openai|claudebot|claude-user|claude-web|anthropic|perplexity|google-extended|bytespider|amazonbot|applebot-extended|meta-externalagent|meta-externalfetcher|cohere-ai|youbot|ccbot|diffbot|mcp|modelcontextprotocol/.test(s)) return 'llm';
-  if (/bot|crawl|spider|slurp|curl|wget|python|http-client|go-http|java\/|okhttp|libwww|headless|scan|monitor|facebookexternalhit|whatsapp|telegram|embedly|preview/.test(s)) return 'bot';
+  if (/bot|crawl|spider|slurp|curl|wget|python|http-client|go-http|java\/|okhttp|libwww|headless|lightpanda|scan|monitor|facebookexternalhit|whatsapp|telegram|embedly|preview/.test(s)) return 'bot';
   return 'human';
 }
 
 /** Crawlers, monitors, link previews and empty agents: not use, for the counts by mode. Scripts (curl, python, node,
  *  DuckDB) and AI clients acting for a person (Claude-User, ChatGPT-User) are use: they are how the API and MCP are read. */
 export function isBot(ua) {
-  return !ua || /bot|crawl|spider|slurp|headless|scan|monitor|uptime|preview|facebookexternalhit|whatsapp|telegram|embedly|bytespider|google-extended|meta-external|cohere-ai/i.test(ua);
+  return !ua || /bot|crawl|spider|slurp|headless|lightpanda|scan|monitor|uptime|preview|facebookexternalhit|whatsapp|telegram|embedly|bytespider|google-extended|meta-external|cohere-ai/i.test(ua);
 }
 
 // MCP client products, from initialize params.clientInfo.name. The first match wins (cursor-vscode is cursor);
