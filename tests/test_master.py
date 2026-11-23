@@ -1085,16 +1085,16 @@ def test_bryophytes_from_the_2011_checklist_are_a_source(built):
 
 def test_partner_files_group_each_species_partners_by_kind_of_link(built):
     """web/<shard>.json: per species, partners by kind of link from its own side (eaten by = the reverse of eats),
-    the most records first, a partner on the list with its key; and the total per kind."""
+    the most records first, a partner on the list with its key and English name; and the total per kind."""
     from pipeline import site_data
     out = built["out"]
     aus = json.loads((out / "web" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
     assert aus["n"] == {"eats": 2, "eaten": 1, "flowers": 1, "hosts": 1, "other": 1}
-    assert aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"]], ["Ee ff", None, 1, 0, ["eats"]]]
-    assert aus["p"]["eaten"] == [["Pp qq", None, 1, 1, ["eats"]]]          # Pp qq eats Aus bus
-    assert aus["p"]["hosts"] == [["Zz virus", None, 2, 0, ["pathogenOf"]]]
+    assert aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"], None], ["Ee ff", None, 1, 0, ["eats"], None]]
+    assert aus["p"]["eaten"] == [["Pp qq", None, 1, 1, ["eats"], None]]          # Pp qq eats Aus bus
+    assert aus["p"]["hosts"] == [["Zz virus", None, 2, 0, ["pathogenOf"], None]]
     cus = json.loads((out / "web" / f"{site_data.shard_of('K2')}.json").read_text())["K2"]
-    assert cus["p"] == {"eaten": [["Aus bus", "K1", 3, 1, ["eats"]]]}
+    assert cus["p"] == {"eaten": [["Aus bus", "K1", 3, 1, ["eats"], "Common aus"]]}   # the page needs no en/ file
 
 
 def test_partner_files_keep_the_top_partners_of_each_kind_and_need_the_partner_table(inputs, tmp_path, monkeypatch):
@@ -1107,7 +1107,7 @@ def test_partner_files_keep_the_top_partners_of_each_kind_and_need_the_partner_t
         master.build(con, inputs["paths"], out, {"period": "2026-10-26", "snapshot": "s", "built": "x"},
                      inputs["districts"], {**inputs["inputs"], "globi_edges": edges}, cache={}, http=FakeGbif())
     aus = json.loads((tmp_path / "o" / "web" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
-    assert aus["n"]["eats"] == 2 and aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"]]]
+    assert aus["n"]["eats"] == 2 and aus["p"]["eats"] == [["Cus dus", "K2", 3, 1, ["eats"], None]]
     assert not (tmp_path / "none" / "web").exists()                    # no partner table: no files
 
 
@@ -1169,10 +1169,11 @@ def test_family_files_list_the_relatives_with_what_their_gaps_need(built):
     assert {"Aus bus", "Hus ius"} <= set(rows)
     aus = rows["Aus bus"]
     # [key, name, year, latest record, states with an open record, trend known, DNA, barcode, traits, exact places,
-    #  partners, interaction in India, its picture]
+    #  partners, interaction in India, its picture, its English name]
     assert aus[0] == "K1" and aus[2] == 1758 and aus[5] is True and aus[10] == 3 and aus[11] is True
     assert aus[12] == "https://p/1.jpg" and rows["Hus ius"][12] is None
-    assert len(aus) == 13
+    assert aus[13] == "Common aus" and rows["Hus ius"][13] is None
+    assert len(aus) == 14
     assert all(r[0] for r in fam)                                   # only species with a page
 
 

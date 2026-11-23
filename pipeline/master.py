@@ -977,9 +977,9 @@ SP_FIELDS = ["name", "group", "sources", "status", "iucn", "labels", "states", "
              "cells", "types", "photos", "barcode", "local_names", "trend", "traits", "precise", "papers",
              "papers_latest", "iucn_trend", "family", "order", "suborder", "provinces"]
 FAM_FIELDS = ["key", "name", "year", "last_year", "states", "trend", "dna", "barcode", "traits", "precise", "partners",
-              "interactions_india", "pic"]                       # each species of fam/<shard>.json {family: [row]}
+              "interactions_india", "pic", "english"]                       # each species of fam/<shard>.json {family: [row]}
 PIC_FIELDS = ["url", "page", "by", "licence", "source", "english"]   # pic/<shard>.json {key: row}
-WEB_FIELDS = ["name", "key", "records", "records_india", "types"]   # each partner of web/<shard>.json {key: {"p": {kind: [row]}}}
+WEB_FIELDS = ["name", "key", "records", "records_india", "types", "english"]   # each partner of web/<shard>.json {key: {"p": {kind: [row]}}}
 # The words for the status of a species (0, 1, 2) and for the IUCN categories, the same on every page.
 STATUS_NAMES = ["No open record yet", "Open record", "Not on the India list yet: waits for a name"]
 # EW and EX keep their codes: the site copy does not use those words.
@@ -1248,13 +1248,15 @@ def family_files(con, out: Path):
     """fam/<shard of the family>.json for the species page's relatives: {family: [[key, name, year described, latest
     record placed in a state, states with an open record, a known population trend, DNA from India (a GBIF sequence or
     sample), barcode (2, 1, 0 as in the species files), a trait record, places with an exact record, GloBI partners, an
-    interaction in India, its picture (pipeline/pictures.py; null: none)]]}: the fields web.js gapStates turns into the
-    seven gaps, and a thumbnail. Species with a page only."""
+    interaction in India, its picture (pipeline/pictures.py; null: none), its English name (null: none)]]}: the fields
+    web.js gapStates turns into the seven gaps, a thumbnail and the name, so the page reads no en/ file. Species with a
+    page only."""
     parts = {}
     for family, *row in con.sql("""
             SELECT m.family, m.key, m.name, m.year, m.last_year, len(m.states_observed), m.trend_known,
-                   list_contains(m.labels, 'dna'), m.barcode, m.traits, m.places_precise, m.partners, m.interactions_india, p.url
-            FROM master m LEFT JOIN pics p USING (key)
+                   list_contains(m.labels, 'dna'), m.barcode, m.traits, m.places_precise, m.partners, m.interactions_india, p.url,
+                   e.common
+            FROM master m LEFT JOIN pics p USING (key) LEFT JOIN english e USING (key)
             WHERE m.status < 2 AND m.key IS NOT NULL AND m.family IS NOT NULL ORDER BY m.family, m.name""").fetchall():
         parts.setdefault(shard_of(family), {}).setdefault(family, []).append(row)
     shard_files(out, "fam", parts)
@@ -1273,7 +1275,8 @@ def pic_files(con, out: Path):
 
 def web_files(con, edges, out: Path):
     """web/<shard>.json for the species web: {key: {"n": {kind: partners}, "p": {kind: [[partner name, its key on the
-    list or null, records, records in India, [GloBI types]]]}}}, the WEB_TOP partners with most records per kind.
+    list or null, records, records in India, [GloBI types], its English name or null]]}}}, the WEB_TOP partners with most
+    records per kind.
     Kinds: eats, eaten (by), flowers (pollinates, visits, disperses seeds, from either side), lives (on or in a host),
     hosts, other. A partner is a species on the list when one of its names is (synonyms count), else GloBI's name."""
     q = lambda xs: "(" + ", ".join(f"'{x}'" for x in xs) + ")"
@@ -1301,11 +1304,13 @@ def web_files(con, edges, out: Path):
         FROM p""")
     parts = {}
     for key, kind, total, rows in con.sql(f"""
-            SELECT id, kind, any_value(total), list({{'n': pname, 'k': pkey, 'r': records, 'i': india, 't': types}} ORDER BY rank)
-            FROM web WHERE rank <= {int(WEB_TOP)} GROUP BY id, kind ORDER BY id, kind""").fetchall():
+            SELECT w.id, w.kind, any_value(w.total),
+                   list({{'n': w.pname, 'k': w.pkey, 'r': w.records, 'i': w.india, 't': w.types, 'e': e.common}} ORDER BY w.rank)
+            FROM web w LEFT JOIN english e ON e.key = w.pkey
+            WHERE w.rank <= {int(WEB_TOP)} GROUP BY w.id, w.kind ORDER BY w.id, w.kind""").fetchall():
         sp = parts.setdefault(shard_of(key), {}).setdefault(key, {"n": {}, "p": {}})
         sp["n"][kind] = total
-        sp["p"][kind] = [[r["n"], r["k"], int(r["r"]), int(r["i"]), r["t"]] for r in rows]
+        sp["p"][kind] = [[r["n"], r["k"], int(r["r"]), int(r["i"]), r["t"], r["e"]] for r in rows]
     return shard_files(out, "web", parts)
 
 
@@ -1369,8 +1374,6 @@ def site_files(con, out: Path, meta, districts_path, notes, places=None, coarse=
     its common name (Madras Treeshrew: ma and tr), with its Latin name last."""
     states = states_list(districts_path)
     bit = {int(s["code"]): i for i, s in enumerate(states)}
-    con.sql("CREATE OR REPLACE TABLE english AS SELECT key, any_value(common) AS common FROM pics "
-            "WHERE common IS NOT NULL GROUP BY key")
     con.execute("CREATE OR REPLACE TABLE state_bit AS SELECT unnest($1) AS state_lgd, unnest($2) AS b",
                 [list(bit), list(bit.values())])
     orders = [o for (o,) in con.sql('SELECT DISTINCT "order" FROM master WHERE "order" IS NOT NULL ORDER BY 1').fetchall()]
@@ -1809,6 +1812,9 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                    source VARCHAR, common VARCHAR)""")
         shutil.rmtree(out / "pic", ignore_errors=True)
         notes.append("The pictures table was not found: species pages show no photo.")
+    # English common names by key (from the pictures table), for every file that names a species.
+    con.sql("CREATE OR REPLACE TABLE english AS SELECT key, any_value(common) AS common FROM pics "
+            "WHERE common IS NOT NULL GROUP BY key")
     if inputs.get("globi_edges"):
         web_files(con, inputs["globi_edges"], out)
     else:
