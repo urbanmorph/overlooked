@@ -11,7 +11,7 @@ import { signed } from './trend.js?v=42df4072cc';
 import { knowledge, segmentChanges } from './funnel.js?v=5e149b196c';
 import { redlist } from './redlist.js?v=5b88f6e792';
 import { gaps, gapAbsent } from './gaps.js?v=3d8fc9acf2';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=d2197ab59a';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=53437563e7';
 import { CATS } from './cats.js?v=7d886060d4';
 
 const VIEW_TEXT = {

@@ -60,7 +60,7 @@ export function tree(web, S, { top = 8 } = {}) {
   return KINDS.filter(k => web.n?.[k.k]).map(k => {
     const list = web.p[k.k] || [], max = Math.max(1, ...list.map(r => r[f.records]));
     return { kind: k.k, label: k.label, color: k.color, total: web.n[k.k],
-      rows: list.map((r, i) => ({ name: r[f.name], key: r[f.key], n: r[f.records], india: r[f.records_india] > 0, types: r[f.types],
+      rows: list.map((r, i) => ({ name: r[f.name], key: r[f.key], english: r[f.english] ?? null, n: r[f.records], india: r[f.records_india] > 0, types: r[f.types],
         bar: r[f.records] / max, shown: i < top })) };
   });
 }
@@ -122,8 +122,8 @@ export function relatives(rows, key, name, S, top = 40) {
   const genus = name.split(' ')[0];
   const m = model(S);
   const all = rows.map(row => {
-    const { key: k, name, year, last_year: last, states, trend, dna, barcode, traits, precise, partners, interactions_india: interactionsIndia, pic } = m.read('fam', row);
-    return { key: k, name, year, last, states, pic: thumb(pic) || null,
+    const { key: k, name, year, last_year: last, states, trend, dna, barcode, traits, precise, partners, interactions_india: interactionsIndia, pic, english } = m.read('fam', row);
+    return { key: k, name, english: english ?? null, year, last, states, pic: thumb(pic) || null,
       gaps: gapStates({ year, latest: last, trend, dna, barcode, traits, precise, partners, interactionsIndia }, S).map(g => g.state) };
   });
   all.sort((a, b) => (b.name.split(' ')[0] === genus) - (a.name.split(' ')[0] === genus) || (b.last ?? 0) - (a.last ?? 0)

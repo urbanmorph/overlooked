@@ -2,11 +2,11 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge, model, englishOf, speciesTitle, speciesText, shardOf, speciesPath } from './common.js?v=13f69a4a12';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge, model, speciesTitle, speciesText, shardOf, speciesPath } from './common.js?v=13f69a4a12';
 import { drawMap } from './map.js?v=c9a780a4b8';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=91a54857a5';
 import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=edfd4a6224';
-import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=d2197ab59a';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=53437563e7';
 
 // What each status (summary.json status, species_model.js) means, in a sentence.
 const STATUS_TEXT = [
@@ -242,18 +242,17 @@ try {
   $('#webcontrols').hidden = !T.length;
   $('#kindsbar').innerHTML = T.map(b => `<button type="button" aria-pressed="true" data-k="${b.kind}" style="flex:${b.total} 1 0;background:${b.color}"
     title="${esc(b.label)}: ${fmt(b.total)} species, ${Math.round(100 * b.total / allN)}% of links">${esc(b.label)} ${fmt(b.total)}</button>`).join('');
-  let english = new Map();   // the partners' English names, once read (en/ by key)
   const drawTree = () => {
     const q = $('#q').value.trim().toLowerCase(), india = $('#indiaonly').checked;
     const html = T.filter(br => on.has(br.kind)).map(br => {
-      const rows = br.rows.filter(r => (!q || `${r.name} ${english.get(r.key) || ''}`.toLowerCase().includes(q)) && (!india || r.india));
+      const rows = br.rows.filter(r => (!q || `${r.name} ${r.english || ''}`.toLowerCase().includes(q)) && (!india || r.india));
       if (!rows.length) return '';
       const limit = shownAll.has(br.kind) || q ? rows.length : 8;
       const microbes = br.kind === 'hosts' && rows.slice(0, limit).some(r => /virus|bacter|plasm/i.test(r.name));
       return `<section class="wb" style="--c:${br.color}"><h3><i></i>${esc(br.label)} <span class="note">${fmt(rows.length)} shown of ${fmt(br.total)}</span></h3>
         ${microbes ? '<p class="note why">Viruses and microbes here come from screening studies: they were found in the animal, which does not mean they make it ill.</p>' : ''}
         <ul>${rows.slice(0, limit).map(r => {
-          const inner = `<i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${speciesText(r.name, english.get(r.key))}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span>`;
+          const inner = `<i class="dot${r.india ? ' in' : ''}"></i><span class="nm">${speciesText(r.name, r.english)}</span><span class="bar"><i style="width:${(100 * r.bar).toFixed(1)}%"></i></span><span class="ct">${fmt(r.n)}</span>`;
           const tip = `${r.types.map(t => VERBS[t] || t).join(', ')} · ${fmt(r.n)} record${r.n === 1 ? '' : 's'}${r.india ? ', some from India' : ', none from India'}`;
           return `<li>${r.key ? `<a class="wp" href="${speciesPath(r.key, r.name)}" title="${esc(tip)}">${inner}</a>` : `<span class="wp" title="${esc(tip)}">${inner}</span>`}</li>`;
         }).join('')}</ul>
@@ -276,18 +275,16 @@ try {
   $('#q').addEventListener('input', drawTree);
   $('#indiaonly').addEventListener('change', drawTree);
   drawTree();
-  englishOf(getJSON, latest.base, S, T.flatMap(b => b.rows.map(r => r.key))).then(en => { english = en; if (en.size) drawTree(); });
   $('#weblegend').innerHTML = web ? `<span class="lbl"><i class="dot in" style="--c:var(--ink-2)"></i>A record of the link from India</span>
     <span class="lbl"><i class="dot" style="--c:var(--ink-2)"></i>None from India</span><span class="lbl">Bar and number: records of the link</span>
     <span class="lbl">A name in colour links to its page</span>` : '';
 
   // Relatives: the species of the family on the list, on a time axis.
   if (family) {
-    getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(async p => {
+    getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(p => {
       const rows = p[family] || [];
       if (rows.length < 2) return;
-      const R = relatives(rows, key, name, S), en = await englishOf(getJSON, latest.base, S, R.rows.map(r => r.key));
-      R.rows.forEach(r => { r.english = en.get(r.key) || null; });
+      const R = relatives(rows, key, name, S);
       const { svg, viewBox } = relativesSVG(R.rows, key, since);
       const genus = name.split(' ')[0];
       $('#rel').setAttribute('viewBox', viewBox);

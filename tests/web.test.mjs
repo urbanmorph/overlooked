@@ -27,8 +27,8 @@ test('each gap for one species: known, part known, open or not measured', () => 
 });
 
 test('the tree: a branch per kind of link in a fixed order, the partners with most records first, the rest counted', () => {
-  const p = (name, n, india, key = null) => [name, key, n, india, ['eats']];
-  const web = { n: { hosts: 1, eats: 40 }, p: { eats: Array.from({ length: 30 }, (_, i) => p(`E${i}`, 100 - i, i % 2)), hosts: [p('H', 2, 0, 'K9')] } };
+  const p = (name, n, india, key = null, english = null) => [name, key, n, india, ['eats'], english];
+  const web = { n: { hosts: 1, eats: 40 }, p: { eats: Array.from({ length: 30 }, (_, i) => p(`E${i}`, 100 - i, i % 2)), hosts: [p('H', 2, 0, 'K9', 'Common H')] } };
   const T = tree(web, fx, { top: 8 });
   assert.deepEqual(T.map(b => b.kind), ['eats', 'hosts']);                       // KINDS order, not the data's
   assert.equal(T[0].rows.length, 30);
@@ -37,7 +37,7 @@ test('the tree: a branch per kind of link in a fixed order, the partners with mo
   assert.equal(T[0].total, 40);
   assert.equal(T[0].rows[0].bar, 1);                                            // bars scale to the kind's largest
   assert.ok(Math.abs(T[0].rows[29].bar - 71 / 100) < 1e-9);
-  assert.deepEqual(T[1].rows[0], { name: 'H', key: 'K9', n: 2, india: false, types: ['eats'], bar: 1, shown: true });
+  assert.deepEqual(T[1].rows[0], { name: 'H', key: 'K9', english: 'Common H', n: 2, india: false, types: ['eats'], bar: 1, shown: true });
   assert.deepEqual(tree({ n: {}, p: {} }, fx), []);
   assert.deepEqual(KINDS.map(k => k.k), ['eats', 'eaten', 'flowers', 'lives', 'hosts', 'other']);
 });
@@ -88,8 +88,9 @@ test('the glyph: the same seven cells, small, in their states', () => {
 });
 
 test('relatives: the same genus first, then the latest recorded; this species always in; capped', () => {
-  // [key, name, year, latest, states, trend, dna, barcode, traits, precise, partners, interaction in India, picture]
-  const r = (key, name, year, last) => [key, name, year, last, 1, null, false, 0, false, 0, null, false, key === 'C' ? 'https://p/c.jpg' : null];
+  // [key, name, year, latest, states, trend, dna, barcode, traits, precise, partners, interaction in India, picture, English]
+  const r = (key, name, year, last) => [key, name, year, last, 1, null, false, 0, false, 0, null, false, key === 'C' ? 'https://p/c.jpg' : null,
+    key === 'C' ? 'Gamma aus' : null];
   const rows = [r('A', 'Bus alpha', 1800, 1990), r('B', 'Cus beta', 1850, 2024), r('C', 'Aus gamma', 1900, 2020),
     r('D', 'Aus delta', 1820, null), r('E', 'Cus eps', 1700, 2025)];
   const R = relatives(rows, 'C', 'Aus gamma', { ...fx, recent_from: 2016 }, 3);
@@ -97,6 +98,8 @@ test('relatives: the same genus first, then the latest recorded; this species al
   assert.equal(R.total, 5);
   assert.equal(R.rows[0].gaps.length, 7);
   assert.equal(R.rows[0].pic, 'https://p/c.jpg');
+  assert.equal(R.rows[0].english, 'Gamma aus');                               // from the row: no en/ file to read
+  assert.equal(R.rows[1].english, null);
   assert.equal(R.rows[0].gaps[1], 'known');                                   // Wallacean: latest 2020 >= 2016
   assert.deepEqual(relatives(rows, 'A', 'Bus alpha', { ...fx, recent_from: 2016 }, 2).rows.map(x => x.key), ['A', 'E']);
   assert.deepEqual(relatives(rows, 'Z', 'Aus zeta', { ...fx, recent_from: 2016 }, 2).rows.map(x => x.key), ['C', 'D']);   // waits: genus still first
@@ -120,6 +123,6 @@ test('thumbnails ask iNaturalist and Commons for a small picture', () => {
   assert.equal(thumb('https://example.org/x.jpg'), 'https://example.org/x.jpg');
   assert.equal(thumb(null), null);
   const S = { ...fx, groups: [{ gaps_known: [1, 1, 1, 1, 1, 1, 1], n: 1 }] };
-  const { rows } = relatives([['K', 'Aus bus', 1900, 2020, 1, 0, 0, 0, 0, 0, 0, 0, 'https://x/photos/1/medium.jpg']], 'K', 'Aus bus', S);
+  const { rows } = relatives([['K', 'Aus bus', 1900, 2020, 1, 0, 0, 0, 0, 0, 0, 0, 'https://x/photos/1/medium.jpg', null]], 'K', 'Aus bus', S);
   assert.equal(rows[0].pic, 'https://x/photos/1/square.jpg');
 });
