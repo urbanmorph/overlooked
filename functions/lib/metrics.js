@@ -29,12 +29,15 @@ export function isBot(ua) {
   return !ua || /bot|crawl|spider|slurp|headless|lightpanda|scan|monitor|uptime|preview|facebookexternalhit|whatsapp|telegram|embedly|bytespider|google-extended|meta-external|cohere-ai/i.test(ua);
 }
 
-// MCP client products, from initialize params.clientInfo.name. The first match wins (cursor-vscode is cursor);
-// anything else is 'other'. Only the product is counted, never the name the client sent.
+// MCP client products, from the client's own name at initialize; anything else is 'other', so a name someone gave
+// their own client is never kept. The first match wins: a probe is a monitor whatever product it names, and
+// cursor-vscode is cursor. One list for ops, yellide (overlooked) and mugilu, agreed 23 Nov 2026: the reference copy
+// is ops-dashboard/worker/src/mcp-clients.js; keep the copies identical. A product name maps to itself.
 const CLIENTS = [
-  ['claude-code', /claude[ -]?code/], ['claude-ai', /claude/], ['cursor', /cursor/], ['chatgpt', /chatgpt|openai/],
-  ['windsurf', /windsurf|codeium/], ['vscode', /visual studio code|vscode|copilot/], ['gemini', /gemini/],
-  ['cline', /\bcline\b/], ['zed', /^zed\b/], ['inspector', /inspector/],
+  ['monitor', /probe|health|check|liveness|monitor|uptime|beat|registry|directory|census|catalog|glama/],
+  ['claude-code', /claude[ -]?code/], ['claude-ai', /claude/], ['cursor', /cursor/], ['codex', /codex/],
+  ['chatgpt', /chatgpt|openai/], ['windsurf', /windsurf|codeium/], ['vscode', /visual studio code|vscode|copilot/],
+  ['gemini', /gemini/], ['cline', /\bcline\b/], ['zed', /^zed\b/], ['inspector', /inspector/],
 ];
 export const MCP_CLIENTS = [...CLIENTS.map(([k]) => k), 'other'];
 
@@ -42,6 +45,14 @@ export const MCP_CLIENTS = [...CLIENTS.map(([k]) => k), 'other'];
 export function mcpClient(name) {
   const s = typeof name === 'string' ? name.toLowerCase().slice(0, 100) : '';
   return CLIENTS.find(([, re]) => re.test(s))?.[0] ?? 'other';
+}
+
+/** Whether a request carries a browser's own headers: every current browser sends Accept-Language, and Sec-Fetch-*
+ *  (Safari since 16.4). A client that names a browser but sends neither is a script or a headless browser. */
+function browserHeaders(h) {
+  if (h.has('accept-language')) return true;
+  for (const k of h.keys()) if (k.startsWith('sec-fetch-')) return true;
+  return false;
 }
 
 /** A fetch made by one of our own pages (the website), not by another site, a script, an agent, or a person who
@@ -108,6 +119,7 @@ export function observe(request, response) {
 
   if (response.status !== 200 || !(response.headers.get('content-type') || '').includes('text/html')) return [];
   if (cls !== 'human') return [['class', cls]];
+  if (!browserHeaders(h)) return [['class', 'bot']];
 
   // a species page is one page, /species, whatever its key and slug (/species/<key>/<slug>)
   const own = url.pathname.match(/^\/species\/([^/]+)/);

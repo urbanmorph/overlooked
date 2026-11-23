@@ -369,6 +369,10 @@ test('use by mode: each tool call adds mode mcp; initialize adds the client prod
   assert.deepEqual(seen.pop(), [['mcp_client', 'claude-code']]);
   await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'Someone Private' } } }, { db, headers: ua });
   assert.deepEqual(seen.pop(), [['mcp_client', 'other']]);
+  // a monitor (an uptime check, a registry probe) is counted as one, and is not use
+  await rpc([{ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'mcpbeat' } } },
+    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'find_species', arguments: { name: 'aus' } } }], { db, headers: ua });
+  assert.deepEqual(seen.pop().sort(), [['mcp', 'find_species'], ['mcp_client', 'monitor']]);
   // a batch: one write for the whole request
   await rpc([{ jsonrpc: '2.0', id: 0, method: 'initialize', params: { clientInfo: { name: 'cursor-vscode' } } },
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'find_species', arguments: { name: 'aus' } } }], { db, headers: ua });

@@ -725,12 +725,17 @@ export async function handle(request, env, waitUntil) {
   let body;
   try { body = await request.json(); } catch { return json(fail(null, -32700, 'Parse error'), 400); }
   // Counted per request, written once: each tool by name, and (bots aside) the mode and the client product. Never
-  // the arguments, and never the client's name as it sent it (see metrics.js mcpClient).
+  // the arguments, and never the client's name as it sent it (see metrics.js mcpClient). A monitor (an uptime check,
+  // a registry probe) is counted as one, and its calls are not use (mode).
   const bot = isBot(request.headers.get('user-agent'));
-  const names = [];
+  let names = [], monitor = false;
   const metric = {
     tool: name => { names.push(['mcp', name]); if (!bot) names.push(['mode', 'mcp']); },
-    client: name => { if (!bot) names.push(['mcp_client', mcpClient(name)]); },
+    client: name => {
+      const product = mcpClient(name);
+      monitor ||= product === 'monitor';
+      if (!bot) names.push(['mcp_client', product]);
+    },
   };
   let out;
   try {
@@ -740,6 +745,7 @@ export async function handle(request, env, waitUntil) {
   } catch (e) {
     return json(fail(body?.id, -32603, `Internal error: ${e.message}`), 500);
   }
+  if (monitor) names = names.filter(([dim]) => dim !== 'mode');
   if (names.length && env.DB) waitUntil(record(env.DB, new Date().toISOString().slice(0, 10), names));
   if (out == null || (Array.isArray(out) && !out.length)) return new Response(null, { status: 202, headers: CORS });
   return json(out);

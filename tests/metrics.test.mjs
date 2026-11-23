@@ -9,8 +9,10 @@ const IPAD = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15
 const ANDROID_TAB = 'Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 Chrome/126.0 Safari/537.36';
 const ANDROID_PHONE = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36';
 
-function req(path, { ua = FIREFOX, method = 'GET', referer, country = 'IN', headers = {} } = {}) {
+// A browser sends Accept-Language with every request; pass lang: null for a client that sends none.
+function req(path, { ua = FIREFOX, method = 'GET', referer, country = 'IN', headers = {}, lang = 'en-IN,en;q=0.9' } = {}) {
   const h = new Headers(headers);
+  if (lang) h.set('accept-language', lang);
   if (ua) h.set('user-agent', ua);
   if (referer) h.set('referer', referer);
   const r = new Request('https://yellide.com' + path, { method, headers: h });
@@ -37,6 +39,15 @@ test('clientClass: browsers are human, AI crawlers are llm, scripts are bot', ()
   assert.equal(clientClass('Lightpanda/1.0'), 'bot');   // opened 12,414 species pages on 21 Nov, counted as people
   assert.equal(clientClass(''), 'bot');
   assert.equal(clientClass(null), 'bot');
+});
+
+test('a page asked for with no Sec-Fetch header and no Accept-Language is not a person, whatever browser it names', () => {
+  const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  const nav = { 'sec-fetch-site': 'none', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' };
+  assert.ok(has(observe(req('/species/K1/aus-bus', { ua: CHROME, headers: nav }), html()), 'class', 'human'));      // a real Chrome
+  assert.deepEqual(observe(req('/species/K1/aus-bus', { ua: CHROME, lang: null }), html()), [['class', 'bot']]);     // neither header
+  assert.ok(has(observe(req('/species/K1/aus-bus', { ua: CHROME }), html()), 'class', 'human'));                     // Accept-Language only (Safari before 16.4)
+  assert.ok(has(observe(req('/species/K1/aus-bus', { ua: CHROME, lang: null, headers: nav }), html()), 'class', 'human'));   // Sec-Fetch only
 });
 
 test('deviceClass: mobile, tablet or desktop from the user agent', () => {
@@ -239,14 +250,25 @@ test('mode download: a whole non-JSON file under /data/; range reads are not dow
   assert.deepEqual(observe(req('/data/layers/master/latest.json', { headers: click, referer: 'https://yellide.com/method' }), json()), [['mode', 'api']]);
 });
 
-test('mcpClient: the client product from initialize clientInfo.name, a small fixed set, never the raw name', () => {
-  const cases = {
-    'claude-ai': 'claude-ai', 'Claude Desktop': 'claude-ai', 'claude-code': 'claude-code', 'cursor-vscode': 'cursor',
-    'Cursor': 'cursor', 'openai-mcp': 'chatgpt', 'ChatGPT': 'chatgpt', 'Visual Studio Code': 'vscode',
-    'GitHub Copilot': 'vscode', 'windsurf-client': 'windsurf', 'Codeium': 'windsurf', 'gemini-cli-mcp-client': 'gemini',
-    'Cline': 'cline', 'Zed': 'zed', 'mcp-inspector': 'inspector',
-    'my-secret-agent Sathya': 'other', 'mcp-client-line': 'other', '': 'other', undefined: 'other', 42: 'other',
-  };
-  for (const [name, want] of Object.entries(cases)) assert.equal(mcpClient(name === 'undefined' ? undefined : name === '42' ? 42 : name), want, name);
-  for (const k of Object.values(cases)) assert.ok(MCP_CLIENTS.includes(k), k);
+// The one list shared by ops, yellide (overlooked) and mugilu, agreed 23 Nov 2026: these cases are word for word
+// those of ops-dashboard/worker/test/mcp-clients.test.js.
+test('mcpClient: MCP client names land in the shared products', () => {
+  const cases = [
+    ['claude-code', 'claude-code'], ['Claude Code', 'claude-code'], ['claude.ai', 'claude-ai'], ['Claude Desktop', 'claude-ai'],
+    ['Cursor-VSCode', 'cursor'], ['codex-mcp-client', 'codex'], ['openai-mcp', 'chatgpt'], ['codeium', 'windsurf'],
+    ['Visual Studio Code', 'vscode'], ['cline-vscode', 'vscode'], ['cline', 'cline'], ['gemini-cli', 'gemini'],
+    ['zed', 'zed'], ['mcp-inspector', 'inspector'],
+    // uptime checks, probes and directories are monitors, whatever product word they carry
+    ['mcpbeat', 'monitor'], ['glimind-probe', 'monitor'], ['mcptry-health-check', 'monitor'], ['hostedmcp-liveness', 'monitor'],
+    ['posthog-mcp-registry-probe', 'monitor'], ['glama', 'monitor'], ['glama-mcp-inspector', 'monitor'],
+    ['ziwei-seat', 'other'], ['', 'other'], [null, 'other'],
+  ];
+  for (const [name, want] of cases) assert.equal(mcpClient(name), want, String(name));
+  assert.equal(mcpClient(42), 'other');
+});
+
+test('mcpClient: every product maps to itself, so grouping twice changes nothing', () => {
+  assert.deepEqual(MCP_CLIENTS, ['monitor', 'claude-code', 'claude-ai', 'cursor', 'codex', 'chatgpt', 'windsurf', 'vscode',
+    'gemini', 'cline', 'zed', 'inspector', 'other']);
+  for (const p of MCP_CLIENTS) assert.equal(mcpClient(p), p);
 });

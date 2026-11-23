@@ -30,11 +30,11 @@ One table, `daily(day, dim, key, n)`: one counter per UTC day, per dimension, pe
 | `inat_out` | shortlist group key, for example `true-bugs` | a link followed from the Shortlists page to iNaturalist (`/go/inat/<id>?g=<group>`, a 302 redirect by `functions/go/inat/[id].js`); the observation id is not stored |
 | `mcp` | tool name, for example `list_species` | a tool call to the MCP server (`/mcp`, `functions/lib/mcp.js`); the arguments are not stored |
 | `mode` | `website`, `api`, `download` or `mcp` | use by mode (below) |
-| `mcp_client` | `claude-ai`, `claude-code`, `cursor`, `chatgpt`, `windsurf`, `vscode`, `gemini`, `cline`, `zed`, `inspector` or `other` | an MCP `initialize` (below) |
+| `mcp_client` | `monitor`, `claude-code`, `claude-ai`, `cursor`, `codex`, `chatgpt`, `windsurf`, `vscode`, `gemini`, `cline`, `zed`, `inspector` or `other` | an MCP `initialize` (below) |
 
 Only page views with status 200 and an HTML body count, and the `/go/inat/` redirects with status 302. Prefetches, HEAD requests, errors and other files do not count, except as use by mode (below). Values that do not match a strict pattern (for example a long or strange `?group=`) are dropped, not stored.
 
-Bots and AI crawlers add one `class` counter and nothing else (the same lists as mugilu), so the other counts show people.
+Bots and AI crawlers add one `class` counter and nothing else (the same lists as mugilu), so the other counts show people. A page asked for with no `Sec-Fetch-*` header and no `Accept-Language` is a bot whatever browser its user agent names (since 23 Nov 2026): every current browser sends both, and scripts and headless browsers often send neither.
 
 ### Use by mode (since 18 Nov 2026)
 
@@ -49,7 +49,7 @@ Every app counts its use by mode as daily totals, bots excluded. In yellide (`mo
 
 - The files our own pages fetch (`Sec-Fetch-Site: same-origin`, or our page as the `Referer` in browsers without Sec-Fetch headers) are the website and are not counted again as `api`; a person who follows a link to a file (a navigation) is counted.
 - Bots here are crawlers, monitors, link previews and requests with no user agent (`isBot` in `functions/lib/metrics.js`). Scripts (curl, Python, Node, DuckDB) and AI clients acting for a person (Claude-User, ChatGPT-User) are use: that is how the API and MCP are read. So `api` and `mcp` count requests the `class` dimension calls `bot` or `llm`.
-- `mcp_client`: one count per MCP `initialize` (bots excluded), by the client product read from `params.clientInfo.name` and mapped to a fixed list (`MCP_CLIENTS`); any other name is `other`. The name the client sent is read and dropped, never stored.
+- `mcp_client`: one count per MCP `initialize` (bots excluded), by the client product read from `params.clientInfo.name` and mapped to a fixed list (`MCP_CLIENTS`); any other name is `other`. The name the client sent is read and dropped, never stored. The list is shared with ops and mugilu (agreed 23 Nov 2026; reference copy `ops-dashboard/worker/src/mcp-clients.js`), and the first match wins: `monitor` (uptime checks, probes, registries and directories such as mcpbeat or glama) comes first, whatever product word the name carries. A monitor's tool calls in the same request are not counted as `mode` `mcp`: they are not use. `monitor` and `codex` were added on 23 Nov 2026; before that, those names counted as `other` (or, for some probes, as the product they named).
 - The `mcp` dimension (per tool) still counts every tool call, bots included, as before; `mode` `mcp` leaves bots out, so it can be lower.
 
 ## What is not stored
@@ -67,6 +67,7 @@ Every app counts its use by mode as daily totals, bots excluded. In yellide (`mo
 - `?view=`, `?group=` and `?state=` show the state when a front page loads (a shared link or a reload). Changes made on the page update the address with `history.replaceState` and send no request, so they are not counted. Groups opened on the page are counted through `group_open`.
 - The browser caches `/data/` files for 5 minutes, and the page fetches each file once per page load. So `search` and `group_open` count at most one per prefix or group per page load, and fewer when the browser cache answers.
 - A counter can be low for a day when D1 drops a write. The counts are approximate.
+- **19 to 22 November 2026 are too high.** Human page views (`class` `human`, `mode` `website`, `page`, `device`, `country`, `species`) on those days include about 5,000 to 40,000 a day from a headless browser (Lightpanda), rising day by day and mostly `/species`, before it was counted as a bot (22 Nov). The rows are left as they are: a correction could only be a guess. 30-day totals include them until about 22 Dec 2026.
 
 ## Retention
 
