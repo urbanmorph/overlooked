@@ -157,3 +157,39 @@ def test_the_species_page_holds_the_space_its_script_fills_so_nothing_jumps():
     css = (site / "assets" / "style.css").read_text()
     assert ".sp-photo:empty { display: none }" not in css
     assert re.search(r"\.sp-photo:empty \{[^}]*aspect-ratio", css)
+
+
+def test_the_species_page_shows_its_lower_part_only_once_drawn():
+    # A reader who scrolls before the data comes (or a bot that jumps to the end) saw the partner and relative cards
+    # fill in on screen and push the rest down: 0.5 layout shift in a throttled test (24 Nov 2026). The page now holds
+    # everything under the map, and the footer, back until species.js has drawn it, so it appears and does not move.
+    site = Path(__file__).resolve().parent.parent / "site"
+    html = (site / "species.html").read_text()
+    head = html.split("</head>", 1)[0]
+    assert "classList.add('sp-loading')" in head
+    css = (site / "assets" / "style.css").read_text()
+    assert ".sp-loading #main > .sp-two ~ *, .sp-loading footer { display: none }" in css
+    js = (site / "assets" / "species.js").read_text()
+    assert re.search(r"\} finally \{\s*document\.documentElement\.classList\.remove\('sp-loading'\)", js)
+    # the relatives and the shortlist note come before the lower part shows, not after
+    assert re.search(r"await Promise\.all\(\[rel, short\]\)", js)
+
+
+def test_the_species_page_holds_the_lines_its_script_adds_at_the_top():
+    # The pills, the pyramid key's bar line, the gap note and the map's first line came after load and moved the page
+    # (about 200 px on a phone, 24 Nov 2026).
+    site = Path(__file__).resolve().parent.parent / "site"
+    html = (site / "species.html").read_text()
+    key = re.search(r'<div class="legend" id="pyrkey">(.*?)</div>', html, re.DOTALL)[1]
+    assert key.count('class="lbl"') == 5 and "Bar:" in key
+    css = (site / "assets" / "style.css").read_text()
+    assert re.search(r"\.sp-pills:empty \{ min-height: 31px \}", css)
+    assert re.search(r"#where:empty \{ min-height: 1lh \}", css)
+    assert ".sp-map #legend:empty { min-height: 47px }" in css
+    phone = re.search(r"@media \(max-width: 600px\) \{ /\* species page while loading \*/(.*?)\n\}", css, re.DOTALL)[1]
+    for rule in (".sp-pills:empty { min-height: 70px }", ".sp-gapnote { min-height: calc(3lh + 24px) }",
+                 ".blk.sk { min-height: 98px }", "#where:empty { min-height: 2lh }",
+                 ".sp-map #legend:empty { min-height: 75px }"):
+        assert rule in phone, rule
+    js = (site / "assets" / "species.js").read_text()
+    assert "`Bar: not measured for" in js   # a species with no shares keeps the line

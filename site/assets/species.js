@@ -172,7 +172,8 @@ try {
   const shares = groupShares(S, gi), documented = S.india?.[gi]?.[0];
   $('#pyr').innerHTML = pyramidHTML(gaps, shares, word);
   $('#pyrkey').innerHTML = pyramidKey(['Known', 'Part known', 'Open gap', 'Not measured'].map(l => `${l} for this species`),
-    shares.some(v => v != null) ? `Bar: the share of the ${fmt(documented)} ${word} on the India list where it is known` : '');
+    shares.some(v => v != null) ? `Bar: the share of the ${fmt(documented)} ${word} on the India list where it is known`
+      : `Bar: not measured for ${word} yet`);   // the line stays, so the map under it does not move
   const intro = `${nKnown} of 7 known for this species${nNa ? `, ${nNa} not measured yet` : ''}. Pick a block for what we measured.`;
   $('#gapnote').textContent = intro;
   $('#pyr').addEventListener('click', e => {
@@ -210,7 +211,7 @@ try {
   $('#waiting').innerHTML = waitList.length && taxon ? `Observations that wait for a name: ${waitList.map(s => `<a href="${identify(S.waiting?.places?.[s.code] ?? S.waiting?.places?.india)}" target="_blank" rel="noopener">${esc(s.name)} (${fmt(s.wait)})</a>`).join(', ')}. Help name them on iNaturalist.` : '';
 
   // The experimental shortlist (/shortlist): observations that wait for a name where a model suggests this species.
-  getJSON('layers/shortlist/latest.json')
+  const short = getJSON('layers/shortlist/latest.json')
     .then(l => (l.names != null ? getJSON(`layers/shortlist/${encodeURIComponent(l.run)}/names.json`) : null))
     .then(index => {
       const sl = shortlistLink(index, name);
@@ -280,19 +281,17 @@ try {
     <span class="lbl">A name in colour links to its page</span>` : '';
 
   // Relatives: the species of the family on the list, on a time axis.
-  if (family) {
-    getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(p => {
-      const rows = p[family] || [];
-      if (rows.length < 2) return;
-      const R = relatives(rows, key, name, S);
-      const { svg, viewBox } = relativesSVG(R.rows, key, since);
-      const genus = name.split(' ')[0];
-      $('#rel').setAttribute('viewBox', viewBox);
-      $('#rel').innerHTML = svg;
-      $('#relnote').textContent = `${fmt(R.total)} species of ${family} on the India list${R.total > R.rows.length ? `; the ${R.rows.length} here are ${genus} first, then those recorded most recently` : ''}. Each line runs from the year a species was described to its latest record placed in a state; ${name} in colour. The small pyramid shows each one's seven gaps. Pick a name for its page.`;
-      $('#relcard').hidden = false;
-    }).catch(() => {});
-  }
+  const rel = !family ? null : getJSON(`${latest.base}fam/${shardOf(family)}.json`).then(p => {
+    const rows = p[family] || [];
+    if (rows.length < 2) return;
+    const R = relatives(rows, key, name, S);
+    const { svg, viewBox } = relativesSVG(R.rows, key, since);
+    const genus = name.split(' ')[0];
+    $('#rel').setAttribute('viewBox', viewBox);
+    $('#rel').innerHTML = svg;
+    $('#relnote').textContent = `${fmt(R.total)} species of ${family} on the India list${R.total > R.rows.length ? `; the ${R.rows.length} here are ${genus} first, then those recorded most recently` : ''}. Each line runs from the year a species was described to its latest record placed in a state; ${name} in colour. The small pyramid shows each one's seven gaps. Pick a name for its page.`;
+    $('#relcard').hidden = false;
+  }).catch(() => {});
 
   // Details: status, the evidence behind it, sources and labels, and the next step a person can take.
   const chips = (mask, names) => tags(mask, names) || '<span class="muted">–</span>';
@@ -346,6 +345,9 @@ ${evidenceRows(S, name, types, photos, barcode, localPairs)}${S.papers?.[gi] != 
     if (links.length) $('#gbif-links').innerHTML = links.map(l => `<a href="${esc(l.href)}">${esc(l.text)}</a>`).join('<br>');
   }).catch(() => {});
   $('#source').innerHTML = `${esc(S.disclaimer || '')} ${sourceLine(snapSummary)}`;
+  await Promise.all([rel, short]);   // drawn before the part under the map shows, so they do not push it down on screen
 } catch (err) {
   showLoadError(err);
+} finally {
+  document.documentElement.classList.remove('sp-loading');
 }

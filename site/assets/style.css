@@ -124,6 +124,19 @@ dl.stats dd { margin: 0; text-align: right; font-family: var(--mono) }
 main { min-height: 100svh }
 @media (max-width: 939px) { .cardlist:has(> .loading) { min-height: 100svh } }
 @media (max-width: 600px) { .sp-status:empty { min-height: 100svh } }
+/* Species page: until species.js has drawn it, the part under the map and the footer stay out (they then appear,
+   and nothing on screen moves), and the lines above the map hold their space. */
+.sp-loading #main > .sp-two ~ *, .sp-loading footer { display: none }
+.sp-pills:empty { min-height: 31px }
+#where:empty { min-height: 1lh }
+.sp-map #legend:empty { min-height: 47px }
+@media (max-width: 600px) { /* species page while loading */
+  .sp-pills:empty { min-height: 70px }
+  .sp-gapnote { min-height: calc(3lh + 24px) }
+  .blk.sk { min-height: 98px }
+  #where:empty { min-height: 2lh }
+  .sp-map #legend:empty { min-height: 75px }
+}
 footer { margin-top: 56px; border-top: 1px solid var(--line); background: var(--surface) }
 footer .wrap { padding-block: 28px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; line-height: 1.6; color: var(--ink-2) }
 footer .grow { flex: 999 1 480px }
