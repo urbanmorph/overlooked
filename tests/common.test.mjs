@@ -83,3 +83,12 @@ test('setParams: each choice into the address, an empty one taken out', () => {
   setParams([['state', '32'], ['group', null], ['band', '']]);
   assert.deepEqual(calls, ['https://x/fix?state=32&keep=1']);
 });
+
+test('bit is defined once, in species_model.js, and common.js passes it on', () => {
+  const src = f => readFileSync(new URL(`../site/assets/${f}`, import.meta.url), 'utf8');
+  assert.doesNotMatch(src('common.js'), /const bit =/);
+  assert.match(src('species_model.js'), /export const bit =/);
+  assert.equal(bit(0b101, 2), true);
+  assert.equal(bit(0b101, 1), false);
+  assert.equal(bit(2 ** 40, 40), true);   // past 32 bits: no bitwise operators
+});

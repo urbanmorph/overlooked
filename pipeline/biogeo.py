@@ -16,7 +16,6 @@ ROOT = Path(__file__).resolve().parent.parent
 URL = "https://pub-0429b8e3b5a946e69ea007df844a6f1c.r2.dev/environment/biogeographic/Biogeographic_Zones.parquet"
 PATH = ROOT / "data" / "ref" / "Biogeographic_Zones.parquet"
 SIMPLIFY_DEG = 0.001
-CREDIT = "Biogeographic zones of India: Wildlife Institute of India (Rodgers, Panwar and Mathur), GODL-India"
 
 # (province code, province, zone), in the WII order. The bit of a province in a mask is its index here.
 PROVINCES = [

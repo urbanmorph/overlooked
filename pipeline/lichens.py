@@ -16,12 +16,11 @@ served); a second run with the same PDF writes the same table and uploads nothin
 Usage: .venv/bin/python -m pipeline.lichens [--publish]
 """
 
-import argparse
-import csv
 import re
+import sys
 from pathlib import Path
 
-from pipeline.util import log
+from pipeline import checklist
 
 ROOT = Path(__file__).resolve().parent.parent
 URL = "https://cbaj.in/index.php/journal/article/download/247/89"
@@ -150,58 +149,15 @@ def check(rows):
     return problems
 
 
-def write(rows, path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".part")
-    with tmp.open("w", newline="") as f:
-        w = csv.DictWriter(f, FIELDS)
-        w.writeheader()
-        w.writerows(rows)
-    tmp.replace(path)
-    return path
+def summary(rows):
+    return (f"{len(rows)} taxa, {sum(r['endemic'] for r in rows)} endemic, "
+            f"{sum(bool(r['states']) for r in rows)} with states")
 
 
 def run(http, s3=None, cache=CACHE):
     """Fetch (once), parse, check and keep the table; with s3, both files in R2 (uploaded only when changed)."""
-    pdf = cache / PDF
-    if not pdf.exists():
-        cache.mkdir(parents=True, exist_ok=True)
-        r = http.get(URL, timeout=300)
-        r.raise_for_status()
-        tmp = pdf.with_suffix(".part")
-        tmp.write_bytes(r.content)
-        tmp.replace(pdf)
-        log(f"lichens: downloaded {pdf.name} ({pdf.stat().st_size >> 10} KB)")
-    rows = parse(pdf)
-    problems = check(rows)
-    if problems:
-        raise SystemExit("lichens: the table did not read cleanly:\n  " + "\n  ".join(problems[:30]))
-    table = write(rows, cache / TABLE)
-    log(f"lichens: {len(rows)} taxa, {sum(r['endemic'] for r in rows)} endemic, "
-        f"{sum(bool(r['states']) for r in rows)} with states")
-    if s3:
-        from pipeline import r2
-        for p in (pdf, table):
-            r2.sync_file(s3, p, R2_DIR + p.name, immutable=False)
-    return table
-
-
-def main():
-
-    from pipeline import health
-    a = argparse.ArgumentParser()
-    a.add_argument("--publish", action="store_true", help="keep the PDF and the table in R2 (cache/lichens/)")
-    args = a.parse_args()
-    http = health.session()
-    s3 = None
-    if args.publish:
-        from dotenv import load_dotenv
-
-        from pipeline import r2
-        load_dotenv(ROOT / ".env", override=True)
-        s3 = r2.client()
-    run(http, s3)
+    return checklist.run(sys.modules[__name__], http, s3, cache)
 
 
 if __name__ == "__main__":
-    main()
+    checklist.main(sys.modules[__name__])

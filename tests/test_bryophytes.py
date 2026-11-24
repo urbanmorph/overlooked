@@ -53,6 +53,7 @@ def test_check_reports_numbers_not_read_except_those_the_paper_skips_and_rows_wi
 
 def test_run_downloads_once_and_keeps_both_files_in_r2(pdf, tmp_path, monkeypatch):
     from tests.r2_fake import FakeS3
+    from tests.test_util import Response
     monkeypatch.setenv("R2_BUCKET", "b")
     monkeypatch.setattr(bryophytes, "TAXA", {"mosses": 6, "liverworts": 4, "hornworts": 1})
     monkeypatch.setattr(bryophytes, "SKIPPED", {"mosses": [5]})
@@ -63,8 +64,7 @@ def test_run_downloads_once_and_keeps_both_files_in_r2(pdf, tmp_path, monkeypatc
 
         def get(self, url, **kw):
             Http.calls += 1
-            return type("R", (), {"content": pdf.read_bytes(), "raise_for_status": lambda self: None,
-                                  "headers": {"Content-Type": "application/pdf"}})()
+            return Response(pdf.read_bytes())
 
     s3 = FakeS3()
     table = bryophytes.run(Http(), s3, tmp_path / "c")

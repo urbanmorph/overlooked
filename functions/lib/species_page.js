@@ -4,11 +4,11 @@
 // run JavaScript), link previews and readers with no JavaScript.
 // Pure: the static page in, the filled page out. The species comes from lookupSpecies (lib/mcp.js).
 import { groupTitle } from './places.js';
+import { andList, replaceMeta } from './html.js';
 import { esc, model, slug, speciesPath, speciesTitle } from '../../site/assets/species_model.js';
 
 const SITE = 'https://yellide.com';
 
-const list = xs => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function iucnText({ category, year, trend }, M) {
@@ -27,14 +27,9 @@ function sentences(s, M) {
     iucnText(s.iucn, M),
     s.endemic ? 'Endemic to India.' : null,
     states.length ? `Open records in ${plural(states.length, 'state', 'states')}.` : 'No open record from India yet.',
-    s.sources?.length ? `Listed by ${list(s.sources)}.` : null,
+    s.sources?.length ? `Listed by ${andList(s.sources)}.` : null,
     s.group ? `Group: ${s.group}.` : null,
   ].filter(Boolean);
-}
-
-function replaceMeta(html, attr, name, value) {
-  const re = new RegExp(`<meta ${attr}="${name}" content="[^"]*">`);
-  return html.replace(re, `<meta ${attr}="${name}" content="${value}">`);
 }
 
 /** Links to the pages of its group in each state where it has an open record ("Birds of Kerala"), lib/place_page.js. */

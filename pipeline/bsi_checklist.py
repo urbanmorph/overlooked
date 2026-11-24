@@ -102,17 +102,13 @@ def fetch_pdf(http, spec, s3=None):
     missing files with its home page and HTTP 200). Written to a .part file first."""
     from pipeline import r2
     dest = pdf_path(spec)
-    key = f"{R2_DIR}/checklists/{dest.name}"
-    if r2.restore(s3, key, dest):
-        log(f"{spec['key']}: PDF from R2")
-    if not dest.exists():
+
+    def fetch(dest):
         if not util.stream(http, spec["url"], dest, kind="pdf"):
             raise RuntimeError(f"{spec['url']} did not return a PDF")
-        log(f"{spec['key']}: downloaded {dest.stat().st_size:,} bytes from BSI")
         time.sleep(1)
-    if s3 is not None:
-        r2.sync_file(s3, dest, key)
-    return dest
+        return True
+    return r2.cached_file(s3, f"{R2_DIR}/checklists/{dest.name}", dest, fetch)
 
 
 def ocr_file(spec):

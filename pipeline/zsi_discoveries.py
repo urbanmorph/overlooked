@@ -159,16 +159,7 @@ def fetch_pdf(http, url, year, s3=None):
     did not send one; the year is then tried again on the next run."""
     from pipeline import r2
     dest = pdf_file(year)
-    key = f"{R2_DIR}/{dest.name}"
-    if r2.restore(s3, key, dest):
-        log(f"{year}: PDF from R2")
-    if not dest.exists():
-        if not bsi.download(http, url.replace(" ", "%20"), dest):
-            return None
-        log(f"{year}: downloaded {dest.stat().st_size:,} bytes from {url}")
-    if s3 is not None:
-        r2.sync_file(s3, dest, key)
-    return dest
+    return r2.cached_file(s3, f"{R2_DIR}/{dest.name}", dest, lambda d: bsi.download(http, url.replace(" ", "%20"), d))
 
 
 def needs_ocr(text):

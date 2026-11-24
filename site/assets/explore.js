@@ -5,13 +5,13 @@
 // With no filter the figures come from summary.json; with filters (year described, sources, status, IUCN,
 // labels) they are counted from the group files, so the map, cards and list always show the same species.
 
-import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesName, speciesInline, iucnBadge, model, slug, speciesPath } from './common.js?v=13f69a4a12';
-import { drawMap, legendHTML } from './map.js?v=c9a780a4b8';
-import { signed } from './trend.js?v=42df4072cc';
-import { knowledge, segmentChanges } from './funnel.js?v=5e149b196c';
-import { redlist } from './redlist.js?v=5b88f6e792';
-import { gaps, gapAbsent } from './gaps.js?v=3d8fc9acf2';
-import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=53437563e7';
+import { getJSON, snapshot, fmt, esc, $, bit, tags, showLoadError, sumGroups, nameMatches, setParams, speciesName, speciesInline, iucnBadge, model, slug, speciesPath } from './common.js?v=6ba08c79da';
+import { drawMap, legendHTML } from './map.js?v=8a91e9d50f';
+import { signed } from './trend.js?v=edac3efdaa';
+import { knowledge, segmentChanges } from './funnel.js?v=4e9d3ff3f2';
+import { redlist } from './redlist.js?v=4c60a8ad17';
+import { gaps, gapAbsent } from './gaps.js?v=bb500c0f94';
+import { groupShares, pyramidHTML, pyramidKey, shareState } from './web.js?v=7feb68dd85';
 import { CATS } from './cats.js?v=7d886060d4';
 
 const VIEW_TEXT = {

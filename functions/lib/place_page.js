@@ -4,6 +4,7 @@
 import { esc, iucnBadge, model, speciesName } from '../../site/assets/species_model.js';
 import { CATS } from '../../site/assets/cats.js';
 import { MUGILU, WARD_MAPS, mugiluUrl, wardMapUrl } from './sister.js';
+import { andList, replaceMeta } from './html.js';
 import { DISTRICT_NOTE, MIN_SPECIES, RESPECT_NOTE, countsOf, groupNoun, groupTitle, placePath, places } from './places.js';
 
 const SITE = 'https://yellide.com';
@@ -11,12 +12,7 @@ const LIST_MAX = 500;        // species named in full on one page; more are a li
 
 const nf = new Intl.NumberFormat('en-IN');
 const fmt = n => nf.format(n);
-const list = xs => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const byName = (a, b) => a.name.localeCompare(b.name);
-
-function replaceMeta(html, attr, name, value) {
-  return html.replace(new RegExp(`<meta ${attr}="${name}" content="[^"]*">`), `<meta ${attr}="${name}" content="${value}">`);
-}
 
 /** The shell with this page's title, description, address, structured data and main content. */
 function fill(shell, { title, desc, path, body, ld, index = true }) {
@@ -87,7 +83,7 @@ export function groupPage(shell, { place, gi, d, C }) {
   const marked = !d.unmarked.includes(group), end = marked ? rows.filter(r => r.endemic).sort(byName) : [];
   const byCat = S.threatened.map(c => [c, thr.filter(r => r.iucn === c).length]).filter(([, n]) => n);
   const n = rows.length;
-  const lead = n ? `${sentence(place, n, noun)}${thr.length ? `, ${fmt(thr.length)} of them threatened (${list(byCat.map(([c, k]) => `${fmt(k)} ${M.iucnName(c)}`))})` : ''}`
+  const lead = n ? `${sentence(place, n, noun)}${thr.length ? `, ${fmt(thr.length)} of them threatened (${andList(byCat.map(([c, k]) => `${fmt(k)} ${M.iucnName(c)}`))})` : ''}`
     + `${end.length ? `${thr.length ? ' and' : ','} ${fmt(end.length)} endemic to India` : ''}.` : 'No species on the list is recorded here yet.';
   const what = place.kind === 'state' ? 'A species is in a state when it has an open record placed there: a record anyone can check online (a GBIF record, or a research-grade iNaturalist observation).'
     : place.kind === 'zone' ? 'A species is in a region when a GBIF record of it is placed there (the biogeographic zones of the Wildlife Institute of India).'

@@ -54,7 +54,7 @@ export function nameMatches(name, q, english = false) {
 const orList = xs => (xs.length < 3 ? xs.join(' or ') : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
 
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
-const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
+export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 
 /** {field: position} for a list of field names; asking for a field that is not there is an error, not undefined. */
 function positions(names) {

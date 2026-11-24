@@ -18,12 +18,11 @@ Cache and idempotency: the PDF and the parsed table are kept in data/cache/bryop
 Usage: .venv/bin/python -m pipeline.bryophytes [--publish]
 """
 
-import argparse
-import csv
 import re
+import sys
 from pathlib import Path
 
-from pipeline.util import log
+from pipeline import checklist
 
 ROOT = Path(__file__).resolve().parent.parent
 URL = ("https://publikationen.ub.uni-frankfurt.de/opus4/frontdoor/deliver/index/docId/35029/file/"
@@ -142,59 +141,14 @@ def check(rows, taxa=None, skipped=None, no_name=None):
     return problems
 
 
-def write(rows, path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".part")
-    with tmp.open("w", newline="") as f:
-        w = csv.DictWriter(f, FIELDS)
-        w.writeheader()
-        w.writerows({k: r.get(k) for k in FIELDS} for r in rows)
-    tmp.replace(path)
-    return path
+def summary(rows):
+    return ", ".join(f"{sum(r['section'] == s for r in rows)} {s}" for s in TAXA)
 
 
 def run(http, s3=None, cache=CACHE):
     """Fetch (once), parse, check and keep the table; with s3, both files in R2 (uploaded only when changed)."""
-    pdf = cache / PDF
-    if not pdf.exists():
-        cache.mkdir(parents=True, exist_ok=True)
-        r = http.get(URL, timeout=300)
-        r.raise_for_status()
-        if "pdf" not in r.headers.get("Content-Type", "").lower():
-            raise SystemExit(f"bryophytes: {URL} did not answer with a PDF (a challenge page?); download it by hand to {pdf}")
-        tmp = pdf.with_suffix(".part")
-        tmp.write_bytes(r.content)
-        tmp.replace(pdf)
-        log(f"bryophytes: downloaded {pdf.name} ({pdf.stat().st_size >> 10} KB)")
-    rows = parse(pdf)
-    problems = check(rows)
-    if problems:
-        raise SystemExit("bryophytes: the list did not read cleanly:\n  " + "\n  ".join(problems[:30]))
-    table = write(rows, cache / TABLE)
-    log("bryophytes: " + ", ".join(f"{sum(r['section'] == s for r in rows)} {s}" for s in TAXA))
-    if s3:
-        from pipeline import r2
-        for p in (pdf, table):
-            r2.sync_file(s3, p, R2_DIR + p.name, immutable=False)
-    return table
-
-
-def main():
-
-    from pipeline import health
-    a = argparse.ArgumentParser()
-    a.add_argument("--publish", action="store_true", help="keep the PDF and the table in R2 (cache/bryophytes/)")
-    args = a.parse_args()
-    http = health.session()
-    s3 = None
-    if args.publish:
-        from dotenv import load_dotenv
-
-        from pipeline import r2
-        load_dotenv(ROOT / ".env", override=True)
-        s3 = r2.client()
-    run(http, s3)
+    return checklist.run(sys.modules[__name__], http, s3, cache)
 
 
 if __name__ == "__main__":
-    main()
+    checklist.main(sys.modules[__name__])

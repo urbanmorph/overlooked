@@ -446,3 +446,27 @@ def test_sync_uses_the_editions_already_parsed_when_bsi_is_down(tmp_path, monkey
     down = type("Down", (), {"get": lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("down")),
                              "head": lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("down"))})()
     assert bsi.sync(down, s3) == {2022: [{"name": "Aus bus", "year": "2022", "link": "https://bsi.gov.in/a.pdf"}]}
+
+
+def test_an_edition_keeps_the_larger_of_two_pdfs_and_r2_keeps_it(tmp_path, monkeypatch):
+    from tests.r2_fake import FakeS3
+    from tests.test_util import Response
+    monkeypatch.setenv("R2_BUCKET", "b")
+    monkeypatch.setattr(bsi, "SRC", tmp_path)
+    monkeypatch.setattr(bsi.time, "sleep", lambda s: None)
+    bodies = {"short": Response(b"%PDF short"), "full": Response(b"%PDF the full one"), "home": Response(b"<html>", "text/html")}
+
+    class Http:
+        calls = []
+
+        def get(self, url, **kw):
+            Http.calls.append(url)
+            return bodies[url]
+
+    s3 = FakeS3()
+    best = bsi.fetch_edition(Http(), 2020, ["short", "full"], s3)
+    assert best.read_bytes() == b"%PDF the full one"
+    assert s3.store["cache/bsi/Plant Discoveries 2020 best.pdf"] == b"%PDF the full one"
+    assert not (tmp_path / "Plant Discoveries 2020.pdf").exists()
+    assert bsi.fetch_edition(Http(), 2020, ["short", "full"], s3) == best and len(Http.calls) == 2   # cached
+    assert bsi.fetch_edition(Http(), 2021, ["home"], s3) is None                                     # not a PDF

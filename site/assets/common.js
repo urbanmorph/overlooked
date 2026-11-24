@@ -1,9 +1,11 @@
 // Shared helpers. Data lives under /data/ (R2 through the Pages Function, or scripts/serve.py locally).
-import { esc } from './species_model.js?v=eb5180d3d3';
+import { bit, esc } from './species_model.js?v=e76c4fcf9a';
+
+export { bit };   // one copy, in species_model.js (the server uses it too)
 
 // One way to read and show a species (species_model.js), here too so every page imports its helpers from one place.
 export { esc, iucnBadge, speciesName, speciesText, speciesTitle, speciesInline, model, shardOf, fillEnglish, englishOf, plainName,
-  nameMatches, slug, speciesPath } from './species_model.js?v=eb5180d3d3';
+  nameMatches, slug, speciesPath } from './species_model.js?v=e76c4fcf9a';
 
 export const DATA = '/data/';
 const cache = new Map();
@@ -46,7 +48,6 @@ export function setParams(pairs) {
 /** A web address from a source (a paper, an assessment) for an href, or null: never a javascript: or data: link. */
 export const safeHref = u => (/^https?:\/\//i.test(u || '') ? u : null);
 
-export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 // One label chip per bit set in mask.
 export const tags = (mask, names) => names.map((n, i) => (bit(mask, i) ? `<span class="tag">${esc(n)}</span>` : '')).join('');
 export const $ = (sel, el = document) => el.querySelector(sel);

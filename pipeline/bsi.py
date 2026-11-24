@@ -509,21 +509,15 @@ def fetch_edition(http, year, urls, s3=None):
     two files (BSI posts a full and a short version), keep the larger. None if none is a PDF."""
     from pipeline import r2
     best = SRC / f"Plant Discoveries {year} best.pdf"
-    key = f"cache/bsi/{best.name}"
-    if r2.restore(s3, key, best):
-        log(f"{year}: PDF from R2")
-    if not best.exists():
+
+    def fetch(dest):
         for url in urls:
             pdf = SRC / f"Plant Discoveries {year}.pdf"
-            if download(http, url, pdf) and (not best.exists() or pdf.stat().st_size > best.stat().st_size):
-                pdf.replace(best)
-                log(f"{year}: downloaded {best.stat().st_size:,} bytes from {url}")
+            if download(http, url, pdf) and (not dest.exists() or pdf.stat().st_size > dest.stat().st_size):
+                pdf.replace(dest)
             pdf.unlink(missing_ok=True)   # the smaller of two files
-    if not best.exists():
-        return None
-    if s3 is not None:
-        r2.sync_file(s3, best, key)
-    return best
+        return dest.exists()
+    return r2.cached_file(s3, f"cache/bsi/{best.name}", best, fetch)
 
 
 def cached_years(s3, r2_dir, folder: Path, stem):

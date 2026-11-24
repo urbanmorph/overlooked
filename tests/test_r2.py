@@ -72,3 +72,30 @@ def test_fetch_keeps_a_copy_in_step_with_r2_through_a_part_file(tmp_path, monkey
     assert not list(dest.parent.glob("*.part"))
     del s3.store["cache/x.json"]
     assert r2.fetch(s3, "cache/x.json", dest) == dest                  # R2 has none: the local copy
+
+
+def test_cached_file_takes_the_local_copy_then_r2_then_the_source(tmp_path, monkeypatch):
+    """A source file (a PDF): from the local cache, else R2, else fetched once; R2 keeps a copy."""
+    monkeypatch.setenv("R2_BUCKET", "b")
+    calls = []
+
+    def fetch(dest):
+        calls.append(dest.name)
+        dest.write_bytes(b"%PDF one")
+        return True
+
+    s3, dest = FakeS3(), tmp_path / "a" / "x.pdf"
+    assert r2.cached_file(s3, "cache/x.pdf", dest, fetch) == dest and calls == ["x.pdf"]
+    assert s3.store["cache/x.pdf"] == b"%PDF one"                       # kept in R2
+    assert r2.cached_file(s3, "cache/x.pdf", dest, fetch) == dest and len(calls) == 1   # local: no fetch
+    dest.unlink()
+    assert r2.cached_file(s3, "cache/x.pdf", dest, fetch) == dest and len(calls) == 1   # from R2: no fetch
+    assert dest.read_bytes() == b"%PDF one"
+
+
+def test_cached_file_is_none_when_the_source_has_none(tmp_path, monkeypatch):
+    monkeypatch.setenv("R2_BUCKET", "b")
+    s3 = FakeS3()
+    assert r2.cached_file(s3, "cache/y.pdf", tmp_path / "y.pdf", lambda dest: False) is None
+    assert s3.store == {}
+    assert r2.cached_file(None, "cache/y.pdf", tmp_path / "y.pdf", lambda dest: dest.write_bytes(b"z") > 0) == tmp_path / "y.pdf"

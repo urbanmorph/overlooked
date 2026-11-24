@@ -11,6 +11,8 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+from pipeline.util import log
+
 # Snapshot files never change once written; only latest.json moves.
 IMMUTABLE = "public, max-age=31536000, immutable"
 SHORT = "public, max-age=300"
@@ -72,6 +74,21 @@ def fetch(s3, key, dest: Path):
     if meta is not None and (not dest.exists() or (meta.get("sha256") and meta["sha256"] != sha256(dest))):
         download(s3, key, dest)
     return dest if dest.exists() else None
+
+
+def cached_file(s3, key, dest: Path, fetch, immutable=True):
+    """A source file (a PDF, say): the local copy, else R2's, else fetch(dest), which writes dest and is truthy, or
+    is falsy when the source has none. With s3, R2 keeps a copy (uploaded only when changed). dest, or None."""
+    if restore(s3, key, dest):
+        log(f"{dest.name}: from R2")
+    if not dest.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if not fetch(dest) or not dest.exists():
+            return None
+        log(f"{dest.name}: downloaded {dest.stat().st_size:,} bytes")
+    if s3 is not None:
+        sync_file(s3, dest, key, immutable=immutable)
+    return dest
 
 
 def put_json(s3, obj, key):
