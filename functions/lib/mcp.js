@@ -6,8 +6,8 @@
 // fixed-width row per species written by pipeline/master.py mcp_files: a scan takes about a millisecond, where
 // parsing the g files takes 40 ms. Files are read once per isolate and week.
 import { record, isBot, mcpClient } from './metrics.js';
-import { DISTRICT_NOTE, RESPECT_NOTE } from './places.js';
-import { model, shardOf, nameMatches, plainName as plain, englishOf, speciesPath } from '../../site/assets/species_model.js';
+import { DISTRICT_NOTE, RESPECT_NOTE, WILD_NOTE } from './places.js';
+import { KINGDOMS, kingdomOf, model, shardOf, nameMatches, plainName as plain, englishOf, speciesPath } from '../../site/assets/species_model.js';
 
 export { shardOf };
 
@@ -22,7 +22,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. A name with a small spelling mistake is read as the nearest valid name, and the answer says how it was read: tell the user. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by kingdom (animals, plants, fungi, other), group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a wild GBIF record of it is placed there (records of planted, kept or introduced plants and animals are counted apart, as not_wild): say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". The resources give the valid groups, states, districts and regions. A name with a small spelling mistake is read as the nearest valid name, and the answer says how it was read: tell the user. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 const ABOUT = `# yellide
 
@@ -30,8 +30,10 @@ Every species documented from India, across sources. Updated each week. ${SITE}
 
 - Documented: a species that a checklist (ZSI, BSI, Kew WCVP, the lichen and bryophyte checklists), a paper (Plazi) or an open record lists for India. Names follow the Catalogue of Life.
 - Open record: a record from India anyone can check online: any GBIF record (photo, sighting, specimen, sound, DNA, a record cited from a paper) or an iNaturalist research-grade observation.
-- State: a species is in a state when it has an open record placed there.
-- District: a species is in a district when a GBIF record of it is placed there (LGD districts). For a district, list_species gives the first and latest year and the number of records there.
+- State: a species is in a state when it has a wild open record placed there.
+- District: a species is in a district when a wild GBIF record of it is placed there (LGD districts). For a district, list_species gives the first and latest year and the number of wild records there.
+- Wild records: a place's list leaves out records of planted or kept plants and animals (the source marks them so, a dataset of planted trees such as SeasonWatch, or a reviewed list) and records of plants outside the native range Kew's World Checklist of Vascular Plants gives them. count_species and list_species give these apart, as not_wild: cultivated_or_captive and outside_native_range.
+- Kingdom: animals, plants (with mosses and liverworts), fungi (with lichens, named for their fungus) and other (algae, diatoms and the rest). count_species gives by_kingdom; yellide://kingdoms lists the groups of each.
 - Region: the biogeographic zones and provinces of India of the Wildlife Institute of India (Rodgers, Panwar and Mathur): 10 zones, 26 provinces. A species is in a region when a GBIF record of it is placed there. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.
 - Waiting for a name: iNaturalist observations that nobody has confirmed yet (needs ID). They are not open records.
 - IUCN: the category, year, DOI and trend of the latest IUCN Red List assessment (IUCN Red List, via GBIF). NE: not assessed. Threatened: CR, EN or VU.
@@ -188,7 +190,34 @@ async function inDistrict(env, S, ix, a) {
     }
   });
   for (const s of at.values()) s.districts?.sort((x, y) => x.localeCompare(y));
-  return { at };
+  // Species with records only planted, kept or outside their range in these districts (none listed in any of them).
+  const notWild = new Map();
+  files.forEach(f => {
+    for (const [key, why] of f?.not_wild || []) {
+      const i = rows.get(key);
+      if (i != null && !at.has(i) && !notWild.has(i)) notWild.set(i, why);
+    }
+  });
+  return { at, notWild };
+}
+
+const NOT_WILD = ['cultivated_or_captive', 'outside_native_range'];
+
+/** The species a place's list leaves out, by reason (a district's from inDistrict, a state's from its own file),
+ *  that pass every filter but the place: {cultivated_or_captive: n, outside_native_range: n}; null with no place. */
+async function notWildOf(env, S, ix, a, dist) {
+  let map = dist?.notWild;
+  if (!map && a.state != null) {
+    map = new Map();
+    const f = await shard(env, `d/state-${S.states[stateOf(S, a.state, a)].code}.json`), rows = rowOf(ix);
+    for (const [key, why] of f?.not_wild || []) { const i = rows.get(key); if (i != null) map.set(i, why); }
+  }
+  if (!map) return null;
+  const b = { ...a, district: null, state: null, recorded_since: null };
+  b[READ] = [];   // the notes are the request's, read once
+  const ok = filter(S, ix, b), out = Object.fromEntries(NOT_WILD.map(k => [k, 0]));
+  for (const [i, why] of map) if (ok(i) && why in out) out[why]++;
+  return out;
 }
 
 // ---------------------------------------------------------------- filters
@@ -235,10 +264,20 @@ function one(what, value, names, valid, a) {
   return at[0];
 }
 
+/** The group indexes of a kingdom (animals, plants, fungi, other; a near spelling is read as the nearest). */
+function kingdomGroups(S, value, a) {
+  const k = KINGDOMS[one('kingdom', value, KINGDOMS, KINGDOMS, a)];
+  return S.groups.flatMap((g, i) => (kingdomOf(g) === k ? [i] : []));
+}
+
+// Group words that mean a kingdom. "Fungi" is a group of its own (its exact name wins); kingdom "fungi" adds lichens.
+const KINGDOM_WORDS = { animal: 'animals', animals: 'animals', plant: 'plants', plants: 'plants' };
+
 function groupsOf(S, value, a) {
   const q = plain(value);
   const exact = S.groups.findIndex(g => plain(g) === q);
   if (exact >= 0) return [exact];
+  if (KINGDOM_WORDS[q]) return kingdomGroups(S, KINGDOM_WORDS[q], a);
   const some = S.groups.flatMap((g, i) => (plain(g).includes(q) ? [i] : []));
   return some.length ? some : [one('group', value, S.groups, S.groups, a)];
 }
@@ -300,6 +339,7 @@ function filter(S, ix, a, dist = null) {
   const tests = [], { col, nul } = ix;
   if (dist) tests.push(i => dist.at.has(i));
   if (a.group != null) { const t = table(256, groupsOf(S, a.group, a)), g = col.group; tests.push(i => t[g[i]] === 1); }
+  if (a.kingdom != null) { const t = table(256, kingdomGroups(S, a.kingdom, a)), g = col.group; tests.push(i => t[g[i]] === 1); }
   // With a district, the state only tells which district of that name.
   if (a.state != null && !dist) {
     const b = stateOf(S, a.state, a), m = b < 32 ? col.states_lo : col.states_hi, k = b % 32;
@@ -356,11 +396,12 @@ function unmarked(S, ix) {
 function filterNote(S, ix, a) {
   const notes = [...(a[READ] || [])];
   if (a.district != null) notes.push(DISTRICT_NOTE, RESPECT_NOTE);
+  if (a.district != null || a.state != null) notes.push(WILD_NOTE);
   if (a.endemic != null) {
-    notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants, ZSI and other checklists for some animal groups). '
+    notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants, ZSI and other checklists for some animal groups), each for the species under its own name (not a synonym\'s or a subspecies\' mark). '
       + `These groups have no endemic mark yet: ${unmarked(S, ix).join('; ')}. There, 0 endemic means not marked, not that none is endemic.`);
   }
-  if (a.state != null && a.district == null) notes.push('A species is in a state when it has an open record placed there.');
+  if (a.state != null && a.district == null) notes.push('A species is in a state when it has a wild open record placed there.');
   if (a.state != null && a.region != null && a.district == null) {
     notes.push('With a state and a region: species with records in the state and records in the region, not always in the part where they meet.');
   }
@@ -374,7 +415,8 @@ function filterNote(S, ix, a) {
 // ---------------------------------------------------------------- tools
 
 const FILTERS = {
-  group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids". See yellide://groups.' },
+  group: { type: 'string', description: 'A group of the list, or a word of it: "Birds", "butterflies", "mammals" (all mammal groups), "orchids"; "animals" and "plants" mean the kingdom. See yellide://groups.' },
+  kingdom: { type: 'string', enum: KINGDOMS, description: 'animals, plants (with mosses and liverworts), fungi (with lichens) or other (algae, diatoms and the rest). See yellide://groups.' },
   state: { type: 'string', description: 'A state or union territory of India: "Karnataka". See yellide://states.' },
   district: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' }, maxItems: 50 }], description: 'A district (LGD): its name, "Wayanad", or its LGD code; or a list of districts for an area that is made of districts (the Mahanadi delta: ["Cuttack", "Jagatsinghapur", "Kendrapara", "Puri"]), where each species counts once. Give the state too when two states have the name. See yellide://districts.' },
   region: { type: 'string', description: 'A WII biogeographic zone ("Western Ghats", "Himalaya", "North-East", "Islands"), a province ("Western Ghats: Mountains") or a province code ("5B"). See yellide://regions.' },
@@ -403,13 +445,13 @@ const TOOLS = [
   },
   {
     name: 'count_species', title: 'Count species',
-    description: 'How many species of India: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, and per IUCN category. All filters are optional and combine: "how many butterflies in India", "threatened birds in Kerala", "endemic frogs of the Western Ghats".',
+    description: 'How many species of India: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (by_kingdom: animals, plants, fungi, other). For a state or district, the counts are of wild records; not_wild gives, apart, the species recorded there only as planted or kept, or outside their native range. All filters are optional and combine: "how many butterflies in India", "threatened birds in Kerala", "endemic frogs of the Western Ghats", "plants of Shivamogga" (kingdom: plants).',
     inputSchema: { type: 'object', properties: FILTERS },
     run: countSpecies,
   },
   {
     name: 'list_species', title: 'List species',
-    description: 'List species of India with optional filters that combine: "critically endangered species in India", "endangered animals in Karnataka", "snakes of the Western Ghats", "birds of Goa recorded since 2020". Rows by group, then Latin name; up to 100 per page, with the total and a cursor for the next page.',
+    description: 'List species of India with optional filters that combine: "critically endangered species in India", "endangered animals in Karnataka" (kingdom: animals), "snakes of the Western Ghats", "birds of Goa recorded since 2020". A state\'s or a district\'s list is its wild records; not_wild counts the species left out. Rows by group, then Latin name; up to 100 per page, with the total and a cursor for the next page.',
     inputSchema: {
       type: 'object',
       properties: { ...FILTERS, limit: { type: 'integer', description: 'Rows per page, 1 to 100 (default 50).' }, cursor: { type: 'string', description: 'next_cursor from the previous page.' } },
@@ -561,29 +603,35 @@ function countPlaces(S, ix) {
 }
 
 async function countSpecies(env, S, a) {
-  const ix = await index(env), dist = await inDistrict(env, S, ix, a);
+  const ix = await index(env), dist = await inDistrict(env, S, ix, a), notWild = await notWildOf(env, S, ix, a, dist);
   const ok = filter(S, ix, a, dist), { status, iucn, labels } = ix.col;
   const last = dist ? i => dist.at.get(i).latest_year : i => ix.col.last_year[i];
   const thr = table(256, S.threatened.map(c => S.iucn.indexOf(c))), end = model(S).endBit;
   const since = S.recent_from, byIucn = new Array(S.iucn.length).fill(0);
-  let documented = 0, open = 0, threatened = 0, recent = 0, endemic = 0;
+  // The counts per kingdom too: [documented, open, threatened, recent, endemic] for each, by the group's kingdom.
+  const kOf = S.groups.map(g => KINGDOMS.indexOf(kingdomOf(g))), per = KINGDOMS.map(() => [0, 0, 0, 0, 0]);
   for (let i = 0; i < ix.n; i++) {
     if (!ok(i)) continue;
-    documented++;
-    if (status[i] === 1) open++;
+    const c = per[kOf[ix.col.group[i]]];
+    c[0]++;
+    if (status[i] === 1) c[1]++;
     byIucn[iucn[i]]++;
-    threatened += thr[iucn[i]];
-    if (last(i) >= since) recent++;
-    endemic += (labels[i] >>> end) & 1;
+    c[2] += thr[iucn[i]];
+    if (last(i) >= since) c[3]++;
+    c[4] += (labels[i] >>> end) & 1;
   }
+  const named = ([documented, open, threatened, recent, endemic]) =>
+    ({ documented, open_record: open, threatened, [`recorded_since_${since}`]: recent, endemic });
   return {
-    counts: { documented, open_record: open, threatened, [`recorded_since_${since}`]: recent, endemic },
+    counts: named(per.reduce((t, c) => t.map((v, j) => v + c[j]), [0, 0, 0, 0, 0])),
+    by_kingdom: Object.fromEntries(KINGDOMS.map((k, j) => [k, named(per[j])])),
+    ...(notWild ? { not_wild: notWild } : {}),
     by_iucn: Object.fromEntries(S.iucn.flatMap((k, i) => (byIucn[i] ? [[k, byIucn[i]]] : []))), note: filterNote(S, ix, a),
   };
 }
 
 async function listSpecies(env, S, a) {
-  const ix = await index(env), dist = await inDistrict(env, S, ix, a);
+  const ix = await index(env), dist = await inDistrict(env, S, ix, a), notWild = await notWildOf(env, S, ix, a, dist);
   const ok = filter(S, ix, a, dist), { col, val } = ix, { limit, from } = pageOf(a);
   const end = model(S).endBit;
   const species = [];
@@ -599,7 +647,7 @@ async function listSpecies(env, S, a) {
       latest_record_year: val('last_year', i), described: val('described', i), url: url(key, name),
       ...(dist ? { in_district: dist.at.get(i) } : {}) });
   }
-  return { total, species, next_cursor: next, note: filterNote(S, ix, a) };
+  return { total, species, next_cursor: next, ...(notWild ? { not_wild: notWild } : {}), note: filterNote(S, ix, a) };
 }
 
 async function newSpecies(env, S, a) {
@@ -636,7 +684,11 @@ async function newSpecies(env, S, a) {
 
 const RESOURCES = [
   { uri: 'yellide://about', name: 'about', title: 'What yellide is', mimeType: 'text/markdown', text: () => ABOUT },
-  { uri: 'yellide://groups', name: 'groups', title: 'Groups of the list', mimeType: 'application/json', text: S => JSON.stringify(S.groups) },
+  { uri: 'yellide://groups', name: 'groups', title: 'Groups of the list (their kingdoms: yellide://kingdoms)', mimeType: 'application/json', text: S => JSON.stringify(S.groups) },
+  {
+    uri: 'yellide://kingdoms', name: 'kingdoms', title: 'Kingdoms and their groups (plants include mosses; fungi include lichens)', mimeType: 'application/json',
+    text: S => JSON.stringify(Object.fromEntries(KINGDOMS.map(k => [k, S.groups.filter(g => kingdomOf(g) === k)]))),
+  },
   { uri: 'yellide://states', name: 'states', title: 'States and union territories', mimeType: 'application/json', text: S => JSON.stringify(S.states.map(s => s.name)) },
   {
     uri: 'yellide://districts', name: 'districts', title: 'Districts of each state (LGD)', mimeType: 'application/json',
@@ -674,7 +726,7 @@ async function answer(msg, env, metric) {
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
-        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.1.0', websiteUrl: SITE },
+        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.2.0', websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     case 'ping':

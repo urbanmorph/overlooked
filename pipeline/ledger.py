@@ -35,7 +35,7 @@ def unpack(key):
 
 
 # Columns a newer query added: older cubes do not have them.
-OPTIONAL = {"last_year_not_dna": "INTEGER", "n_trait": "BIGINT", "n_precise": "BIGINT"}
+OPTIONAL = {"last_year_not_dna": "INTEGER", "n_trait": "BIGINT", "n_precise": "BIGINT", "establishment": "VARCHAR"}
 # Area of occupancy: 2 km cells (IUCN's grid size) of an equal-area sinusoidal projection centred on India (80 E).
 CELL_M, EARTH_M, CENTRE_LON = 2000, 6371007.181, 80.0
 
@@ -50,6 +50,9 @@ def ensure_dna_column(con, table):
     for col in ("n_trait", "n_precise"):
         if col not in have:
             con.sql(f"ALTER TABLE {table} ADD COLUMN {col} BIGINT")
+    # Before establishment (24 Nov 2026): the source said nothing, so every record counts as wild.
+    if "establishment" not in have:
+        con.sql(f"ALTER TABLE {table} ADD COLUMN establishment VARCHAR")
 
 
 def load_cube(con, tsv):
@@ -68,7 +71,9 @@ def load_cube(con, tsv):
 
 
 def build(con, out: Path, label: str, districts: Path = DISTRICTS, zones: Path | None = None):
-    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records[, last_year_not_dna, n_trait]).
+    """Build from table cube (specieskey, lat, lon, first_year, last_year, n_records[, last_year_not_dna, n_trait,
+    n_precise, establishment]). Ledger rows count every record, and the wild ones apart (wild_*, n_cultivated,
+    n_introduced).
     With zones (pipeline/biogeo.py), also species_zones.parquet: per species and WII biogeographic province, the
     records placed in India's districts there and the latest year."""
     out.mkdir(parents=True, exist_ok=True)
@@ -88,7 +93,13 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS, zones: Path |
         SELECT q.specieskey AS species_key, p.dist_lgd AS district_lgd, p.state_lgd,
                min(q.first_year) AS first_year, max(q.last_year) AS last_year,
                max(q.last_year_not_dna) AS last_year_not_dna, sum(q.n_records) AS n_records, sum(q.n_trait) AS n_trait,
-               coalesce(sum(q.n_records) FILTER (WHERE p.how = 'near'), 0) AS n_records_near_shore
+               coalesce(sum(q.n_records) FILTER (WHERE p.how = 'near'), 0) AS n_records_near_shore,
+               -- Wild: the source says nothing else of the records. A place's list counts only these.
+               coalesce(sum(q.n_records) FILTER (WHERE q.establishment IS NULL), 0) AS wild_records,
+               min(q.first_year) FILTER (WHERE q.establishment IS NULL) AS wild_first_year,
+               max(q.last_year) FILTER (WHERE q.establishment IS NULL) AS wild_last_year,
+               coalesce(sum(q.n_records) FILTER (WHERE q.establishment = 'cultivated'), 0) AS n_cultivated,
+               coalesce(sum(q.n_records) FILTER (WHERE q.establishment = 'introduced'), 0) AS n_introduced
         FROM cube q JOIN point_district p USING (lat, lon)
         WHERE p.dist_lgd IS NOT NULL
         GROUP BY ALL
@@ -117,6 +128,8 @@ def build(con, out: Path, label: str, districts: Path = DISTRICTS, zones: Path |
         "cube_rows": one("SELECT count(*) FROM cube"),
         "records": one("SELECT sum(n_records) FROM cube"),
         "records_no_year": one("SELECT coalesce(sum(n_records), 0) FROM cube WHERE last_year IS NULL"),
+        "records_cultivated": one("SELECT coalesce(sum(n_records), 0) FROM cube WHERE establishment = 'cultivated'"),
+        "records_introduced": one("SELECT coalesce(sum(n_records), 0) FROM cube WHERE establishment = 'introduced'"),
         "species": one("SELECT count(DISTINCT specieskey) FROM cube"),
         "points": one("SELECT count(*) FROM point_district"),
         "records_inside": by_how.get("inside", 0),

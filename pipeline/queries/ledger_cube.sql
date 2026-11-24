@@ -6,6 +6,10 @@
 -- n_precise: records placed to 1 km or better (the Hutchinsonian gap: enough exact places to relate a species to
 -- climate maps); a record with no stated uncertainty does not count.
 -- {region_filter} is empty for the national run, or an extra AND clause for a test region.
+-- establishment: what the source says of the records (24 Nov 2026). 'cultivated': planted or kept (GBIF's degree of
+-- establishment captive, cultivated, managed or released, or a dataset of planted trees, pipeline/ref/cultivated_datasets.csv);
+-- 'introduced': brought from elsewhere (establishment means introduced, or a degree only an introduced species has);
+-- null: the source says nothing, so the record counts as wild. A place's list counts only null.
 SELECT
   specieskey,
   ROUND(decimallatitude, 3) AS lat,
@@ -19,7 +23,8 @@ SELECT
              OR (reproductivecondition IS NOT NULL AND reproductivecondition <> ''
                  AND reproductivecondition <> 'no flowers or fruits')
            THEN 1 ELSE 0 END) AS n_trait,
-  SUM(CASE WHEN coordinateuncertaintyinmeters <= 1000 THEN 1 ELSE 0 END) AS n_precise
+  SUM(CASE WHEN coordinateuncertaintyinmeters <= 1000 THEN 1 ELSE 0 END) AS n_precise,
+  {establishment} AS establishment
 FROM occurrence
 WHERE countrycode = 'IN'
   AND hascoordinate = TRUE
@@ -30,4 +35,4 @@ WHERE countrycode = 'IN'
   AND (coordinateuncertaintyinmeters IS NULL OR coordinateuncertaintyinmeters <= 25000)
   AND datasetkey NOT IN ({excluded})
   {region_filter}
-GROUP BY specieskey, ROUND(decimallatitude, 3), ROUND(decimallongitude, 3)
+GROUP BY specieskey, ROUND(decimallatitude, 3), ROUND(decimallongitude, 3), {establishment}

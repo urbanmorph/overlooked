@@ -2,7 +2,7 @@
 // The counts use IUCN's categories and the year of each assessment (IUCN's CC BY copy on GBIF) with the list's own
 // records; nothing else from IUCN. Order and keys as summary.json "redlist".
 
-import { sumGroups, model } from './common.js?v=6ba08c79da';
+import { sumGroups, model } from './common.js?v=3115b8d235';
 
 export const REDLIST = [
   { key: 'assessed', label: () => 'Assessed by IUCN', note: () => 'species with a category on the IUCN Red List', share: true },

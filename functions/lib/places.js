@@ -40,10 +40,15 @@ export const groupSlug = name => slug(name.replace(/\s*\(.*?\)/g, ''));
 
 /** What every page and answer for a district says: what "in the district" means, how to read it, and respect for the
  *  species (the place pages and the agent server, lib/mcp.js). */
-export const DISTRICT_NOTE = 'A species is in a district when a GBIF record of it is placed in the district. This does not show that it lives there now: '
+export const DISTRICT_NOTE = 'A species is in a district when a wild GBIF record of it is placed in the district: records of planted or kept '
+  + 'plants and animals, and of plants outside the native range Kew gives them, are counted apart (not_wild). This does not show that it lives there now: '
   + 'look at the year of the latest record there. A record can be in the wrong district: some sources move records of species at risk to a random point nearby, '
   + 'and some records give only an approximate place. When a species is not on the list, there is no record of it there, not that it is absent. '
   + 'Districts with few naturalists have fewer records.';
+/** A state's or a district's list means wild records: what it leaves out, by reason. */
+export const WILD_NOTE = 'A place\'s list counts wild records only. not_wild counts, apart, the species recorded there only as planted or kept '
+  + '(cultivated_or_captive: the source marks the records so, or a reviewed list) or outside their native range (outside_native_range: '
+  + 'an introduced population, or a plant outside the range Kew\'s World Checklist of Vascular Plants gives it).';
 export const RESPECT_NOTE = 'Many of these species are protected under the Wild Life (Protection) Act, 1972. Do not use this list to find, disturb, collect or trade them.';
 
 /** Every place, India first, then the states A to Z, then the zones in WII's order, then the districts (d/places.json,

@@ -76,7 +76,10 @@ function files() {
     // Districts: [code, name, state code, species per group]; Aurangabad is a name in two states.
     [BASE + 'd/places.json']: { rows: [[101, 'Ernakulam', '32', [1, 1, 1, 0]], [102, 'Aurangabad', '32', [0, 0, 0, 0]],
       [201, 'Aurangabad', '29', [0, 1, 0, 0]]] },
-    [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]] },
+    // not_wild: species with records in the district that its list leaves out (planted or kept, outside the native range).
+    [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]],
+      not_wild: [['K2', 'cultivated_or_captive', 4], ['K6', 'outside_native_range', 1], ['K1', 'cultivated_or_captive', 2]] },
+    [BASE + 'd/state-32.json']: { not_wild: [['K6', 'outside_native_range'], ['K3', 'cultivated_or_captive']] },
     [BASE + 'd/201.json']: { rows: [['K3', 2022, 2024, 3]] },
     [BASE + `en/${hashOf('K1') % 64}.json`]: { K1: 'Malabar Aus' },
     [BASE + `pic/${shardOf('K1')}.json`]: { K1: ['https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC 4.0', 'iNaturalist (India)', 'Malabar Aus'] },
@@ -310,7 +313,7 @@ test('new_species: described from India since a year, with the paper and records
 test('resources: about, groups, states and regions', async () => {
   fresh();
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/list' })).json();
-  assert.deepEqual(result.resources.map(r => r.uri), ['yellide://about', 'yellide://groups', 'yellide://states', 'yellide://districts', 'yellide://regions']);
+  assert.deepEqual(result.resources.map(r => r.uri), ['yellide://about', 'yellide://groups', 'yellide://kingdoms', 'yellide://states', 'yellide://districts', 'yellide://regions']);
   const read = async uri => (await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/read', params: { uri } })).json()).result.contents[0];
   assert.match((await read('yellide://about')).text, /open record/);
   assert.deepEqual(JSON.parse((await read('yellide://states')).text), ['Karnataka', 'Kerala']);
@@ -324,7 +327,7 @@ test('the data is read once per isolate and week: a second call reads no index a
   await call('count_species', {});
   const before = env.DATA.gets.length;
   await call('list_species', { state: 'Kerala' });
-  assert.deepEqual(env.DATA.gets.slice(before), []);
+  assert.deepEqual(env.DATA.gets.slice(before), [BASE + 'd/state-32.json']);   // a place's own file only, as a shard
 });
 
 test('shards are read each time (an isolate keeps only the index files); a failed read is tried again', async () => {
@@ -491,5 +494,88 @@ test('server.json (the MCP Registry entry) carries the version the server report
   const { result } = await (await rpc({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).json();
   assert.equal(entry.version, result.serverInfo.version);
   assert.match(entry.description, /district/);
+  assert.match(entry.description, /kingdom/);
+  assert.match(entry.description, /wild records/);
   assert.ok(entry.description.length <= 100, 'the Registry takes at most 100 characters');
+});
+
+// Kingdoms (24 Nov 2026, for the place crosswalk): the same six species, their groups renamed to span the kingdoms.
+// K1, K2 Birds (animals); K3, K4 Plants: orchids, K5 Mosses & liverworts (plants); K6 Lichens (fungi).
+const kingdoms = () => {
+  const store = files();
+  store[BASE + 'summary.json'] = { ...SUMMARY, groups: ['Birds', 'Plants: orchids', 'Mosses & liverworts', 'Lichens'] };
+  env = { DATA: bucket(store) }; _reset();
+};
+
+test('kingdom: plants take mosses, lichens are fungi, and it combines with the other filters', async () => {
+  kingdoms();
+  const n = async a => (await out('count_species', a)).counts.documented;
+  assert.equal(await n({ kingdom: 'plants' }), 3);
+  assert.equal(await n({ kingdom: 'animals' }), 2);
+  assert.equal(await n({ kingdom: 'fungi' }), 1);
+  assert.equal(await n({ kingdom: 'other' }), 0);
+  assert.equal(await n({ kingdom: 'plants', state: 'kerala' }), 1);               // Calotes's row: an orchid here
+  assert.equal(await n({ kingdom: 'Plant' }), 3);                                  // read as plants
+  const listed = await out('list_species', { kingdom: 'plants', district: 'Ernakulam' });
+  assert.deepEqual(listed.species.map(s => s.key), ['K4', 'K5']);
+  const bad = await call('count_species', { kingdom: 'minerals' });
+  assert.equal(bad.isError, true);
+  assert.match(bad.content[0].text, /animals, plants, fungi, other/);
+});
+
+test('group takes "animals", "plants" and "fungi" as kingdoms; "plants" includes mosses', async () => {
+  kingdoms();
+  const n = async a => (await out('count_species', a)).counts.documented;
+  assert.equal(await n({ group: 'animals' }), 2);
+  assert.equal(await n({ group: 'plants' }), 3);
+  assert.equal(await n({ group: 'Lichens' }), 1);
+});
+
+test('count_species gives by_kingdom beside counts, and it adds up to the totals', async () => {
+  kingdoms();
+  for (const a of [{}, { district: 'Ernakulam' }, { iucn: ['threatened'] }]) {
+    const r = await out('count_species', a);
+    for (const k of Object.keys(r.counts)) {
+      assert.equal(Object.values(r.by_kingdom).reduce((s, c) => s + c[k], 0), r.counts[k], `${JSON.stringify(a)} ${k}`);
+    }
+  }
+  const d = await out('count_species', { district: 'Ernakulam' });
+  assert.deepEqual(Object.keys(d.by_kingdom), ['animals', 'plants', 'fungi', 'other']);
+  assert.deepEqual(d.by_kingdom.plants, { documented: 2, open_record: 2, threatened: 1, recorded_since_2016: 0, endemic: 1 });
+});
+
+test('every group the pipeline makes has a kingdom, named on purpose (pipeline/groups.py)', async () => {
+  const { KINGDOM_GROUPS, kingdomOf } = await import('../site/assets/species_model.js');
+  const py = readFileSync(new URL('../pipeline/groups.py', import.meta.url), 'utf8');
+  const groups = [...new Set([...py.matchAll(/THEN '([^']+)'/g)].map(m => m[1]).filter(g => !g.includes('[^'))), 'Other'];
+  const named = Object.values(KINGDOM_GROUPS).flat();
+  for (const g of groups) assert.ok(named.includes(g) || /^Plants: /.test(g), `${g} has no kingdom`);
+  assert.equal(kingdomOf('Mosses & liverworts'), 'plants');
+  assert.equal(kingdomOf('Plants: orchids'), 'plants');
+  assert.equal(kingdomOf('Lichens'), 'fungi');
+  assert.equal(kingdomOf('Algae & diatoms'), 'other');
+  assert.equal(kingdomOf('Insects: moths'), 'animals');
+});
+
+test('yellide://kingdoms gives each kingdom its groups; yellide://groups stays a list of groups', async () => {
+  kingdoms();
+  const read = async uri => JSON.parse((await (await rpc({ jsonrpc: '2.0', id: 1, method: 'resources/read', params: { uri } })).json()).result.contents[0].text);
+  assert.deepEqual(await read('yellide://groups'), ['Birds', 'Plants: orchids', 'Mosses & liverworts', 'Lichens']);
+  assert.deepEqual(await read('yellide://kingdoms'), { animals: ['Birds'], plants: ['Plants: orchids', 'Mosses & liverworts'], fungi: ['Lichens'], other: [] });
+});
+
+test('a place counts wild records; the species it leaves out are counted apart, by reason, with the other filters', async () => {
+  fresh();
+  const d = await out('count_species', { district: 'Ernakulam' });
+  assert.equal(d.counts.documented, 3);                                     // the list: K1, K4, K5
+  assert.deepEqual(d.not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });   // K2, K6; K1 is listed
+  assert.match(d.note, /wild records/);
+  assert.deepEqual((await out('count_species', { district: 'Ernakulam', group: 'Birds' })).not_wild,
+    { cultivated_or_captive: 1, outside_native_range: 0 });
+  assert.deepEqual((await out('count_species', { state: 'Kerala' })).not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });
+  assert.deepEqual((await out('count_species', { district: '201' })).not_wild, { cultivated_or_captive: 0, outside_native_range: 0 });
+  assert.equal((await out('count_species', {})).not_wild, undefined);       // India: no place, no such count
+  const l = await out('list_species', { district: 'Ernakulam' });
+  assert.deepEqual(l.species.map(s => s.key), ['K1', 'K4', 'K5']);
+  assert.deepEqual(l.not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });
 });

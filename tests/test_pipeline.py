@@ -359,3 +359,44 @@ def test_ledger_places_points_in_biogeographic_provinces(districts, tmp_path):
     assert got == [("S1", "5B", 5, 2020), ("S1", "6E", 1, 2010)]
     ledger.build(con, tmp_path / "out2", "test", districts)      # no zones file: no table
     assert not (tmp_path / "out2" / "species_zones.parquet").exists()
+
+
+def test_the_ledger_query_marks_cultivated_and_introduced_records():
+    """Query A keeps each point's records apart by what the source says of them (24 Nov 2026): cultivated (planted,
+    captive, a reviewed dataset of planted trees), introduced, or nothing said."""
+    sql = gbif.build_sql("ledger_cube")
+    assert "d85d848d-791e-4055-bda5-32c16619ab21" in sql            # SeasonWatch (pipeline/ref/cultivated_datasets.csv)
+    assert "degreeofestablishment.concept IN ('captive', 'cultivated', 'managed', 'released')" in sql
+    assert "establishmentmeans.concept IN ('introduced', 'introducedAssistedColonisation')" in sql
+    assert "AS establishment" in sql
+    assert sql.split("GROUP BY")[1].count("THEN 'cultivated'") == 1   # grouped by it too (GBIF validated, 24 Nov 2026)
+
+
+def test_the_ledger_counts_wild_records_apart(districts, tmp_path):
+    con = duckdb.connect()
+    con.sql("""
+        CREATE TABLE cube AS SELECT * FROM (VALUES
+          (1, 10.5, 76.5, 1900, 1950, 3, NULL),           -- West: wild
+          (1, 10.5, 76.5, 2010, 2020, 4, 'cultivated'),   -- the same point: planted
+          (5, 10.5, 77.5, 2015, 2016, 2, 'cultivated'),   -- East: only planted
+          (6, 10.5, 77.5, 2001, 2002, 1, 'introduced')    -- East: introduced
+        ) t(specieskey, lat, lon, first_year, last_year, n_records, establishment)
+    """)
+    stats = ledger.build(con, tmp_path / "out", "test", districts)
+    assert (stats["records_cultivated"], stats["records_introduced"]) == (6, 1)
+    cols = [c[0] for c in con.sql("DESCRIBE ledger").fetchall()]
+    rows = {(r["species_key"], r["district_lgd"]): r for r in (dict(zip(cols, x)) for x in con.sql("SELECT * FROM ledger").fetchall())}
+    a = rows[(1, 101)]
+    assert (a["n_records"], a["first_year"], a["last_year"]) == (7, 1900, 2020)            # every record, as before
+    assert (a["wild_records"], a["wild_first_year"], a["wild_last_year"]) == (3, 1900, 1950)
+    assert (a["n_cultivated"], a["n_introduced"]) == (4, 0)
+    b = rows[(5, 102)]
+    assert (b["wild_records"], b["wild_first_year"], b["n_cultivated"]) == (0, None, 2)
+    assert (rows[(6, 102)]["n_introduced"], rows[(6, 102)]["wild_records"]) == (1, 0)
+
+
+def test_a_cube_from_before_the_marks_counts_every_record_as_wild(districts, tmp_path):
+    con = duckdb.connect()
+    con.sql("CREATE TABLE cube AS SELECT * FROM (VALUES (1, 10.5, 76.5, 1900, 1950, 3)) t(specieskey, lat, lon, first_year, last_year, n_records)")
+    ledger.build(con, tmp_path / "out", "test", districts)
+    assert con.sql("SELECT wild_records, wild_first_year, wild_last_year, n_cultivated, n_introduced FROM ledger").fetchall() == [(3, 1900, 1950, 0, 0)]

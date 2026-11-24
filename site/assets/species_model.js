@@ -54,6 +54,22 @@ export function nameMatches(name, q, english = false) {
 const orList = xs => (xs.length < 3 ? xs.join(' or ') : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
 
 // Masks of sources, labels and states can pass 32 bits, so no bitwise operators.
+// Kingdoms for "animals", "plants", "fungi": the groups of each (pipeline/groups.py). Plants include mosses and
+// liverworts; lichens go with fungi, as a lichen is named for its fungus. Every "Plants: ..." group is a plant group.
+export const KINGDOMS = ['animals', 'plants', 'fungi', 'other'];
+export const KINGDOM_GROUPS = {
+  animals: ['Birds', 'Mammals: large (cats, elephants, deer, primates...)', 'Mammals: bats', 'Mammals: rodents, shrews, hares',
+    'Mammals: other (whales, dolphins...)', 'Reptiles', 'Amphibians', 'Fish', 'Insects: butterflies', 'Insects: moths',
+    'Insects: dragonflies & damselflies', 'Insects: beetles', 'Insects: bees, wasps, ants', 'Insects: flies', 'Insects: true bugs',
+    'Insects: other', 'Spiders & other arachnids', 'Molluscs', 'Crabs, shrimps & kin'],
+  plants: ['Mosses & liverworts'],
+  fungi: ['Fungi', 'Lichens'],
+  other: ['Algae & diatoms', 'Other'],
+};
+const KINGDOM_OF = new Map(Object.entries(KINGDOM_GROUPS).flatMap(([k, gs]) => gs.map(g => [g, k])));
+/** The kingdom of a group name: animals, plants, fungi or other. */
+export const kingdomOf = group => (/^Plants: /.test(group) ? 'plants' : KINGDOM_OF.get(group) ?? 'other');
+
 export const bit = (mask, i) => Math.floor(mask / 2 ** i) % 2 === 1;
 
 /** {field: position} for a list of field names; asking for a field that is not there is an error, not undefined. */

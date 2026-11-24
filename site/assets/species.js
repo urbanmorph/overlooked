@@ -2,11 +2,11 @@
 // is known; where it is (district map) beside when (GBIF records by decade) and its numbers; who it interacts with
 // (GloBI); its relatives in the family on a time axis; then the details: status, sources, labels, evidence, links.
 
-import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge, model, speciesTitle, speciesText, shardOf, speciesPath } from './common.js?v=6ba08c79da';
-import { drawMap } from './map.js?v=8a91e9d50f';
+import { snapshot, getJSON, fmt, esc, $, bit, tags, showDevBanner, sourceLine, showLoadError, safeHref, iucnBadge, model, speciesTitle, speciesText, shardOf, speciesPath } from './common.js?v=3115b8d235';
+import { drawMap } from './map.js?v=a429103ff9';
 import { gbifKeyOf, gbifIndiaLinks, gbifNameSearch, nextSteps } from './links.js?v=91a54857a5';
-import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=0b210841fb';
-import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=7feb68dd85';
+import { barcodeText, countText, localNames, shortlistLink } from './evidence.js?v=db45c58e16';
+import { VERBS, gapStates, glyphSVG, groupShares, pyramidHTML, pyramidKey, relatives, tree, whereFill } from './web.js?v=f24084f977';
 
 // What each status (summary.json status, species_model.js) means, in a sentence.
 const STATUS_TEXT = [

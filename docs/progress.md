@@ -2,6 +2,26 @@
 
 Newest first. Updated as work happens.
 
+## 24 November 2026
+
+- Place lists mean wild records (asked by ops for the place crosswalk, bharatlas to mugilu to yellide by LGD district). A
+  state or a district counts a species only from records no source marks as planted or kept and, for a plant, inside the
+  native range Kew gives it. Query A keeps each point's records apart by `establishment` (GBIF's degree of establishment
+  captive, cultivated, managed or released, or a dataset in `pipeline/ref/cultivated_datasets.csv`: SeasonWatch, 957,000
+  records of planted trees; or introduced); the ledger adds wild_records, wild years, n_cultivated, n_introduced.
+  `pipeline/wcvp_ranges.py` reads Kew's full WCVP (88 MB, CC BY) into native and introduced regions of India per name
+  (TDWG level 3; `pipeline/ref/tdwg_regions.csv` gives each district its region); a plant counts where Kew gives it as
+  native, where Kew does not know it, or where its range reaches a country next to India. `pipeline/ref/not_wild.csv`
+  holds reviewed rows (the Bengal Slow Loris and Java Sparrow in Bengaluru Urban, Jackfruit and Pigeon Pea in 24
+  Paraganas South). The species left out are counted apart: d/<code>.json `not_wild`, d/state-<code>.json, and
+  `not_wild` in count_species and list_species. GBIF's establishment fields are nearly empty for India (about 2,000
+  records), so the dataset rule and Kew's ranges do most of the work.
+- Endemic marks are the species' own: a mark on a name another source folds into a wider species as a synonym (Kew's
+  Piper velayudhanii into Piper nigrum; ZSI's Uloborus danolius into Zosis geniculata), or on a subspecies or variety,
+  no longer makes the species endemic. About 260 species lost a mark that came from Kew this way and 226 from ZSI.
+- MCP 1.2.0: `kingdom` (animals, plants with mosses and liverworts, fungi with lichens, other), "animals" and "plants"
+  in `group`, `by_kingdom` in count_species, the resource yellide://kingdoms.
+
 ## 14 November 2026
 
 - Every species by district, threatened species too (the owner's decision, 14 Nov): the rule that kept lists at the state and the WII province is gone, and so is the issue form to hide a species by district. The master build writes `d/<district LGD code>.json` (species on the list with a GBIF record placed in the district: first and latest year, records; from the snapshot's ledger) and `d/places.json` (every district, its state, species per group): 782 files, 13 MB. Place pages for each district at `/in/<district>-<state>` (the state's slug too, as Aurangabad and others are in two states), with the year of each species' latest record there; each state's page lists its districts; districts are in /sitemaps/places.xml. The MCP server takes `district` (name or LGD code; with the state when two states have the name), gives `in_district` years and records, and a `yellide://districts` resource. Every district page and answer says how to read the list (a record shows a past presence, can be in the wrong district, absence of a record is not absence) and to respect the species (Wild Life (Protection) Act, 1972). The front page links a district chosen in search to its page. Checked on real data: Kendrapara has 967 species, 10 threatened; a district answer takes under 100 ms, a page about 25 ms.

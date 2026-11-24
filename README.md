@@ -110,14 +110,21 @@ Any other client: add a remote (HTTP) server with the URL `https://yellide.com/m
 |---|---|
 | `find_species` | Find species of India by Latin name or English common name ("great indian bustard", "naja", "cobra"). Returns up to 10 species with their key, group, IUCN category and status. |
 | `get_species` | One species by its key: sources that list it, open record, states with an open record, WII regions, IUCN category with year, DOI and trend, endemic, year described and authority, family and order, evidence, names in Indian languages, a photo with its credit, and iNaturalist observations that wait for a name. |
-| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, and per IUCN category. Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
-| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". Up to 100 rows per page, with the total and a cursor for the next page. |
+| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (`by_kingdom`: animals, plants, fungi, other). For a state or district, the counts are of wild records, and `not_wild` gives the species left out (`cultivated_or_captive`, `outside_native_range`). Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
+| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". A place's list is its wild records, with `not_wild` beside it. Up to 100 rows per page, with the total and a cursor for the next page. |
 | `new_species` | Species described from India since a year (2007 or later), from Plazi, BSI Plant Discoveries and ZSI Animal Discoveries: year, group, state of the type locality, journal and a link to the paper, and whether it has been recorded since. |
 
-Filters for `count_species` and `list_species`: `group`, `state`, `district` (LGD name or code, or a list of up to 50
+Filters for `count_species` and `list_species`: `kingdom` (`animals`, `plants` with mosses and liverworts, `fungi` with
+lichens, `other`), `group` (also "animals" or "plants"), `state`, `district` (LGD name or code, or a list of up to 50
 districts for an area such as a delta), `region` (WII biogeographic zone or province), `iucn`, `endemic`, `order`,
 `suborder`, `family`, `open_record`, `recorded_since`, `described_since`. The server also offers the resources
-`yellide://about`, `yellide://groups`, `yellide://states`, `yellide://districts` and `yellide://regions`.
+`yellide://about`, `yellide://groups`, `yellide://kingdoms`, `yellide://states`, `yellide://districts` and
+`yellide://regions`.
+
+A place's list means wild records. A state or a district counts a species only from records that no source marks as
+planted or kept (GBIF's establishment fields, a dataset of planted trees such as SeasonWatch, or a reviewed row of
+`pipeline/ref/not_wild.csv`) and, for a plant, only inside the native range Kew's World Checklist of Vascular Plants
+gives it (`pipeline/wcvp_ranges.py`). The others are counted apart as `not_wild`.
 
 Try it without an assistant:
 

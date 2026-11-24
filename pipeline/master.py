@@ -211,6 +211,12 @@ def wcvp_input(s3):
     return WCVP_LOCAL if WCVP_LOCAL.exists() else r2.fetch(s3, "cache/master/wcvp_india.parquet", CACHE / "wcvp_india.parquet")
 
 
+def wcvp_ranges_input(s3):
+    """Kew's native ranges (pipeline/wcvp_ranges.py, run by hand when Kew publishes a new release): R2's copy."""
+    from pipeline import wcvp_ranges
+    return r2.fetch(s3, wcvp_ranges.TABLE_KEY, CACHE / "wcvp_ranges.parquet")
+
+
 # Tables that their own jobs build and keep in R2: R2's copy (a local one can be out of date), in the module's own
 # cache folder; the local copy when R2 has none or there is no R2.
 
@@ -394,11 +400,14 @@ def load_gbif(con, paths):
                 NULL, false, false, 0 FROM '{paths["species"]}'""")
     con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, NULL, CASE basis {basis} ELSE 'oc' END,
                 true, true, NULL FROM '{paths["species_decade"]}'""")
-    con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd, NULL, true, true, last_year
+    # Each state with a record placed there, the latest year of its wild records (ledgers before 24 Nov 2026 have no
+    # wild columns: every record). place_rules then keeps only states where a district lists the species.
+    cols = [c[0] for c in con.sql(f"DESCRIBE SELECT * FROM '{paths['ledger']}'").fetchall()]
+    con.sql(f"""INSERT INTO evidence SELECT DISTINCT 'GBIF', NULL, species_key, state_lgd, NULL, true, true,
+                {'wild_last_year' if 'wild_records' in cols else 'last_year'}
                 FROM '{paths["ledger"]}' WHERE state_lgd IS NOT NULL""")
     con.sql(f"""INSERT INTO alias SELECT name, species_key, name, 0 FROM '{paths["species"]}'""")
     # DNA only, where the ledger knows which records are DNA sequences (snapshots built after that column was added).
-    cols = [c[0] for c in con.sql(f"DESCRIBE SELECT * FROM '{paths['ledger']}'").fetchall()]
     dna_sql = (f"""SELECT species_key AS key FROM '{paths["ledger"]}' GROUP BY 1
                    HAVING max(last_year_not_dna) IS NULL AND max(last_year) IS NOT NULL"""
                if "last_year_not_dna" in cols else "SELECT NULL::VARCHAR AS key WHERE false")
@@ -435,7 +444,8 @@ def load_gbif(con, paths):
 
 def load_zsi(con, path):
     """ZSI checklists. Matched names keep ZSI's Catalogue of Life key; subspecies count as their species;
-    names held for review or not matched are looked up by name later. '*' marks a species endemic to India."""
+    names held for review or not matched are looked up by name later. '*' marks a species endemic to India: only on a
+    species row under its own accepted name (a synonym's or a subspecies' mark is not the species')."""
     hints = [(c, *hint_row(ZSI_HINTS, c)) for (c,) in
              con.sql(f"SELECT DISTINCT checklist FROM read_csv('{path}', header = true, all_varchar = true)").fetchall()]
     con.execute("CREATE OR REPLACE TABLE zsi_hint (checklist VARCHAR, kingdom VARCHAR, phylum VARCHAR, class VARCHAR, "
@@ -452,7 +462,8 @@ def load_zsi(con, path):
         SELECT 'ZSI', CASE WHEN matched THEN binomial(coalesce(col_accepted_name, name)) ELSE binomial(name) END,
                CASE WHEN matched AND rank = 'species' THEN col_accepted_id END,
                kingdom, phylum, class, "order", coalesce(col_family, family), NULL, NULL,
-               coalesce(mark, '') LIKE '%*%', false, 5
+               coalesce(mark, '') LIKE '%*%' AND rank = 'species'
+                   AND (NOT matched OR binomial(name) = binomial(coalesce(col_accepted_name, name))), false, 5
         FROM zsi
     """)
     con.sql("""INSERT INTO alias SELECT DISTINCT binomial(coalesce(col_accepted_name, name)), col_accepted_id, binomial(coalesce(col_accepted_name, name)), 1
@@ -469,9 +480,10 @@ def load_zsi(con, path):
 
 def load_lichens(con, path):
     """The lichen checklist of India (pipeline/lichens.py; Sinha, Nayaka & Mishra 2024, CC BY-NC 4.0): accepted
-    names, with the paper's endemic mark. Its synonyms are other names of the same species, so they are not listed."""
+    names, with the paper's endemic mark (a variety's mark is not its species'). Its synonyms are other names of the
+    same species, so they are not listed."""
     con.sql(f"""INSERT INTO names_in SELECT DISTINCT 'Lichens', binomial(name), NULL, 'Fungi', 'Ascomycota',
-                'Lecanoromycetes', NULL, NULL, NULL, NULL, endemic::BOOLEAN, false, 5
+                'Lecanoromycetes', NULL, NULL, NULL, NULL, endemic::BOOLEAN AND binomial(name) = trim(name), false, 5
                 FROM read_csv('{path}', header = true, all_varchar = true) WHERE coalesce(name, '') <> ''""")
 
 
@@ -492,8 +504,9 @@ def load_wcvp(con, path):
 def load_bsi(con, path):
     """BSI checklists (pipeline/bsi_checklist.py). Accepted names only: a synonym is another name of a species
     the checklist lists under its accepted name. Varieties and subspecies count as their species.
-    status containing 'endemic' marks an endemic species."""
-    rows = con.sql(f"""SELECT DISTINCT binomial(name), family, "group", coalesce(status, '') ILIKE '%endemic%'
+    status containing 'endemic' marks an endemic species (a variety's or subspecies' mark is not its species')."""
+    rows = con.sql(f"""SELECT DISTINCT binomial(name), family, "group",
+                              coalesce(status, '') ILIKE '%endemic%' AND binomial(name) = trim(name)
                        FROM read_csv('{path}', header = true, all_varchar = true)
                        WHERE name IS NOT NULL AND coalesce(status, 'accepted') NOT ILIKE '%synonym%'""").fetchall()
     insert(con, "names_in", """SELECT 'BSI', n, NULL, k::VARCHAR, p::VARCHAR, c::VARCHAR, NULL, fam, NULL, NULL,
@@ -817,6 +830,102 @@ def squamata_suborders(path=SQUAMATA):
         return {r["family"]: r["suborder"] for r in csv.DictReader(f)}
 
 
+def name_table(con):
+    """id_names: every name of a species, its display name first (p 0)."""
+    con.sql("""
+        CREATE OR REPLACE TABLE id_names AS
+        SELECT id, name, 0 AS p FROM ids
+        UNION SELECT id, name, 1 FROM names_in_r UNION SELECT id, name, 1 FROM evidence_r WHERE name IS NOT NULL
+        -- Other names GBIF matched to the species (an older name in GloBI or BOLD, for example).
+        UNION SELECT coalesce(m.canonical, a.key), a.name, 2 FROM alias1 a LEFT JOIN idmap m ON m.id = a.key
+              WHERE coalesce(m.canonical, a.key) IN (SELECT id FROM ids)
+    """)
+
+
+NOT_WILD = ROOT / "pipeline" / "ref" / "not_wild.csv"
+REGIONS = ROOT / "pipeline" / "ref" / "tdwg_regions.csv"
+NOT_WILD_REASONS = ["cultivated_or_captive", "outside_native_range"]
+
+
+def place_rules(con, ledger, districts_path, ranges=None, not_wild=NOT_WILD, regions=REGIONS):
+    """A place's list is its wild records inside the species' native range (24 Nov 2026). Creates place_sp: per
+    species and district, every record and the wild ones, and not_wild: null when the district lists the species,
+    else cultivated_or_captive (the source marks every record there planted or kept, or a reviewed row of not_wild.csv
+    says so) or outside_native_range (the records are of an introduced population, or the species is a plant outside
+    the range Kew gives it, pipeline/wcvp_ranges.py). Then a state keeps a species only from a district that lists it,
+    or from another source's record when the state is in the plant's range; what goes is in state_not_wild."""
+    cols = [c[0] for c in con.sql(f"DESCRIBE SELECT * FROM '{ledger}'").fetchall()]
+    w = (lambda c, all_: c if "wild_records" in cols else all_)
+    # The Kew region (TDWG level 3) of each district: a district row, else its state's, else the mainland.
+    con.sql(f"""CREATE OR REPLACE TEMP TABLE dist_region AS
+                WITH r AS (SELECT state_lgd::INTEGER AS st, try_cast(dist_lgd AS INTEGER) AS d, tdwg
+                           FROM read_csv('{regions}', header = true, all_varchar = true))
+                SELECT x.dist_lgd AS d, x.state_lgd AS st, coalesce(rd.tdwg, rs.tdwg, 'IND') AS tdwg
+                FROM '{districts_path}' x LEFT JOIN r rd ON rd.d = x.dist_lgd
+                LEFT JOIN r rs ON rs.st = x.state_lgd AND rs.d IS NULL WHERE x.dist_lgd > 0""")
+    # A plant's range from every name of it Kew knows (a synonym's range is its species').
+    if ranges:
+        con.sql(f"""CREATE OR REPLACE TEMP TABLE id_range AS
+                    SELECT n.id, bool_or(r.has_range) AS known, list_distinct(flatten(list(r.india_native))) AS native,
+                           list_distinct(flatten(list(r.india_introduced))) AS introduced, bool_or(r.near_india) AS near
+                    FROM id_names n JOIN ids i USING (id) JOIN '{ranges}' r ON r.name = n.name
+                    WHERE i.kingdom = 'Plantae' GROUP BY n.id""")
+    else:
+        con.sql("CREATE OR REPLACE TEMP TABLE id_range (id VARCHAR, known BOOLEAN, native VARCHAR[], introduced VARCHAR[], near BOOLEAN)")
+    # Outside the range: Kew lists the region as introduced, or lists other regions of India as native, or gives a
+    # range that does not reach India or a region next to it. A name Kew does not know keeps its records.
+    con.sql("""CREATE OR REPLACE MACRO outside_range(known, native, introduced, near, region) AS
+               coalesce(known, false) AND NOT list_contains(coalesce(native, []), region)
+               AND (list_contains(coalesce(introduced, []), region) OR len(coalesce(native, [])) > 0 OR NOT coalesce(near, false))""")
+    # Reviewed rows: reason outside_range, or captive, escaped or cultivated.
+    reviewed = (f"SELECT key, dist_lgd::INTEGER AS d, reason FROM read_csv('{not_wild}', header = true, all_varchar = true)"
+                if not_wild and Path(not_wild).exists() else
+                "SELECT NULL::VARCHAR AS key, NULL::INTEGER AS d, NULL::VARCHAR AS reason WHERE false")
+    # A reviewed override that moves a GBIF key's records to another species (apply_overrides) moves them here too.
+    has_over = value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'overrides'")
+    moved = ("""SELECT "from" AS k, any_value(to_key) AS to_key FROM overrides WHERE kind = 'key' GROUP BY 1""" if has_over
+             else "SELECT NULL::VARCHAR AS k, NULL::VARCHAR AS to_key WHERE false")
+    con.sql(f"""
+        CREATE OR REPLACE TABLE place_sp AS
+        WITH l AS (
+            SELECT coalesce(m.canonical, o.to_key, l.species_key) AS id, l.district_lgd AS d, l.state_lgd AS st,
+                   min(l.first_year) AS first_year, max(l.last_year) AS last_year, sum(l.n_records)::BIGINT AS records,
+                   sum({w('l.wild_records', 'l.n_records')})::BIGINT AS wild_records,
+                   min({w('l.wild_first_year', 'l.first_year')}) AS wild_first_year,
+                   max({w('l.wild_last_year', 'l.last_year')}) AS wild_last_year,
+                   sum({w('l.n_cultivated', '0')})::BIGINT AS cultivated
+            FROM '{ledger}' l LEFT JOIN ({moved}) o ON o.k = l.species_key
+            LEFT JOIN idmap m ON m.id = coalesce(o.to_key, l.species_key)
+            WHERE l.district_lgd > 0 GROUP BY 1, 2, 3)
+        SELECT l.*, CASE
+            WHEN rv.reason = 'outside_range' THEN 'outside_native_range'
+            WHEN rv.key IS NOT NULL THEN 'cultivated_or_captive'
+            WHEN l.wild_records = 0 AND l.cultivated > 0 THEN 'cultivated_or_captive'
+            WHEN l.wild_records = 0 THEN 'outside_native_range'
+            WHEN outside_range(g.known, g.native, g.introduced, g.near, r.tdwg) THEN 'outside_native_range'
+            END AS not_wild
+        FROM l LEFT JOIN ({reviewed}) rv ON rv.key = l.id AND rv.d = l.d
+        LEFT JOIN dist_region r ON r.d = l.d LEFT JOIN id_range g ON g.id = l.id""")
+    # States: before, what each species had; GBIF's located records only from districts that list the species; any
+    # source's state only inside a plant's range (in some region of the state).
+    con.sql("CREATE OR REPLACE TEMP TABLE st_before AS SELECT DISTINCT id, state_lgd FROM evidence_r WHERE observed AND state_lgd IS NOT NULL")
+    con.sql("DELETE FROM evidence_r WHERE source = 'GBIF' AND located AND state_lgd IS NOT NULL")
+    con.sql("""INSERT INTO evidence_r (source, name, key, state_lgd, label, observed, located, year, id)
+               SELECT 'GBIF', NULL, id, st, NULL, true, true, max(wild_last_year), id FROM place_sp
+               WHERE not_wild IS NULL GROUP BY id, st""")
+    # Open records only: observations that wait for a name are not a place's list.
+    con.sql("""DELETE FROM evidence_r e WHERE e.observed AND e.state_lgd IS NOT NULL AND e.id IN (SELECT id FROM id_range)
+               AND NOT EXISTS (SELECT 1 FROM dist_region r JOIN id_range g ON g.id = e.id
+                               WHERE r.st = e.state_lgd AND NOT outside_range(g.known, g.native, g.introduced, g.near, r.tdwg))""")
+    con.sql("""CREATE OR REPLACE TABLE state_not_wild AS
+               SELECT b.id, b.state_lgd AS st,
+                      CASE WHEN bool_or(p.not_wild = 'cultivated_or_captive') THEN 'cultivated_or_captive'
+                           ELSE 'outside_native_range' END AS not_wild
+               FROM st_before b LEFT JOIN place_sp p ON p.id = b.id AND p.st = b.state_lgd
+               WHERE NOT EXISTS (SELECT 1 FROM evidence_r e WHERE e.id = b.id AND e.state_lgd = b.state_lgd AND e.observed)
+               GROUP BY 1, 2""")
+
+
 def flags(con):
     """Creates tables master (one row per species) and master_state (one row per species x state)."""
     sub = squamata_suborders()
@@ -825,14 +934,6 @@ def flags(con):
     src_idx = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))
     lab_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(CODES))
     cat_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(IUCN_CATS))
-    con.sql("""
-        CREATE OR REPLACE TABLE id_names AS   -- every name of a species: its display name first (p 0)
-        SELECT id, name, 0 AS p FROM ids
-        UNION SELECT id, name, 1 FROM names_in_r UNION SELECT id, name, 1 FROM evidence_r WHERE name IS NOT NULL
-        -- Other names GBIF matched to the species (an older name in GloBI or BOLD, for example).
-        UNION SELECT coalesce(m.canonical, a.key), a.name, 2 FROM alias1 a LEFT JOIN idmap m ON m.id = a.key
-              WHERE coalesce(m.canonical, a.key) IN (SELECT id FROM ids)
-    """)
     # IUCN: the assessed name equal to the display name first, then any accepted name, then a synonym.
     con.sql("""
         CREATE OR REPLACE TABLE id_iucn AS
@@ -894,7 +995,9 @@ def flags(con):
             UNION SELECT id, 'lm' FROM id_flags WHERE observed AND NOT located AND unplaced
             UNION SELECT id, 'lgo' FROM id_flags JOIN id_sources USING (id)
                   WHERE observed AND NOT located AND unplaced AND sources = ['GBIF']
-            UNION SELECT id, 'end' FROM names_in_r WHERE endemic
+            -- Endemic: a source's mark on the species under its own name. A name the backbone folds into a wider
+            -- species as a synonym (Kew's Piper velayudhanii into Piper nigrum) does not make that species endemic.
+            UNION SELECT r.id, 'end' FROM names_in_r r JOIN ids i USING (id) WHERE r.endemic AND r.name = i.name
             -- Checked only where the paper is the description: same year as the year described.
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
                                                 AND json_extract(paper, '$[5]')::INTEGER = year
@@ -1015,23 +1118,35 @@ def english_files(con, out: Path):
     return shard_files(out, "en", parts)
 
 
-def district_files(con, ledger, districts_path, out: Path):
-    """d/<district LGD code>.json: the species on the list with a GBIF record placed in the district (the snapshot's
-    ledger), with the first and latest year and the records there, by key. d/places.json: every district with its
-    name, its state's LGD code and its species per group, for the place pages and the agent server."""
+def district_files(con, districts_path, out: Path):
+    """d/<district LGD code>.json: rows, the species on the list with a wild GBIF record placed in the district inside
+    their native range (place_rules), with the first and latest year of those records and their number, by key; and
+    not_wild, the others with a record there: [key, reason, records]. d/state-<state LGD code>.json: not_wild, the
+    species with a record in the state that its list leaves out: [key, reason]. d/places.json: every district with its
+    name, its state's LGD code and its listed species per group, for the place pages and the agent server."""
     shutil.rmtree(out / "d", ignore_errors=True)
-    con.sql(f"""CREATE OR REPLACE TEMP TABLE dist_sp AS
-                SELECT l.district_lgd AS d, l.species_key AS key, min(l.first_year) AS first_year,
-                       max(l.last_year) AS last_year, sum(l.n_records)::BIGINT AS records, any_value(s.gi) AS gi
-                FROM '{ledger}' l JOIN site s ON s.key = l.species_key
-                WHERE s.status < 2 AND l.district_lgd > 0 GROUP BY 1, 2""")
+    con.sql("""CREATE OR REPLACE TEMP TABLE dist_sp AS
+               SELECT p.d, p.id AS key, p.wild_first_year AS first_year, p.wild_last_year AS last_year,
+                      p.wild_records AS records, p.records AS all_records, p.not_wild, s.gi
+               FROM place_sp p JOIN site s ON s.key = p.id WHERE s.status < 2""")
     files = {}
-    for d, key, y0, y1, n in con.sql("SELECT d, key, first_year, last_year, records FROM dist_sp ORDER BY d, key").fetchall():
-        files.setdefault(d, []).append([key, y0, y1, n])
-    for d, rows in files.items():
-        dump({"rows": rows}, out / "d" / f"{d}.json")
+    for d, key, y0, y1, n, n_all, why in con.sql("""SELECT d, key, first_year, last_year, records, all_records, not_wild
+                                                   FROM dist_sp ORDER BY d, key""").fetchall():
+        f = files.setdefault(d, {"rows": [], "not_wild": []})
+        if why is None:
+            f["rows"].append([key, y0, y1, n])
+        else:
+            f["not_wild"].append([key, why, n_all])
+    for d, f in files.items():
+        dump(f, out / "d" / f"{d}.json")
+    states = {}
+    for st, key, why in con.sql("""SELECT n.st, s.key, n.not_wild FROM state_not_wild n JOIN site s ON s.key = n.id
+                                   WHERE s.status < 2 ORDER BY 1, 2""").fetchall():
+        states.setdefault(st, []).append([key, why])
+    for st, rows in states.items():
+        dump({"not_wild": rows}, out / "d" / f"state-{st}.json")
     groups = {}
-    for d, gi, k in con.sql("SELECT d, gi, count(*) FROM dist_sp GROUP BY 1, 2").fetchall():
+    for d, gi, k in con.sql("SELECT d, gi, count(*) FROM dist_sp WHERE not_wild IS NULL GROUP BY 1, 2").fetchall():
         groups.setdefault(d, [0] * len(GROUPS))[gi] = k
     places = [[int(d), title(nm), str(st), groups.get(d, [0] * len(GROUPS))] for d, st, nm in duckdb.sql(
         f"SELECT dist_lgd, state_lgd, dtname FROM '{districts_path}' WHERE dist_lgd > 0 ORDER BY 1").fetchall()]
@@ -1783,6 +1898,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
         notes.append("ZSI checklists not found.")
     if not inputs.get("wcvp"):
         notes.append("Kew WCVP not found.")
+    if not inputs.get("wcvp_ranges"):
+        notes.append("Kew's native ranges were not found: a plant counts in every place with a wild record of it.")
     # Before matching: an overridden name is never asked of GBIF.
     n_over = apply_overrides(con, inputs.get("overrides", OVERRIDES))
     if n_over:
@@ -1801,6 +1918,8 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                      "They are listed under their own name for now.")
     merged = resolve(con)
     described_years(con)
+    name_table(con)
+    place_rules(con, paths["ledger"], districts_path, inputs.get("wcvp_ranges"), inputs.get("not_wild", NOT_WILD))
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
     if inputs.get("pictures"):
@@ -1826,7 +1945,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     review_names(con, cache, out, ebird_india.keys(inputs.get("ebird_india")), inputs.get("iucn_detail"))
     summary = site_files(con, out, meta, districts_path, notes, (inputs.get("inat") or {}).get("places"),
                          inputs.get("inat_coarse"))
-    district_files(con, paths["ledger"], districts_path, out)
+    district_files(con, districts_path, out)
     ch = changes(con, prev and prev["parquet"], prev and prev["period"], meta["period"])
     if prev:
         ch["waiting"] = {"before": waiting_total(prev.get("summary")), "now": waiting_total(summary)}
@@ -1845,7 +1964,8 @@ def fingerprint(paths, inputs, cache, extra=None, code=None):
     gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures")), *(inputs.get("described") or {}).values()]:
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges", "not_wild")),
+              *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
         h.update(json.dumps(inputs.get(k), sort_keys=True).encode())
@@ -1925,7 +2045,7 @@ def run(a):
               "lichens": lichens_input(s3),
               "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
               "iucn_detail": iucn_detail_input(s3),
-              "bsi_monographs": bsi_monographs_input(s3),
+              "bsi_monographs": bsi_monographs_input(s3), "wcvp_ranges": wcvp_ranges_input(s3),
               "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
@@ -1955,6 +2075,7 @@ def run(a):
                     "merged_ids": summary["merged_ids"], "totals": summary["totals"],
                     "sources": {"snapshot": snapshot, "inat_species_counts": inat_month, "newspecies": ns_month,
                                 "zsi": bool(inputs["zsi"]), "wcvp": bool(inputs["wcvp"]), "bsi_checklist": bool(inputs["bsi"]),
+                                "wcvp_ranges": bool(inputs["wcvp_ranges"]),
                                 "iucn": iucn_meta},
                     "files": {p.relative_to(out).as_posix(): p.stat().st_size for p in sorted(out.rglob("*")) if p.is_file()}}
         (out / "manifest.json").write_text(json.dumps(manifest, indent=1))

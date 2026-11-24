@@ -2,7 +2,7 @@
 // of Life places under them, with a relative on an Indian checklist (pipeline/name_review.py, review/names.json). A
 // person who knows the group says whether the records are another species'; the answer comes as a GitHub issue.
 
-import { fmt, esc, plainName, speciesName, speciesInline, speciesPath } from './common.js?v=6ba08c79da';
+import { fmt, esc, plainName, speciesName, speciesInline, speciesPath } from './common.js?v=3115b8d235';
 
 const NEAR = 5;
 const REPO = 'https://github.com/urbanmorph/overlooked';
