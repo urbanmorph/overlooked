@@ -470,7 +470,7 @@ def test_agent_index(built):
     assert (aus["described"], aus["last_year"], aus["order"], aus["suborder"]) == (1758, 2020, g[9], None)
     from pipeline.site_data import shard_of
     sp = json.loads((out / "sp" / f"{shard_of('K1')}.json").read_text())["K1"]
-    assert meta["families"][aus["family"]] == sp[-4]
+    assert meta["families"][aus["family"]] == sp[-5]
     hus = next(r for r in rows if r["name"] == "Hus ius")
     assert hus["english"] == "" and hus["last_year"] == 2000
     assert "Zus zus" not in {r["name"] for r in rows}            # status 2: not on the list
@@ -550,22 +550,26 @@ def test_species_files(built):
     #  the paper for a new species: [sources, journal, link, after the description, latest year after]]
     assert part["G1"] == [g["Hus ius"][1], birds, *g["Hus ius"][2:7], 3, 6, [[1, 6]], 1849, "Moore, 1849", None, 1996, None,
                           None, False, None, None, None, 0, None, False, False, None, None, None, None, "Muscicapidae",
-                          "Passeriformes", None, []]
+                          "Passeriformes", None, [], None]
     # Then the order, the suborder (snakes and lizards only) and the WII provinces with an open record.
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
+    # Last, the sources that mark it endemic to India, under its own name (null: none).
+    assert aus[-1] == ["ZSI"]
+    assert json.loads((out / "sp" / f"{site_data.shard_of('K2')}.json").read_text())["K2"][-1] == ["WCVP"]
+    aus = aus[:-1]
     assert aus[-3:] == ["Passeriformes", None, ["5B", "6E"]]
     aus = aus[:-3]
     assert aus[-16:-11] == [2012, "https://doi.org/10.2305/A", 3, True, 9]     # IUCN year and DOI; GloBI; 2 km cells
     assert aus[-11:-7] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
     assert aus[-7:-4] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
     assert aus[-2:] == ["Stable", "Muscicapidae"]        # the trend in IUCN's assessment; the family
-    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"][:-3]
+    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"][:-4]
     assert eus[-11:-7] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
     assert gus[10:] == [2020, "Smith, 2019", [["Plazi"], "J", "https://x/1", "none", None, 2020], None, None, None, False, None,
                         None, None, 0, None, None, False, None, None, None, None, "Muscicapidae", "Passeriformes",
-                        None, []]
+                        None, [], None]
     assert all("" not in json.loads(p.read_text()) for p in (out / "sp").iterdir())  # unmatched names have no page
     assert not (out / "ns.json").exists()
 
@@ -1136,7 +1140,7 @@ def test_papers_per_bird_from_the_south_asian_ornithology_bibliography(built):
     assert s["papers"][birds] == 1 and s["totals"]["papers"] == 1                  # Aus bus
     assert all(v is None for gi, v in enumerate(s["papers"]) if gi != birds)
     assert "Hus newus" in built["http"].asked and "Sri lanka" not in built["http"].asked
-    aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"][:-3]   # before the order, suborder and provinces
+    aus = json.loads((built["out"] / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"][:-4]   # before the order, suborder, provinces and endemic sources
     assert aus[-4:-2] == [5, 2020]
 
 

@@ -98,6 +98,7 @@ RETRIES, BACKOFF = 5, 30  # GBIF match: tries per name, and names failing in a r
 WORKERS = 4  # GBIF match requests at once
 
 SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN", "Lichens", "Bryophytes"]
+SOURCE_ORDER = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))   # SQL: CASE source ... END
 LABELS = [
     ("rg", "Research grade (iNaturalist)", "id"),
     ("nid", "Needs ID (iNaturalist)", "id"),
@@ -922,7 +923,7 @@ def flags(con):
     sub = squamata_suborders()
     con.execute("CREATE OR REPLACE TABLE squamata AS SELECT unnest($1) AS family, unnest($2) AS suborder",
                 [list(sub), list(sub.values())])
-    src_idx = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))
+    src_idx = SOURCE_ORDER
     lab_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(CODES))
     cat_idx = " ".join(f"WHEN '{c}' THEN {i}" for i, c in enumerate(IUCN_CATS))
     # IUCN: the assessed name equal to the display name first, then any accepted name, then a synonym.
@@ -1071,7 +1072,7 @@ SEARCH_FIELDS = ["name", "key", "group", "status", "iucn", "sources", "labels", 
 SP_FIELDS = ["name", "group", "sources", "status", "iucn", "labels", "states", "taxon", "waiting_india",
              "waiting_states", "year", "authority", "paper", "iucn_year", "iucn_doi", "partners", "interactions_india",
              "cells", "types", "photos", "barcode", "local_names", "trend", "traits", "precise", "papers",
-             "papers_latest", "iucn_trend", "family", "order", "suborder", "provinces"]
+             "papers_latest", "iucn_trend", "family", "order", "suborder", "provinces", "endemic_sources"]
 FAM_FIELDS = ["key", "name", "year", "last_year", "states", "trend", "dna", "barcode", "traits", "precise", "partners",
               "interactions_india", "pic", "english"]                       # each species of fam/<shard>.json {family: [row]}
 PIC_FIELDS = ["url", "page", "by", "licence", "source", "english"]   # pic/<shard>.json {key: row}
@@ -1329,13 +1330,18 @@ def species_files(con, out: Path):
     [[language code, name]], a known population trend (State of India's Birds; null: not covered), a record placed in
     India with a trait, places with an exact record (null: not counted), papers in the Bibliography of South Asian
     Ornithology and the year of the latest (birds; null: none), the population trend in IUCN's assessment (Increasing,
-    Stable, Decreasing, Unknown; null: not assessed), the family (its relatives are in fam/<shard of the family>.json)]}.
+    Stable, Decreasing, Unknown; null: not assessed), the family (its relatives are in fam/<shard of the family>.json),
+    the order, the suborder, the WII provinces with an open record, the sources that mark it endemic to India under its
+    own name (as the label 'end'; null: none)]}.
     Shards as for the snapshot's species files (site_data.shard_of). Names with no key have no page."""
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
             types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family, order, \
-            suborder, provinces in con.sql("""
-            WITH w AS (   -- the observations that wait, per species: in India and per state
+            suborder, provinces, endemic_by in con.sql(f"""
+            WITH e AS (   -- the sources that mark the species endemic, under its own name (as the label 'end')
+                SELECT r.id, list(DISTINCT r.source ORDER BY CASE r.source {SOURCE_ORDER} END) AS by
+                FROM names_in_r r JOIN ids i USING (id) WHERE r.endemic AND r.name = i.name GROUP BY r.id),
+            w AS (   -- the observations that wait, per species: in India and per state
                 SELECT w.id, any_value(w.taxon) AS taxon, coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0) AS n_india,
                        list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL) AS states
                 FROM wait w LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd GROUP BY w.id)
@@ -1343,15 +1349,15 @@ def species_files(con, out: Path):
                    w.taxon, coalesce(w.n_india, 0), w.states, s.year, s.authority, s.paper,
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
-                   s.papers, s.papers_latest, s.iucn_trend, s.family, s."order", s.suborder, s.provinces
-            FROM site s LEFT JOIN w USING (id)
+                   s.papers, s.papers_latest, s.iucn_trend, s.family, s."order", s.suborder, s.provinces, e.by
+            FROM site s LEFT JOIN w USING (id) LEFT JOIN e USING (id)
             WHERE s.key IS NOT NULL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
                                                     partners, inter_india, cells, types, photos, barcode,
                                                     [[x["lang"], x["name"]] for x in names] if names else None,
                                                     trend, traits, precise, papers, papers_latest, iucn_trend, family,
-                                                    order, suborder, provinces]
+                                                    order, suborder, provinces, endemic_by]
     shard_files(out, "sp", parts)
 
 

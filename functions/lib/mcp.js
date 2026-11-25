@@ -473,7 +473,7 @@ const TOOLS = [
   },
   {
     name: 'get_species', title: 'One species in full',
-    description: 'One species of India by its key (from find_species or list_species): sources that list it, open record, states with an open record, WII regions, IUCN category with the year, DOI and trend of the assessment, endemic, year described and authority, family and order, evidence (type specimens, photos, DNA barcodes), names in Indian languages, a photo with its credit, and iNaturalist observations that wait for a name.',
+    description: 'One species of India by its key (from find_species or list_species): sources that list it, open record, states with an open record, WII regions, IUCN category with the year, DOI and trend of the assessment, endemic and the sources that mark it endemic (endemic_marked_by; null in a list built before 26 Nov 2026), year described and authority, family and order, evidence (type specimens, photos, DNA barcodes), names in Indian languages, a photo with its credit, and iNaturalist observations that wait for a name.',
     inputSchema: { type: 'object', properties: { key: { type: 'string', description: 'The species key, such as "GCMS".' } }, required: ['key'] },
     run: getSpecies,
   },
@@ -553,7 +553,7 @@ async function getSpecies(env, S, a) {
   const M = model(S);
   const { name, group: gi, sources, status, iucn, labels, states, taxon, waiting_india: nIndia, year, authority, paper,
     iucn_year: iucnYear, iucn_doi: iucnDoi, partners, interactions_india: interIndia, types, photos, barcode, local_names: local,
-    iucn_trend: iucnTrend, family, order, suborder, provinces } = M.read('sp', r);
+    iucn_trend: iucnTrend, family, order, suborder, provinces, endemic_sources: endemicBy } = M.read('sp', r);
   const pic = pics?.[key] ? M.read('pic', pics[key]) : null;
   const place = S.waiting?.places?.india;
   const prov = new Map(S.provinces.map(p => [p[0], p[1]]));
@@ -562,6 +562,7 @@ async function getSpecies(env, S, a) {
     status: M.status(status), open_record: status === 1,
     iucn: { category: S.iucn[iucn], year: iucnYear ?? null, doi: iucnDoi ?? null, trend: iucnTrend ?? null },
     endemic: M.endemic(labels),
+    endemic_marked_by: endemicBy ?? null,
     sources: S.sources.filter((_, i) => Math.floor(sources / 2 ** i) % 2 === 1),
     states_with_open_record: S.states.filter((_, i) => Math.floor(states / 2 ** i) % 2 === 1).map(s => s.name),
     regions: provinces ? provinces.map(c => `${c} ${prov.get(c) ?? ''}`.trim()) : null,

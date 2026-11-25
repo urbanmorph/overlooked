@@ -60,11 +60,11 @@ function index() {
 
 function files() {
   const { rows, text } = index();
-  const sp = Array(32).fill(null);
+  const sp = Array(33).fill(null);
   Object.assign(sp, { 0: 'Aus bus', 1: 0, 2: 3, 3: 1, 4: 1, 5: 3, 6: 0b10, 7: 555, 8: 4, 9: [[1, 4]], 10: 1758,
     11: 'L., 1758', 12: null, 13: 2021, 14: 'https://doi.org/10.2305/x', 15: 3, 16: true, 17: 12, 18: 1, 19: 5, 20: 2,
     21: [['ml', 'aus pakshi']], 22: true, 23: true, 24: 11, 25: 2, 26: 2019, 27: 'Decreasing', 28: 'Cettiidae',
-    29: 'Passeriformes', 30: null, 31: ['5A', '5B'] });
+    29: 'Passeriformes', 30: null, 31: ['5A', '5B'], 32: ['ZSI'] });
   return {
     'layers/master/latest.json': { period: '2026-11-02', base: BASE },
     [BASE + 'summary.json']: SUMMARY,
@@ -234,6 +234,7 @@ test('get_species: status, IUCN with year, DOI and trend, states, evidence, phot
   assert.equal(s.order, 'Passeriformes');
   assert.deepEqual(s.iucn, { category: 'EN', year: 2021, doi: 'https://doi.org/10.2305/x', trend: 'Decreasing' });
   assert.equal(s.endemic, true);
+  assert.deepEqual(s.endemic_marked_by, ['ZSI']);   // the sources that mark it endemic to India
   assert.equal(s.open_record, true);
   assert.deepEqual(s.states_with_open_record, ['Kerala']);
   assert.deepEqual(s.regions, ['5A Western Ghats: Malabar Plains', '5B Western Ghats: Mountains']);
