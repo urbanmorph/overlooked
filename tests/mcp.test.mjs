@@ -76,11 +76,12 @@ function files() {
     // Districts: [code, name, state code, species per group]; Aurangabad is a name in two states.
     [BASE + 'd/places.json']: { rows: [[101, 'Ernakulam', '32', [1, 1, 1, 0]], [102, 'Aurangabad', '32', [0, 0, 0, 0]],
       [201, 'Aurangabad', '29', [0, 1, 0, 0]]] },
-    // not_wild: species with records in the district that its list leaves out (planted or kept, outside the native range).
+    // not_wild: species whose every record in the district the record keeper marks; kew_not_native: listed plants Kew
+    // does not give as native there.
     [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]],
-      not_wild: [['K2', 'cultivated_or_captive', 4], ['K6', 'outside_native_range', 1], ['K1', 'cultivated_or_captive', 2]] },
-    [BASE + 'd/state-32.json']: { not_wild: [['K6', 'outside_native_range'], ['K3', 'cultivated_or_captive']] },
-    [BASE + 'd/201.json']: { rows: [['K3', 2022, 2024, 3]] },
+      not_wild: [['K2', 'cultivated_or_captive', 4], ['K6', 'introduced', 1], ['K1', 'cultivated_or_captive', 2]], kew_not_native: ['K5'] },
+    [BASE + 'd/state-32.json']: { not_wild: [['K6', 'introduced'], ['K3', 'cultivated_or_captive']], kew_not_native: ['K4'] },
+    [BASE + 'd/201.json']: { rows: [['K3', 2022, 2024, 3], ['K5', 2020, 2020, 1]], kew_not_native: [] },
     [BASE + `en/${hashOf('K1') % 64}.json`]: { K1: 'Malabar Aus' },
     [BASE + `pic/${shardOf('K1')}.json`]: { K1: ['https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC 4.0', 'iNaturalist (India)', 'Malabar Aus'] },
     'layers/newspecies/latest.json': { period: '2026-10-26', file: 'layers/newspecies/2026-10-26/new_species.json' },
@@ -423,7 +424,7 @@ test('a district name in two states needs the state; an unknown district is a to
   assert.equal(both.isError, true);
   assert.match(both.content[0].text, /Karnataka/);
   assert.match(both.content[0].text, /Kerala/);
-  assert.deepEqual((await out('list_species', { district: 'Aurangabad', state: 'Karnataka' })).species.map(s => s.key), ['K3']);
+  assert.deepEqual((await out('list_species', { district: 'Aurangabad', state: 'Karnataka' })).species.map(s => s.key), ['K3', 'K5']);
   assert.equal((await out('count_species', { district: 'Aurangabad', state: 'Kerala' })).counts.documented, 0);   // no file: none
   assert.match((await call('count_species', { district: 'Ernakulam', state: 'Karnataka' })).content[0].text, /Unknown district "Ernakulam" in Karnataka/);
   const no = await call('count_species', { district: 'Atlantis' });
@@ -495,7 +496,7 @@ test('server.json (the MCP Registry entry) carries the version the server report
   assert.equal(entry.version, result.serverInfo.version);
   assert.match(entry.description, /district/);
   assert.match(entry.description, /kingdom/);
-  assert.match(entry.description, /wild records/);
+  assert.match(entry.description, /Kew native-range/);
   assert.ok(entry.description.length <= 100, 'the Registry takes at most 100 characters');
 });
 
@@ -564,18 +565,27 @@ test('yellide://kingdoms gives each kingdom its groups; yellide://groups stays a
   assert.deepEqual(await read('yellide://kingdoms'), { animals: ['Birds'], plants: ['Plants: orchids', 'Mosses & liverworts'], fungi: ['Lichens'], other: [] });
 });
 
-test('a place counts wild records; the species it leaves out are counted apart, by reason, with the other filters', async () => {
+test('a place leaves out only what record keepers mark, counted apart; Kew\'s range is a flag, not a filter', async () => {
   fresh();
   const d = await out('count_species', { district: 'Ernakulam' });
   assert.equal(d.counts.documented, 3);                                     // the list: K1, K4, K5
-  assert.deepEqual(d.not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });   // K2, K6; K1 is listed
-  assert.match(d.note, /wild records/);
+  assert.deepEqual(d.not_wild, { cultivated_or_captive: 1, introduced: 1 });   // K2, K6; K1 is listed
+  assert.equal(d.kew_not_native, 1);                                        // K5: listed, flagged
+  assert.match(d.note, /record keeper/);
   assert.deepEqual((await out('count_species', { district: 'Ernakulam', group: 'Birds' })).not_wild,
-    { cultivated_or_captive: 1, outside_native_range: 0 });
-  assert.deepEqual((await out('count_species', { state: 'Kerala' })).not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });
-  assert.deepEqual((await out('count_species', { district: '201' })).not_wild, { cultivated_or_captive: 0, outside_native_range: 0 });
+    { cultivated_or_captive: 1, introduced: 0 });
+  const k = await out('count_species', { state: 'Kerala' });
+  assert.deepEqual(k.not_wild, { cultivated_or_captive: 1, introduced: 1 });
+  assert.equal(k.kew_not_native, 1);                                        // K4, from the state's file
+  assert.deepEqual((await out('count_species', { district: '201' })).not_wild, { cultivated_or_captive: 0, introduced: 0 });
   assert.equal((await out('count_species', {})).not_wild, undefined);       // India: no place, no such count
+  assert.equal((await out('count_species', {})).kew_not_native, undefined);
   const l = await out('list_species', { district: 'Ernakulam' });
   assert.deepEqual(l.species.map(s => s.key), ['K1', 'K4', 'K5']);
-  assert.deepEqual(l.not_wild, { cultivated_or_captive: 1, outside_native_range: 1 });
+  assert.deepEqual(l.species.map(s => s.kew_not_native ?? false), [false, false, true]);
+  assert.deepEqual(l.not_wild, { cultivated_or_captive: 1, introduced: 1 });
+  // Several districts: flagged only when Kew gives it as native in none of the districts it is recorded in.
+  const two = await out('list_species', { district: ['Ernakulam', '201'] });
+  assert.equal(two.species.find(s => s.key === 'K5').kew_not_native, undefined);
+  assert.equal((await out('list_species', {})).species.some(s => 'kew_not_native' in s), false);
 });

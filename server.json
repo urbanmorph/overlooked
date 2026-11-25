@@ -2,13 +2,13 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sathya-sankaran/yellide",
   "title": "yellide",
-  "description": "Species of India by kingdom, group, state, district, region or threat; places count wild records.",
+  "description": "Species of India by kingdom, group, state, district, region or threat, with Kew native-range flags.",
   "repository": {
     "url": "https://github.com/urbanmorph/overlooked",
     "source": "github"
   },
   "websiteUrl": "https://yellide.com",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "remotes": [
     {
       "type": "streamable-http",

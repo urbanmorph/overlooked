@@ -7,7 +7,7 @@
 -- climate maps); a record with no stated uncertainty does not count.
 -- {region_filter} is empty for the national run, or an extra AND clause for a test region.
 -- establishment: what the source says of the records (24 Nov 2026). 'cultivated': planted or kept (GBIF's degree of
--- establishment captive, cultivated, managed or released, or a dataset of planted trees, pipeline/ref/cultivated_datasets.csv);
+-- establishment captive, cultivated, managed or released, as the record keeper marks it);
 -- 'introduced': brought from elsewhere (establishment means introduced, or a degree only an introduced species has);
 -- null: the source says nothing, so the record counts as wild. A place's list counts only null.
 SELECT

@@ -27,8 +27,6 @@ QUERIES = ROOT / "pipeline" / "queries"
 EXCLUDED = ROOT / "pipeline" / "ref" / "excluded_datasets.csv"
 # Left out of query L only (records with no coordinates): nobody can georeference them.
 EXCLUDED_UNLOCATED = ROOT / "pipeline" / "ref" / "excluded_unlocated.csv"
-# Datasets of planted trees and kept animals: their records count as cultivated in query A.
-CULTIVATED = ROOT / "pipeline" / "ref" / "cultivated_datasets.csv"
 # DNA sequences: kept, but query A also keeps the latest year without them.
 DNA_DATASET = "d8cd16ba-bb74-4420-821e-083f2bac17c2"
 COL_XR = "7ddf754f-d193-4cc9-b351-99906754a03b"   # Catalogue of Life eXtended Release, as a GBIF checklist
@@ -61,8 +59,8 @@ def build_sql(name, state=None):
     region = f"AND level1name = '{state}'" if state else ""
     # Records with no coordinates have no GADM name; a test run selects them by the state text.
     text_region = f"AND stateprovince = '{state}'" if state else ""
-    establishment = (f"CASE WHEN datasetkey IN ({quoted(CULTIVATED)}) "
-                     "OR degreeofestablishment.concept IN ('captive', 'cultivated', 'managed', 'released') THEN 'cultivated' "
+    # What the record keeper says of each record; no dataset is taken as planted on our reading (25 Nov 2026).
+    establishment = ("CASE WHEN degreeofestablishment.concept IN ('captive', 'cultivated', 'managed', 'released') THEN 'cultivated' "
                      "WHEN establishmentmeans.concept IN ('introduced', 'introducedAssistedColonisation') "
                      "OR degreeofestablishment.concept IN ('naturalized', 'established', 'invasive', 'widespreadInvasive', "
                      "'spreading', 'colonising', 'casual', 'reproducing', 'failing') THEN 'introduced' END")

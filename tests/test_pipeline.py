@@ -362,10 +362,10 @@ def test_ledger_places_points_in_biogeographic_provinces(districts, tmp_path):
 
 
 def test_the_ledger_query_marks_cultivated_and_introduced_records():
-    """Query A keeps each point's records apart by what the source says of them (24 Nov 2026): cultivated (planted,
-    captive, a reviewed dataset of planted trees), introduced, or nothing said."""
+    """Query A keeps each point's records apart by what the record keeper says of them (24 Nov 2026): cultivated
+    (planted, captive, managed, released), introduced, or nothing said. No dataset is taken as planted on our reading."""
     sql = gbif.build_sql("ledger_cube")
-    assert "d85d848d-791e-4055-bda5-32c16619ab21" in sql            # SeasonWatch (pipeline/ref/cultivated_datasets.csv)
+    assert "datasetkey IN" not in sql.split("AS establishment")[0].rsplit("CASE", 1)[1]
     assert "degreeofestablishment.concept IN ('captive', 'cultivated', 'managed', 'released')" in sql
     assert "establishmentmeans.concept IN ('introduced', 'introducedAssistedColonisation')" in sql
     assert "AS establishment" in sql

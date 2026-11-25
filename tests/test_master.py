@@ -1313,10 +1313,10 @@ def test_the_js_tests_read_the_fields_the_pipeline_publishes(built):
     assert fx == {k: s[k] for k in fx}
 
 
-def test_place_lists_count_wild_records_inside_the_native_range(inputs, tmp_path, monkeypatch):
-    """A district's or a state's list counts a species only from wild records inside its native range (24 Nov 2026).
-    The rest are counted apart, by reason: cultivated_or_captive (the source marks the records planted or kept, or a
-    reviewed row of pipeline/ref/not_wild.csv), outside_native_range (introduced, or a plant outside Kew's range)."""
+def test_place_lists_leave_out_only_what_the_record_keeper_marks(inputs, tmp_path, monkeypatch):
+    """A district's or a state's list leaves out a species only when the record keeper marks every record of it there
+    (25 Nov 2026): cultivated_or_captive or introduced, counted apart. Kew's native range is a flag, never a filter:
+    kew_not_native names the listed plants Kew does not give as native in the place's region."""
     monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
     con = duckdb.connect()
     paths = dict(inputs["paths"])
@@ -1328,47 +1328,37 @@ def test_place_lists_count_wild_records_inside_the_native_range(inputs, tmp_path
         SELECT 'K5', 2020, 'HUMAN_OBSERVATION', 1""", tmp_path / "decade2.parquet")
     paths["ledger"] = write(con, """SELECT * FROM (VALUES
         ('K1', 101, 32, 2010, 2020, 5, 2, 5, 2010, 2020, 0, 0),
-        ('K1', 201, 29, 2015, 2024, 3, 0, 3, 2015, 2024, 0, 0),      -- reviewed: kept animals (not_wild.csv)
-        ('K2', 201, 29, 1900, 1900, 1, 0, 1, 1900, 1900, 0, 0),      -- a plant Kew gives only the Assam region
-        ('K3', 101, 32, 2011, 2011, 2, 0, 0, NULL, NULL, 2, 0),      -- every record planted
-        ('K5', 101, 32, 2020, 2020, 1, 0, 1, 2020, 2020, 0, 0),      -- a plant Kew does not know: counts
+        ('K1', 201, 29, 2015, 2024, 3, 0, 3, 2015, 2024, 0, 0),      -- nothing said: counts
+        ('K2', 201, 29, 1900, 1900, 1, 0, 1, 1900, 1900, 0, 0),      -- a plant Kew gives only the Assam region: counts, flagged
+        ('K3', 101, 32, 2011, 2011, 2, 0, 0, NULL, NULL, 2, 0),      -- every record marked planted
+        ('K5', 101, 32, 2020, 2020, 1, 0, 1, 2020, 2020, 0, 0),      -- a plant Kew does not know: counts, no flag
+        ('K5', 201, 29, 2019, 2019, 2, 0, 0, NULL, NULL, 0, 2),      -- every record marked introduced
         ('G1', 101, 32, 2000, 2003, 4, 0, 1, 2000, 2000, 3, 0))      -- wild once, then kept: counts, wild years only
         t(species_key, district_lgd, state_lgd, first_year, last_year, n_records, n_trait,
           wild_records, wild_first_year, wild_last_year, n_cultivated, n_introduced)""", tmp_path / "ledger2.parquet")
     ranges = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Cus dus', true, ['ASS'], []::VARCHAR[], true))
         t(name, accepted, has_range, india_native, india_introduced, near_india)""", tmp_path / "ranges.parquet")
-    not_wild = tmp_path / "not_wild.csv"
-    not_wild.write_text("key,name,dist_lgd,reason,note\nK1,Aus bus,201,captive,a test row\n")
     iucn_table(con)
     out = tmp_path / "out"
-    # Observations of Cus dus in Karnataka that wait for a name: not a place list, so they stay.
-    inat = json.loads(json.dumps(inputs["inputs"]["inat"]))
-    inat["lists"]["29"]["needs_id"].append([9, "Cus dus", "Plantae", 2])
     master.build(con, paths, out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"}, inputs["districts"],
-                 {**inputs["inputs"], "wcvp_ranges": ranges, "not_wild": not_wild, "inat": inat}, cache={}, http=FakeGbif())
+                 {**inputs["inputs"], "wcvp_ranges": ranges}, cache={}, http=FakeGbif())
     d = lambda code: json.loads((out / "d" / f"{code}.json").read_text())
-    assert d(101)["rows"] == [["G1", 2000, 2000, 1], ["K1", 2010, 2020, 5], ["K5", 2020, 2020, 1]]
-    assert d(101)["not_wild"] == [["K3", "cultivated_or_captive", 2]]
-    assert d(201)["rows"] == [] and d(201)["not_wild"] == [["K1", "cultivated_or_captive", 3], ["K2", "outside_native_range", 1]]
+    assert d(101) == {"rows": [["G1", 2000, 2000, 1], ["K1", 2010, 2020, 5], ["K5", 2020, 2020, 1]],
+                      "not_wild": [["K3", "cultivated_or_captive", 2]], "kew_not_native": []}
+    assert d(201) == {"rows": [["K1", 2015, 2024, 3], ["K2", 1900, 1900, 1]],
+                      "not_wild": [["K5", "introduced", 2]], "kew_not_native": ["K2"]}
     places = {r[0]: r for r in json.loads((out / "d" / "places.json").read_text())["rows"]}
-    assert sum(places[101][3]) == 3 and sum(places[201][3]) == 0
+    assert sum(places[101][3]) == 3 and sum(places[201][3]) == 2
     rows = {r[1]: r for r in duckdb.sql(f"SELECT key, name, states_observed FROM '{out / 'master.parquet'}'").fetchall()}
-    assert rows["Aus bus"][2] == [32]                 # Karnataka only from the reviewed record; Kerala from iNaturalist too
-    assert rows["Eus fus"][2] == [] and rows["Cus dus"][2] == []
-    assert json.loads((out / "d" / "state-29.json").read_text())["not_wild"] == [["K1", "cultivated_or_captive"], ["K2", "outside_native_range"]]
-    assert json.loads((out / "d" / "state-32.json").read_text())["not_wild"] == [["K3", "cultivated_or_captive"]]
-    waiting = duckdb.sql(f"SELECT inat_needs_id, observed FROM '{out / 'master_state.parquet'}' WHERE name = 'Cus dus' AND state_lgd = 29").fetchall()
-    assert waiting == [(True, False)]
+    assert rows["Aus bus"][2] == [29, 32] and rows["Cus dus"][2] == [29]
+    state = lambda st: json.loads((out / "d" / f"state-{st}.json").read_text())
+    assert state(29) == {"not_wild": [["K5", "introduced"]], "kew_not_native": ["K2"]}
+    assert state(32) == {"not_wild": [["K3", "cultivated_or_captive"]], "kew_not_native": []}
 
 
-def test_the_reviewed_not_wild_rows_name_real_districts_and_reasons():
-    """pipeline/ref/not_wild.csv: each row a species key, its name, an LGD district code, a reason the place rules
-    know, and a note that says why."""
-    import csv
-    rows = list(csv.DictReader((master.ROOT / "pipeline" / "ref" / "not_wild.csv").open()))
-    assert rows
-    codes = {c for (c,) in duckdb.sql(f"SELECT dist_lgd FROM '{master.ROOT / 'data' / 'ref' / 'LGD_Districts.parquet'}'").fetchall()} \
-        if (master.ROOT / "data" / "ref" / "LGD_Districts.parquet").exists() else None
-    for r in rows:
-        assert r["key"] and r["name"] and r["note"] and r["reason"] in {"outside_range", "captive", "escaped", "cultivated"}
-        assert codes is None or int(r["dist_lgd"]) in codes
+def test_no_hand_written_place_rows():
+    """Places change only by what record keepers say (25 Nov 2026): no reviewed not_wild list, no dataset taken as
+    planted on our reading."""
+    ref = master.ROOT / "pipeline" / "ref"
+    assert not (ref / "not_wild.csv").exists() and not (ref / "cultivated_datasets.csv").exists()
+    assert not hasattr(master, "NOT_WILD")

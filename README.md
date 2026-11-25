@@ -110,8 +110,8 @@ Any other client: add a remote (HTTP) server with the URL `https://yellide.com/m
 |---|---|
 | `find_species` | Find species of India by Latin name or English common name ("great indian bustard", "naja", "cobra"). Returns up to 10 species with their key, group, IUCN category and status. |
 | `get_species` | One species by its key: sources that list it, open record, states with an open record, WII regions, IUCN category with year, DOI and trend, endemic, year described and authority, family and order, evidence, names in Indian languages, a photo with its credit, and iNaturalist observations that wait for a name. |
-| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (`by_kingdom`: animals, plants, fungi, other). For a state or district, the counts are of wild records, and `not_wild` gives the species left out (`cultivated_or_captive`, `outside_native_range`). Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
-| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". A place's list is its wild records, with `not_wild` beside it. Up to 100 rows per page, with the total and a cursor for the next page. |
+| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (`by_kingdom`: animals, plants, fungi, other). For a state or district, `not_wild` gives the species the record keepers mark as planted, kept or introduced there (`cultivated_or_captive`, `introduced`), and `kew_not_native` the listed plants Kew does not give as native there. Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
+| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". In a place, a plant Kew does not give as native there carries `kew_not_native: true`, with `not_wild` beside the list. Up to 100 rows per page, with the total and a cursor for the next page. |
 | `new_species` | Species described from India since a year (2007 or later), from Plazi, BSI Plant Discoveries and ZSI Animal Discoveries: year, group, state of the type locality, journal and a link to the paper, and whether it has been recorded since. |
 
 Filters for `count_species` and `list_species`: `kingdom` (`animals`, `plants` with mosses and liverworts, `fungi` with
@@ -121,10 +121,11 @@ districts for an area such as a delta), `region` (WII biogeographic zone or prov
 `yellide://about`, `yellide://groups`, `yellide://kingdoms`, `yellide://states`, `yellide://districts` and
 `yellide://regions`.
 
-A place's list means wild records. A state or a district counts a species only from records that no source marks as
-planted or kept (GBIF's establishment fields, a dataset of planted trees such as SeasonWatch, or a reviewed row of
-`pipeline/ref/not_wild.csv`) and, for a plant, only inside the native range Kew's World Checklist of Vascular Plants
-gives it (`pipeline/wcvp_ranges.py`). The others are counted apart as `not_wild`.
+A place's list says what the record keepers say. A state or a district leaves out a species only when the record
+keeper marks every record of it there as planted, kept or introduced (GBIF's establishment fields); those are counted
+apart as `not_wild`. yellide decides nothing else: few records carry a mark, so planted trees and crops can be on a list.
+A plant that Kew's World Checklist of Vascular Plants does not give as native in the place's region
+(`pipeline/wcvp_ranges.py`) stays on the list with the flag `kew_not_native`, for the reader to judge.
 
 Try it without an assistant:
 

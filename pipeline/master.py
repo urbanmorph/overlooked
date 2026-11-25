@@ -842,18 +842,16 @@ def name_table(con):
     """)
 
 
-NOT_WILD = ROOT / "pipeline" / "ref" / "not_wild.csv"
 REGIONS = ROOT / "pipeline" / "ref" / "tdwg_regions.csv"
-NOT_WILD_REASONS = ["cultivated_or_captive", "outside_native_range"]
 
 
-def place_rules(con, ledger, districts_path, ranges=None, not_wild=NOT_WILD, regions=REGIONS):
-    """A place's list is its wild records inside the species' native range (24 Nov 2026). Creates place_sp: per
-    species and district, every record and the wild ones, and not_wild: null when the district lists the species,
-    else cultivated_or_captive (the source marks every record there planted or kept, or a reviewed row of not_wild.csv
-    says so) or outside_native_range (the records are of an introduced population, or the species is a plant outside
-    the range Kew gives it, pipeline/wcvp_ranges.py). Then a state keeps a species only from a district that lists it,
-    or from another source's record when the state is in the plant's range; what goes is in state_not_wild."""
+def place_rules(con, ledger, districts_path, ranges=None, regions=REGIONS):
+    """A place's list leaves out only what the record keeper marks (25 Nov 2026). Creates place_sp: per species and
+    district, every record and the ones no record keeper marks, not_wild: null when the district lists the species,
+    else cultivated_or_captive or introduced (the record keeper marks every record there so), and kew_not_native: a
+    flag, true when Kew's World Checklist of Vascular Plants does not give the plant as native in the district's region
+    (pipeline/wcvp_ranges.py). A state keeps GBIF's located records only from districts that list the species;
+    state_not_wild has what goes, state_kew the listed plants Kew gives as native in no region of the state."""
     cols = [c[0] for c in con.sql(f"DESCRIBE SELECT * FROM '{ledger}'").fetchall()]
     w = (lambda c, all_: c if "wild_records" in cols else all_)
     # The Kew region (TDWG level 3) of each district: a district row, else its state's, else the mainland.
@@ -872,15 +870,11 @@ def place_rules(con, ledger, districts_path, ranges=None, not_wild=NOT_WILD, reg
                     WHERE i.kingdom = 'Plantae' GROUP BY n.id""")
     else:
         con.sql("CREATE OR REPLACE TEMP TABLE id_range (id VARCHAR, known BOOLEAN, native VARCHAR[], introduced VARCHAR[], near BOOLEAN)")
-    # Outside the range: Kew lists the region as introduced, or lists other regions of India as native, or gives a
-    # range that does not reach India or a region next to it. A name Kew does not know keeps its records.
-    con.sql("""CREATE OR REPLACE MACRO outside_range(known, native, introduced, near, region) AS
+    # Not native by Kew: Kew lists the region as introduced, or lists other regions of India as native, or gives a
+    # range that does not reach India or a region next to it. A name Kew does not know gets no flag.
+    con.sql("""CREATE OR REPLACE MACRO kew_out(known, native, introduced, near, region) AS
                coalesce(known, false) AND NOT list_contains(coalesce(native, []), region)
                AND (list_contains(coalesce(introduced, []), region) OR len(coalesce(native, [])) > 0 OR NOT coalesce(near, false))""")
-    # Reviewed rows: reason outside_range, or captive, escaped or cultivated.
-    reviewed = (f"SELECT key, dist_lgd::INTEGER AS d, reason FROM read_csv('{not_wild}', header = true, all_varchar = true)"
-                if not_wild and Path(not_wild).exists() else
-                "SELECT NULL::VARCHAR AS key, NULL::INTEGER AS d, NULL::VARCHAR AS reason WHERE false")
     # A reviewed override that moves a GBIF key's records to another species (apply_overrides) moves them here too.
     has_over = value(con, "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'overrides'")
     moved = ("""SELECT "from" AS k, any_value(to_key) AS to_key FROM overrides WHERE kind = 'key' GROUP BY 1""" if has_over
@@ -897,33 +891,28 @@ def place_rules(con, ledger, districts_path, ranges=None, not_wild=NOT_WILD, reg
             FROM '{ledger}' l LEFT JOIN ({moved}) o ON o.k = l.species_key
             LEFT JOIN idmap m ON m.id = coalesce(o.to_key, l.species_key)
             WHERE l.district_lgd > 0 GROUP BY 1, 2, 3)
-        SELECT l.*, CASE
-            WHEN rv.reason = 'outside_range' THEN 'outside_native_range'
-            WHEN rv.key IS NOT NULL THEN 'cultivated_or_captive'
-            WHEN l.wild_records = 0 AND l.cultivated > 0 THEN 'cultivated_or_captive'
-            WHEN l.wild_records = 0 THEN 'outside_native_range'
-            WHEN outside_range(g.known, g.native, g.introduced, g.near, r.tdwg) THEN 'outside_native_range'
-            END AS not_wild
-        FROM l LEFT JOIN ({reviewed}) rv ON rv.key = l.id AND rv.d = l.d
-        LEFT JOIN dist_region r ON r.d = l.d LEFT JOIN id_range g ON g.id = l.id""")
-    # States: before, what each species had; GBIF's located records only from districts that list the species; any
-    # source's state only inside a plant's range (in some region of the state).
+        SELECT l.*, CASE WHEN l.wild_records > 0 THEN NULL
+                         WHEN l.cultivated > 0 THEN 'cultivated_or_captive' ELSE 'introduced' END AS not_wild,
+               kew_out(g.known, g.native, g.introduced, g.near, r.tdwg) AS kew_not_native
+        FROM l LEFT JOIN dist_region r ON r.d = l.d LEFT JOIN id_range g ON g.id = l.id""")
+    # States: GBIF's located records only from districts that list the species.
     con.sql("CREATE OR REPLACE TEMP TABLE st_before AS SELECT DISTINCT id, state_lgd FROM evidence_r WHERE observed AND state_lgd IS NOT NULL")
     con.sql("DELETE FROM evidence_r WHERE source = 'GBIF' AND located AND state_lgd IS NOT NULL")
     con.sql("""INSERT INTO evidence_r (source, name, key, state_lgd, label, observed, located, year, id)
                SELECT 'GBIF', NULL, id, st, NULL, true, true, max(wild_last_year), id FROM place_sp
                WHERE not_wild IS NULL GROUP BY id, st""")
-    # Open records only: observations that wait for a name are not a place's list.
-    con.sql("""DELETE FROM evidence_r e WHERE e.observed AND e.state_lgd IS NOT NULL AND e.id IN (SELECT id FROM id_range)
-               AND NOT EXISTS (SELECT 1 FROM dist_region r JOIN id_range g ON g.id = e.id
-                               WHERE r.st = e.state_lgd AND NOT outside_range(g.known, g.native, g.introduced, g.near, r.tdwg))""")
     con.sql("""CREATE OR REPLACE TABLE state_not_wild AS
                SELECT b.id, b.state_lgd AS st,
                       CASE WHEN bool_or(p.not_wild = 'cultivated_or_captive') THEN 'cultivated_or_captive'
-                           ELSE 'outside_native_range' END AS not_wild
+                           ELSE 'introduced' END AS not_wild
                FROM st_before b LEFT JOIN place_sp p ON p.id = b.id AND p.st = b.state_lgd
                WHERE NOT EXISTS (SELECT 1 FROM evidence_r e WHERE e.id = b.id AND e.state_lgd = b.state_lgd AND e.observed)
                GROUP BY 1, 2""")
+    con.sql("""CREATE OR REPLACE TABLE state_kew AS
+               SELECT DISTINCT e.id, e.state_lgd AS st FROM evidence_r e JOIN id_range g ON g.id = e.id
+               WHERE e.observed AND e.state_lgd IS NOT NULL
+                 AND NOT EXISTS (SELECT 1 FROM dist_region r WHERE r.st = e.state_lgd
+                                 AND NOT kew_out(g.known, g.native, g.introduced, g.near, r.tdwg))""")
 
 
 def flags(con):
@@ -1119,22 +1108,26 @@ def english_files(con, out: Path):
 
 
 def district_files(con, districts_path, out: Path):
-    """d/<district LGD code>.json: rows, the species on the list with a wild GBIF record placed in the district inside
-    their native range (place_rules), with the first and latest year of those records and their number, by key; and
-    not_wild, the others with a record there: [key, reason, records]. d/state-<state LGD code>.json: not_wild, the
-    species with a record in the state that its list leaves out: [key, reason]. d/places.json: every district with its
-    name, its state's LGD code and its listed species per group, for the place pages and the agent server."""
+    """d/<district LGD code>.json: rows, the species on the list (place_rules) with the first and latest year of the
+    records no record keeper marks and their number, by key; not_wild, the species whose every record there the record
+    keeper marks: [key, reason, records]; kew_not_native, the listed keys Kew does not give as native in the district's
+    region. d/state-<state LGD code>.json: not_wild [key, reason] and kew_not_native [key] for the state's list.
+    d/places.json: every district with its name, its state's LGD code and its listed species per group, for the place
+    pages and the agent server."""
     shutil.rmtree(out / "d", ignore_errors=True)
     con.sql("""CREATE OR REPLACE TEMP TABLE dist_sp AS
                SELECT p.d, p.id AS key, p.wild_first_year AS first_year, p.wild_last_year AS last_year,
-                      p.wild_records AS records, p.records AS all_records, p.not_wild, s.gi
+                      p.wild_records AS records, p.records AS all_records, p.not_wild, p.kew_not_native, s.gi
                FROM place_sp p JOIN site s ON s.key = p.id WHERE s.status < 2""")
+    blank = lambda: {"rows": [], "not_wild": [], "kew_not_native": []}
     files = {}
-    for d, key, y0, y1, n, n_all, why in con.sql("""SELECT d, key, first_year, last_year, records, all_records, not_wild
-                                                   FROM dist_sp ORDER BY d, key""").fetchall():
-        f = files.setdefault(d, {"rows": [], "not_wild": []})
+    for d, key, y0, y1, n, n_all, why, kew in con.sql("""SELECT d, key, first_year, last_year, records, all_records,
+                                                        not_wild, kew_not_native FROM dist_sp ORDER BY d, key""").fetchall():
+        f = files.setdefault(d, blank())
         if why is None:
             f["rows"].append([key, y0, y1, n])
+            if kew:
+                f["kew_not_native"].append(key)
         else:
             f["not_wild"].append([key, why, n_all])
     for d, f in files.items():
@@ -1142,9 +1135,13 @@ def district_files(con, districts_path, out: Path):
     states = {}
     for st, key, why in con.sql("""SELECT n.st, s.key, n.not_wild FROM state_not_wild n JOIN site s ON s.key = n.id
                                    WHERE s.status < 2 ORDER BY 1, 2""").fetchall():
-        states.setdefault(st, []).append([key, why])
-    for st, rows in states.items():
-        dump({"not_wild": rows}, out / "d" / f"state-{st}.json")
+        states.setdefault(st, blank())["not_wild"].append([key, why])
+    for st, key in con.sql("""SELECT k.st, s.key FROM state_kew k JOIN site s ON s.key = k.id
+                              WHERE s.status < 2 ORDER BY 1, 2""").fetchall():
+        states.setdefault(st, blank())["kew_not_native"].append(key)
+    for st, f in states.items():
+        del f["rows"]
+        dump(f, out / "d" / f"state-{st}.json")
     groups = {}
     for d, gi, k in con.sql("SELECT d, gi, count(*) FROM dist_sp WHERE not_wild IS NULL GROUP BY 1, 2").fetchall():
         groups.setdefault(d, [0] * len(GROUPS))[gi] = k
@@ -1899,7 +1896,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     if not inputs.get("wcvp"):
         notes.append("Kew WCVP not found.")
     if not inputs.get("wcvp_ranges"):
-        notes.append("Kew's native ranges were not found: a plant counts in every place with a wild record of it.")
+        notes.append("Kew's native ranges were not found: no plant is flagged as not native in a place.")
     # Before matching: an overridden name is never asked of GBIF.
     n_over = apply_overrides(con, inputs.get("overrides", OVERRIDES))
     if n_over:
@@ -1919,7 +1916,7 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     merged = resolve(con)
     described_years(con)
     name_table(con)
-    place_rules(con, paths["ledger"], districts_path, inputs.get("wcvp_ranges"), inputs.get("not_wild", NOT_WILD))
+    place_rules(con, paths["ledger"], districts_path, inputs.get("wcvp_ranges"))
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
     if inputs.get("pictures"):
@@ -1964,7 +1961,7 @@ def fingerprint(paths, inputs, cache, extra=None, code=None):
     gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges", "not_wild")),
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges")),
               *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):

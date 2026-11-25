@@ -3,9 +3,9 @@ species-rank name, accepted or a synonym, its accepted species, whether Kew give
 botanical regions of India (TDWG level 3) where it is native or introduced, and whether it is native in India or a
 region next to it (near_india).
 
-The master list uses it to count a plant's record in a district only inside the plant's native range: a district
-whose region Kew does not list as native for the species puts the species in the district's separate count
-(outside_native_range), not in its list. A name Kew does not know, or a species Kew gives no range, keeps its records.
+The master list uses it as a flag, never a filter (25 Nov 2026): a plant on a district's or a state's list whose
+region Kew does not list as native for the species carries kew_not_native. A name Kew does not know, or a species Kew
+gives no range, gets no flag.
 
 Regions of India: IND (the mainland), ASS (Assam and the North-East), WHM (West Himalaya), EHM (East Himalaya),
 AND (Andamans), NCB (Nicobars), LDV (Lakshadweep). A location Kew marks doubtful counts as native; an extinct one

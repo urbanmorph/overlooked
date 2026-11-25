@@ -2,6 +2,17 @@
 
 Newest first. Updated as work happens.
 
+## 25 November 2026
+
+- Places say what record keepers say (owner's decision; MCP 1.3.0). A place's list leaves out a species only when the
+  record keeper marks every record of it there (GBIF's establishment fields: cultivated_or_captive or introduced). Kew's
+  native ranges became a flag (`kew_not_native`), not a filter. Removed: `pipeline/ref/not_wild.csv` (six reviewed rows)
+  and `pipeline/ref/cultivated_datasets.csv`: SeasonWatch's own description does not say its trees are planted. GBIF
+  India: of 57.4 million records, about 1,600 are marked cultivated, managed or captive and about 1,300 introduced.
+- iNaturalist test (all 17,429 plant species observed in India): observers mark planted crops and street trees cultivated
+  as rarely as wild natives (Teak 12%, Jackfruit 19%, Pigeon Pea 9%; Neem 15%, Peepal 10%), so a share threshold cannot
+  tell planted from wild. Captive-marked observations never reach GBIF.
+
 ## 24 November 2026
 
 - Place lists mean wild records (asked by ops for the place crosswalk, bharatlas to mugilu to yellide by LGD district). A
