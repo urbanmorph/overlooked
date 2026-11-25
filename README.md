@@ -155,6 +155,7 @@ and in the footer.
 | [Plazi](https://plazi.org) | New species described from India | CC0 |
 | Botanical Survey of India | National checklists, Plant Discoveries, Indian Virtual Herbarium | Reproduced with acknowledgement under BSI's web policy |
 | Zoological Survey of India | Animal Discoveries | Reproduced with acknowledgement under ZSI's website policy |
+| The Reptile Database (ChecklistBank 1008) | English names of reptiles iNaturalist has none for (`pipeline/reptiledb.py`) | Uetz and Hošek (2026), doi:10.48580/d37s, CC BY 4.0 |
 | Lichen checklist of India | Names, endemic mark, states (counts only) | Sinha, Nayaka and Mishra (2024), doi:10.21756/cab.v8i2.01, CC BY-NC 4.0 |
 | Bryophyte checklist of India | Names (counts only) | Dandotiya et al. (2011), Archive for Bryology 88: 1-126; no open licence, cleared for this use |
 | [IUCN Red List](https://www.iucnredlist.org) | Category per species (from the GBIF copy, DOI 10.15468/0qnb58) and population trend | IUCN (2026). The IUCN Red List of Threatened Species. Version 2026-1. Accessed via GBIF.org |

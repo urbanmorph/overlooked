@@ -1385,3 +1385,24 @@ def test_endemic_marks_from_iucn_and_soib(built):
     assert "end" in r["Eus fus"]["labels"]      # IUCN
     assert "end" in r["Aus bus"]["labels"]      # ZSI and SoIB; IUCN's false takes nothing away
     assert "end" not in r["Hus ius"]["labels"]  # SoIB: No
+
+
+def test_english_names_from_the_reptile_database_fill_only_reptiles_with_none(inputs, tmp_path, monkeypatch):
+    """pipeline/reptiledb.py: a reptile's English name when iNaturalist (the pictures table) has none; never another
+    group's, never in place of iNaturalist's. Here birds stand in for reptiles."""
+    monkeypatch.setattr(master, "CACHE", tmp_path / "cache")
+    rdb = write(duckdb.connect(), """SELECT * FROM (VALUES ('Hus ius', 'Hus Snake', '2026-06'), ('Aus bus', 'Aus Snake', '2026-06'))
+        t(name, english, version)""", tmp_path / "reptiledb.parquet")
+
+    def english(groups):
+        monkeypatch.setattr(master, "REPTILE_GROUPS", groups)
+        con = duckdb.connect()
+        iucn_table(con)
+        master.build(con, inputs["paths"], tmp_path / "o", {"period": "2026-10-26", "snapshot": "s", "built": "x"},
+                     inputs["districts"], {**inputs["inputs"], "reptiledb": rdb}, cache={}, http=FakeGbif())
+        return dict(con.sql("SELECT key, common FROM english").fetchall())
+
+    assert "G1" not in english(("Reptiles",))                  # Hus ius is a bird
+    e = english(("Birds",))
+    assert e["G1"] == "Hus Snake"                              # no iNaturalist name: the Reptile Database's
+    assert e["K1"] == "Common aus"                             # iNaturalist's stays

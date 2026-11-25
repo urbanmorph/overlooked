@@ -4,6 +4,10 @@ Newest first. Updated as work happens.
 
 ## 26 November 2026
 
+- English names for reptiles from The Reptile Database (CC BY 4.0, its editors' copy on ChecklistBank, dataset 1008):
+  only where iNaturalist has none, under the species' own name; a subspecies' name is never the species'. Fills 254 of
+  361 reptiles of India with no English name, among them Ophiophagus kaalinga (Western Ghats king cobra). The export
+  (about 25 MB) is read again only for a new version (two or three a year).
 - Endemic marks for vertebrates (asked by ops, MCP 1.6.0). Amphibians, reptiles, birds, mammals and fish had none
   since the list began: the ZSI checklists for them mark no species. Now from the IUCN Red List assessment's own
   endemic-to-India mark (the owner's call, 25 Nov), SoIB's India.Endemic (birds) and the ZSI Mammalia checklist's

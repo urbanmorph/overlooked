@@ -72,6 +72,7 @@ from pipeline import (
     iucn,
     name_review,
     r2,
+    reptiledb,
     soib,
     unlocated,
     util,
@@ -98,6 +99,7 @@ RETRIES, BACKOFF = 5, 30  # GBIF match: tries per name, and names failing in a r
 WORKERS = 4  # GBIF match requests at once
 
 SOURCES = ["ZSI", "BSI", "WCVP", "GBIF", "iNaturalist", "Plazi", "IUCN", "Lichens", "Bryophytes"]
+REPTILE_GROUPS = ("Reptiles",)   # the groups the Reptile Database's English names may name (pipeline/reptiledb.py)
 SOURCE_ORDER = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(SOURCES))   # SQL: CASE source ... END
 LABELS = [
     ("rg", "Research grade (iNaturalist)", "id"),
@@ -1956,9 +1958,21 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
                    source VARCHAR, common VARCHAR)""")
         shutil.rmtree(out / "pic", ignore_errors=True)
         notes.append("The pictures table was not found: species pages show no photo.")
-    # English common names by key (from the pictures table), for every file that names a species.
-    con.sql("CREATE OR REPLACE TABLE english AS SELECT key, any_value(common) AS common FROM pics "
-            "WHERE common IS NOT NULL GROUP BY key")
+    # English common names by key, for every file that names a species: iNaturalist's (the pictures table), else for a
+    # reptile the Reptile Database's, under the species' own name.
+    rdb, fill = inputs.get("reptiledb"), ""
+    if rdb:
+        groups = ", ".join(f"'{g}'" for g in REPTILE_GROUPS)
+        fill = f"""UNION ALL SELECT l.key, any_value(r.english) FROM listed l JOIN '{rdb}' r USING (name)
+                   WHERE l."group" IN ({groups}) AND l.key IS NOT NULL AND l.key NOT IN (SELECT key FROM i)
+                   GROUP BY l.key"""
+    else:
+        notes.append("The Reptile Database was not found: reptiles have English names from iNaturalist only.")
+    con.sql(f"""
+        CREATE OR REPLACE TABLE english AS
+        WITH i AS (SELECT key, any_value(common) AS common FROM pics WHERE common IS NOT NULL GROUP BY key)
+        SELECT * FROM i {fill}
+    """)
     if inputs.get("globi_edges"):
         web_files(con, inputs["globi_edges"], out)
     else:
@@ -1989,7 +2003,7 @@ def fingerprint(paths, inputs, cache, extra=None, code=None):
     gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges", "griis")),
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges", "griis", "reptiledb")),
               *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
@@ -2071,7 +2085,8 @@ def run(a):
               "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
               "iucn_detail": iucn_detail_input(s3),
               "bsi_monographs": bsi_monographs_input(s3), "wcvp_ranges": wcvp_ranges_input(s3),
-              "griis": griis.refresh(http, s3, CACHE / "griis"), "inat": inat_doc, "newspecies": ns_doc,
+              "griis": griis.refresh(http, s3, CACHE / "griis"),
+              "reptiledb": reptiledb.refresh(http, s3, CACHE / "reptiledb"), "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
     con = duckdb.connect()
