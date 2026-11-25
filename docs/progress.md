@@ -4,6 +4,11 @@ Newest first. Updated as work happens.
 
 ## 26 November 2026
 
+- Endemic marks for vertebrates (asked by ops, MCP 1.6.0). Amphibians, reptiles, birds, mammals and fish had none
+  since the list began: the ZSI checklists for them mark no species. Now from the IUCN Red List assessment's own
+  endemic-to-India mark (the owner's call, 25 Nov), SoIB's India.Endemic (birds) and the ZSI Mammalia checklist's
+  "Endemic to India" column. get_species names the sources (endemic_marked_by). Also: count_species and list_species
+  give read_as; group takes frogs, snakes and lizards; district names in any word order and without "District".
 - list_species reproduces the headline counts (asked by ops, MCP 1.5.0): each row for a place has `counted` and
   `not_counted` (undated, before_2016, not_native), and the filter `counted: true` lists exactly the species that
   count_species' headline threatened and endemic count. Mumbai's threatened list with it: 19, as the count.

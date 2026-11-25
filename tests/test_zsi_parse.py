@@ -69,3 +69,14 @@ def test_the_match_reads_past_ocr_letters_when_one_name_fits(tmp_path, monkeypat
 @pytest.mark.parametrize("a,b", [("grayll", "grayii"), ("Lxobrychus", "Ixobrychus"), ("rnalabarica", "malabarica")])
 def test_fold_makes_ocr_look_alikes_equal(a, b):
     assert zsi_parse.fold(a) == zsi_parse.fold(b)
+
+
+def test_endemic_in_words_marks_the_name_before_it():
+    """The Mammalia checklist gives "Endemic to India" in a column after each species, not '*' (25 Nov 2026): the words
+    mark the name before them, never the next one."""
+    text = ("3. Madras Treeshrew Anathana ellioti (Waterhouse, 1850) South of Ganges river Endemic to India LC II II "
+            "4. Northern Treeshrew Tupaia belangeri (Wagner, 1841) Nepal, Bhutan LC "
+            "58. Dusky Striped Squirrel Funambulus sublineatus (Waterhouse, 1838) Western Ghats Endemic  to\nIndia VU")
+    at = [(m.start(), m.group("name")) for m in zsi_parse.ENTRY.finditer(text)]
+    assert [n for (_, n), e in zip(at, zsi_parse.endemic_in_words(text, [p for p, _ in at])) if e] == \
+        ["Anathana ellioti", "Funambulus sublineatus"]

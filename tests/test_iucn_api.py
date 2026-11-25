@@ -138,7 +138,8 @@ def test_the_client_waits_on_a_rate_limit_retries_a_server_error_and_returns_non
 def test_only_the_population_trend_and_the_range_reach_the_public_files():
     """The extractor writes only to cache/, locally and in R2, and the site never serves cache/. The master list takes
     the population trend (published with the owner's go-ahead, 31 October 2026) and whether the range includes India
-    (names to check, 1 November 2026); threats, habitats and the rest stay internal."""
+    (names to check, 1 November 2026) and IUCN's endemic-to-India mark (25 November 2026); threats, habitats and the
+    rest stay internal."""
     assert iucn_api.CACHE.relative_to(iucn_api.ROOT).parts[:2] == ("data", "cache")
     assert iucn_api.R2_PREFIX.startswith("cache/")
     data_function = (iucn_api.ROOT / "functions" / "data" / "[[path]].js").read_text()
@@ -146,6 +147,8 @@ def test_only_the_population_trend_and_the_range_reach_the_public_files():
     master = (iucn_api.ROOT / "pipeline" / "master.py").read_text()
     assert "SELECT name, trend FROM '{inputs['iucn_detail']}'" in master
     assert "SELECT name, in_india_list FROM '{iucn_detail}'" in master
+    # IUCN's own mark that a species is endemic to India (the owner's call, 25 November 2026).
+    assert "SELECT 'IUCN', name FROM '{inputs['iucn_detail']}' WHERE india_endemic" in master
     assert not any(f in master for f in ("threats", "habitats", "possibly_extinct", "criteria", "assessors"))
 
 

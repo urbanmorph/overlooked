@@ -980,6 +980,13 @@ def flags(con):
         FROM s GROUP BY id
     """)
     con.sql(f"""
+        CREATE OR REPLACE TABLE id_endemic AS   -- the sources that mark a species endemic to India, under its own name
+        WITH m AS (SELECT r.id, r.source FROM names_in_r r JOIN ids i USING (id) WHERE r.endemic AND r.name = i.name
+                   UNION SELECT i.id, e.source FROM end_marks e JOIN ids i ON i.name = e.name)
+        SELECT id, list(DISTINCT source ORDER BY CASE source {SOURCE_ORDER} ELSE {len(SOURCES)} END, source) AS by
+        FROM m GROUP BY id
+    """)
+    con.sql(f"""
         CREATE OR REPLACE TABLE id_labels AS
         WITH l AS (
             SELECT id, unnest(ev_labels) AS code FROM id_flags
@@ -989,7 +996,7 @@ def flags(con):
                   WHERE observed AND NOT located AND unplaced AND sources = ['GBIF']
             -- Endemic: a source's mark on the species under its own name. A name the backbone folds into a wider
             -- species as a synonym (Kew's Piper velayudhanii into Piper nigrum) does not make that species endemic.
-            UNION SELECT r.id, 'end' FROM names_in_r r JOIN ids i USING (id) WHERE r.endemic AND r.name = i.name
+            UNION SELECT id, 'end' FROM id_endemic
             -- Checked only where the paper is the description: same year as the year described.
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
                                                 AND json_extract(paper, '$[5]')::INTEGER = year
@@ -1337,11 +1344,8 @@ def species_files(con, out: Path):
     parts = {}
     for key, *row, taxon, n_india, states, year, authority, paper, iucn_year, iucn_doi, partners, inter_india, cells, \
             types, photos, barcode, names, trend, traits, precise, papers, papers_latest, iucn_trend, family, order, \
-            suborder, provinces, endemic_by in con.sql(f"""
-            WITH e AS (   -- the sources that mark the species endemic, under its own name (as the label 'end')
-                SELECT r.id, list(DISTINCT r.source ORDER BY CASE r.source {SOURCE_ORDER} END) AS by
-                FROM names_in_r r JOIN ids i USING (id) WHERE r.endemic AND r.name = i.name GROUP BY r.id),
-            w AS (   -- the observations that wait, per species: in India and per state
+            suborder, provinces, endemic_by in con.sql("""
+            WITH w AS (   -- the observations that wait, per species: in India and per state
                 SELECT w.id, any_value(w.taxon) AS taxon, coalesce(sum(w.n) FILTER (WHERE w.state_lgd IS NULL), 0) AS n_india,
                        list([b.b, w.n] ORDER BY b.b) FILTER (WHERE b.b IS NOT NULL) AS states
                 FROM wait w LEFT JOIN state_bit b ON b.state_lgd = w.state_lgd GROUP BY w.id)
@@ -1350,7 +1354,7 @@ def species_files(con, out: Path):
                    s.iucn_year, s.iucn_doi, s.partners, s.interactions_india, s.cells_2km,
                    s.types, s.photos, s.barcode, s.local_names, s.trend_known, s.traits, s.places_precise,
                    s.papers, s.papers_latest, s.iucn_trend, s.family, s."order", s.suborder, s.provinces, e.by
-            FROM site s LEFT JOIN w USING (id) LEFT JOIN e USING (id)
+            FROM site s LEFT JOIN w USING (id) LEFT JOIN id_endemic e USING (id)
             WHERE s.key IS NOT NULL""").fetchall():
         parts.setdefault(shard_of(key), {})[key] = [*row, taxon, int(n_india), state_pairs(states), year, authority,
                                                     json.loads(paper) if paper else None, iucn_year, iucn_doi,
@@ -1881,15 +1885,20 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     else:
         con.sql("CREATE OR REPLACE TABLE lit (name VARCHAR, papers BIGINT, latest INTEGER)")
         notes.append("The Bibliography of South Asian Ornithology was not found: papers per bird are not counted.")
+    # Endemic marks from sources that are not checklists (SoIB, IUCN): source, name.
+    con.sql("CREATE OR REPLACE TABLE end_marks (source VARCHAR, name VARCHAR)")
     if inputs.get("soib"):
         from pipeline import soib
         con.sql(f"CREATE OR REPLACE TABLE soib AS {soib.trends_sql(inputs['soib'])}")
+        con.sql(f"INSERT INTO end_marks SELECT 'SoIB', name FROM ({soib.endemic_sql(inputs['soib'])})")
     else:
         con.sql("CREATE OR REPLACE TABLE soib (name VARCHAR, assessed BOOLEAN, known BOOLEAN)")
         notes.append("State of India's Birds was not found: bird population trends come from IUCN only.")
     # Population trends in IUCN's assessments (pipeline/iucn_api.py), published with the owner's go-ahead (31 October 2026).
     if inputs.get("iucn_detail"):
         con.sql(f"CREATE OR REPLACE TABLE iutrend AS SELECT name, trend FROM '{inputs['iucn_detail']}'")
+        # IUCN's own mark that a species is endemic to India (published on the owner's call, 25 November 2026).
+        con.sql(f"INSERT INTO end_marks SELECT 'IUCN', name FROM '{inputs['iucn_detail']}' WHERE india_endemic")
     else:
         con.sql("CREATE OR REPLACE TABLE iutrend (name VARCHAR, trend VARCHAR)")
         notes.append("IUCN's assessments were not found: population trends come from State of India's Birds only.")

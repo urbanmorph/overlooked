@@ -106,15 +106,16 @@ def inputs(tmp_path):
     lichens = tmp_path / "lichens.csv"
     lichens.write_text("no,name,authority,synonyms,growth_form,substratum,states,regions,endemic,page\n"
                        "1,Lus mus,Nyl.,Lus oldus Nyl.,CR,CO,Kerala,WG,True,8\n")
-    iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing', true), ('Eus fus', 'Unknown', true),
-        ('Aus bus', 'Stable', true)) t(name, trend, in_india_list)""", tmp_path / "iucn_detail.parquet")
+    # india_endemic: the assessment's own mark that the species is endemic to India.
+    iucn_trend = write(con, """SELECT * FROM (VALUES ('Cus dus', 'Decreasing', true, NULL), ('Eus fus', 'Unknown', true, true),
+        ('Aus bus', 'Stable', true, false)) t(name, trend, in_india_list, india_endemic)""", tmp_path / "iucn_detail.parquet")
     pics = write(con, """SELECT * FROM (VALUES ('K1', 'https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC', 'iNaturalist', 'Common aus'),
         ('ZZ', 'https://p/2.jpg', 'https://inat/2', 'Bo', 'CC BY', 'iNaturalist', NULL))
         t(key, url, page, "by", licence, source, common)""", tmp_path / "pictures.parquet")
     soib = tmp_path / "soib.csv"
     soib.write_text("eBird.Scientific.Name.2022,India.Checklist.Scientific.Name,Selected.SOIB,SOIBv2.Long.Term.Status,"
-                    "SOIBv2.Current.Status\nAus bus,Aus bus,X,Decline,Stable\n"
-                    "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive\n")
+                    "SOIBv2.Current.Status,India.Endemic\nAus bus,Aus bus,X,Decline,Stable,Yes\n"
+                    "Hus ius,Hus ius,X,Insufficient Data,Trend Inconclusive,No\n")
     zones = write(con, """SELECT * FROM (VALUES ('K1', '5B', 5, 2020), ('K1', '6E', 1, 2010), ('K3', '5B', 2, 2011))
         t(species_key, prov, n_records, last_year)""", tmp_path / "species_zones.parquet")
     return {"paths": {"species": sp, "species_decade": dec, "ledger": led, "unlocated": None, "species_places": places,
@@ -323,7 +324,7 @@ def test_sources_and_labels(built):
     assert r["Aus bus"]["labels"] == ["rg", "ho", "end"]
     assert r["Cus dus"]["sources"] == ["BSI", "WCVP", "GBIF", "IUCN"]
     assert "Old dus" not in r and r["Pus qus"]["group"] == "Plants: ferns & lycophytes" and r["Cus dus"]["labels"] == ["sp", "end"]
-    assert r["Eus fus"]["labels"] == ["dna", "do"]
+    assert r["Eus fus"]["labels"] == ["dna", "do", "end"]   # end: IUCN marks it endemic
     # The lichen checklist of India (2024): a lichen, endemic; its synonym is not a second species.
     assert r["Lus mus"]["group"] == "Lichens" and "end" in r["Lus mus"]["labels"]
     assert "Lus oldus" not in r
@@ -554,7 +555,7 @@ def test_species_files(built):
     # Then the order, the suborder (snakes and lizards only) and the WII provinces with an open record.
     aus = json.loads((out / "sp" / f"{site_data.shard_of('K1')}.json").read_text())["K1"]
     # Last, the sources that mark it endemic to India, under its own name (null: none).
-    assert aus[-1] == ["ZSI"]
+    assert aus[-1] == ["ZSI", "SoIB"]
     assert json.loads((out / "sp" / f"{site_data.shard_of('K2')}.json").read_text())["K2"][-1] == ["WCVP"]
     aus = aus[:-1]
     assert aus[-3:] == ["Passeriformes", None, ["5B", "6E"]]
@@ -563,7 +564,9 @@ def test_species_files(built):
     assert aus[-11:-7] == [2, 3, 0, [["hi", "एक"]]]     # type specimens and photos from India, barcode, local names
     assert aus[-7:-4] == [True, True, 12]                # population trend known (SoIB), a trait record, exact places
     assert aus[-2:] == ["Stable", "Muscicapidae"]        # the trend in IUCN's assessment; the family
-    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"][:-4]
+    eus = json.loads((out / "sp" / f"{site_data.shard_of('K3')}.json").read_text())["K3"]
+    assert eus[-1] == ["IUCN"]                         # IUCN's assessment marks it endemic to India
+    eus = eus[:-4]
     assert eus[-11:-7] == [None, None, 2, None]        # barcode: 2 from India (BOLD), 1 anywhere, 0 none
     gus = json.loads((out / "sp" / f"{site_data.shard_of('K4')}.json").read_text())["K4"]
     assert gus[0] == "Gus hus" and gus[7:10] == [None, 0, []]          # nothing waits
@@ -1373,3 +1376,12 @@ def test_no_hand_written_place_rows():
     ref = master.ROOT / "pipeline" / "ref"
     assert not (ref / "not_wild.csv").exists() and not (ref / "cultivated_datasets.csv").exists()
     assert not hasattr(master, "NOT_WILD")
+
+
+def test_endemic_marks_from_iucn_and_soib(built):
+    """Vertebrates had no endemic mark: the ZSI checklists for them mark none per species (25 Nov 2026). IUCN's
+    assessment (india_endemic) and SoIB (India.Endemic) mark them, each under the species' own name."""
+    r = built["rows"]
+    assert "end" in r["Eus fus"]["labels"]      # IUCN
+    assert "end" in r["Aus bus"]["labels"]      # ZSI and SoIB; IUCN's false takes nothing away
+    assert "end" not in r["Hus ius"]["labels"]  # SoIB: No

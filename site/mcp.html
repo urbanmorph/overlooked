@@ -149,7 +149,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
         <thead><tr><th>Tool</th><th>What it gives</th></tr></thead>
         <tbody>
           <tr><td class="mono">find_species</td><td>Species that match a Latin or English name, or its start (up to 10), with the key for <span class="mono">get_species</span>.</td></tr>
-          <tr><td class="mono">get_species</td><td>One species in full: the sources that list it, open record, states with an open record, biogeographic regions, IUCN category with the year, DOI and trend of the assessment, endemic mark, year described and authority, family and order, type specimens, photos and DNA barcodes from India, names in Indian languages, a photo with its credit, and the iNaturalist observations that wait for a name.</td></tr>
+          <tr><td class="mono">get_species</td><td>One species in full: the sources that list it, open record, states with an open record, biogeographic regions, IUCN category with the year, DOI and trend of the assessment, endemic mark and the sources that give it, year described and authority, family and order, type specimens, photos and DNA barcodes from India, names in Indian languages, a photo with its credit, and the iNaturalist observations that wait for a name.</td></tr>
           <tr><td class="mono">count_species</td><td>Numbers: documented, with an open record, threatened, recorded in the last 10 years, endemic, and per IUCN category.</td></tr>
           <tr><td class="mono">list_species</td><td>The species, 100 to a page, with the total.</td></tr>
           <tr><td class="mono">new_species</td><td>Species described from India since a year (2007 or later): year, group, state of the type locality, journal, a link to the paper, and records since the description.</td></tr>
@@ -192,7 +192,7 @@ url = "https://yellide.com/mcp"</pre></div></div>
       <li>For a place, count_species' threatened and endemic count only species with a dated record there in the last 10 years and no not-native flag; threatened_all_time and endemic_all_time count all, and undated_only the species with no year there. In list_species, counted says if a species is in those counts and not_counted why not; counted: true lists exactly the counted species. See <a href="/method#recent">Counts for a place</a>.</li>
       <li>Kingdoms: animals, plants (with mosses and liverworts), fungi (with lichens, which take the name of their fungus) and other (algae, diatoms and the rest). count_species gives the counts per kingdom too.</li>
       <li>Regions are the biogeographic zones and provinces of the Wildlife Institute of India: 10 zones and 26 provinces. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.</li>
-      <li>Endemic marks come only from the sources that give them: Kew for plants, and ZSI and other checklists for some animal groups. Birds, mammals, reptiles, amphibians, fish and butterflies have no marks yet. The answer names these groups.</li>
+      <li>Endemic marks come only from the sources that give them: Kew for plants; ZSI and other checklists; the IUCN Red List assessment of a species; State of India's Birds. get_species names them (endemic_marked_by). Groups with no mark yet are named in the answer.</li>
       <li>The server does not identify photos, and it posts nothing anywhere.</li>
       <li>The same data is open as files: see <a href="/llms.txt">the data guide</a> and <a href="/method">Sources and method</a>.</li>
     </ul>

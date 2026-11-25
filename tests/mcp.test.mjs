@@ -25,7 +25,7 @@ const SUMMARY = {
   period: '2026-11-02', groups: ['Birds', 'Reptiles', 'Mammals: bats', 'Mammals: rodents, shrews, hares'],
   states: [{ code: '29', name: 'Karnataka' }, { code: '32', name: 'Kerala' }],
   labels: [{ code: 'rg' }, { code: 'end' }, { code: 'int' }], iucn: IUCN, sources: ['ZSI', 'GBIF'],
-  orders: ['Passeriformes', 'Squamata'], suborders: ['Serpentes', 'Sauria'], provinces: PROVINCES,
+  orders: ['Passeriformes', 'Squamata', 'Anura'], suborders: ['Serpentes', 'Sauria'], provinces: PROVINCES,
   recent_from: 2016, waiting: { places: { india: 6681 } },
   licence: 'CC BY 4.0, Sathya Sankaran', attribution: 'Overlooked. Sources: GBIF.org', disclaimer: 'Not an authority.',
 };
@@ -77,7 +77,8 @@ function files() {
     [BASE + `sp/${shardOf('K1')}.json`]: { K1: sp },
     // Districts: [code, name, state code, species per group]; Aurangabad is a name in two states.
     [BASE + 'd/places.json']: { rows: [[101, 'Ernakulam', '32', [1, 1, 1, 0]], [102, 'Aurangabad', '32', [0, 0, 0, 0]],
-      [201, 'Aurangabad', '29', [0, 1, 0, 0]], [103, 'Mumbai', '32', [1, 1, 1, 1]]] },
+      [201, 'Aurangabad', '29', [0, 1, 0, 0]], [103, 'Mumbai', '32', [1, 1, 1, 1]],
+      [104, '24 Paraganas North', '32', [0, 0, 0, 0]], [105, 'Lakshadweep District', '32', [0, 0, 0, 0]]] },
     // not_wild: species whose every record in the district the record keeper marks; kew_not_native: listed plants Kew
     // does not give as native there.
     [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]],
@@ -269,7 +270,7 @@ test('endemic: the answer names the groups no source marks yet, so 0 there reads
   const r = await out('count_species', { endemic: true, group: 'reptiles' });
   assert.equal(r.counts.documented, 0);
   assert.match(r.note, /no endemic mark yet: Reptiles/);
-  assert.doesNotMatch(r.note, /Birds/);           // Aus bus is marked
+  assert.doesNotMatch(r.note.split("mark yet:")[1], /Birds/);   // Aus bus is marked
 });
 
 test('unknown filter values are tool errors that name the valid values', async () => {
@@ -327,7 +328,7 @@ test('resources: about, groups, states and regions', async () => {
   assert.deepEqual(JSON.parse((await read('yellide://states')).text), ['Karnataka', 'Kerala']);
   const regions = JSON.parse((await read('yellide://regions')).text);
   assert.deepEqual(regions.zones['Western Ghats'], ['5A', '5B']);
-  assert.deepEqual(JSON.parse((await read('yellide://districts')).text), { Karnataka: ['Aurangabad'], Kerala: ['Aurangabad', 'Ernakulam', 'Mumbai'] });
+  assert.deepEqual(JSON.parse((await read('yellide://districts')).text), { Karnataka: ['Aurangabad'], Kerala: ['24 Paraganas North', 'Aurangabad', 'Ernakulam', 'Lakshadweep District', 'Mumbai'] });
 });
 
 test('the data is read once per isolate and week: a second call reads no index again', async () => {
@@ -660,4 +661,35 @@ test('a place\'s list says which species its headline counts count, and counted:
   assert.equal(no.isError, true);
   assert.match(no.content[0].text, /state or a district/);
   assert.equal('counted' in (await out('list_species', {})).species[0], false);
+});
+
+test('read_as: count_species and list_species say how a name was read, as find_species does', async () => {
+  fresh();
+  const d = await out('count_species', { district: 'Ernakulum', state: 'Kerela' });
+  assert.deepEqual(d.read_as, ['"Kerela" read as Kerala.', '"Ernakulum" read as Ernakulam.']);
+  assert.deepEqual((await out('list_species', { state: 'Karnatka' })).read_as, ['"Karnatka" read as Karnataka.']);
+  assert.equal((await out('count_species', { state: 'Kerala' })).read_as, undefined);
+});
+
+test('group words for an order or a suborder: frogs, snakes, lizards', async () => {
+  fresh();
+  const s = await out('count_species', { group: 'snakes' });
+  assert.equal(s.counts.documented, 1);                                    // K3, Serpentes
+  assert.deepEqual(s.read_as, ['"snakes" read as suborder Serpentes.']);
+  assert.equal((await out('list_species', { group: 'Lizards' })).species.map(x => x.key).join(), 'K4');
+  const f = await out('count_species', { group: 'frogs' });
+  assert.equal(f.counts.documented, 0);                                    // no frog in the fixture
+  assert.deepEqual(f.read_as, ['"frogs" read as order Anura.']);
+  const bad = await call('count_species', { group: 'Wombats' });
+  assert.match(bad.content[0].text, /suborder/);                           // the error points to order and suborder
+});
+
+test('district names as people write them: words in any order, a near spelling, a trailing "District"', async () => {
+  fresh();
+  for (const name of ['North 24 Parganas', '24 Parganas North', 'north 24 paraganas']) {
+    assert.equal((await call('count_species', { district: name })).isError, undefined, name);
+  }
+  assert.equal((await call('count_species', { district: 'Lakshadweep' })).isError, undefined);
+  assert.equal((await call('count_species', { district: 'Mumbai District' })).isError, undefined);
+  assert.deepEqual((await out('count_species', { district: 'Lakshadweep' })).read_as, ['"Lakshadweep" read as Lakshadweep District.']);
 });

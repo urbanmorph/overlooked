@@ -9,7 +9,7 @@ exactly one Catalogue of Life name fits.
 The 121 checklists come from different teams, so layouts differ (numbered lists, tables with
 distribution columns, family headings). This pass relies on one shape they all share: a
 scientific name followed by its authority with a year, e.g.
-    Araneus bilunifer Pocock, 1900*
+    Araneus bilunifer Pocock, 1900*      ('*': endemic to India; the Mammalia checklist writes "Endemic to India")
     Anathana ellioti (Waterhouse, 1850)
     Endelus (Endelus) assamensis Obenberger, 1922
 Family = the nearest "...idae" word before the name. Text after the "References" heading is
@@ -226,6 +226,17 @@ def choose_mode(pdf, doc, pages):
     return modes[pdf.name]
 
 
+ENDEMIC_WORDS = re.compile(r"endemic\s+to\s+india", re.IGNORECASE)
+WORDS_MIN = 10   # a checklist that gives the mark in words as a column; fewer are sentences of an introduction
+
+
+def endemic_in_words(text, starts):
+    """For names at these positions of the text (sorted): whether "Endemic to India" follows the name before the next
+    one (the Mammalia checklist's distribution column; 56 species)."""
+    ends = [*starts[1:], len(text)]
+    return [bool(ENDEMIC_WORDS.search(text, a, b)) for a, b in zip(starts, ends)]
+
+
 def flat(t):
     t = unicodedata.normalize("NFKC", t)        # ﬁ ﬂ ﬃ ligatures -> plain letters
     t = t.translate(CYRILLIC)                  # look-alike Cyrillic letters typed into Latin names
@@ -256,8 +267,11 @@ def parse(pdf, url):
                 if not NOT_AUTH.search(m.group("auth")) and not NOT_AUTH_HEAD.search(m.group("auth"))]
         if i in ocr_pages:
             hits += [(at, name, "", "", "dictionary") for name, at in dictionary_names(text)]
-        pos = 0
-        for at, name, auth, mark, how in sorted(hits):
+        pos, hits = 0, sorted(hits)
+        # "Endemic to India" in words after a name is the same mark as '*'.
+        hits = [(at, name, auth, mark, how, e)
+                for (at, name, auth, mark, how), e in zip(hits, endemic_in_words(text, [h[0] for h in hits]))]
+        for at, name, auth, mark, how, in_words in hits:
             fams = FAMILY.findall(text, pos, at)
             family = fams[-1] if fams else family
             pos = max(pos, at)
@@ -266,7 +280,7 @@ def parse(pdf, url):
             seen.add(name)
             rows.append({"checklist": pdf.name, "family": family, "name": name,
                          "rank": "subspecies" if len(re.sub(r" \(.*?\)", "", name).split()) == 3 else "species",
-                         "authority": auth, "mark": mark, "page": i + 1, "extraction": how,
+                         "authority": auth, "mark": mark, "page": i + 1, "extraction": how, "in_words": in_words,
                          "version": ver.group(1) if ver else "", "doi": doi.group(1).rstrip(".") if doi else "",
                          "source_url": url})
         # a heading after the page's last name (Cercopithecidae at the foot of a page) carries over
@@ -274,6 +288,10 @@ def parse(pdf, url):
         family = fams[-1] if fams else family
         if refs and i > 2:
             break
+    words = sum(r["in_words"] for r in rows) >= WORDS_MIN
+    for r in rows:
+        if r.pop("in_words") and words and "*" not in r["mark"]:
+            r["mark"] += "*"
     qc = {"checklist": pdf.name, "pages": len(doc), "names": len(rows),
           "species": sum(r["rank"] == "species" for r in rows),
           "ocr_mode": mode, "stated_max": max(stated) if stated else "", "stated_all": " ".join(map(str, stated[:6]))}

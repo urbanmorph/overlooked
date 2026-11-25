@@ -36,6 +36,16 @@ def trends_sql(path):
         WHERE coalesce(name, '') <> '' GROUP BY name"""
 
 
+def endemic_sql(path):
+    """SELECT name: the species SoIB marks endemic to India (India.Endemic = Yes), both names of each. A table without
+    the column (before SoIB 2023) gives none."""
+    return f"""
+        WITH s AS (SELECT * FROM read_csv('{path}', header = true, all_varchar = true))
+        SELECT DISTINCT name FROM (SELECT "eBird.Scientific.Name.2022" AS name, "India.Endemic" AS e FROM s
+                                   UNION ALL SELECT "India.Checklist.Scientific.Name", "India.Endemic" FROM s)
+        WHERE e = 'Yes' AND coalesce(name, '') <> ''"""
+
+
 def refresh(http, s3, cache: Path):
     """The table, fetched from GitHub and kept in R2 (uploaded only when it changed). When GitHub cannot be reached:
     R2's copy, else the last local one. None when there is neither."""

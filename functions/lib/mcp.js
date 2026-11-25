@@ -145,13 +145,17 @@ const DISTRICTS_MAX = 50;
 /** f of two years, either of which can be null. */
 const either = (f, x, y) => (x == null ? y : y == null ? x : f(x, y));
 
+/** A district name as people write it: the words in any order, without "district" ("North 24 Parganas" is LGD's "24
+ *  Paraganas North", "Lakshadweep" its "Lakshadweep District"). */
+const districtKey = name => plain(name).split(/\s+/).filter(w => w && w !== 'district').sort().join(' ');
+
 /** One district a request names: its name or LGD code, with the state when two states have the name. */
 function oneDistrict(S, all, value, state, a) {
   const stateName = code => S.states.find(s => s.code === code)?.name ?? code;
   const here = state != null ? all.filter(d => d.state === S.states[stateOf(S, state, a)].code) : all;
   let found = here.filter(d => String(d.code) === String(value).trim());
   if (!found.length) {
-    found = nearest(value, here.map(d => d.name)).map(i => here[i]);
+    found = nearest(districtKey(value), here.map(d => districtKey(d.name))).map(i => here[i]);
     const names = [...new Set(found.map(d => d.name))];
     if (names.length > 1) throw new ToolError(`"${value}" is as near to ${names.join(' as to ')}: which district?`);
     if (found.length) readAs(a, value, found[0].name);
@@ -278,7 +282,14 @@ function nearest(value, names) {
 }
 
 /** Note that value was read as name (the answer's note says so). */
-const readAs = (a, value, name) => { if (a && plain(value) !== plain(name)) (a[READ] ||= []).push(`"${value}" read as ${name}.`); };
+const readAs = (a, value, name) => {
+  if (!a || plain(value) === plain(name)) return;
+  const n = `"${value}" read as ${name}.`, read = (a[READ] ||= []);
+  if (!read.includes(n)) read.push(n);
+};
+
+/** How the request's names were read, as a field of the answer (none: as given). */
+const readAsOf = a => (a[READ]?.length ? { read_as: [...a[READ]] } : {});
 
 /** One name of a list for value, or a tool error naming the valid ones (or the nearest, when two are as near). */
 function one(what, value, names, valid, a) {
@@ -298,13 +309,27 @@ function kingdomGroups(S, value, a) {
 // Group words that mean a kingdom. "Fungi" is a group of its own (its exact name wins); kingdom "fungi" adds lichens.
 const KINGDOM_WORDS = { animal: 'animals', animals: 'animals', plant: 'plants', plants: 'plants' };
 
+// Group words that mean an order or a suborder: the filter reads them so (and says so).
+const TAXON_WORDS = { frog: ['order', 'Anura'], frogs: ['order', 'Anura'], toads: ['order', 'Anura'], 'frogs and toads': ['order', 'Anura'],
+  snake: ['suborder', 'Serpentes'], snakes: ['suborder', 'Serpentes'], lizard: ['suborder', 'Sauria'], lizards: ['suborder', 'Sauria'] };
+
+/** A group word for an order or a suborder (frogs, snakes, lizards) moves to that filter, unless it is given too. */
+function taxonWord(a) {
+  const t = a.group != null && TAXON_WORDS[plain(a.group)];
+  if (!t || a[t[0]] != null) return;
+  (a[READ] ||= []).push(`"${a.group}" read as ${t[0]} ${t[1]}.`);
+  a[t[0]] = t[1];
+  a.group = null;
+}
+
 function groupsOf(S, value, a) {
   const q = plain(value);
   const exact = S.groups.findIndex(g => plain(g) === q);
   if (exact >= 0) return [exact];
   if (KINGDOM_WORDS[q]) return kingdomGroups(S, KINGDOM_WORDS[q], a);
   const some = S.groups.flatMap((g, i) => (plain(g).includes(q) ? [i] : []));
-  return some.length ? some : [one('group', value, S.groups, S.groups, a)];
+  return some.length ? some : [one('group', value, S.groups,
+    [...S.groups, 'or use order (Anura for frogs) or suborder (snakes, lizards)'], a)];
 }
 
 // States by an earlier name, as older papers and records give them.
@@ -363,6 +388,7 @@ const year = (what, v) => {
  *  placeOf (a place's own latest years for recorded_since). */
 function filter(S, ix, a, dist = null, place = null) {
   const tests = [], { col, nul } = ix;
+  taxonWord(a);
   if (dist) tests.push(i => dist.at.has(i));
   if (a.group != null) { const t = table(256, groupsOf(S, a.group, a)), g = col.group; tests.push(i => t[g[i]] === 1); }
   if (a.kingdom != null) { const t = table(256, kingdomGroups(S, a.kingdom, a)), g = col.group; tests.push(i => t[g[i]] === 1); }
@@ -430,7 +456,7 @@ function filterNote(S, ix, a) {
   if (a.district != null) notes.push(DISTRICT_NOTE, RESPECT_NOTE);
   if (a.district != null || a.state != null) notes.push(WILD_NOTE);
   if (a.endemic != null) {
-    notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants, ZSI and other checklists for some animal groups), each for the species under its own name (not a synonym\'s or a subspecies\' mark). '
+    notes.push('Endemic marks come from the sources that give them (Kew WCVP for plants; ZSI and other checklists; the IUCN Red List assessment; State of India\'s Birds), each for the species under its own name (not a synonym\'s or a subspecies\' mark). '
       + `These groups have no endemic mark yet: ${unmarked(S, ix).join('; ')}. There, 0 endemic means not marked, not that none is endemic.`);
   }
   if (a.state != null && a.district == null) notes.push('A species is in a state when it has an open record placed there that no record keeper marks as planted, kept or introduced.');
@@ -698,6 +724,7 @@ async function countSpecies(env, S, a) {
       not_wild: place.not_wild,
     } : {}),
     by_iucn: Object.fromEntries(S.iucn.flatMap((k, i) => (byIucn[i] ? [[k, byIucn[i]]] : []))),
+    ...readAsOf(a),
     note: [filterNote(S, ix, a), place ? countNote(since) : null].filter(Boolean).join(' ') || undefined,
   };
 }
@@ -722,7 +749,7 @@ async function listSpecies(env, S, a) {
       ...(place ? counted(place.why(i)) : {}) });
   }
   const listNote = place ? LIST_NOTE : null;
-  return { total, species, next_cursor: next, ...(place ? { not_wild: place.not_wild } : {}),
+  return { total, species, next_cursor: next, ...(place ? { not_wild: place.not_wild } : {}), ...readAsOf(a),
     note: [filterNote(S, ix, a), listNote].filter(Boolean).join(' ') || undefined };
 }
 
@@ -802,7 +829,7 @@ async function answer(msg, env, metric) {
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
-        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.5.0', websiteUrl: SITE },
+        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.6.0', websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     case 'ping':
