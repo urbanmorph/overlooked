@@ -1,11 +1,11 @@
 // Shared helpers. Data lives under /data/ (R2 through the Pages Function, or scripts/serve.py locally).
-import { bit, esc } from './species_model.js?v=e7e5096978';
+import { bit, esc } from './species_model.js?v=4a17d82e6c';
 
 export { bit };   // one copy, in species_model.js (the server uses it too)
 
 // One way to read and show a species (species_model.js), here too so every page imports its helpers from one place.
 export { esc, iucnBadge, speciesName, speciesText, speciesTitle, speciesInline, model, shardOf, fillEnglish, englishOf, plainName,
-  nameMatches, slug, speciesPath } from './species_model.js?v=e7e5096978';
+  nameMatches, slug, speciesPath } from './species_model.js?v=4a17d82e6c';
 
 export const DATA = '/data/';
 const cache = new Map();

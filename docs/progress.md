@@ -2,6 +2,17 @@
 
 Newest first. Updated as work happens.
 
+## 26 November 2026
+
+- Counts for a place (asked by ops, MCP 1.4.0). count_species' threatened and endemic for a state or a district count
+  only species with a dated record there since recent_from (2016) and no not-native flag; threatened_all_time and
+  endemic_all_time keep every listed species; undated_only and not_native are counted apart. Mumbai had Tiger, Dhole
+  and Leopard from single undated records (museum specimens labelled "Bombay"). States now have their own latest year
+  per species (d/state-<code>.json `last`), so recorded_since with a state uses the state's year, not India's.
+- GRIIS India (CC BY 4.0, on GBIF: 2,167 species-rank names of 2,641) marks species introduced in India: label `int`, `introduced_in_india`
+  in list_species. A flag, never a filter, like Kew's ranges; the owner chose that flagged species leave the headline
+  counts. No reviewed list: the owner has no curation panel.
+
 ## 25 November 2026
 
 - Places say what record keepers say (owner's decision; MCP 1.3.0). A place's list leaves out a species only when the

@@ -24,7 +24,7 @@ const SUMMARY = {
   ...FX, iucn: IUCN,
   period: '2026-11-02', groups: ['Birds', 'Reptiles', 'Mammals: bats', 'Mammals: rodents, shrews, hares'],
   states: [{ code: '29', name: 'Karnataka' }, { code: '32', name: 'Kerala' }],
-  labels: [{ code: 'rg' }, { code: 'end' }], iucn: IUCN, sources: ['ZSI', 'GBIF'],
+  labels: [{ code: 'rg' }, { code: 'end' }, { code: 'int' }], iucn: IUCN, sources: ['ZSI', 'GBIF'],
   orders: ['Passeriformes', 'Squamata'], suborders: ['Serpentes', 'Sauria'], provinces: PROVINCES,
   recent_from: 2016, waiting: { places: { india: 6681 } },
   licence: 'CC BY 4.0, Sathya Sankaran', attribution: 'Overlooked. Sources: GBIF.org', disclaimer: 'Not an authority.',
@@ -39,6 +39,8 @@ const SPECIES = [
   ['K6', 'Gus hus', 'Hus rat', 3, 0, 'VU', true, 0, null, 2019, null, null, null, null],
 ];
 const FAMILIES = ['Cettiidae', 'Elapidae', 'Agamidae'];
+// Introduced in India by GRIIS India (label 'int').
+const INTRODUCED = new Set(['K6']);
 
 function index() {
   const text = [], rows = new DataView(new ArrayBuffer(32 * SPECIES.length));
@@ -46,7 +48,7 @@ function index() {
   SPECIES.forEach(([key, name, en, g, st, iucn, end, states, prov, desc, last, order, sub, fam], i) => {
     const o = i * 32;
     rows.setUint8(o, g); rows.setUint8(o + 1, st); rows.setUint8(o + 2, IUCN.indexOf(iucn)); rows.setUint8(o + 3, sub ?? 255);
-    rows.setUint32(o + 4, (1 << 0) | (end ? 1 << 1 : 0), true); rows.setUint32(o + 8, states, true); rows.setUint32(o + 12, 0, true);
+    rows.setUint32(o + 4, (1 << 0) | (end ? 1 << 1 : 0) | (INTRODUCED.has(key) ? 1 << 2 : 0), true); rows.setUint32(o + 8, states, true); rows.setUint32(o + 12, 0, true);
     rows.setUint32(o + 16, prov ?? 4294967295, true); rows.setUint16(o + 20, desc ?? 0, true); rows.setUint16(o + 22, last ?? 0, true);
     rows.setUint16(o + 24, order ?? 65535, true); rows.setUint16(o + 26, fam ?? 65535, true); rows.setUint32(o + 28, at, true);
     const line = new TextEncoder().encode(`${key}\t${name}\t${en}\n`);
@@ -75,12 +77,16 @@ function files() {
     [BASE + `sp/${shardOf('K1')}.json`]: { K1: sp },
     // Districts: [code, name, state code, species per group]; Aurangabad is a name in two states.
     [BASE + 'd/places.json']: { rows: [[101, 'Ernakulam', '32', [1, 1, 1, 0]], [102, 'Aurangabad', '32', [0, 0, 0, 0]],
-      [201, 'Aurangabad', '29', [0, 1, 0, 0]]] },
+      [201, 'Aurangabad', '29', [0, 1, 0, 0]], [103, 'Mumbai', '32', [1, 1, 1, 1]]] },
     // not_wild: species whose every record in the district the record keeper marks; kew_not_native: listed plants Kew
     // does not give as native there.
     [BASE + 'd/101.json']: { rows: [['K1', 2010, 2019, 5], ['K4', 2005, 2010, 1], ['K5', 2015, 2015, 1]],
-      not_wild: [['K2', 'cultivated_or_captive', 4], ['K6', 'introduced', 1], ['K1', 'cultivated_or_captive', 2]], kew_not_native: ['K5'] },
-    [BASE + 'd/state-32.json']: { not_wild: [['K6', 'introduced'], ['K3', 'cultivated_or_captive']], kew_not_native: ['K4'] },
+      not_wild: [['K2', 'cultivated_or_captive', 4], ['K6', 'introduced', 1], ['K1', 'cultivated_or_captive', 2]], kew_not_native: ['K4'] },
+    // A state's own latest year of each listed species (null: its records there have no year).
+    [BASE + 'd/state-32.json']: { not_wild: [['K6', 'introduced'], ['K3', 'cultivated_or_captive']], kew_not_native: ['K4'],
+      last: [['K1', 2012], ['K4', null]] },
+    // Recent (K1), undated only (K5), recent but introduced in India by GRIIS (K6), old (K4).
+    [BASE + 'd/103.json']: { rows: [['K1', 2017, 2019, 3], ['K4', 2001, 2003, 1], ['K5', null, null, 1], ['K6', 2020, 2020, 2]], kew_not_native: [] },
     [BASE + 'd/201.json']: { rows: [['K3', 2022, 2024, 3], ['K5', 2020, 2020, 1]], kew_not_native: [] },
     [BASE + `en/${hashOf('K1') % 64}.json`]: { K1: 'Malabar Aus' },
     [BASE + `pic/${shardOf('K1')}.json`]: { K1: ['https://p/1.jpg', 'https://inat/1', 'Ann', 'CC BY-NC 4.0', 'iNaturalist (India)', 'Malabar Aus'] },
@@ -320,7 +326,7 @@ test('resources: about, groups, states and regions', async () => {
   assert.deepEqual(JSON.parse((await read('yellide://states')).text), ['Karnataka', 'Kerala']);
   const regions = JSON.parse((await read('yellide://regions')).text);
   assert.deepEqual(regions.zones['Western Ghats'], ['5A', '5B']);
-  assert.deepEqual(JSON.parse((await read('yellide://districts')).text), { Karnataka: ['Aurangabad'], Kerala: ['Aurangabad', 'Ernakulam'] });
+  assert.deepEqual(JSON.parse((await read('yellide://districts')).text), { Karnataka: ['Aurangabad'], Kerala: ['Aurangabad', 'Ernakulam', 'Mumbai'] });
 });
 
 test('the data is read once per isolate and week: a second call reads no index again', async () => {
@@ -392,7 +398,8 @@ test('use by mode: each tool call adds mode mcp; initialize adds the client prod
 test('a district: by name or LGD code, with the years and records there; threatened species too, with the exact year', async () => {
   fresh();
   const c = await out('count_species', { district: 'ernakulam' });
-  assert.deepEqual(c.counts, { documented: 3, open_record: 3, threatened: 2, recorded_since_2016: 1, endemic: 2 });  // 2019 there
+  assert.deepEqual(c.counts, { documented: 3, open_record: 3, threatened: 1, threatened_all_time: 2, recorded_since_2016: 1,
+    endemic: 1, endemic_all_time: 2 });   // K1 (2019 there) now; K5 last in 2015
   assert.match(c.note, /GBIF record of it is placed in the district/);
   assert.match(c.note, /does not show that it lives there now/);
   assert.match(c.note, /Wild Life \(Protection\) Act/);
@@ -542,7 +549,8 @@ test('count_species gives by_kingdom beside counts, and it adds up to the totals
   }
   const d = await out('count_species', { district: 'Ernakulam' });
   assert.deepEqual(Object.keys(d.by_kingdom), ['animals', 'plants', 'fungi', 'other']);
-  assert.deepEqual(d.by_kingdom.plants, { documented: 2, open_record: 2, threatened: 1, recorded_since_2016: 0, endemic: 1 });
+  assert.deepEqual(d.by_kingdom.plants, { documented: 2, open_record: 2, threatened: 0, threatened_all_time: 1, recorded_since_2016: 0,
+    endemic: 0, endemic_all_time: 1 });   // its record there is before 2016
 });
 
 test('every group the pipeline makes has a kingdom, named on purpose (pipeline/groups.py)', async () => {
@@ -570,22 +578,59 @@ test('a place leaves out only what record keepers mark, counted apart; Kew\'s ra
   const d = await out('count_species', { district: 'Ernakulam' });
   assert.equal(d.counts.documented, 3);                                     // the list: K1, K4, K5
   assert.deepEqual(d.not_wild, { cultivated_or_captive: 1, introduced: 1 });   // K2, K6; K1 is listed
-  assert.equal(d.kew_not_native, 1);                                        // K5: listed, flagged
+  assert.deepEqual(d.not_native, { species: 1, threatened: 0, endemic: 0, kew_not_native: 1, introduced_in_india: 0 });   // K4
   assert.match(d.note, /record keeper/);
   assert.deepEqual((await out('count_species', { district: 'Ernakulam', group: 'Birds' })).not_wild,
     { cultivated_or_captive: 1, introduced: 0 });
   const k = await out('count_species', { state: 'Kerala' });
   assert.deepEqual(k.not_wild, { cultivated_or_captive: 1, introduced: 1 });
-  assert.equal(k.kew_not_native, 1);                                        // K4, from the state's file
+  assert.equal(k.not_native.kew_not_native, 1);                             // K4, from the state's file
   assert.deepEqual((await out('count_species', { district: '201' })).not_wild, { cultivated_or_captive: 0, introduced: 0 });
   assert.equal((await out('count_species', {})).not_wild, undefined);       // India: no place, no such count
-  assert.equal((await out('count_species', {})).kew_not_native, undefined);
+  assert.equal((await out('count_species', {})).not_native, undefined);
   const l = await out('list_species', { district: 'Ernakulam' });
   assert.deepEqual(l.species.map(s => s.key), ['K1', 'K4', 'K5']);
-  assert.deepEqual(l.species.map(s => s.kew_not_native ?? false), [false, false, true]);
+  assert.deepEqual(l.species.map(s => s.kew_not_native ?? false), [false, true, false]);
   assert.deepEqual(l.not_wild, { cultivated_or_captive: 1, introduced: 1 });
   // Several districts: flagged only when Kew gives it as native in none of the districts it is recorded in.
   const two = await out('list_species', { district: ['Ernakulam', '201'] });
-  assert.equal(two.species.find(s => s.key === 'K5').kew_not_native, undefined);
+  assert.equal(two.species.find(s => s.key === 'K4').kew_not_native, true);   // recorded in Ernakulam only
   assert.equal((await out('list_species', {})).species.some(s => 'kew_not_native' in s), false);
+});
+
+test('a place\'s headline threatened and endemic counts are recent records only, not flagged; the rest are counted apart', async () => {
+  fresh();
+  const m = await out('count_species', { district: 'Mumbai' });
+  assert.deepEqual(m.counts, { documented: 4, open_record: 3, threatened: 1, threatened_all_time: 3, recorded_since_2016: 2,
+    endemic: 1, endemic_all_time: 3 });   // K1 only: K5 undated, K6 introduced, K4 old
+  assert.equal(m.undated_only, 1);                                           // K5
+  assert.deepEqual(m.not_native, { species: 1, threatened: 1, endemic: 1, kew_not_native: 0, introduced_in_india: 1 });   // K6
+  for (const k of Object.keys(m.counts)) assert.equal(Object.values(m.by_kingdom).reduce((t, c) => t + c[k], 0), m.counts[k], k);
+  assert.match(m.note, /since 2016/);
+  assert.match(m.note, /threatened_all_time/);
+  // India as a whole: the counts as before, no place fields.
+  const india = await out('count_species', {});
+  assert.equal(india.counts.threatened_all_time, undefined);
+  assert.equal(india.undated_only, undefined);
+  // The list keeps every species, with the flags and the years there to read; the note says so.
+  const l = await out('list_species', { district: 'Mumbai' });
+  assert.deepEqual(l.species.map(s => s.key), ['K1', 'K4', 'K5', 'K6']);
+  assert.equal(l.species.find(s => s.key === 'K6').introduced_in_india, true);
+  assert.equal(l.species.find(s => s.key === 'K5').in_district.latest_year, null);
+  assert.match(l.note, /recorded_since/);
+  assert.equal((await out('list_species', {})).species.find(s => s.key === 'K6').introduced_in_india, true);   // a national mark
+});
+
+test('a state uses its own latest year: headline counts and recorded_since', async () => {
+  fresh();
+  const k = await out('count_species', { state: 'Kerala' });
+  assert.deepEqual(k.counts, { documented: 2, open_record: 2, threatened: 0, threatened_all_time: 1, recorded_since_2016: 0,
+    endemic: 0, endemic_all_time: 1 });   // K1 last in Kerala in 2012; K4 undated there
+  assert.equal(k.undated_only, 1);
+  assert.deepEqual((await out('list_species', { state: 'Kerala', recorded_since: 2011 })).species.map(s => s.key), ['K1']);
+  assert.deepEqual((await out('list_species', { state: 'Kerala', recorded_since: 2015 })).species, []);
+  assert.deepEqual((await out('list_species', { state: 'Kerala' })).species.map(s => [s.key, s.in_state]),
+    [['K1', { latest_year: 2012 }], ['K4', { latest_year: null }]]);
+  // A state with no file: the national latest year.
+  assert.deepEqual((await out('list_species', { state: 'Karnataka', recorded_since: 2016 })).species.map(s => s.key), ['K3']);
 });

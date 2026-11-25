@@ -1340,8 +1340,9 @@ def test_place_lists_leave_out_only_what_the_record_keeper_marks(inputs, tmp_pat
         t(name, accepted, has_range, india_native, india_introduced, near_india)""", tmp_path / "ranges.parquet")
     iucn_table(con)
     out = tmp_path / "out"
+    griis = write(con, "SELECT 'Wus vus' AS name", tmp_path / "griis.parquet")
     master.build(con, paths, out, {"period": "2026-10", "snapshot": "2026-10", "built": "x"}, inputs["districts"],
-                 {**inputs["inputs"], "wcvp_ranges": ranges}, cache={}, http=FakeGbif())
+                 {**inputs["inputs"], "wcvp_ranges": ranges, "griis": griis}, cache={}, http=FakeGbif())
     d = lambda code: json.loads((out / "d" / f"{code}.json").read_text())
     assert d(101) == {"rows": [["G1", 2000, 2000, 1], ["K1", 2010, 2020, 5], ["K5", 2020, 2020, 1]],
                       "not_wild": [["K3", "cultivated_or_captive", 2]], "kew_not_native": []}
@@ -1352,8 +1353,14 @@ def test_place_lists_leave_out_only_what_the_record_keeper_marks(inputs, tmp_pat
     rows = {r[1]: r for r in duckdb.sql(f"SELECT key, name, states_observed FROM '{out / 'master.parquet'}'").fetchall()}
     assert rows["Aus bus"][2] == [29, 32] and rows["Cus dus"][2] == [29]
     state = lambda st: json.loads((out / "d" / f"state-{st}.json").read_text())
-    assert state(29) == {"not_wild": [["K5", "introduced"]], "kew_not_native": ["K2"]}
-    assert state(32) == {"not_wild": [["K3", "cultivated_or_captive"]], "kew_not_native": []}
+    assert {k: state(29)[k] for k in ("not_wild", "kew_not_native")} == {"not_wild": [["K5", "introduced"]], "kew_not_native": ["K2"]}
+    assert {k: state(32)[k] for k in ("not_wild", "kew_not_native")} == {"not_wild": [["K3", "cultivated_or_captive"]], "kew_not_native": []}
+    # Each listed species' latest year in the state, for its headline counts and recorded_since.
+    last = dict(map(tuple, state(29)["last"]))
+    assert last["K1"] == 2024 and last["K2"] == 1900 and "K5" not in last
+    # GRIIS India: a mark on the species (label int), on its pages and in the agent server's index.
+    labels = dict(duckdb.sql(f"SELECT name, labels FROM '{out / 'master.parquet'}'").fetchall())
+    assert "int" in labels["Wus vus"] and "int" not in labels["Aus bus"]
 
 
 def test_no_hand_written_place_rows():

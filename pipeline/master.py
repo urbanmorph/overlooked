@@ -67,6 +67,7 @@ from pipeline import (
     described,
     ebird_india,
     gbif,
+    griis,
     health,
     iucn,
     name_review,
@@ -117,6 +118,7 @@ LABELS = [
     ("lco", "Records with coordinates uncertain by more than 25 km", "other"),
     ("lfl", "Records with coordinates that GBIF marks as possibly wrong", "other"),
     ("lgo", "Only GBIF records with no exact location", "other"),
+    ("int", "Introduced in India (GRIIS India)", "other"),
 ]
 # Query L: why a record cannot go in a district.
 PROBLEM_LABEL = {"none": "lnc", "coarse": "lco", "issue": "lfl"}
@@ -991,6 +993,8 @@ def flags(con):
             UNION SELECT id, 'nra' FROM id_year WHERE json_extract_string(paper, '$[3]') = 'none'
                                                 AND json_extract(paper, '$[5]')::INTEGER = year
             UNION SELECT id, 'nm' FROM ids WHERE starts_with(id, 'n:')
+            -- Introduced in India: GRIIS India lists the species under one of its names (a flag, not a filter).
+            UNION SELECT n.id, 'int' FROM id_names n JOIN griis_names g ON g.name = n.name
             UNION SELECT id, 'do' FROM id_flags
                   WHERE observed AND NOT list_has_any(ev_labels, ['rg', 'nid'])
                     AND (ev_labels = ['dna'] OR (id IN (SELECT key FROM ledger_dna_only)
@@ -1111,7 +1115,8 @@ def district_files(con, districts_path, out: Path):
     """d/<district LGD code>.json: rows, the species on the list (place_rules) with the first and latest year of the
     records no record keeper marks and their number, by key; not_wild, the species whose every record there the record
     keeper marks: [key, reason, records]; kew_not_native, the listed keys Kew does not give as native in the district's
-    region. d/state-<state LGD code>.json: not_wild [key, reason] and kew_not_native [key] for the state's list.
+    region. d/state-<state LGD code>.json: not_wild [key, reason] and kew_not_native [key] for the state's list, and
+    last [key, latest year], each listed species' latest open record placed in the state (null: no year).
     d/places.json: every district with its name, its state's LGD code and its listed species per group, for the place
     pages and the agent server."""
     shutil.rmtree(out / "d", ignore_errors=True)
@@ -1139,6 +1144,9 @@ def district_files(con, districts_path, out: Path):
     for st, key in con.sql("""SELECT k.st, s.key FROM state_kew k JOIN site s ON s.key = k.id
                               WHERE s.status < 2 ORDER BY 1, 2""").fetchall():
         states.setdefault(st, blank())["kew_not_native"].append(key)
+    for st, key, y in con.sql("""SELECT m.state_lgd, s.key, m.last_year FROM master_state m JOIN site s ON s.key = m.id
+                                 WHERE m.observed AND s.status < 2 ORDER BY 1, 2""").fetchall():
+        states.setdefault(st, blank()).setdefault("last", []).append([key, y])
     for st, f in states.items():
         del f["rows"]
         dump(f, out / "d" / f"state-{st}.json")
@@ -1916,6 +1924,11 @@ def build(con, paths, out: Path, meta, districts_path, inputs, cache=None, s3=No
     merged = resolve(con)
     described_years(con)
     name_table(con)
+    griis_path = inputs.get("griis")
+    con.sql(f"CREATE OR REPLACE TABLE griis_names AS SELECT DISTINCT name FROM '{griis_path}'" if griis_path
+            else "CREATE OR REPLACE TABLE griis_names (name VARCHAR)")
+    if not griis_path:
+        notes.append("GRIIS India was not found: no species is marked as introduced in India.")
     place_rules(con, paths["ledger"], districts_path, inputs.get("wcvp_ranges"))
     flags(con)
     out.mkdir(parents=True, exist_ok=True)
@@ -1961,7 +1974,7 @@ def fingerprint(paths, inputs, cache, extra=None, code=None):
     gives the same files."""
     h = hashlib.sha256(json.dumps(extra, sort_keys=True).encode())
     for p in [*paths.values(), *(inputs.get(k) for k in ("zsi", "wcvp", "bsi", "bsi_monographs", "globi", "globi_edges", "soib", "ebird_india", "lichens",
-                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges")),
+                                                     "bryophytes", "zotero", "evidence", "bold", "iucn_detail", "pictures", "wcvp_ranges", "griis")),
               *(inputs.get("described") or {}).values()]:
         h.update((sha256(p) if isinstance(p, Path) and p.exists() else "-").encode())
     for k in ("inat", "newspecies", "inat_genus", "inat_coarse"):
@@ -2043,7 +2056,7 @@ def run(a):
               "bryophytes": bryophytes_input(s3), "zotero": zotero_input_refreshed(http, s3),
               "iucn_detail": iucn_detail_input(s3),
               "bsi_monographs": bsi_monographs_input(s3), "wcvp_ranges": wcvp_ranges_input(s3),
-              "inat": inat_doc, "newspecies": ns_doc,
+              "griis": griis.refresh(http, s3, CACHE / "griis"), "inat": inat_doc, "newspecies": ns_doc,
               "inat_genus": genus_doc, "inat_coarse": coarse_doc}
     cache = match_cache(s3)
     con = duckdb.connect()

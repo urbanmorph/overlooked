@@ -110,8 +110,8 @@ Any other client: add a remote (HTTP) server with the URL `https://yellide.com/m
 |---|---|
 | `find_species` | Find species of India by Latin name or English common name ("great indian bustard", "naja", "cobra"). Returns up to 10 species with their key, group, IUCN category and status. |
 | `get_species` | One species by its key: sources that list it, open record, states with an open record, WII regions, IUCN category with year, DOI and trend, endemic, year described and authority, family and order, evidence, names in Indian languages, a photo with its credit, and iNaturalist observations that wait for a name. |
-| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (`by_kingdom`: animals, plants, fungi, other). For a state or district, `not_wild` gives the species the record keepers mark as planted, kept or introduced there (`cultivated_or_captive`, `introduced`), and `kew_not_native` the listed plants Kew does not give as native there. Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
-| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". In a place, a plant Kew does not give as native there carries `kew_not_native: true`, with `not_wild` beside the list. Up to 100 rows per page, with the total and a cursor for the next page. |
+| `count_species` | How many species: documented, with an open record, threatened (IUCN CR, EN, VU), recorded in the last 10 years, endemic, per IUCN category and per kingdom (`by_kingdom`: animals, plants, fungi, other). For a state or district, `threatened` and `endemic` count only species with a dated record there in the last 10 years and no not-native flag; `threatened_all_time` and `endemic_all_time` count all, `undated_only` the species with no year there, `not_native` the species Kew does not give as native there or GRIIS India lists as introduced, and `not_wild` those the record keepers mark as planted, kept or introduced. Optional filters combine: "threatened birds in Kerala", "endemic frogs of the Western Ghats". |
+| `list_species` | List species with the same filters: "snakes of the Western Ghats", "birds of Goa recorded since 2020". A place's list keeps every species, with the latest year there (`in_district`, `in_state`); `kew_not_native: true` and `introduced_in_india: true` (GRIIS India) mark species that may be planted or introduced. Up to 100 rows per page, with the total and a cursor for the next page. |
 | `new_species` | Species described from India since a year (2007 or later), from Plazi, BSI Plant Discoveries and ZSI Animal Discoveries: year, group, state of the type locality, journal and a link to the paper, and whether it has been recorded since. |
 
 Filters for `count_species` and `list_species`: `kingdom` (`animals`, `plants` with mosses and liverworts, `fungi` with
@@ -125,7 +125,10 @@ A place's list says what the record keepers say. A state or a district leaves ou
 keeper marks every record of it there as planted, kept or introduced (GBIF's establishment fields); those are counted
 apart as `not_wild`. yellide decides nothing else: few records carry a mark, so planted trees and crops can be on a list.
 A plant that Kew's World Checklist of Vascular Plants does not give as native in the place's region
-(`pipeline/wcvp_ranges.py`) stays on the list with the flag `kew_not_native`, for the reader to judge.
+(`pipeline/wcvp_ranges.py`) stays on the list with the flag `kew_not_native`, and a species the Global Register of
+Introduced and Invasive Species for India lists (`pipeline/griis.py`) with `introduced_in_india`, for the reader to judge.
+A place's headline threatened and endemic counts leave out flagged species and species with no dated record there in the
+last 10 years; the all-time counts stay beside them.
 
 Try it without an assistant:
 

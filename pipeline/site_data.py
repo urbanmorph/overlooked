@@ -19,7 +19,7 @@ RIGHTS = {
     "licence": "CC BY 4.0, Sathya Sankaran (data and text). Each source keeps its own licence.",
     "attribution": ("yellide (https://yellide.com). Sources: GBIF.org (cite the download DOIs), "
                     "iNaturalist, Botanical Survey of India and Zoological Survey of India (Ministry of Environment, "
-                    "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), Plazi, "
+                    "Forest and Climate Change, Government of India), Royal Botanic Gardens, Kew (WCVP), GRIIS India, Plazi, "
                     "IUCN Red List, Catalogue of Life, Local Government Directory via bharatlas, biogeographic zones "
                     "of India (Wildlife Institute of India, GODL-India) via bharatlas."),
     "disclaimer": ("yellide is not an official checklist or conservation assessment. For the status of a species, "

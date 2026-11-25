@@ -84,6 +84,7 @@ export function model(S) {
   if (!S?.fields) throw new Error('this list does not name its row fields (summary.json fields)');
   const m = Object.fromEntries(Object.entries(S.fields).map(([kind, names]) => [kind, positions(names)]));
   const threatened = new Set(S.threatened), endBit = (S.labels || []).findIndex(l => l.code === 'end');
+  const intBit = (S.labels || []).findIndex(l => l.code === 'int');   // introduced in India (GRIIS India)
   const threatenedIdx = (S.iucn || []).map(c => threatened.has(c));
   return {
     ...m,
@@ -94,6 +95,7 @@ export function model(S) {
     threatened: code => threatened.has(code),
     threatenedAt: i => threatenedIdx[i] === true,
     endBit,
+    intBit,
     endemic: labels => endBit >= 0 && bit(labels, endBit),
   };
 }
