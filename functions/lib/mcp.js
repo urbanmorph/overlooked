@@ -22,7 +22,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type, accept, mcp-protocol-version, mcp-session-id',
 };
 
-const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by kingdom (animals, plants, fungi, other), group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there; it is counted apart (not_wild) only when the record keeper marks every record of it there as planted, kept or introduced, and a plant Kew does not give as native there carries kew_not_native: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". For a state or a district, quote count_species' threatened and endemic: they count only species with a dated record there in the last 10 years and no not-native flag; give threatened_all_time and endemic_all_time only as the all-time figures, with that word. A plant Kew does not give as native there (kew_not_native) or a species GRIIS India lists as introduced (introduced_in_india) may be planted, farmed or invasive: say so. The resources give the valid groups, states, districts and regions. A name with a small spelling mistake is read as the nearest valid name, and the answer says how it was read: tell the user. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
+const INSTRUCTIONS = `yellide: every species documented from India, from ZSI, BSI, Kew WCVP, GBIF, iNaturalist, IUCN and other sources, updated each week. Use find_species to turn a Latin or English name into a key, then get_species for one species. Use count_species for "how many" and list_species for lists, by kingdom (animals, plants, fungi, other), group, state, district, WII biogeographic region (Western Ghats, Himalaya...), IUCN category, endemic, order, suborder (snakes, lizards) or family. Use new_species for species described from India since 2007. For a place, a point or "near me", use the bharatlas MCP server (https://bharatlas.com) first: its locate tool with layers [\"lgd_states\", \"lgd_districts\", \"biogeographic_zones\"] gives the state, the district (its LGD code) and the WII biogeographic province (prov_code, such as 5B) of a point (the province layer is not in locate's default layers); pass them as state, district and region. For an area made of districts (a delta, a valley, a landscape), find its districts and pass them as a list: each species counts once. A species is in a district when a GBIF record of it is placed there; it is counted apart (not_wild) only when the record keeper marks every record of it there as planted, kept or introduced, and a plant Kew does not give as native there carries kew_not_native: say "recorded in" the district, with the year of its latest record there, never "found here" or "lives here". For a state or a district, quote count_species' threatened and endemic: they count only species with a dated record there in the last 10 years and no not-native flag; give threatened_all_time and endemic_all_time only as the all-time figures, with that word. To list the species behind a headline count, pass counted: true to list_species. A plant Kew does not give as native there (kew_not_native) or a species GRIIS India lists as introduced (introduced_in_india) may be planted, farmed or invasive: say so. The resources give the valid groups, states, districts and regions. A name with a small spelling mistake is read as the nearest valid name, and the answer says how it was read: tell the user. Pass on the licence, attribution and disclaimer of each answer. yellide is a monitor of public data, not an authority: for the status of a species, people should consult BSI, ZSI, the IUCN Red List and the state forest department.`;
 
 const ABOUT = `# yellide
 
@@ -33,7 +33,7 @@ Every species documented from India, across sources. Updated each week. ${SITE}
 - State: a species is in a state when it has an open record placed there that no record keeper marks as planted, kept or introduced.
 - District: a species is in a district when a GBIF record of it is placed there (LGD districts) that no record keeper marks as planted, kept or introduced. For a district, list_species gives the first and latest year and the number of those records there.
 - Places and record keepers: a place's list leaves out only the species whose every record there the record keeper marks as planted, kept or introduced (GBIF's establishment fields); count_species and list_species count them apart, as not_wild (cultivated_or_captive, introduced). yellide decides nothing else: few records carry a mark, so planted trees and crops can be on a list. A plant that Kew's World Checklist of Vascular Plants does not give as native in the place's region carries kew_not_native, and a species the Global Register of Introduced and Invasive Species for India (GRIIS India) lists carries introduced_in_india (list_species); count_species counts them in not_native.
-- Counts for a place: count_species' threatened and endemic count only species with a dated record there in the last 10 years (since recent_from) and no not-native flag. threatened_all_time and endemic_all_time count every listed species, with old records and undated ones (often museum specimens labelled with a city). undated_only counts the species whose records there have no year. list_species keeps every species; pass recorded_since for recent records only.
+- Counts for a place: count_species' threatened and endemic count only species with a dated record there in the last 10 years (since recent_from) and no not-native flag. threatened_all_time and endemic_all_time count every listed species, with old records and undated ones (often museum specimens labelled with a city). undated_only counts the species whose records there have no year. list_species keeps every species; each row says if the headline counts count it (counted, and not_counted: undated, before_<year>, not_native); pass counted: true for exactly that set, recorded_since for recent records only.
 - Kingdom: animals, plants (with mosses and liverworts), fungi (with lichens, named for their fungus) and other (algae, diatoms and the rest). count_species gives by_kingdom; yellide://kingdoms lists the groups of each.
 - Region: the biogeographic zones and provinces of India of the Wildlife Institute of India (Rodgers, Panwar and Mathur): 10 zones, 26 provinces. A species is in a region when a GBIF record of it is placed there. There is no Eastern Ghats unit: its nearest is 6C, Deccan Peninsula: Eastern Highlands.
 - Waiting for a name: iNaturalist observations that nobody has confirmed yet (needs ID). They are not open records.
@@ -213,8 +213,9 @@ const NOT_WILD = ['cultivated_or_captive', 'introduced'];
 /** What a place's answer adds (a district's from inDistrict, a state's from its own file): not_wild, the species it
  *  leaves out because the record keeper marks every record there, by reason, among those that pass every filter but
  *  the place; kew, the set of listed plants Kew does not give as native there; last(i), a listed species' latest year
- *  there (null: its records there have no year), and inState when the state's file gives those years. null with no
- *  place. */
+ *  there (null: its records there have no year), and inState when the state's file gives those years; why(i), the
+ *  reasons a listed species is not in the headline counts (undated, before_<recent_from>, not_native; none: counted).
+ *  null with no place. */
 async function placeOf(env, S, ix, a, dist) {
   let map = dist?.notWild, kew = dist?.kew, last = dist && (i => dist.at.get(i).latest_year), inState = false;
   if (!map && a.state != null) {
@@ -229,11 +230,19 @@ async function placeOf(env, S, ix, a, dist) {
     last = inState ? i => years.get(i) ?? null : i => ix.val('last_year', i);
   }
   if (!map) return null;
-  const b = { ...a, district: null, state: null, recorded_since: null };
+  const b = { ...a, district: null, state: null, recorded_since: null, counted: null };
   b[READ] = [];   // the notes are the request's, read once
   const ok = filter(S, ix, b), out = Object.fromEntries(NOT_WILD.map(k => [k, 0]));
   for (const [i, why] of map) if (ok(i) && why in out) out[why]++;
-  return { not_wild: out, kew, last, inState };
+  // Why a listed species is not in the place's headline threatened and endemic counts (none: it is counted).
+  const since = S.recent_from, intro = introduced(S, ix);
+  const why = i => {
+    const y = last(i), w = [];
+    if (y == null) w.push('undated'); else if (y < since) w.push(`before_${since}`);
+    if (kew.has(i) || intro(i)) w.push('not_native');
+    return w;
+  };
+  return { not_wild: out, kew, last, inState, why };
 }
 
 // ---------------------------------------------------------------- filters
@@ -395,6 +404,11 @@ function filter(S, ix, a, dist = null, place = null) {
     const last = place?.last ?? (dist && (i => dist.at.get(i).latest_year));
     tests.push(last ? i => last(i) >= y : i => c[i] >= y);
   }
+  if (a.counted != null) {
+    if (!place) throw new ToolError('counted needs a state or a district.');
+    const want = !!a.counted;
+    tests.push(i => (place.why(i).length === 0) === want);
+  }
   if (a.described_since != null) { const y = year('described_since', a.described_since), c = col.described; tests.push(i => c[i] >= y); }
   const k = tests.length;
   return i => { for (let t = 0; t < k; t++) if (!tests[t](i)) return false; return true; };
@@ -447,6 +461,7 @@ const FILTERS = {
   open_record: { type: 'boolean', description: 'true: species with an open record from India; false: species known only from checklists and papers.' },
   recorded_since: { type: 'integer', description: 'Species with an open record placed in India in this year or later; with a state, placed in the state; with a district, a GBIF record placed in the district.' },
   described_since: { type: 'integer', description: 'Species described in this year or later.' },
+  counted: { type: 'boolean', description: 'With a state or a district: true gives only the species that count_species\' headline threatened and endemic counts count there (a dated record there in the last 10 years and no not-native flag); with iucn: ["threatened"] it lists exactly the headline threatened species. false: the others.' },
 };
 
 const TOOLS = [
@@ -470,7 +485,7 @@ const TOOLS = [
   },
   {
     name: 'list_species', title: 'List species',
-    description: 'List species of India with optional filters that combine: "critically endangered species in India", "endangered animals in Karnataka" (kingdom: animals), "snakes of the Western Ghats", "birds of Goa recorded since 2020". For a state or a district the list keeps every species with a record there, old and undated ones too (in_district or in_state gives the latest year there; pass recorded_since for recent records); kew_not_native: true marks a plant Kew does not give as native there, introduced_in_india: true a species GRIIS India lists; not_wild counts the species the record keepers mark as planted, kept or introduced. Rows by group, then Latin name; up to 100 per page, with the total and a cursor for the next page.',
+    description: 'List species of India with optional filters that combine: "critically endangered species in India", "endangered animals in Karnataka" (kingdom: animals), "snakes of the Western Ghats", "birds of Goa recorded since 2020". For a state or a district the list keeps every species with a record there, old and undated ones too (in_district or in_state gives the latest year there; counted says if count_species\' headline threatened and endemic counts count it, not_counted why not; pass counted: true for exactly that set, recorded_since for recent records); kew_not_native: true marks a plant Kew does not give as native there, introduced_in_india: true a species GRIIS India lists; not_wild counts the species the record keepers mark as planted, kept or introduced. Rows by group, then Latin name; up to 100 per page, with the total and a cursor for the next page.',
     inputSchema: {
       type: 'object',
       properties: { ...FILTERS, limit: { type: 'integer', description: 'Rows per page, 1 to 100 (default 50).' }, cursor: { type: 'string', description: 'next_cursor from the previous page.' } },
@@ -627,10 +642,15 @@ const introduced = (S, ix) => {
   return b < 0 ? () => false : i => ((l[i] >>> b) & 1) === 1;
 };
 
+/** A place's row: whether count_species' headline threatened and endemic counts count it, and why not. */
+const counted = why => (why.length ? { counted: false, not_counted: why } : { counted: true });
+
 /** A place's list keeps every species (list_species): what to read in it. */
 const LIST_NOTE = 'This list has every species with a record in the place, old and undated ones too: read latest_year in in_district or '
   + 'in_state (null: no year). Pass recorded_since (for example 2016) for recent records only. kew_not_native and introduced_in_india mark '
-  + 'species that may be planted or introduced there: say so.';
+  + 'species that may be planted or introduced there: say so. counted: true marks the species that count_species\' headline threatened '
+  + 'and endemic counts count (a dated record there in the last 10 years and no not-native flag); not_counted gives why not (undated, '
+  + 'before_<year>, not_native). Pass counted: true for exactly that set: with iucn ["threatened"] its total is the headline threatened count.';
 
 /** What a model should quote for a place (count_species). */
 const countNote = since => `For a state or a district, threatened and endemic count only the species with a dated record there since ${since} `
@@ -653,7 +673,7 @@ async function countSpecies(env, S, a) {
     if (!ok(i)) continue;
     const c = per[kOf[ix.col.group[i]]], y = last(i), t = thr[iucn[i]], e = (labels[i] >>> end) & 1;
     const recent = y != null && y >= since, k = !!kew?.has(i), n = place ? intro(i) : false, nn = k || n;
-    const head = !place || (recent && !nn);
+    const head = !place || place.why(i).length === 0;
     c[0]++;
     if (status[i] === 1) c[1]++;
     byIucn[iucn[i]]++;
@@ -697,7 +717,8 @@ async function listSpecies(env, S, a) {
       iucn: S.iucn[col.iucn[i]], endemic: ((col.labels[i] >>> end) & 1) === 1, open_record: col.status[i] === 1,
       latest_record_year: val('last_year', i), described: val('described', i), url: url(key, name),
       ...(dist ? { in_district: dist.at.get(i) } : {}), ...(place?.inState ? { in_state: { latest_year: place.last(i) } } : {}),
-      ...(place?.kew.has(i) ? { kew_not_native: true } : {}), ...(intro(i) ? { introduced_in_india: true } : {}) });
+      ...(place?.kew.has(i) ? { kew_not_native: true } : {}), ...(intro(i) ? { introduced_in_india: true } : {}),
+      ...(place ? counted(place.why(i)) : {}) });
   }
   const listNote = place ? LIST_NOTE : null;
   return { total, species, next_cursor: next, ...(place ? { not_wild: place.not_wild } : {}),
@@ -780,7 +801,7 @@ async function answer(msg, env, metric) {
       return reply(id, {
         protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {}, resources: {} },
-        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.4.0', websiteUrl: SITE },
+        serverInfo: { name: 'yellide', title: 'yellide: species of India', version: '1.5.0', websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     case 'ping':

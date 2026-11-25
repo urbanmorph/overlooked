@@ -634,3 +634,29 @@ test('a state uses its own latest year: headline counts and recorded_since', asy
   // A state with no file: the national latest year.
   assert.deepEqual((await out('list_species', { state: 'Karnataka', recorded_since: 2016 })).species.map(s => s.key), ['K3']);
 });
+
+test('a place\'s list says which species its headline counts count, and counted: true gives exactly those', async () => {
+  fresh();
+  const l = await out('list_species', { district: 'Mumbai' });
+  assert.deepEqual(l.species.map(s => [s.key, s.counted, s.not_counted ?? null]),
+    [['K1', true, null], ['K4', false, ['before_2016']], ['K5', false, ['undated']], ['K6', false, ['not_native']]]);
+  assert.match(l.note, /counted/);
+  // The threatened list with counted: true is the headline threatened count, row for row.
+  const m = await out('count_species', { district: 'Mumbai' });
+  const thr = await out('list_species', { district: 'Mumbai', iucn: ['threatened'], counted: true });
+  assert.equal(thr.total, m.counts.threatened);
+  assert.deepEqual(thr.species.map(s => s.key), ['K1']);
+  const end = await out('list_species', { district: 'Mumbai', endemic: true, counted: true });
+  assert.equal(end.total, m.counts.endemic);
+  assert.deepEqual((await out('list_species', { district: 'Mumbai', counted: false })).species.map(s => s.key), ['K4', 'K5', 'K6']);
+  // A state: its own years and its Kew flags.
+  assert.deepEqual((await out('list_species', { state: 'Kerala', counted: true })).species, []);
+  assert.deepEqual((await out('list_species', { state: 'Kerala' })).species.map(s => s.not_counted),
+    [['before_2016'], ['undated', 'not_native']]);
+  // count_species takes it too, and it needs a place.
+  assert.equal((await out('count_species', { district: 'Mumbai', counted: true })).counts.documented, 1);
+  const no = await call('list_species', { counted: true });
+  assert.equal(no.isError, true);
+  assert.match(no.content[0].text, /state or a district/);
+  assert.equal('counted' in (await out('list_species', {})).species[0], false);
+});

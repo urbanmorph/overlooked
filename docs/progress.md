@@ -4,6 +4,9 @@ Newest first. Updated as work happens.
 
 ## 26 November 2026
 
+- list_species reproduces the headline counts (asked by ops, MCP 1.5.0): each row for a place has `counted` and
+  `not_counted` (undated, before_2016, not_native), and the filter `counted: true` lists exactly the species that
+  count_species' headline threatened and endemic count. Mumbai's threatened list with it: 19, as the count.
 - Counts for a place (asked by ops, MCP 1.4.0). count_species' threatened and endemic for a state or a district count
   only species with a dated record there since recent_from (2016) and no not-native flag; threatened_all_time and
   endemic_all_time keep every listed species; undated_only and not_native are counted apart. Mumbai had Tiger, Dhole

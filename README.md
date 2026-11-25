@@ -117,7 +117,7 @@ Any other client: add a remote (HTTP) server with the URL `https://yellide.com/m
 Filters for `count_species` and `list_species`: `kingdom` (`animals`, `plants` with mosses and liverworts, `fungi` with
 lichens, `other`), `group` (also "animals" or "plants"), `state`, `district` (LGD name or code, or a list of up to 50
 districts for an area such as a delta), `region` (WII biogeographic zone or province), `iucn`, `endemic`, `order`,
-`suborder`, `family`, `open_record`, `recorded_since`, `described_since`. The server also offers the resources
+`suborder`, `family`, `open_record`, `recorded_since`, `described_since`, `counted` (a state or district only). The server also offers the resources
 `yellide://about`, `yellide://groups`, `yellide://kingdoms`, `yellide://states`, `yellide://districts` and
 `yellide://regions`.
 
@@ -128,7 +128,9 @@ A plant that Kew's World Checklist of Vascular Plants does not give as native in
 (`pipeline/wcvp_ranges.py`) stays on the list with the flag `kew_not_native`, and a species the Global Register of
 Introduced and Invasive Species for India lists (`pipeline/griis.py`) with `introduced_in_india`, for the reader to judge.
 A place's headline threatened and endemic counts leave out flagged species and species with no dated record there in the
-last 10 years; the all-time counts stay beside them.
+last 10 years; the all-time counts stay beside them. In `list_species` for a place each row has `counted`
+(and `not_counted`: `undated`, `before_2016`, `not_native`), and `counted: true` lists exactly the species the
+headline counts count.
 
 Try it without an assistant:
 
