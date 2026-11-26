@@ -4,6 +4,10 @@ Newest first. Updated as work happens.
 
 ## 26 November 2026
 
+- Search (ops' Search Console check, 26 Nov: Google knows the species and place URLs but has not crawled them).
+  The homepage links every state page (site-parts/states.html, scripts/home_states.mjs), so states are one click
+  from home and state × group pages two. /sitemaps/priority.xml lists the hubs to crawl first: /in, India and each
+  state with their groups, and the CR and EN species with an open record and an English name (about 2,000 URLs).
 - English names for reptiles from The Reptile Database (CC BY 4.0, its editors' copy on ChecklistBank, dataset 1008):
   only where iNaturalist has none, under the species' own name; a subspecies' name is never the species'. Fills 254 of
   361 reptiles of India with no English name, among them Ophiophagus kaalinga (Western Ghats king cobra). The export

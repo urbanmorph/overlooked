@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { handle } from '../functions/in/[[path]].js';
 import { onRequest as sitemap } from '../functions/sitemaps/[name].js';
-import { places, groupSlug, groupTitle, placePath, MIN_SPECIES } from '../functions/lib/places.js';
+import { places, groupSlug, groupTitle, placePath, stateLinks, MIN_SPECIES } from '../functions/lib/places.js';
 import { speciesPage } from '../functions/lib/species_page.js';
 
 const SHELL = readFileSync(new URL('../site/in.html', import.meta.url), 'utf8');
@@ -210,4 +210,24 @@ test('a state\'s pages link the same place on the sister sites: its cities\' sky
   assert.ok(ka.includes('https://bharatlas.com/view/wards_bengaluru_gba'));
   for (const path of ['/in/india/birds', '/in/western-ghats/birds', '/in'])          // only states are one place on all three
     assert.ok(!(await get(path)).h.includes('class="place-links sister"'), path);
+});
+
+test('/sitemaps/priority.xml: the hubs Google should crawl first: /in, India and each state with their groups, and the critically endangered and endangered species with an open record and an English name', async () => {
+  const r = await sitemap({ request: new Request('https://yellide.com/sitemaps/priority.xml'), env: {}, params: { name: 'priority.xml' }, counts, where });
+  assert.equal(r.status, 200);
+  const urls = [...(await r.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].replace('https://yellide.com', ''));
+  // No zone or district (places.xml has them); E1 is endangered but has no English name.
+  assert.deepEqual(urls, ['/in', '/in/india', '/in/india/birds', '/in/kerala', '/in/kerala/birds', '/species/C1/yus-cr']);
+  assert.match(readFileSync(new URL('../site/sitemap.xml', import.meta.url), 'utf8'), /https:\/\/yellide\.com\/sitemaps\/priority\.xml/);
+});
+
+test('the homepage links every state page as a plain link, one click from home', () => {
+  const html = stateLinks(S);
+  for (const p of places(S).filter(x => x.kind === 'state')) assert.ok(html.includes(`<a href="${placePath(p)}">${p.title}</a>`), p.slug);
+  assert.ok(html.includes('<a href="/in/jammu-kashmir">Jammu and Kashmir</a>'));
+  const home = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  const part = home.match(/<!-- part:states -->([\s\S]*?)<!-- \/part:states -->/);
+  assert.ok(part, 'the homepage has the states part');
+  const links = [...part[1].matchAll(/<a href="(\/in\/[a-z0-9-]+)">/g)];
+  assert.ok(links.length >= 36, `${links.length} state links`);
 });

@@ -78,3 +78,8 @@ export const placePath = (place, group) => `/in${place ? `/${place.slug ?? place
 /** The counts of a place from placeCounts (lib/mcp.js): species per group. */
 export const countsOf = (C, place) => (place.kind === 'india' ? C.india : place.kind === 'state' ? C.states[place.code]
   : place.kind === 'district' ? place.counts : C.zones[place.name]) || [];
+
+/** The homepage's links to every state page (site-parts/states.html, written by scripts/home_states.mjs from the
+ *  week's summary): plain links, so a search engine reaches each state in one click from home. */
+export const stateLinks = S => places(S).filter(p => p.kind === 'state')
+  .map(p => `<li><a href="${placePath(p)}">${p.title}</a></li>`).join('\n');
