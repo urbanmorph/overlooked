@@ -693,3 +693,12 @@ test('district names as people write them: words in any order, a near spelling, 
   assert.equal((await call('count_species', { district: 'Mumbai District' })).isError, undefined);
   assert.deepEqual((await out('count_species', { district: 'Lakshadweep' })).read_as, ['"Lakshadweep" read as Lakshadweep District.']);
 });
+
+test('get_species: the English name of a species with no photo comes from the name files (the Reptile Database fills some)', async () => {
+  const f = files();
+  delete f[BASE + `pic/${shardOf('K1')}.json`];
+  env = { DATA: bucket(f) }; _reset();
+  const s = await out('get_species', { key: 'K1' });
+  assert.equal(s.english, 'Malabar Aus');
+  assert.equal(s.photo, null);
+});

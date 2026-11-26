@@ -581,10 +581,12 @@ async function getSpecies(env, S, a) {
     iucn_year: iucnYear, iucn_doi: iucnDoi, partners, interactions_india: interIndia, types, photos, barcode, local_names: local,
     iucn_trend: iucnTrend, family, order, suborder, provinces, endemic_sources: endemicBy } = M.read('sp', r);
   const pic = pics?.[key] ? M.read('pic', pics[key]) : null;
+  // The English name: the photo's, else the name files' (a name with no photo, such as the Reptile Database's).
+  const english = pic?.english || (await englishOf(path => shard(env, path), '', S, [key])).get(key) || null;
   const place = S.waiting?.places?.india;
   const prov = new Map(S.provinces.map(p => [p[0], p[1]]));
   return {
-    key, name, english: pic?.english || null, group: S.groups[gi], family: family || null, order: order || null, suborder: suborder || null,
+    key, name, english, group: S.groups[gi], family: family || null, order: order || null, suborder: suborder || null,
     status: M.status(status), open_record: status === 1,
     iucn: { category: S.iucn[iucn], year: iucnYear ?? null, doi: iucnDoi ?? null, trend: iucnTrend ?? null },
     endemic: M.endemic(labels),
